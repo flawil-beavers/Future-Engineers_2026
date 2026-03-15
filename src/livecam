@@ -1,0 +1,56 @@
+# import serial
+# import numpy as np
+# import cv2
+
+# PORT = "COM8"        # anpassen! z.B. COM3 oder /dev/ttyACM0
+# BAUD = 921600
+
+# WIDTH = 320
+# HEIGHT = 240
+# FRAME_SIZE = WIDTH * HEIGHT * 2
+
+# START = b'\xfa\xce\xfe\xed'
+# STOP  = b'\xda\xbb\xad\x00'
+
+# ser = serial.Serial(PORT, BAUD, timeout=1)
+
+# buffer = bytearray()
+
+# def rgb565_to_bgr(frame):
+#     data = np.frombuffer(frame, dtype=np.uint16)
+    
+#     r = ((data >> 11) & 0x1F) << 3
+#     g = ((data >> 5) & 0x3F) << 2
+#     b = (data & 0x1F) << 3
+
+#     img = np.dstack((b, g, r)).astype(np.uint8)
+#     img = img.reshape((HEIGHT, WIDTH, 3))
+    
+#     return img
+
+# print("Stream gestartet...")
+
+# while True:
+
+#     buffer += ser.read(4096)
+
+#     start = buffer.find(START)
+#     stop = buffer.find(STOP)
+
+#     if start != -1 and stop != -1 and stop > start:
+
+#         frame = buffer[start+4:stop]
+
+#         buffer = buffer[stop+4:]
+
+#         if len(frame) == FRAME_SIZE:
+
+#             img = rgb565_to_bgr(frame)
+
+#             cv2.imshow("Arduino Camera", img)
+
+#             if cv2.waitKey(1) == 27:
+#                 break
+
+# ser.close()
+# cv2.destroyAllWindows()
