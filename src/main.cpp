@@ -2,6 +2,15 @@
 #include <Wire.h>
 #include <vl53lx_class.h>
 #include <Servo.h>
+#include <Adafruit_BNO08x.h>
+
+// Gyro settings
+#define BNO080_I2C_ADDR 0x4A
+
+Adafruit_BNO08x bno = Adafruit_BNO08x();
+sh2_SensorValue_t sensor_value;
+
+float current_degree = 0;
 
 #define SERIAL_BAUD 115200
 
@@ -65,7 +74,6 @@ float last_speed = 0;
 const int middle = 81; // +55 -55
 const int degree_max = middle + 60;
 const int degree_min = middle - 60;
-int current_degree = 0;
 int set_degree = 0;
 bool disable_servo = false;
 int last_angle = 0;
@@ -406,9 +414,9 @@ void parseMessage(char *msg)
   case 'e':
     Kd = value / 10.;
     break;
-  // case 'g':
-  //   Serial.println(degree_calibrated * 180 / PI);
-  //   break;
+  case 'g':
+    Serial.println(current_degree);
+    break;
   // case 't':
   //   Serial.println(get_temperature());
   //   break;
@@ -610,9 +618,6 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(encoderPinA), update_encoder_a, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), update_encoder_b, CHANGE);
   // attachInterrupt(digitalPinToInterrupt(enTogglePin), enable_interrupt, CHANGE);
-  // attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encoderPinA), update_encoder_a, CHANGE);
-  // attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encoderPinB), update_encoder_b, CHANGE);
-  // attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(enTogglePin), enable_interrupt, CHANGE);
 
   // en_state = digitalRead(enTogglePin) == HIGH; // initial state of the enable button
 
@@ -623,6 +628,22 @@ void setup()
   Serial.println(en_state_true);
   
 
+  // Gyro setup
+  if (!bno.begin_I2C(BNO080_I2C_ADDR))
+  {
+    Serial.println("Failed to find BNO080 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("BNO080 Found!");
+  if (!bno.enableReport(SH2_ROTATION_VECTOR, 10000))
+  {
+    Serial.println("Failed to enable rotation vector");
+    while (1) {
+      delay(10);
+    }
+  }
 
   Serial.println("===== START =====");
  /*
@@ -714,6 +735,32 @@ void readSensor(VL53LX &sensor, const char *name)
   sensor.VL53LX_ClearInterruptAndStartMeasurement();
 }
 
+void update_gyro()
+{
+  if (bno.wasReset())
+  {
+    Serial.println("BNO080 was reset! reinitializing...");
+    bno.enableReport(SH2_ROTATION_VECTOR, 10000);
+  }
+  if (!bno.getSensorEvent(&sensor_value))
+  {
+    Serial.println("Failed to read BNO080 sensor event");
+  }
+  else if (sensor_value.sensorId == SH2_ROTATION_VECTOR)
+  {
+    // Extract the rotation vector data from the sensor value
+    sh2_RotationVectorWAcc_t rotationVector = sensor_value.un.rotationVector;
+    float r = rotationVector.real;
+    float i = rotationVector.i;
+    float j = rotationVector.j;
+    float k = rotationVector.k;
+
+    // Convert the rotation vector to Yaw (Euler heading)
+    float yaw = atan2(2.0 * (i * j + r * k), r * r + i * i - j * j - k * k);
+    current_degree = yaw * 180.0 / PI;
+  }
+}
+
 void loop()
 {
   loop_updater();
@@ -721,6 +768,7 @@ void loop()
   // check_current();
   check_stalling();
   drive_loop();
+  update_gyro();
   // pid_config_print();
   // gyro_config_print();
   // gyro_config();
