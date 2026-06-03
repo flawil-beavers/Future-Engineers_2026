@@ -14,11 +14,11 @@ float current_degree = 0;
 
 #define SERIAL_BAUD 115200
 
-#define LEFT_XSDN  A1
+#define LEFT_XSDN A1
 #define RIGHT_XSDN A2
 
 // ST Library nutzt 8-bit Adressen
-#define LEFT_ADDR  0x52
+#define LEFT_ADDR 0x52
 #define RIGHT_ADDR 0x54
 
 // VL53LX sensor_left(&Wire, LEFT_XSDN);
@@ -26,10 +26,10 @@ float current_degree = 0;
 
 Servo servo;
 
-#define servoPin 9
-#define in1Pin 7
+#define servoPin 4
+#define in1Pin 5
 #define in2Pin 6
-#define enaPin 8
+#define enaPin 7
 
 #define encoderPinA 3
 #define encoderPinB 2
@@ -38,8 +38,8 @@ Servo servo;
 
 // ------ drive settings ------
 // encoder settings
-const int gear_ratio = 100;                                     // gear ratio of the motor
-const int countperrev = gear_ratio * 7;                           // counts per revolution of the motor
+const int gear_ratio = 100;                                        // gear ratio of the motor
+const int countperrev = gear_ratio * 7;                            // counts per revolution of the motor
 const float counter_to_mm = 20.0 / 28.0 * PI * 43.2 / countperrev; // mm per encoder count
 
 long encoder_pos = 0;
@@ -50,17 +50,17 @@ const char en_state_true[] = "enable start";
 const char en_state_false[] = "enable stop";
 
 // dc motor settings
-const int max_dc = 200;        // max duty cycle for motor driver
-const int min_dc = 0.25 * 255; // min duty cycle for motor driver
-const float max_acc_dc = 255;  // max acceleration duty cycle for motor driver (dc/s)
-float current_dc = 0;          // current duty cycle for motor driver
-float acc = 700;               // acceleration speed (mm/s^2)
-bool disable_dc = false;       // enable dc motor
+const int max_dc = 200;       // max duty cycle for motor driver
+const int min_dc = 0.3 * 255; // min duty cycle for motor driver
+const float max_acc_dc = 255; // max acceleration duty cycle for motor driver (dc/s)
+float current_dc = 0;         // current duty cycle for motor driver
+float acc = 700;              // acceleration speed (mm/s^2)
+bool disable_dc = false;      // enable dc motor
 bool hold_dc = false;
 
 // current sensor settings
 const float dc_to_current = 5.0 / 1024 * 0.525; // conversion factor from duty cycle to current (A)
-const float max_current = 0.5;   // max current (A)
+const float max_current = 0.5;                  // max current (A)
 
 // speed settings
 float current_speed = 0;
@@ -87,9 +87,9 @@ float target_distance = 0; // target encoder position in mm
 float measured_speed = 0;   // measured speed in mm/s
 float current_distance = 0; // current distance in mm
 float last_distance = 0;    // last distance in mm
-float Kp = 4.0;             // proportional gain for PID controller
-float Ki = 3.0;             // integral gain for PID controller
-float Kd = 1.0;             // derivative gain for PID controller
+float Kp = 0.9;             // proportional gain for PID controller
+float Ki = 0.1;             // integral gain for PID controller
+float Kd = 0.05;            // derivative gain for PID controller
 float i_max = 150.0;        // max integral value for PID controller
 float pid_integral = 0.0;   // integral term for PID controller
 float last_error = 0.0;     // last error for PID controller
@@ -103,7 +103,6 @@ float last_loop_time = 0;                     // last loop time in seconds
 unsigned long last_enable_interrupt_time = 0; // last time the enable interrupt was called
 unsigned long last_steering_command = 0;
 unsigned long steering_diff = 0;
-
 
 #define BUFFER_SIZE 64
 
@@ -407,12 +406,18 @@ void parseMessage(char *msg)
     break;
   case 'q':
     Kp = value / 10.;
+    Serial.print("Kp: ");
+    Serial.println(Kp);
     break;
   case 'w':
     Ki = value / 100.;
+    Serial.print("Ki: ");
+    Serial.println(Ki);
     break;
   case 'e':
     Kd = value / 10.;
+    Serial.print("Kd: ");
+    Serial.println(Kd);
     break;
   case 'g':
     Serial.println(current_degree);
@@ -426,23 +431,23 @@ void parseMessage(char *msg)
   case 'r':
     set_speed();
     break;
-  // case 'o':
-  //   digitalWrite(ledPin, HIGH);
-  //   break;
-  // case 'f':
-  //   digitalWrite(ledPin, LOW);
-  //   break;
-  // case 'z':
-  //   Serial.print(get_distance(encoder_pos));
-  //   Serial.print(",");
-  //   Serial.println(degree_calibrated * 180 / PI);
+    // case 'o':
+    //   digitalWrite(ledPin, HIGH);
+    //   break;
+    // case 'f':
+    //   digitalWrite(ledPin, LOW);
+    //   break;
+    // case 'z':
+    //   Serial.print(get_distance(encoder_pos));
+    //   Serial.print(",");
+    //   Serial.println(degree_calibrated * 180 / PI);
     // break;
-  // case 'y':
-  //   set_speed(value);
-  //   set_steering(value_2);
-  //   Serial.print(get_distance(encoder_pos));
-  //   Serial.print(",");
-  //   Serial.println(degree_calibrated * 180 / PI);
+    // case 'y':
+    //   set_speed(value);
+    //   set_steering(value_2);
+    //   Serial.print(get_distance(encoder_pos));
+    //   Serial.print(",");
+    //   Serial.println(degree_calibrated * 180 / PI);
     break;
   case 'x':
     Serial.print("Steering diff: ");
@@ -611,7 +616,6 @@ void setup()
   digitalWrite(in2Pin, LOW);
   analogWrite(enaPin, 0);
 
-
   Serial.begin(SERIAL_BAUD);
   delay(3000);
 
@@ -626,13 +630,13 @@ void setup()
   set_speed();
   // digitalWrite(ledPin, LOW);
   Serial.println(en_state_true);
-  
 
   // Gyro setup
   if (!bno.begin_I2C(BNO080_I2C_ADDR))
   {
     Serial.println("Failed to find BNO080 chip");
-    while (1) {
+    while (1)
+    {
       delay(10);
     }
   }
@@ -640,68 +644,69 @@ void setup()
   if (!bno.enableReport(SH2_ROTATION_VECTOR, 10000))
   {
     Serial.println("Failed to enable rotation vector");
-    while (1) {
+    while (1)
+    {
       delay(10);
     }
   }
 
   Serial.println("===== START =====");
- /*
-  Wire.begin();
-  Wire.setClock(400000);
+  /*
+   Wire.begin();
+   Wire.setClock(400000);
 
-  pinMode(LEFT_XSDN, OUTPUT);
-  pinMode(RIGHT_XSDN, OUTPUT);
+   pinMode(LEFT_XSDN, OUTPUT);
+   pinMode(RIGHT_XSDN, OUTPUT);
 
-  // Beide Sensoren aus
-  digitalWrite(LEFT_XSDN, LOW);
-  digitalWrite(RIGHT_XSDN, LOW);
-  delay(500);
+   // Beide Sensoren aus
+   digitalWrite(LEFT_XSDN, LOW);
+   digitalWrite(RIGHT_XSDN, LOW);
+   delay(500);
 
-  // -----------------------
-  // LINKER SENSOR
-  // -----------------------
-  Serial.println("Starting LEFT sensor");
+   // -----------------------
+   // LINKER SENSOR
+   // -----------------------
+   Serial.println("Starting LEFT sensor");
 
-  digitalWrite(LEFT_XSDN, HIGH);
-  delay(500);
+   digitalWrite(LEFT_XSDN, HIGH);
+   delay(500);
 
-  sensor_left.begin();
+   sensor_left.begin();
 
-  if (sensor_left.InitSensor(LEFT_ADDR) == VL53LX_ERROR_NONE)
-  {
-    Serial.println("LEFT sensor OK");
-    sensor_left.VL53LX_StartMeasurement();
-  }
-  else
-  {
-    Serial.println("LEFT sensor FAILED");
-  }
+   if (sensor_left.InitSensor(LEFT_ADDR) == VL53LX_ERROR_NONE)
+   {
+     Serial.println("LEFT sensor OK");
+     sensor_left.VL53LX_StartMeasurement();
+   }
+   else
+   {
+     Serial.println("LEFT sensor FAILED");
+   }
 
-  delay(500);
+   delay(500);
 
-  // -----------------------
-  // RECHTER SENSOR
-  // -----------------------
-  Serial.println("Starting RIGHT sensor");
+   // -----------------------
+   // RECHTER SENSOR
+   // -----------------------
+   Serial.println("Starting RIGHT sensor");
 
-  digitalWrite(RIGHT_XSDN, HIGH);
-  delay(500);
+   digitalWrite(RIGHT_XSDN, HIGH);
+   delay(500);
 
-  sensor_right.begin();
+   sensor_right.begin();
 
-  if (sensor_right.InitSensor(RIGHT_ADDR) == VL53LX_ERROR_NONE)
-  {
-    Serial.println("RIGHT sensor OK");
-    sensor_right.VL53LX_StartMeasurement();
-  }
-  else
-  {
-    Serial.println("RIGHT sensor FAILED");
-  }
+   if (sensor_right.InitSensor(RIGHT_ADDR) == VL53LX_ERROR_NONE)
+   {
+     Serial.println("RIGHT sensor OK");
+     sensor_right.VL53LX_StartMeasurement();
+   }
+   else
+   {
+     Serial.println("RIGHT sensor FAILED");
+   }
 
-  Serial.println("===== SETUP DONE =====");
-  */
+   Serial.println("===== SETUP DONE =====");
+   */
 }
 
 void readSensor(VL53LX &sensor, const char *name)
@@ -772,7 +777,7 @@ void loop()
   // pid_config_print();
   // gyro_config_print();
   // gyro_config();
-  
+
   // readSensor(sensor_left, "LEFT ");
   // readSensor(sensor_right, "RIGHT");
 

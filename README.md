@@ -1,0 +1,1 @@
+Don't forget to download the Arduino IDE when cloning this repository and uploading the code using PlatformIO. Then download the Arduino Mbed OS GIGA Board Package.
