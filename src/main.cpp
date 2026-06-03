@@ -1,28 +1,15 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <vl53lx_class.h>
 #include <Servo.h>
 #include <Adafruit_BNO08x.h>
+#include <vl53l4cx_class.h>
 
 // Gyro settings
 #define BNO080_I2C_ADDR 0x4A
-
-Adafruit_BNO08x bno = Adafruit_BNO08x();
-sh2_SensorValue_t sensor_value;
-
-float current_degree = 0;
+#define BNO080_INT 10
+#define BNO080_RST 13
 
 #define SERIAL_BAUD 115200
-
-#define LEFT_XSDN A1
-#define RIGHT_XSDN A2
-
-// ST Library nutzt 8-bit Adressen
-#define LEFT_ADDR 0x52
-#define RIGHT_ADDR 0x54
-
-// VL53LX sensor_left(&Wire, LEFT_XSDN);
-// VL53LX sensor_right(&Wire, RIGHT_XSDN);
 
 Servo servo;
 
@@ -50,12 +37,12 @@ const char en_state_true[] = "enable start";
 const char en_state_false[] = "enable stop";
 
 // dc motor settings
-const int max_dc = 200;       // max duty cycle for motor driver
-const int min_dc = 0.3 * 255; // min duty cycle for motor driver
-const float max_acc_dc = 255; // max acceleration duty cycle for motor driver (dc/s)
-float current_dc = 0;         // current duty cycle for motor driver
-float acc = 700;              // acceleration speed (mm/s^2)
-bool disable_dc = false;      // enable dc motor
+const int max_dc = 200;        // max duty cycle for motor driver
+const int min_dc = 0.32 * 255; // min duty cycle for motor driver
+const float max_acc_dc = 255;  // max acceleration duty cycle for motor driver (dc/s)
+float current_dc = 0;          // current duty cycle for motor driver
+float acc = 700;               // acceleration speed (mm/s^2)
+bool disable_dc = false;       // enable dc motor
 bool hold_dc = false;
 
 // current sensor settings
@@ -109,6 +96,20 @@ unsigned long steering_diff = 0;
 char ringBuffer[BUFFER_SIZE];
 int head = 0;
 int tail = 0;
+
+// Gyro settings
+Adafruit_BNO08x bno = Adafruit_BNO08x(BNO080_RST);
+sh2_SensorValue_t sensor_value;
+
+float current_degree = 0;
+
+// VL53L4CX ToF sensors (two sensors on separate I2C ports)
+VL53L4CX sensor_left(&Wire, -1);
+VL53L4CX sensor_right;
+
+// distances in meters (updated by update_lasers())
+float current_distance_left_m = -1.0;
+float current_distance_right_m = -1.0;
 
 // debug variables
 int dc_out = 0;
@@ -383,7 +384,7 @@ void parseMessage(char *msg)
     second_int++;
   }
   value = atoi(beg);
-  int value_2 = atoi(++second_int);
+  // optional second integer ignored by default
   // Serial.println("ok");
   switch (cmd[0])
   {
@@ -421,6 +422,14 @@ void parseMessage(char *msg)
     break;
   case 'g':
     Serial.println(current_degree);
+    break;
+
+  case 'v':
+    // print ToF distances (meters)
+    Serial.print("LEFT_m: ");
+    Serial.print(current_distance_left_m, 3);
+    Serial.print(" RIGHT_m: ");
+    Serial.println(current_distance_right_m, 3);
     break;
   // case 't':
   //   Serial.println(get_temperature());
@@ -617,7 +626,11 @@ void setup()
   analogWrite(enaPin, 0);
 
   Serial.begin(SERIAL_BAUD);
-  delay(3000);
+  // only wait for serial if we are connected via USB, otherwise should be deactivated
+  while (!Serial)
+  {
+    delay(10);
+  }
 
   attachInterrupt(digitalPinToInterrupt(encoderPinA), update_encoder_a, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), update_encoder_b, CHANGE);
@@ -625,14 +638,72 @@ void setup()
 
   // en_state = digitalRead(enTogglePin) == HIGH; // initial state of the enable button
 
+  Serial.println("hello world");
+
   disable_dc = false;
   disable_servo = false;
   set_speed();
   // digitalWrite(ledPin, LOW);
   Serial.println(en_state_true);
 
-  // Gyro setup
-  if (!bno.begin_I2C(BNO080_I2C_ADDR))
+  Wire.begin();
+  Wire.setClock(100000); // Can be increased to 400kHz when using short wires and good quality connections
+
+  // Gyro setupSerial.println("===== STARTING SENSOR INITIALIZATION =====");
+
+  // ==========================================
+  // STEP 1: INITIALIZE ToF FIRST (While Bus is Quiet)
+  // ==========================================
+  Serial.println("Initializing VL53L4CX Left Sensor...");
+
+  // Force-bind the underlying driver layers to the I2C bus
+  sensor_left.setI2cDevice(&Wire);
+
+  // Check hardware connectivity
+  if (sensor_left.begin() != 0)
+  {
+    Serial.println("Error: VL53L4CX base communication failed! Check Qwiic wire physical connection.");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("VL53L4CX Base Communication established.");
+
+  // Load the heavy ST factory calibration registers
+  if (sensor_left.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
+  {
+    Serial.println("Error: InitSensor failed!");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("VL53L4CX Calibration & Firmware Loaded Successfully.");
+
+  // Configure profile modes
+  sensor_left.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
+
+  // Fire up the laser array
+  if (sensor_left.VL53L4CX_StartMeasurement() != 0)
+  {
+    Serial.println("Error: Could not start VL53L4CX measurements!");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("VL53L4CX initialized cleanly.");
+
+  // --- SHORT BREATHING WINDOW ---
+  delay(100);
+
+  // ==========================================
+  // STEP 2: INITIALIZE GYRO SECOND
+  // ==========================================
+  Serial.println("Initializing Gyro (BNO085)...");
+
+  if (!bno.begin_I2C(BNO080_I2C_ADDR, &Wire, BNO080_INT))
   {
     Serial.println("Failed to find BNO080 chip");
     while (1)
@@ -641,7 +712,9 @@ void setup()
     }
   }
   Serial.println("BNO080 Found!");
-  if (!bno.enableReport(SH2_ROTATION_VECTOR, 10000))
+
+  // NOW it is safe to turn on the continuous report stream
+  if (!bno.enableReport(SH2_ROTATION_VECTOR, 50000))
   {
     Serial.println("Failed to enable rotation vector");
     while (1)
@@ -649,109 +722,118 @@ void setup()
       delay(10);
     }
   }
+  Serial.println("BNO085 Streaming reports enabled.");
 
-  Serial.println("===== START =====");
-  /*
-   Wire.begin();
-   Wire.setClock(400000);
+  Serial.println("===== SETUP DONE =====");
 
-   pinMode(LEFT_XSDN, OUTPUT);
-   pinMode(RIGHT_XSDN, OUTPUT);
 
-   // Beide Sensoren aus
-   digitalWrite(LEFT_XSDN, LOW);
-   digitalWrite(RIGHT_XSDN, LOW);
-   delay(500);
+// Initialize both I2C busses and VL53L4CX sensors
+// Primary I2C
+// Secondary I2C (if available on board)
+// #if defined(Wire1)
+//   Wire1.begin();
+//   Wire1.setClock(400000);
+// #endif
 
-   // -----------------------
-   // LINKER SENSOR
-   // -----------------------
-   Serial.println("Starting LEFT sensor");
+// Configure left sensor on primary I2C (Wire)
+// sensor_left.setI2cDevice(&Wire);
+// sensor_left.setXShutPin(LEFT_XSDN);
+// sensor_left.begin();
+// sensor_left.VL53L4CX_Off();
+// if (sensor_left.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) == VL53L4CX_ERROR_NONE)
+// {
+//   Serial.println("LEFT sensor OK");
+//   // Use long distance mode (up to ~3m) and increase timing budget for better reliability
+//   sensor_left.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
+//   Serial.print("Current timing budget: ");
+//   u_int32_t timing_budget;
+//   sensor_left.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget);
+//   Serial.println(timing_budget);
+//   // if (sensor_left.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(30000)
+//   //     != VL53L4CX_ERROR_NONE) {
+//   //   Serial.println(F("[ToF] SetTimingBudget failed for left sensor"));
+//   // }
+//   // Set inter-measurement period (time between measurements in ms)
+//   // if (sensor_left.VL53L4CX_SetInterMeasurementPeriodMilliSeconds(250)
+//   //     != VL53L4CX_ERROR_NONE) {
+//   //   Serial.println(F("[ToF] SetInterMeasurementPeriod failed for left sensor"));
+//   // }
+//   delay(200);  // Wait for sensor to stabilize before starting
+//   sensor_left.VL53L4CX_StartMeasurement();
+//   delay(200);  // Wait for sensor to stabilize before starting
+// }
+// else
+// {
+//   Serial.println("LEFT sensor FAILED");
+// }
+// sensor_left.VL53L4CX_StartMeasurement();
 
-   digitalWrite(LEFT_XSDN, HIGH);
-   delay(500);
+// #if defined(Wire1)
+//   // Configure right sensor on secondary I2C (Wire1)
+//   sensor_right.setI2cDevice(&Wire1);
+//   sensor_right.setXShutPin(RIGHT_XSDN);
+//   sensor_right.begin();
+//   sensor_right.VL53L4CX_Off();
+//   if (sensor_right.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) == VL53L4CX_ERROR_NONE)
+//   {
+//     Serial.println("RIGHT sensor OK");
+//     sensor_right.VL53L4CX_StartMeasurement();
+//   }
+//   else
+//   {
+//     Serial.println("RIGHT sensor FAILED");
+//   }
+// #else
+//   Serial.println("Wire1 not defined; right sensor not initialized");
+// #endif
 
-   sensor_left.begin();
-
-   if (sensor_left.InitSensor(LEFT_ADDR) == VL53LX_ERROR_NONE)
-   {
-     Serial.println("LEFT sensor OK");
-     sensor_left.VL53LX_StartMeasurement();
-   }
-   else
-   {
-     Serial.println("LEFT sensor FAILED");
-   }
-
-   delay(500);
-
-   // -----------------------
-   // RECHTER SENSOR
-   // -----------------------
-   Serial.println("Starting RIGHT sensor");
-
-   digitalWrite(RIGHT_XSDN, HIGH);
-   delay(500);
-
-   sensor_right.begin();
-
-   if (sensor_right.InitSensor(RIGHT_ADDR) == VL53LX_ERROR_NONE)
-   {
-     Serial.println("RIGHT sensor OK");
-     sensor_right.VL53LX_StartMeasurement();
-   }
-   else
-   {
-     Serial.println("RIGHT sensor FAILED");
-   }
-
-   Serial.println("===== SETUP DONE =====");
-   */
+Serial.println("===== SETUP DONE =====");
 }
 
-void readSensor(VL53LX &sensor, const char *name)
-{
-  uint8_t ready = 0;
+// void readSensor(VL53LX &sensor, const char *name)
+// {
+//   uint8_t ready = 0;
 
-  if (sensor.VL53LX_GetMeasurementDataReady(&ready) != VL53LX_ERROR_NONE)
-    return;
+//   if (sensor.VL53LX_GetMeasurementDataReady(&ready) != VL53LX_ERROR_NONE)
+//     return;
 
-  if (!ready)
-    return;
+//   if (!ready)
+//     return;
 
-  VL53LX_MultiRangingData_t data;
+//   VL53LX_MultiRangingData_t data;
 
-  if (sensor.VL53LX_GetMultiRangingData(&data) != VL53LX_ERROR_NONE)
-    return;
+//   if (sensor.VL53LX_GetMultiRangingData(&data) != VL53LX_ERROR_NONE)
+//     return;
 
-  Serial.print(name);
-  Serial.print(": ");
+//   Serial.print(name);
+//   Serial.print(": ");
 
-  if (data.NumberOfObjectsFound > 0)
-  {
-    Serial.print(data.RangeData[0].RangeMilliMeter);
-    Serial.println(" mm");
-  }
-  else
-  {
-    Serial.println("no object");
-  }
+//   if (data.NumberOfObjectsFound > 0)
+//   {
+//     Serial.print(data.RangeData[0].RangeMilliMeter);
+//     Serial.println(" mm");
+//   }
+//   else
+//   {
+//     Serial.println("no object");
+//   }
 
-  sensor.VL53LX_ClearInterruptAndStartMeasurement();
-}
+//   sensor.VL53LX_ClearInterruptAndStartMeasurement();
+// }
 
 void update_gyro()
 {
   if (bno.wasReset())
   {
     Serial.println("BNO080 was reset! reinitializing...");
-    bno.enableReport(SH2_ROTATION_VECTOR, 10000);
+    bno.enableReport(SH2_ROTATION_VECTOR, 50000);
   }
-  if (!bno.getSensorEvent(&sensor_value))
-  {
-    Serial.println("Failed to read BNO080 sensor event");
-  }
-  else if (sensor_value.sensorId == SH2_ROTATION_VECTOR)
+  // if (!bno.getSensorEvent(&sensor_value))
+  // {
+  //   Serial.println("Failed to read BNO080 sensor event");
+  // }
+
+  if (sensor_value.sensorId == SH2_ROTATION_VECTOR)
   {
     // Extract the rotation vector data from the sensor value
     sh2_RotationVectorWAcc_t rotationVector = sensor_value.un.rotationVector;
@@ -766,6 +848,69 @@ void update_gyro()
   }
 }
 
+void update_lasers()
+{
+  VL53L4CX_MultiRangingData_t MultiRangingData;
+  uint8_t NewDataReady = 0;
+
+  // Left sensor (Wire)
+  if (sensor_left.VL53L4CX_GetMeasurementDataReady(&NewDataReady) == VL53L4CX_ERROR_NONE && NewDataReady)
+  {
+    if (sensor_left.VL53L4CX_GetMultiRangingData(&MultiRangingData) == VL53L4CX_ERROR_NONE)
+    {
+      if (MultiRangingData.NumberOfObjectsFound > 0)
+      {
+        // Choose the measurement with the lowest sigma (most reliable measurement) if multiple objects are found
+        int best_index = 0;
+        uint32_t best_sigma = MultiRangingData.RangeData[0].SigmaMilliMeter;
+        for (int i = 1; i < MultiRangingData.NumberOfObjectsFound; i++)
+        {
+          if (MultiRangingData.RangeData[i].SigmaMilliMeter < best_sigma)
+          {
+            best_sigma = MultiRangingData.RangeData[i].SigmaMilliMeter;
+            best_index = i;
+          }
+        }
+        uint8_t status = MultiRangingData.RangeData[best_index].RangeStatus;
+        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID || status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+        {
+          int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
+          current_distance_left_m = mm / 1000.0;
+          Serial.print("Left sensor: ");
+          Serial.println(current_distance_left_m, 3);
+        }
+        else
+        {
+          Serial.println("Left sensor: no valid measurement");
+        }
+      }
+      else
+      {
+        Serial.println("Left sensor: no object found");
+      }
+    }
+    else
+    {
+      Serial.println("Failed to read left sensor data");
+    }
+    sensor_left.VL53L4CX_ClearInterruptAndStartMeasurement();
+  }
+
+  // Right sensor (Wire1)
+  // NewDataReady = 0;
+  // if (sensor_right.VL53L4CX_GetMeasurementDataReady(&NewDataReady) == VL53L4CX_ERROR_NONE && NewDataReady)
+  // {
+  //   if (sensor_right.VL53L4CX_GetMultiRangingData(&MultiRangingData) == VL53L4CX_ERROR_NONE)
+  //   {
+  //     if (MultiRangingData.NumberOfObjectsFound > 0)
+  //     {
+  //       current_distance_right_m = MultiRangingData.RangeData[0].RangeMilliMeter / 1000.0;
+  //     }
+  //   }
+  //   sensor_right.VL53L4CX_ClearInterruptAndStartMeasurement();
+  // }
+}
+
 void loop()
 {
   loop_updater();
@@ -773,6 +918,7 @@ void loop()
   // check_current();
   check_stalling();
   drive_loop();
+  update_lasers();
   update_gyro();
   // pid_config_print();
   // gyro_config_print();
@@ -781,5 +927,7 @@ void loop()
   // readSensor(sensor_left, "LEFT ");
   // readSensor(sensor_right, "RIGHT");
 
-  delay(50);
+  // delay(50);
+  // Serial.print("Distance: ");
+  // Serial.println(current_distance_left_m, 3);
 }
