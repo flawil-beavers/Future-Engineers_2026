@@ -1,0 +1,93 @@
+#pragma once
+
+/**
+ * @file config.h
+ * @brief Centralized configuration for all pin definitions, constants, and tuning parameters
+ */
+
+// ==========================================
+// SERIAL CONFIGURATION
+// ==========================================
+#define SERIAL_BAUD 115200
+#define BUFFER_SIZE 64
+
+// ==========================================
+// MOTOR & STEERING PINS
+// ==========================================
+#define SERVO_PIN 4
+#define MOTOR_IN1_PIN 5        // Direction control 1
+#define MOTOR_IN2_PIN 6        // Direction control 2
+#define MOTOR_ENA_PIN 7        // PWM speed control
+
+// ==========================================
+// ENCODER PINS
+// ==========================================
+#define ENCODER_PIN_A 3        // Phase A
+#define ENCODER_PIN_B 2        // Phase B
+
+// ==========================================
+// BNO085 IMU (GYRO) - SPI CONFIGURATION
+// ==========================================
+#define BNO085_CS 10
+#define BNO085_INT A0
+#define BNO085_RST A1
+
+// ==========================================
+// MOTOR CONTROL CONSTANTS
+// ==========================================
+#define GEAR_RATIO 100                                      // Motor gear ratio
+#define ENCODER_COUNTS_PER_REV (GEAR_RATIO * 7)             // CPR of the motor
+#define COUNTER_TO_MM (20.0 / 28.0 * PI * 43.2 / ENCODER_COUNTS_PER_REV)  // mm per encoder count
+
+#define MOTOR_MAX_DC 200                                    // Max duty cycle (0-255)
+#define MOTOR_MIN_DC (0.32 * 255)                           // Min duty cycle to overcome static friction
+#define MOTOR_MAX_ACC_DC 255                                // Max acceleration duty cycle (DC/s)
+
+// ==========================================
+// STEERING CONFIGURATION
+// ==========================================
+#define SERVO_CENTER 81        // Center neutral position
+#define SERVO_MAX_ANGLE (SERVO_CENTER + 60)  // Max right turn
+#define SERVO_MIN_ANGLE (SERVO_CENTER - 60)  // Max left turn
+
+// ==========================================
+// PID CONTROLLER TUNING
+// ==========================================
+#define PID_KP 0.9             // Proportional gain
+#define PID_KI 0.1             // Integral gain
+#define PID_KD 0.05            // Derivative gain
+#define PID_I_MAX 150.0        // Max integral term clamping
+
+// ==========================================
+// ACCELERATION SETTINGS
+// ==========================================
+#define DEFAULT_ACCELERATION 700    // mm/s^2
+
+// ==========================================
+// SENSOR UPDATE RATES
+// ==========================================
+#define GYRO_UPDATE_INTERVAL_MS 20  // Update gyro every 20ms
+#define STATUS_PRINT_INTERVAL_US 200000  // Print status every 200ms
+
+// ==========================================
+// STALL DETECTION
+// ==========================================
+#define STALL_THRESHOLD_COUNTS 4         // Encoder counts
+#define STALL_DC_THRESHOLD 0.9           // Trigger at 90% of max DC
+
+// ==========================================
+// ENABLE INTERRUPT DEBOUNCE
+// ==========================================
+#define ENABLE_DEBOUNCE_TIME_US 100000   // 100ms debounce
+
+// ==========================================
+// SENSOR READING MODES
+// ==========================================
+#define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_LONG
+#define TOF_I2C_CLOCK 400000             // 400kHz I2C clock
+
+// ==========================================
+// ENABLE/DISABLE FLAGS MESSAGES
+// ==========================================
+#define EN_STATE_TRUE_MSG "enable start"
+#define EN_STATE_FALSE_MSG "enable stop"
