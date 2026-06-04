@@ -46,10 +46,6 @@ float acc = 700;               // acceleration speed (mm/s^2)
 bool disable_dc = false;       // enable dc motor
 bool hold_dc = false;
 
-// current sensor settings
-const float dc_to_current = 5.0 / 1024 * 0.525; // conversion factor from duty cycle to current (A)
-const float max_current = 0.5;                  // max current (A)
-
 // speed settings
 float current_speed = 0;
 int target_speed = 0; // target speed for the motor in mm/s
@@ -577,8 +573,6 @@ void loop_updater()
   last_loop_time = last_loop_time_us / 1000000.0; // in seconds
 
   current_distance = get_distance(encoder_pos);
-
-  // update_gyro();
 }
 
 unsigned long last_gyro_read = 0;
@@ -649,17 +643,7 @@ void update_lasers()
         {
           int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
           current_distance_left_m = mm / 1000.0;
-          // Serial.print("Left sensor: ");
-          // Serial.println(current_distance_left_m, 3);
         }
-        else
-        {
-          Serial.println("Left sensor: no valid measurement");
-        }
-      }
-      else
-      {
-        Serial.println("Left sensor: no object found");
       }
     }
     else
@@ -693,17 +677,7 @@ void update_lasers()
         {
           int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
           current_distance_right_m = mm / 1000.0;
-          // Serial.print("Right sensor: ");
-          // Serial.println(current_distance_right_m, 3);
         }
-        else
-        {
-          Serial.println("Right sensor: no valid measurement");
-        }
-      }
-      else
-      {
-        Serial.println("Right sensor: no object found");
       }
     }
     else
@@ -773,7 +747,6 @@ void setup()
 
   pinMode(encoderPinA, INPUT);
   pinMode(encoderPinB, INPUT);
-  // pinMode(currentPin, INPUT);
   // pinMode(ledPin, OUTPUT);
   // digitalWrite(ledPin, LOW);
 
@@ -812,9 +785,8 @@ void setup()
   // ==========================================
   Serial.println("Initializing VL53L4CX Left Sensor (Wire)...");
 
-  reset_VL53L4CX_via_I2C(Wire);   // Reset the left sensor to ensure it is in a known state before initialization
-  reset_VL53L4CX_via_I2C(Wire2);  // Reset the right sensor to ensure it is in a known state before initialization
-  // delay(150); // Give the ToF microcode time to completely clear its internal memory layers
+  reset_VL53L4CX_via_I2C(Wire);  // Reset the left sensor to ensure it is in a known state before initialization
+  reset_VL53L4CX_via_I2C(Wire2); // Reset the right sensor to ensure it is in a known state before initialization
 
   // Force-bind the underlying driver layers to the I2C bus
   sensor_left.setI2cDevice(&Wire);
@@ -854,9 +826,6 @@ void setup()
     }
   }
   Serial.println("VL53L4CX left initialized cleanly.");
-
-  // // --- SHORT BREATHING WINDOW ---
-  // delay(200);
 
   // Initialize right sensor on Wire2
   Serial.println("Initializing VL53L4CX Right Sensor (Wire2)...");
@@ -900,9 +869,6 @@ void setup()
   }
   Serial.println("VL53L4CX right initialized cleanly.");
 
-  // // --- SHORT BREATHING WINDOW ---
-  // delay(400);
-
   // ==========================================
   // STEP 2: INITIALIZE GYRO SECOND (SPI)
   // ==========================================
@@ -910,13 +876,6 @@ void setup()
 
   // Initialize SPI
   SPI1.begin();
-
-  // // Set reset pin
-  // pinMode(BNO085_RST, OUTPUT);
-  // digitalWrite(BNO085_RST, LOW);   // Pull Reset Low to shut down the gyro MCU
-  // delay(50);                       // Hold reset long enough to clear internal registers
-  // digitalWrite(BNO085_RST, HIGH);  // Release Reset to cleanly reboot the gyro
-  // delay(100);                      // Give the IMU bootloader ample time to start
 
   // Initialize via SPI
   if (!bno.begin_SPI(BNO085_CS, BNO085_INT, &SPI1))
@@ -952,19 +911,9 @@ void loop()
 {
   loop_updater();
   check_serial_available();
-  // check_current();
   check_stalling();
   drive_loop();
   update_lasers();
   update_gyro();
   // pid_config_print();
-  // gyro_config_print();
-  // gyro_config();
-
-  // readSensor(sensor_left, "LEFT ");
-  // readSensor(sensor_right, "RIGHT");
-
-  // delay(50);
-  // Serial.print("Distance: ");
-  // Serial.println(current_distance_left_m, 3);
 }
