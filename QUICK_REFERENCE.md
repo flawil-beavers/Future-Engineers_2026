@@ -83,6 +83,11 @@ Edit `include/config.h`:
 | Set accel | `a<accel>` | `a800` | Acceleration = 800 mm/s² |
 | Master enable | `m` | `m` | Enable motors and servo |
 | Steering timing | `x` | `x` | Print servo timing info |
+| **Wall Follow START** | `w` | `w` | Start autonomous wall following |
+| **Wall Follow STOP** | `z` | `z` | Stop wall following |
+| **Set wall distance** | `u<mm>` | `u300` | Set target wall distance (300mm) |
+| **Debug output ON** | `i` | `i` | Enable wall follower debug output |
+| **Debug output OFF** | `o` | `o` | Disable wall follower debug output |
 
 ## Module Exports
 
@@ -128,8 +133,23 @@ Edit `include/config.h`:
 | ToF reads -1.0m | Sensors not initialized or out of range |
 | Commands not working | Check serial baud rate (115200 default) |
 | Motor overshoots target | Increase `PID_Kd` to add damping |
-| Motor hunts around target | Decrease `PID_Ki` integral gain |
+| Motor hunts around target | Decrease `PID_Ki` integral gain || Wall follower not starting | Check sensors working with `v` command first |
+| Robot oscillates | Decrease Kp gain in wall_follower |
+| Robot doesn't detect gaps | May need to reduce `wf_wall_margin` |
 
+## Wall Follower Quick Start
+
+```
+i              Enable debug output
+u300           Set wall distance to 300mm
+w              Start wall following (follows right wall initially)
+              Robot autonomously follows perimeter for 3 rounds
+v              Check sensor readings during mission
+z              Stop wall follower anytime
+o              Disable debug output
+```
+
+**For detailed wall follower guide:** See [WALL_FOLLOWER_GUIDE.md](WALL_FOLLOWER_GUIDE.md)
 ## Compilation Notes
 
 Ensure `platformio.ini` has these libs:

@@ -6,6 +6,7 @@
  *   - Motor control (DC motor, steering servo, PID)
  *   - Sensor management (Gyro, ToF distance sensors)
  *   - Serial communication and command parsing
+ *   - Autonomous wall-following behavior
  * 
  * The main loop coordinates all subsystems in a clean, modular architecture.
  */
@@ -15,6 +16,7 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "serial_handler.h"
+#include "wall_follower.h"
 
 // ==========================================
 // SETUP - Initialize all subsystems
@@ -34,6 +36,7 @@ void setup()
   serial_setup();
   motor_control_setup();
   sensors_setup();
+  wall_follower_setup();
 
   Serial.println("\n===== INITIALIZATION COMPLETE =====\n");
 }
@@ -53,14 +56,15 @@ void loop()
   // Monitor motor health
   check_stalling();
 
-  // Execute motor control logic
-  drive_loop();
-
-  // Update distance sensors
+  // Update distance sensors (needed for all subsystems)
   update_lasers();
-
-  // Update heading (gyro)
   update_gyro();
+
+  // Execute autonomous wall-following or manual control
+  wall_follower_update();
+
+  // Execute motor control logic (may be overridden by wall_follower)
+  drive_loop();
 
   // Optional: Print debug info (uncomment to enable)
   // pid_config_print();

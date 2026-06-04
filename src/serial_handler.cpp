@@ -7,6 +7,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
+#include "wall_follower.h"
 
 // ==========================================
 // SERIAL BUFFER
@@ -175,6 +176,31 @@ void parseMessage(char *msg)
     disable_dc = false;
     disable_servo = false;
     set_speed();
+    break;
+
+  case 'w':
+    // Wall follower START
+    wall_follower_enable();
+    break;
+
+  case 'z':
+    // Wall follower STOP
+    wall_follower_disable();
+    break;
+
+  case 'u':
+    // Set wall target distance
+    wall_follower_set_target_distance(value);
+    break;
+
+  case 'i':
+    // Toggle wall follower debug output
+    wall_follower_set_debug(true);
+    break;
+
+  case 'o':
+    // Disable wall follower debug output
+    wall_follower_set_debug(false);
     break;
 
   default:

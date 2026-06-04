@@ -20,6 +20,11 @@
  *   r         : Resume with last speed
  *   x         : Print steering timing difference
  *   m         : Master enable (motors + steering)
+ *   w         : Wall follower START
+ *   z         : Wall follower STOP
+ *   u<dist>   : Set wall target distance (mm)
+ *   i         : Enable wall follower debug output
+ *   o         : Disable wall follower debug output
  */
 
 #include <Arduino.h>
