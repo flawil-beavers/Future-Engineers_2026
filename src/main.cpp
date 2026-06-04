@@ -3,11 +3,12 @@
 #include <Servo.h>
 #include <Adafruit_BNO08x.h>
 #include <vl53l4cx_class.h>
+#include <SPI.h>
 
-// Gyro settings
-#define BNO085_I2C_ADDR 0x4A
-#define BNO085_INT 10
-#define BNO085_RST 13
+// Gyro settings (SPI)
+#define BNO085_CS 10
+#define BNO085_INT A0
+#define BNO085_RST A1
 
 #define SERIAL_BAUD 115200
 
@@ -105,7 +106,7 @@ float current_degree = 0;
 
 // VL53L4CX ToF sensors (two sensors on separate I2C ports)
 VL53L4CX sensor_left(&Wire, -1);
-VL53L4CX sensor_right;
+VL53L4CX sensor_right(&Wire2, -1);
 
 // distances in meters (updated by update_lasers())
 float current_distance_left_m = -1.0;
@@ -596,8 +597,6 @@ void update_gyro()
   if (bno.wasReset())
   {
     Serial.println("BNO085 was reset! reinitializing...");
-    // Briefly clear the laser interrupt to free up bus queues
-    sensor_left.VL53L4CX_ClearInterruptAndStartMeasurement();
     delay(10);
     bno.enableReport(SH2_ROTATION_VECTOR, 50000);
     delay(30);
@@ -669,6 +668,50 @@ void update_lasers()
     }
     sensor_left.VL53L4CX_ClearInterruptAndStartMeasurement();
   }
+
+  // Right sensor (Wire2)
+  NewDataReady = 0;
+  if (sensor_right.VL53L4CX_GetMeasurementDataReady(&NewDataReady) == VL53L4CX_ERROR_NONE && NewDataReady)
+  {
+    if (sensor_right.VL53L4CX_GetMultiRangingData(&MultiRangingData) == VL53L4CX_ERROR_NONE)
+    {
+      if (MultiRangingData.NumberOfObjectsFound > 0)
+      {
+        // Choose the measurement with the lowest sigma (most reliable measurement) if multiple objects are found
+        int best_index = 0;
+        uint32_t best_sigma = MultiRangingData.RangeData[0].SigmaMilliMeter;
+        for (int i = 1; i < MultiRangingData.NumberOfObjectsFound; i++)
+        {
+          if (MultiRangingData.RangeData[i].SigmaMilliMeter < best_sigma)
+          {
+            best_sigma = MultiRangingData.RangeData[i].SigmaMilliMeter;
+            best_index = i;
+          }
+        }
+        uint8_t status = MultiRangingData.RangeData[best_index].RangeStatus;
+        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID || status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+        {
+          int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
+          current_distance_right_m = mm / 1000.0;
+          // Serial.print("Right sensor: ");
+          // Serial.println(current_distance_right_m, 3);
+        }
+        else
+        {
+          Serial.println("Right sensor: no valid measurement");
+        }
+      }
+      else
+      {
+        Serial.println("Right sensor: no object found");
+      }
+    }
+    else
+    {
+      Serial.println("Failed to read right sensor data");
+    }
+    sensor_right.VL53L4CX_ClearInterruptAndStartMeasurement();
+  }
 }
 
 void update_encoder(int encoderPin)
@@ -697,25 +740,25 @@ void update_encoder_b()
 }
 
 // Helper function to reset the VL53L4CX over the I2C bus (No extra wires needed)
-void reset_VL53L4CX_via_I2C()
+void reset_VL53L4CX_via_I2C(TwoWire &wire = Wire)
 {
   // The library address constant is pre-shifted (0x52).
   // Standard Wire library expects the raw 7-bit physical address (0x29).
   uint8_t raw_i2c_addr = VL53L4CX_DEFAULT_DEVICE_ADDRESS >> 1;
 
-  Wire.beginTransmission(raw_i2c_addr);
-  Wire.write(0x00); // Register Address High Byte
-  Wire.write(0x00); // Register Address Low Byte
-  Wire.write(0x00); // 0x00 puts the device into an active reset state
-  Wire.endTransmission();
+  wire.beginTransmission(raw_i2c_addr);
+  wire.write(0x00); // Register Address High Byte
+  wire.write(0x00); // Register Address Low Byte
+  wire.write(0x00); // 0x00 puts the device into an active reset state
+  wire.endTransmission();
 
   delay(50); // Hold the device in reset long enough to drain internal registers
 
-  Wire.beginTransmission(raw_i2c_addr);
-  Wire.write(0x00);
-  Wire.write(0x00);
-  Wire.write(0x01); // 0x01 releases reset and re-boots the internal microcode
-  Wire.endTransmission();
+  wire.beginTransmission(raw_i2c_addr);
+  wire.write(0x00);
+  wire.write(0x00);
+  wire.write(0x01); // 0x01 releases reset and re-boots the internal microcode
+  wire.endTransmission();
 }
 
 void setup()
@@ -758,15 +801,20 @@ void setup()
   Serial.println(en_state_true);
 
   Wire.begin();
-  Wire.setClock(100000); // Can be increased to 400kHz when using short wires and good quality connections
+  Wire.setClock(400000); // Can be increased to 400kHz when using short wires and good quality connections
+
+  // Initialize Wire2 for second I2C sensor
+  Wire2.begin();
+  Wire2.setClock(400000);
 
   // ==========================================
   // STEP 1: INITIALIZE ToF FIRST (While Bus is Quiet)
   // ==========================================
-  Serial.println("Initializing VL53L4CX Left Sensor...");
+  Serial.println("Initializing VL53L4CX Left Sensor (Wire)...");
 
-  reset_VL53L4CX_via_I2C();
-  delay(150); // Give the ToF microcode time to completely clear its internal memory layers
+  reset_VL53L4CX_via_I2C(Wire);   // Reset the left sensor to ensure it is in a known state before initialization
+  reset_VL53L4CX_via_I2C(Wire2);  // Reset the right sensor to ensure it is in a known state before initialization
+  // delay(150); // Give the ToF microcode time to completely clear its internal memory layers
 
   // Force-bind the underlying driver layers to the I2C bus
   sensor_left.setI2cDevice(&Wire);
@@ -774,13 +822,13 @@ void setup()
   // Check hardware connectivity
   if (sensor_left.begin() != 0)
   {
-    Serial.println("Error: VL53L4CX base communication failed! Check Qwiic wire physical connection.");
+    Serial.println("Error: VL53L4CX left communication failed! Check Qwiic wire physical connection.");
     while (1)
     {
       delay(10);
     }
   }
-  Serial.println("VL53L4CX Base Communication established.");
+  Serial.println("VL53L4CX Left Base Communication established.");
 
   // Load the heavy ST factory calibration registers
   if (sensor_left.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
@@ -791,7 +839,7 @@ void setup()
       delay(10);
     }
   }
-  Serial.println("VL53L4CX Calibration & Firmware Loaded Successfully.");
+  Serial.println("VL53L4CX Left Calibration & Firmware Loaded Successfully.");
 
   // Configure profile modes
   sensor_left.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
@@ -799,38 +847,87 @@ void setup()
   // Fire up the laser array
   if (sensor_left.VL53L4CX_StartMeasurement() != 0)
   {
-    Serial.println("Error: Could not start VL53L4CX measurements!");
+    Serial.println("Error: Could not start VL53L4CX left measurements!");
     while (1)
     {
       delay(10);
     }
   }
-  Serial.println("VL53L4CX initialized cleanly.");
+  Serial.println("VL53L4CX left initialized cleanly.");
 
-  // --- SHORT BREATHING WINDOW ---
-  delay(400);
+  // // --- SHORT BREATHING WINDOW ---
+  // delay(200);
 
-  // ==========================================
-  // STEP 2: INITIALIZE GYRO SECOND
-  // ==========================================
-  Serial.println("Initializing Gyro (BNO085)...");
+  // Initialize right sensor on Wire2
+  Serial.println("Initializing VL53L4CX Right Sensor (Wire2)...");
 
-  // FIX: Force the reset pin HIGH immediately before initialization.
-  // This overrides the Arduino Giga's bootloader LED flashing and stabilizes the gyro's NRST line.
-  pinMode(BNO085_RST, OUTPUT);
-  digitalWrite(BNO085_RST, LOW);   // Pull Reset Low to shut down the gyro MCU
-  delay(50);                       // Hold reset long enough to clear internal registers
-  digitalWrite(BNO085_RST, HIGH);  // Release Reset to cleanly reboot the gyro
-  delay(100);                      // Give the IMU bootloader ample time to st
-  if (!bno.begin_I2C(BNO085_I2C_ADDR, &Wire, BNO085_INT))
+  // Force-bind the underlying driver layers to the I2C bus Wire2
+  sensor_right.setI2cDevice(&Wire2);
+
+  // Check hardware connectivity
+  if (sensor_right.begin() != 0)
   {
-    Serial.println("Failed to find BNO085 chip");
+    Serial.println("Error: VL53L4CX right communication failed! Check Wire2 physical connection.");
     while (1)
     {
       delay(10);
     }
   }
-  Serial.println("BNO085 Found!");
+  Serial.println("VL53L4CX Right Base Communication established.");
+
+  // Load the heavy ST factory calibration registers
+  if (sensor_right.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
+  {
+    Serial.println("Error: InitSensor failed for right sensor!");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("VL53L4CX Right Calibration & Firmware Loaded Successfully.");
+
+  // Configure profile modes
+  sensor_right.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
+
+  // Fire up the laser array
+  if (sensor_right.VL53L4CX_StartMeasurement() != 0)
+  {
+    Serial.println("Error: Could not start VL53L4CX right measurements!");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("VL53L4CX right initialized cleanly.");
+
+  // // --- SHORT BREATHING WINDOW ---
+  // delay(400);
+
+  // ==========================================
+  // STEP 2: INITIALIZE GYRO SECOND (SPI)
+  // ==========================================
+  Serial.println("Initializing Gyro (BNO085) via SPI...");
+
+  // Initialize SPI
+  SPI1.begin();
+
+  // // Set reset pin
+  // pinMode(BNO085_RST, OUTPUT);
+  // digitalWrite(BNO085_RST, LOW);   // Pull Reset Low to shut down the gyro MCU
+  // delay(50);                       // Hold reset long enough to clear internal registers
+  // digitalWrite(BNO085_RST, HIGH);  // Release Reset to cleanly reboot the gyro
+  // delay(100);                      // Give the IMU bootloader ample time to start
+
+  // Initialize via SPI
+  if (!bno.begin_SPI(BNO085_CS, BNO085_INT, &SPI1))
+  {
+    Serial.println("Failed to find BNO085 chip on SPI");
+    while (1)
+    {
+      delay(10);
+    }
+  }
+  Serial.println("BNO085 Found on SPI!");
 
   // NOW it is safe to turn on the continuous report stream
   if (!bno.enableReport(SH2_ROTATION_VECTOR, 50000))
