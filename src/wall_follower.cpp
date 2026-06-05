@@ -17,23 +17,23 @@ WallFollowerState wf_last_state = WF_IDLE;
 
 // Wall following parameters
 float wf_target_distance = 300.0;     // 300mm target distance from wall
-float wf_wall_margin = 1.0;           // 1.0m threshold to detect gap/open space
+float wf_wall_margin = 800.0;         // 800.0mm threshold to detect gap/open space
 int wf_turn_angle = 0;                // +90 or -90 degrees
 bool wf_following_left_wall = false;  // Which wall are we following
 
 // Timing and control
 unsigned long wf_enable_pressed_time = 0;
-unsigned long wf_turn_start_time = 0;
-unsigned long wf_turn_duration_ms = 0; // Will be calculated based on target speed
+unsigned long wf_turn_start_angle = 0;
+unsigned long wf_turn_target_angle = 0;
 
 // Round counting
 int wf_turn_count = 0;
-float wf_start_heading = 0;
+float wf_start_angle = 0;
 int wf_completed_rounds = 0;
 
 // PD Controller
 float wf_pd_kp = 0.5;                 // Proportional gain
-float wf_pd_kd = 0.1;                 // Derivative gain
+float wf_pd_kd = 0.001;                 // Derivative gain
 float wf_last_distance_error = 0;
 
 // Debug
@@ -48,80 +48,31 @@ extern unsigned long current_time;
 // ==========================================
 
 /**
- * @brief Calculate how long a 90-degree turn should take
- * Based on target speed and servo angle
- * @return Duration in milliseconds
+ * @brief Calculate the target angle for a specific turn
+ * @param turn_angle Desired turn angle in degrees (+90 for right, -90 for left)
+ * @param current_angle Current heading angle in degrees
+ * @return Target angle in degrees
  */
-unsigned long calculate_turn_duration()
+float calculate_target_angle(float turn_angle, float current_angle=get_angle())
 {
-  // Assuming 90° turn at moderate turning speed
-  // This is a rough estimate - may need tuning
-  // For a robot with target_speed = 200 mm/s doing a tight turn
-  // A 90 degree turn in roughly 1-2 seconds is reasonable
-  return 1500; // 1.5 seconds for 90 degree turn
+  return current_angle + turn_angle;
 }
 
 /**
  * @brief Get the sensor distance for the followed wall
- * @return Distance in meters
+ * @param following_left_wall True if following left wall, false for right wall
+ * @return Distance in millimeters
  */
-float get_followed_wall_distance()
+float get_followed_wall_distance(bool following_left_wall=wf_following_left_wall)
 {
-  if (wf_following_left_wall)
+  if (following_left_wall)
   {
-    return current_distance_left_m;
+    return current_distance_left;
   }
   else
   {
-    return current_distance_right_m;
+    return current_distance_right;
   }
-}
-
-/**
- * @brief Get the sensor distance for the opposite wall
- * @return Distance in meters
- */
-float get_opposite_wall_distance()
-{
-  if (wf_following_left_wall)
-  {
-    return current_distance_right_m;
-  }
-  else
-  {
-    return current_distance_left_m;
-  }
-}
-
-/**
- * @brief Check if heading has completed a full rotation back to start
- * Used to count complete rounds
- * @return True if heading is within ~30° of start heading
- */
-bool heading_completed_rotation()
-{
-  float heading_diff = current_degree - wf_start_heading;
-
-  // Normalize to -180 to +180 range
-  if (heading_diff > 180)
-    heading_diff -= 360;
-  if (heading_diff < -180)
-    heading_diff += 360;
-
-  // Check if we're back at starting heading (within 30° tolerance)
-  return fabs(heading_diff) < 30;
-}
-
-/**
- * @brief Normalize angle to -180 to +180 range
- */
-float normalize_angle(float angle)
-{
-  while (angle > 180)
-    angle -= 360;
-  while (angle < -180)
-    angle += 360;
-  return angle;
 }
 
 // ==========================================
@@ -146,23 +97,23 @@ void state_idle()
 void state_following_wall()
 {
   float current_wall_distance = get_followed_wall_distance();
-  float opposite_distance = get_opposite_wall_distance();
+  float opposite_distance = get_followed_wall_distance(!wf_following_left_wall);
 
   // ==========================================
   // Check for wall gaps (distance > wall_margin)
   // ==========================================
-  if (opposite_distance > wf_wall_margin && opposite_distance > 0)
+  if (current_wall_distance > wf_wall_margin && current_wall_distance > 0)
   {
-    // Opposite wall is too far - gap detected, time to turn
+    // current wall is too far - gap detected, time to turn
     if (wf_following_left_wall)
     {
-      // Following left wall, gap on right -> turn right (+90°)
+      // Following left wall, gap on left -> turn left (+90°)
       wf_turn_angle = 90;
       wf_turn_count++;
     }
     else
     {
-      // Following right wall, gap on left -> turn left (-90°)
+      // Following right wall, gap on right -> turn right (-90°)
       wf_turn_angle = -90;
       wf_turn_count++;
     }
@@ -183,16 +134,13 @@ void state_following_wall()
 
     // Transition to TURNING state
     wf_state = WF_TURNING;
-    wf_turn_start_time = millis();
-    wf_turn_duration_ms = calculate_turn_duration();
-
-    // Toggle which wall we're following
-    wf_following_left_wall = !wf_following_left_wall;
+    wf_turn_start_angle = get_angle();
+    // wf_turn_target_angle = calculate_target_angle(wf_turn_angle, wf_turn_start_angle);
 
     Serial.print("TURN ");
     Serial.print(wf_turn_count);
     Serial.print(": ");
-    Serial.print(wf_turn_angle > 0 ? "RIGHT" : "LEFT");
+    Serial.print(wf_turn_angle > 0 ? "LEFT" : "RIGHT");
     Serial.print(" | Round: ");
     Serial.println(wf_completed_rounds);
 
@@ -204,14 +152,11 @@ void state_following_wall()
   // ==========================================
   if (current_wall_distance > 0) // Valid sensor reading
   {
-    // Convert to mm for consistency
-    float distance_mm = current_wall_distance * 1000.0;
-
     // Calculate error (positive = too far, negative = too close)
-    float error = distance_mm - wf_target_distance;
+    float error = current_wall_distance - wf_target_distance;
 
     // Calculate derivative term
-    float error_derivative = error - wf_last_distance_error;
+    float error_derivative = (error - wf_last_distance_error) / last_loop_time;
 
     // PD output: steering angle based on distance error
     float pd_output = wf_pd_kp * error + wf_pd_kd * error_derivative;
@@ -250,27 +195,26 @@ void state_following_wall()
  */
 void state_turning()
 {
-  unsigned long turn_elapsed = millis() - wf_turn_start_time;
-
-  // Execute turn at full steering angle
   if (wf_turn_angle > 0)
   {
-    set_steering(60); // Full right
+    set_steering(-40); // left turn
   }
   else
   {
-    set_steering(-60); // Full left
+    set_steering(40); // right turn
   }
-
-  // Maintain speed during turn
-  if (current_speed == 0)
-  {
-    set_speed(150); // Slightly slower during turn
-  }
+  set_speed(150); // Slightly slower during turn
 
   // Check if turn is complete
-  if (turn_elapsed >= wf_turn_duration_ms)
+  if ((get_angle() - wf_turn_start_angle - wf_turn_angle) * wf_turn_angle/fabs(wf_turn_angle) > 0)
   {
+    Serial.print("Turn complete. Current heading: ");
+    Serial.print(get_angle());
+    Serial.print("° | Start angle: ");
+    Serial.print(wf_turn_start_angle);
+    Serial.print("° | Turn angle: ");
+    Serial.print(wf_turn_angle);
+    Serial.println("°");
     // Turn complete, resume wall following
     wf_state = WF_FOLLOWING;
     set_steering(0); // Center steering
@@ -293,6 +237,7 @@ void state_stopped()
   Serial.print(wf_turn_count);
   Serial.print(" | Complete rounds: ");
   Serial.println(wf_completed_rounds);
+  wf_state = WF_IDLE;
 }
 
 // ==========================================
@@ -305,7 +250,6 @@ void wall_follower_setup()
   wf_turn_count = 0;
   wf_completed_rounds = 0;
   wf_last_distance_error = 0;
-  wf_turn_duration_ms = calculate_turn_duration();
 
   Serial.println("===== WALL FOLLOWER INITIALIZED =====");
   Serial.println("Waiting for enable signal...");
@@ -318,10 +262,10 @@ void wall_follower_update()
   if (wf_state != wf_last_state)
   {
     Serial.print("State change: ");
-    Serial.print(wall_follower_state_string());
+    Serial.print(wall_follower_state_string(wf_last_state));
     Serial.print(" -> ");
     wf_last_state = wf_state;
-    Serial.println(wall_follower_state_string());
+    Serial.println(wall_follower_state_string(wf_state));
   }
 
   // Execute state logic
@@ -355,7 +299,7 @@ void wall_follower_enable()
 {
   if (wf_state == WF_IDLE)
   {
-    wf_start_heading = current_degree;
+    wf_start_angle = get_angle();
     wf_state = WF_FOLLOWING;
     wf_following_left_wall = false; // Start by following right wall
     wf_turn_count = 0;
@@ -369,7 +313,7 @@ void wall_follower_enable()
 
     Serial.println("\n===== WALL FOLLOWING STARTED =====");
     Serial.print("Start heading: ");
-    Serial.print(wf_start_heading);
+    Serial.print(wf_start_angle);
     Serial.println("°");
     Serial.println("Following RIGHT wall initially");
   }
@@ -394,9 +338,9 @@ WallFollowerState wall_follower_get_state()
   return wf_state;
 }
 
-const char* wall_follower_state_string()
+const char* wall_follower_state_string(WallFollowerState _wf_state)
 {
-  switch (wf_state)
+  switch (_wf_state)
   {
   case WF_IDLE:
     return "IDLE";
@@ -436,20 +380,22 @@ void wall_follower_print_debug()
   Serial.print("[WF] State: ");
   Serial.print(wall_follower_state_string());
   Serial.print(" | Wall: ");
-  Serial.print(wf_following_left_wall ? "LEFT" : "RIGHT");
+  Serial.print(wf_following_left_wall ? "LEFT " : "RIGHT");
   Serial.print(" | Dist: ");
   Serial.print(get_followed_wall_distance(), 2);
   Serial.print("m | Opp: ");
-  Serial.print(get_opposite_wall_distance(), 2);
+  Serial.print(get_followed_wall_distance(!wf_following_left_wall), 2);
   Serial.print("m | Turns: ");
-  Serial.print(wf_turn_count);
+  Serial.print(wf_turn_count, 2);
   Serial.print(" | Rounds: ");
-  Serial.print(wf_completed_rounds);
+  Serial.print(wf_completed_rounds, 2);
   Serial.print(" | Heading: ");
-  Serial.print(current_degree, 1);
+  Serial.print(get_angle(), 1);
   Serial.print("° | Speed: ");
-  Serial.print(current_speed);
-  Serial.println(" mm/s");
+  Serial.print(current_speed, 0);
+  Serial.print(" mm/s | Last loop: ");
+  Serial.print(last_loop_time, 4);
+  Serial.println("s");
 }
 
 void wall_follower_set_target_distance(float distance_mm)

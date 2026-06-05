@@ -41,12 +41,12 @@ extern bool wf_following_left_wall;   // True = following left wall, False = rig
 
 // Timing and control
 extern unsigned long wf_enable_pressed_time;    // When enable was first pressed
-extern unsigned long wf_turn_start_time;        // When turn started
-extern unsigned long wf_turn_duration_ms;       // How long to turn for 90 degrees
+extern unsigned long wf_turn_start_angle;        // Angle when turn started
+extern unsigned long wf_turn_target_angle;       // Target angle to complete turn (current_degree + turn_angle)
 
 // Round counting
 extern int wf_turn_count;             // Total turns executed
-extern float wf_start_heading;        // Heading when wall-following started
+extern float wf_start_angle;        // Heading when wall-following started
 extern int wf_completed_rounds;       // Number of complete rounds (0-3)
 
 // PD Controller for distance control
@@ -96,9 +96,10 @@ WallFollowerState wall_follower_get_state();
 
 /**
  * @brief Get current state as string for debugging
+ * @param wf_state Optional state parameter (defaults to current state)
  * @return State name ("IDLE", "FOLLOWING", "TURNING", "STOPPED")
  */
-const char* wall_follower_state_string();
+const char* wall_follower_state_string(WallFollowerState wf_state = wf_state);
 
 /**
  * @brief Enable/disable debug output

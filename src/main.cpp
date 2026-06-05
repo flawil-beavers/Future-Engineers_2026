@@ -57,8 +57,16 @@ void loop()
   check_stalling();
 
   // Update distance sensors (needed for all subsystems)
+  // unsigned long time_1 = micros();
   update_lasers();
+  // unsigned long time_2 = micros();
   update_gyro();
+  // unsigned long time_3 = micros();
+  // Serial.print("update_lasers: ");
+  // Serial.print((float)(time_2 - time_1)/1000);
+  // Serial.print("ms | update_gyro: ");
+  // Serial.print((float)(time_3 - time_2)/1000);
+  // Serial.println("ms");
 
   // Execute autonomous wall-following or manual control
   wall_follower_update();

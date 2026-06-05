@@ -143,15 +143,15 @@ void parseMessage(char *msg)
 
   case 'g':
     // Print gyro heading
-    Serial.println(current_degree);
+    Serial.println(get_angle());
     break;
 
   case 'v':
     // Print ToF distances
-    Serial.print("LEFT_m: ");
-    Serial.print(current_distance_left_m, 3);
-    Serial.print(" RIGHT_m: ");
-    Serial.println(current_distance_right_m, 3);
+    Serial.print("LEFT: ");
+    Serial.print(current_distance_left, 1);
+    Serial.print(" RIGHT: ");
+    Serial.println(current_distance_right, 1);
     break;
 
   case 'a':

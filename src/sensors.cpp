@@ -15,6 +15,9 @@
 Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
 sh2_SensorValue_t sensor_value;
 float current_degree = 0;
+float current_heading = 0;
+float last_yaw_deg = 0;
+bool gyro_initialized = false;
 
 // Time tracking for gyro updates
 unsigned long last_gyro_read = 0;
@@ -23,9 +26,9 @@ unsigned long last_gyro_read = 0;
 VL53L4CX sensor_left(&Wire, -1);
 VL53L4CX sensor_right(&Wire2, -1);
 
-// Distance readings in meters
-float current_distance_left_m = -1.0;
-float current_distance_right_m = -1.0;
+// Distance readings in millimeters
+float current_distance_left = -1.0;
+float current_distance_right = -1.0;
 
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
@@ -36,6 +39,11 @@ void update_gyro()
   if (millis() - last_gyro_read < GYRO_UPDATE_INTERVAL_MS)
   {
     return; // Skip if not enough time has passed
+  }
+
+  if (digitalRead(BNO085_INT) == HIGH)
+  {
+    return;
   }
 
   last_gyro_read = millis();
@@ -66,7 +74,25 @@ void update_gyro()
 
       // Convert rotation vector to Yaw (Euler heading) in degrees
       float yaw = atan2(2.0 * (i * j + r * k), r * r + i * i - j * j - k * k);
-      current_degree = yaw * 180.0 / PI;
+      current_heading = yaw * 180.0 / PI;
+
+      if (!gyro_initialized)
+      {
+        last_yaw_deg = current_heading;
+        gyro_initialized = true;
+      }
+
+      float delta = current_heading - last_yaw_deg;
+      if (delta > 180)
+      {
+        delta -= 360;
+      }
+      else if (delta < -180)
+      {
+        delta += 360;
+      }
+      last_yaw_deg = current_heading;
+      current_degree += delta;
     }
   }
 }
@@ -103,7 +129,7 @@ void update_lasers()
             status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
         {
           int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
-          current_distance_left_m = mm / 1000.0;
+          current_distance_left = mm;
         }
       }
     }
@@ -143,7 +169,7 @@ void update_lasers()
             status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
         {
           int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
-          current_distance_right_m = mm / 1000.0;
+          current_distance_right = mm;
         }
       }
     }
@@ -159,6 +185,16 @@ void update_lasers()
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
+
+float get_angle()
+{
+  return current_degree;
+}
+
+float get_heading()
+{
+  return current_heading;
+}
 
 void reset_VL53L4CX_via_I2C(TwoWire &wire)
 {
@@ -286,6 +322,8 @@ void sensors_setup()
   // Initialize Gyro (BNO085) - SPI
   // ==========================================
   Serial.println("Initializing Gyro (BNO085) via SPI...");
+  
+  pinMode(BNO085_INT, INPUT_PULLUP);
 
   SPI1.begin();
 

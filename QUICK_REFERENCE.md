@@ -83,7 +83,7 @@ Edit `include/config.h`:
 | Set accel | `a<accel>` | `a800` | Acceleration = 800 mm/s² |
 | Master enable | `m` | `m` | Enable motors and servo |
 | Steering timing | `x` | `x` | Print servo timing info |
-| **Wall Follow START** | `w` | `w` | Start autonomous wall following |
+| **Wall Follow START** | `l` | `l` | Start autonomous wall following |
 | **Wall Follow STOP** | `z` | `z` | Stop wall following |
 | **Set wall distance** | `u<mm>` | `u300` | Set target wall distance (300mm) |
 | **Debug output ON** | `i` | `i` | Enable wall follower debug output |

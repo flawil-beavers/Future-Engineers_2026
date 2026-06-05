@@ -22,9 +22,9 @@ extern float current_degree;
 extern VL53L4CX sensor_left;
 extern VL53L4CX sensor_right;
 
-// Distance readings in meters
-extern float current_distance_left_m;
-extern float current_distance_right_m;
+// Distance readings in millimeters
+extern float current_distance_left;
+extern float current_distance_right;
 
 // ==========================================
 // SENSOR FUNCTIONS
@@ -54,6 +54,18 @@ void reset_VL53L4CX_via_I2C(TwoWire &wire);
 // ==========================================
 // INITIALIZATION
 // ==========================================
+
+/**
+ * @brief Get current accumulated angle in degrees
+ * @return Current angle in degrees (can exceed 360 for multiple rotations)
+ */
+float get_angle();
+
+/**
+ * @brief Get current heading in degrees (normalized to -180 to +180)
+ * @return Current heading in degrees
+ */
+float get_heading();
 
 /**
  * @brief Initialize all sensors

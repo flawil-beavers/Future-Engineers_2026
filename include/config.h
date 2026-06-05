@@ -48,8 +48,9 @@
 // STEERING CONFIGURATION
 // ==========================================
 #define SERVO_CENTER 81        // Center neutral position
-#define SERVO_MAX_ANGLE (SERVO_CENTER + 60)  // Max right turn
-#define SERVO_MIN_ANGLE (SERVO_CENTER - 60)  // Max left turn
+#define MAX_STEERING 50
+#define SERVO_MAX_ANGLE (SERVO_CENTER + MAX_STEERING)  // Max right turn
+#define SERVO_MIN_ANGLE (SERVO_CENTER - MAX_STEERING)  // Max left turn
 
 // ==========================================
 // PID CONTROLLER TUNING

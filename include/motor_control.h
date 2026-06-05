@@ -45,7 +45,7 @@ extern float pid_integral;
 extern float last_error;
 
 // Timing variables
-extern float last_loop_time;
+extern float last_loop_time; // Last loop time in s
 extern float acc;
 extern float last_speed;
 
