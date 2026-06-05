@@ -64,6 +64,7 @@ unsigned long steering_diff = 0;
 
 // Enable switch state management
 bool system_enabled = false;           // Whether system is currently running
+static bool last_physical_switch_state = false; // Tracks physical switch to detect transitions
 
 // ==========================================
 // MOTOR CONTROL FUNCTIONS
@@ -325,9 +326,10 @@ void handle_enable_switch()
 {
   bool current_switch_state = digitalRead(ENABLE_SWITCH_PIN);
 
-  if (current_switch_state && !system_enabled)
+  if (current_switch_state && !last_physical_switch_state)
   {
-    // Switch turned ON (LOW -> HIGH) and system was previously disabled
+    // Switch physically toggled ON
+    last_physical_switch_state = true;
     system_enabled = true;
     disable_dc = false;
     disable_servo = false;
@@ -343,9 +345,10 @@ void handle_enable_switch()
     Serial.println("ENABLE SWITCH: ON - Robot enabled");
     wall_follower_enable();
   }
-  else if (!current_switch_state && system_enabled)
+  else if (!current_switch_state && last_physical_switch_state)
   {
-    // Switch turned OFF (HIGH -> LOW) - Pause the robot
+    // Switch physically toggled OFF
+    last_physical_switch_state = false;
     system_enabled = false;
     stop(false); // Disable flags
     set_dc(0);   // Kill power to motors immediately
@@ -416,6 +419,7 @@ void motor_control_setup()
   // Initialize motor state
   disable_dc = !system_enabled;
   disable_servo = !system_enabled;
+  last_physical_switch_state = system_enabled;
   set_speed(0);
   
   // Initialize timing and stall protection to current state

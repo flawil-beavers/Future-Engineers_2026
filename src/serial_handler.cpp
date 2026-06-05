@@ -113,6 +113,8 @@ void parseMessage(char *msg)
     stop();
     current_speed = 0;
     target_distance = current_distance;
+    system_enabled = false;
+    Serial.println("SERIAL: PAUSE - System disabled");
     break;
 
   case 'h':
@@ -161,7 +163,11 @@ void parseMessage(char *msg)
 
   case 'r':
     // Resume with last speed
+    system_enabled = true;
+    disable_dc = false;
+    disable_servo = false;
     set_speed();
+    Serial.println("SERIAL: RESUME - System enabled");
     break;
 
   case 'x':
@@ -176,6 +182,9 @@ void parseMessage(char *msg)
     disable_dc = false;
     disable_servo = false;
     set_speed();
+    system_enabled = true;
+    Serial.println("MASTER ENABLED");
+
     break;
 
   case 'l':
