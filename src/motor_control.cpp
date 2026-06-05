@@ -5,6 +5,7 @@
 
 #include "motor_control.h"
 #include "config.h"
+#include "wall_follower.h"
 
 // ==========================================
 // MOTOR CONTROL STATE VARIABLES
@@ -43,7 +44,7 @@ float pid_integral = 0.0;
 float last_error = 0.0;
 
 // Timing variables
-float last_loop_time = 0;
+float last_loop_time = 0; // in s
 float acc = DEFAULT_ACCELERATION;
 float last_speed = 0;
 
@@ -60,6 +61,9 @@ unsigned long last_enable_interrupt_time = 0;
 unsigned long stall_encoder_pos = 0;
 unsigned long last_steering_command = 0;
 unsigned long steering_diff = 0;
+
+// Enable switch state management
+bool system_enabled = false;           // Whether system is currently running
 
 // ==========================================
 // MOTOR CONTROL FUNCTIONS
@@ -267,7 +271,8 @@ void loop_updater()
 
 void check_stalling()
 {
-  if (fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
+  // Prevent division by zero and only check if enough time has passed
+  if (last_loop_time > 0.00001 && (float)fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
       fabs(current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
       !disable_dc)
   {
@@ -310,6 +315,45 @@ void enable_interrupt()
     Serial.println(EN_STATE_FALSE_MSG);
   }
 }
+
+/**
+ * @brief Handle the enable switch on port A2
+ * - HIGH (3.3V): Enable/resume the program
+ * - LOW (GND): Disable/stop the motors but preserve state
+ */
+void handle_enable_switch()
+{
+  bool current_switch_state = digitalRead(ENABLE_SWITCH_PIN);
+
+  if (current_switch_state && !system_enabled)
+  {
+    // Switch turned ON (LOW -> HIGH) and system was previously disabled
+    system_enabled = true;
+    disable_dc = false;
+    disable_servo = false;
+    
+    // Sync state to prevent jumps and immediate stalls
+    current_time = micros();
+    last_time = current_time;
+    current_distance = get_distance(encoder_pos);
+    target_distance = current_distance;
+    pid_integral = 0;
+    stall_encoder_pos = encoder_pos;
+    
+    Serial.println("ENABLE SWITCH: ON - Robot enabled");
+    wall_follower_enable();
+  }
+  else if (!current_switch_state && system_enabled)
+  {
+    // Switch turned OFF (HIGH -> LOW) - Pause the robot
+    system_enabled = false;
+    stop(false); // Disable flags
+    set_dc(0);   // Kill power to motors immediately
+    steer(0);    // Center steering
+    Serial.println("ENABLE SWITCH: OFF - Robot paused");
+  }
+}
+
 
 // ==========================================
 // ENCODER INTERRUPT HANDLERS
@@ -370,9 +414,14 @@ void motor_control_setup()
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), update_encoder_b, CHANGE);
 
   // Initialize motor state
-  disable_dc = false;
-  disable_servo = false;
-  set_speed();
-
-  Serial.println(EN_STATE_TRUE_MSG);
+  disable_dc = !system_enabled;
+  disable_servo = !system_enabled;
+  set_speed(0);
+  
+  // Initialize timing and stall protection to current state
+  current_time = micros();
+  last_time = current_time;
+  current_distance = get_distance(encoder_pos);
+  target_distance = current_distance;
+  stall_encoder_pos = encoder_pos;
 }

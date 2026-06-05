@@ -53,6 +53,9 @@ extern float last_speed;
 extern int dc_out;
 extern float pid_before_checking;
 
+// Enable switch state management
+extern bool system_enabled;           // Whether system is currently running
+
 // ==========================================
 // MOTOR CONTROL FUNCTIONS
 // ==========================================
@@ -136,6 +139,13 @@ void check_stalling();
  * Toggles motor and servo enable/disable state
  */
 void enable_interrupt();
+
+/**
+ * @brief Handle the enable switch on port A2
+ * - HIGH (3.3V): Enable/resume the program
+ * - LOW (GND): Disable/stop the motors but preserve state
+ */
+void handle_enable_switch();
 
 // ==========================================
 // INITIALIZATION

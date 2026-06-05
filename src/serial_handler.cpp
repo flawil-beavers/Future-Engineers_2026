@@ -247,8 +247,8 @@ void serial_setup()
 {
   Serial.begin(SERIAL_BAUD);
 
-  // Wait for serial connection (only if connected via USB)
-  while (!Serial)
+  // Only wait for serial if the robot isn't already enabled via the physical switch
+  while (!Serial && !system_enabled)
   {
     delay(10);
   }

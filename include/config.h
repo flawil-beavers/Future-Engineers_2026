@@ -33,6 +33,11 @@
 #define BNO085_RST A1
 
 // ==========================================
+// ENABLE SWITCH
+// ==========================================
+#define ENABLE_SWITCH_PIN A2   // Enable switch - HIGH to enable, LOW to disable
+
+// ==========================================
 // MOTOR CONTROL CONSTANTS
 // ==========================================
 #define GEAR_RATIO 100                                      // Motor gear ratio
