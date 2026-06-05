@@ -36,11 +36,12 @@
 // MOTOR CONTROL CONSTANTS
 // ==========================================
 #define GEAR_RATIO 100                                      // Motor gear ratio
-#define ENCODER_COUNTS_PER_REV (GEAR_RATIO * 7)             // CPR of the motor
-#define COUNTER_TO_MM (20.0 / 28.0 * PI * 43.2 / ENCODER_COUNTS_PER_REV)  // mm per encoder count
+#define ENCODER_COUNTS_PER_REV (GEAR_RATIO * 7 * 2)         // CPR of the motor
+#define ENCODER_COUNTS_PER_WHEEL_REV (28.0 / 20.0 * ENCODER_COUNTS_PER_REV) // CPR of the wheel
+#define COUNTER_TO_MM (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV)  // mm per encoder count
 
 #define MOTOR_MAX_DC 200                                    // Max duty cycle (0-255)
-#define MOTOR_MIN_DC (0.32 * 255)                           // Min duty cycle to overcome static friction
+#define MOTOR_MIN_DC (0.34 * 255)                           // Min duty cycle to overcome static friction
 #define MOTOR_MAX_ACC_DC 255                                // Max acceleration duty cycle (DC/s)
 
 // ==========================================
@@ -53,9 +54,9 @@
 // ==========================================
 // PID CONTROLLER TUNING
 // ==========================================
-#define PID_KP 0.9             // Proportional gain
-#define PID_KI 0.1             // Integral gain
-#define PID_KD 0.05            // Derivative gain
+#define PID_KP 0.8             // Proportional gain
+#define PID_KI 0.2             // Integral gain
+#define PID_KD 0.1             // Derivative gain
 #define PID_I_MAX 150.0        // Max integral term clamping
 
 // ==========================================
@@ -72,7 +73,7 @@
 // ==========================================
 // STALL DETECTION
 // ==========================================
-#define STALL_THRESHOLD_COUNTS 4         // Encoder counts
+#define STALL_THRESHOLD_COUNTS 50         // Encoder counts
 #define STALL_DC_THRESHOLD 0.9           // Trigger at 90% of max DC
 
 // ==========================================

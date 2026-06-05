@@ -178,7 +178,7 @@ void parseMessage(char *msg)
     set_speed();
     break;
 
-  case 'w':
+  case 'l':
     // Wall follower START
     wall_follower_enable();
     break;

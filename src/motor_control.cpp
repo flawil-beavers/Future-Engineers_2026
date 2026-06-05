@@ -267,7 +267,7 @@ void loop_updater()
 
 void check_stalling()
 {
-  if (fabs(stall_encoder_pos - encoder_pos) < STALL_THRESHOLD_COUNTS &&
+  if (fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
       fabs(current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
       !disable_dc)
   {
