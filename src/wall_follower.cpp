@@ -256,36 +256,39 @@ void wall_follower_setup()
   Serial.println("Commands: 'w' = start, 's' = stop");
 }
 
-void wall_follower_update()
+void wall_follower_update(bool enabled)
 {
-  // Check for state change
-  if (wf_state != wf_last_state)
+  if (enabled)
   {
-    Serial.print("State change: ");
-    Serial.print(wall_follower_state_string(wf_last_state));
-    Serial.print(" -> ");
-    wf_last_state = wf_state;
-    Serial.println(wall_follower_state_string(wf_state));
-  }
+    // Check for state change
+    if (wf_state != wf_last_state)
+    {
+      Serial.print("State change: ");
+      Serial.print(wall_follower_state_string(wf_last_state));
+      Serial.print(" -> ");
+      wf_last_state = wf_state;
+      Serial.println(wall_follower_state_string(wf_state));
+    }
 
-  // Execute state logic
-  switch (wf_state)
-  {
-  case WF_IDLE:
-    state_idle();
-    break;
+    // Execute state logic
+    switch (wf_state)
+    {
+    case WF_IDLE:
+      state_idle();
+      break;
 
-  case WF_FOLLOWING:
-    state_following_wall();
-    break;
+    case WF_FOLLOWING:
+      state_following_wall();
+      break;
 
-  case WF_TURNING:
-    state_turning();
-    break;
+    case WF_TURNING:
+      state_turning();
+      break;
 
-  case WF_STOPPED:
-    state_stopped();
-    break;
+    case WF_STOPPED:
+      state_stopped();
+      break;
+    }
   }
 
   // Print debug info if enabled
@@ -307,8 +310,8 @@ void wall_follower_enable()
     wf_last_distance_error = 0;
 
     // Enable motors and servo
-    disable_dc = false;
-    disable_servo = false;
+    dc_state = DC_ENABLED;
+    servo_disabled = false;
     set_speed(200); // Start moving at 200 mm/s
 
     Serial.println("\n===== WALL FOLLOWING STARTED =====");

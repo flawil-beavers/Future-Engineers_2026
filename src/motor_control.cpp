@@ -7,6 +7,8 @@
 #include "config.h"
 #include "wall_follower.h"
 
+extern void serial_setup();
+
 // ==========================================
 // MOTOR CONTROL STATE VARIABLES
 // ==========================================
@@ -18,22 +20,21 @@ long encoder_pos = 0;
 int encoder_dir = 1; // 1 -> CCW, -1 -> CW
 
 // Motor state
-bool disable_dc = false;
-bool hold_dc = false;
-float current_dc = 0;
+DCState dc_state = DC_DISABLED;
+float dc_current_dc = 0;
 int target_speed = 0;
 float current_speed = 0;
+float last_speed = 0; // Used to store speed before stopping, for resuming
 
 // Steering state
 int set_degree = 0;
-bool disable_servo = false;
-int last_angle = 0;
+bool servo_disabled = false;
+int servo_last_angle = 0;
 
 // PID state
 float target_distance = 0;
 float current_distance = 0;
 float last_distance = 0;
-float measured_speed = 0;
 
 // PID tuning parameters
 float Kp = PID_KP;
@@ -43,27 +44,25 @@ float i_max = PID_I_MAX;
 float pid_integral = 0.0;
 float last_error = 0.0;
 
-// Timing variables
-float last_loop_time = 0; // in s
-float acc = DEFAULT_ACCELERATION;
-float last_speed = 0;
-
 // Debug variables
 int dc_out = 0;
 float pid_before_checking = 0;
 
+// Timing variables
+float last_loop_time = 0; // in s
+float acc = DEFAULT_ACCELERATION;
+
 // Time tracking
-unsigned long last_time = 0;
 unsigned long current_time = 0;
-unsigned long last_status_time = 0;
+unsigned long last_time = 0;
 unsigned long last_loop_time_us = 0;
+unsigned long last_pid_status_time = 0;
 unsigned long last_enable_interrupt_time = 0;
 unsigned long stall_encoder_pos = 0;
-unsigned long last_steering_command = 0;
 unsigned long steering_diff = 0;
 
 // Enable switch state management
-bool system_enabled = false;           // Whether system is currently running
+bool system_enabled = false;           // Whether system is currently running, otherwise no movement is done
 static bool last_physical_switch_state = false; // Tracks physical switch to detect transitions
 
 // ==========================================
@@ -72,11 +71,11 @@ static bool last_physical_switch_state = false; // Tracks physical switch to det
 
 void steer(int angle)
 {
-  if (angle == last_angle)
+  if (angle == servo_last_angle)
   {
     return; // Skip unnecessary writes
   }
-  if (disable_servo)
+  if (servo_disabled)
   {
     return;
   }
@@ -93,7 +92,7 @@ void steer(int angle)
   }
 
   servo.write(angle);
-  last_angle = angle;
+  servo_last_angle = angle;
 }
 
 void set_steering(int angle)
@@ -103,11 +102,11 @@ void set_steering(int angle)
 
 void set_dc(float dc)
 {
-  if (disable_dc || fabs(dc) < MOTOR_MIN_DC)
+  if (dc_state == DC_DISABLED || fabs(dc) < MOTOR_MIN_DC)
   {
     digitalWrite(MOTOR_IN1_PIN, LOW);
     digitalWrite(MOTOR_IN2_PIN, LOW);
-    current_dc = dc;
+    dc_current_dc = dc;
     return;
   }
 
@@ -118,13 +117,13 @@ void set_dc(float dc)
   }
 
   // Rate-limit acceleration
-  if (dc > current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
+  if (dc > dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
   {
-    dc = current_dc + MOTOR_MAX_ACC_DC * last_loop_time;
+    dc = dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time;
   }
-  else if (dc < current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
+  else if (dc < dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
   {
-    dc = current_dc - MOTOR_MAX_ACC_DC * last_loop_time;
+    dc = dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time;
   }
 
   dc_out = fabs(dc);
@@ -141,7 +140,7 @@ void set_dc(float dc)
     digitalWrite(MOTOR_IN2_PIN, LOW);
   }
 
-  current_dc = dc;
+  dc_current_dc = dc;
 }
 
 float get_distance(long encoder_pos)
@@ -188,14 +187,14 @@ void pid_speed()
 
 void drive_loop()
 {
-  if (last_loop_time == 0)
+  if (last_loop_time == 0 || dc_state == DC_DISABLED)
   {
     return; // Don't run until timing is initialized
   }
 
   steer(set_degree);
 
-  if (!hold_dc)
+  if (dc_state == DC_ENABLED)
   {
     // Smooth acceleration
     if (fabs(target_speed - current_speed) > 1)
@@ -207,14 +206,7 @@ void drive_loop()
       current_speed = target_speed;
     }
 
-    if (!disable_dc)
-    {
-      target_distance += current_speed * last_loop_time;
-    }
-  }
-  else if (disable_dc)
-  {
-    return;
+    target_distance += current_speed * last_loop_time;
   }
 
   pid_speed();
@@ -234,17 +226,21 @@ void stop(bool hold)
   last_speed = current_speed;
   if (!hold)
   {
-    disable_dc = true;
+    dc_state = DC_DISABLED;
     pid_integral = 0;
     last_error = 0;
-    hold_dc = false;
+    target_distance = current_distance;
+    set_dc(0);
   }
   else
   {
-    disable_dc = false;
-    hold_dc = true;
+    dc_state = DC_HOLDING;
+    // Lock to current distance to hold position
+    target_distance = current_distance;
+    pid_integral = 0;
+    last_error = 0;
   }
-  disable_servo = true;
+  servo_disabled = true;
 }
 
 void set_speed(int speed)
@@ -253,7 +249,7 @@ void set_speed(int speed)
   {
     speed = last_speed;
   }
-  hold_dc = false;
+  dc_state = DC_ENABLED;
   target_speed = speed;
   last_speed = speed;
 }
@@ -274,89 +270,86 @@ void check_stalling()
 {
   // Prevent division by zero and only check if enough time has passed
   if (last_loop_time > 0.00001 && (float)fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
-      fabs(current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
-      !disable_dc)
+      fabs(dc_current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
+      dc_state != DC_DISABLED)
   {
     Serial.print("Stall detected, stopping robot: diff_distance:");
     Serial.print(fabs(stall_encoder_pos - encoder_pos));
-    Serial.print(", current_dc: ");
-    Serial.println(current_dc);
+    Serial.print(", dc_current_dc: ");
+    Serial.println(dc_current_dc);
 
-    stop();
-    current_speed = 0;
-    target_distance = current_distance;
+    system_disable();
   }
 
   stall_encoder_pos = encoder_pos;
 }
 
-void enable_interrupt()
+void system_enable()
 {
-  if (current_time - last_enable_interrupt_time < ENABLE_DEBOUNCE_TIME_US)
+  system_enabled = true;
+  dc_state = DC_ENABLED;
+  servo_disabled = false;
+
+  Serial.println("SYSTEM ENABLED");
+  wall_follower_enable();
+}
+
+void system_disable()
+{
+  system_enabled = false;
+
+  stop(false); 
+  // wall_follower_disable();
+
+  Serial.println("SYSTEM DISABLED");
+}
+
+void system_interface_setup()
+{
+  // Configure enable switch
+  pinMode(ENABLE_SWITCH_PIN, INPUT);
+
+  // Check initial state
+  system_enabled = digitalRead(ENABLE_SWITCH_PIN);
+  last_physical_switch_state = system_enabled;
+
+  // Setup serial and wait if not enabled (defined in serial_handler.cpp)
+  serial_setup();
+
+  if (!system_enabled)
   {
-    return;
-  }
-
-  last_enable_interrupt_time = current_time;
-
-  // Toggle enable state
-  bool en_state = !(disable_dc || disable_servo);
-  en_state = !en_state;
-
-  if (en_state)
-  {
-    disable_dc = false;
-    disable_servo = false;
-    set_speed();
-    Serial.println(EN_STATE_TRUE_MSG);
+    Serial.println("Enable switch is LOW - System starting in IDLE mode");
   }
   else
   {
-    stop();
-    Serial.println(EN_STATE_FALSE_MSG);
+    Serial.println("Enable switch is HIGH - System starting in ENABLED mode");
   }
 }
 
-/**
- * @brief Handle the enable switch on port A2
- * - HIGH (3.3V): Enable/resume the program
- * - LOW (GND): Disable/stop the motors but preserve state
- */
 void handle_enable_switch()
 {
-  bool current_switch_state = digitalRead(ENABLE_SWITCH_PIN);
+  // Throttling: Only poll the physical pin every 50ms (20Hz).
+  // Human-operated switches don't need MHz-rate polling, and this saves CPU cycles.
+  static unsigned long last_poll_time = 0;
+  if (current_time - last_poll_time < ENABLE_SWITCH_POLL_INTERVAL_US) return;
+  last_poll_time = current_time;
 
-  if (current_switch_state && !last_physical_switch_state)
+  bool current_switch_state = digitalRead(ENABLE_SWITCH_PIN);
+  
+  // If the switch state matches our internal state, no action is needed
+  if (current_switch_state == last_physical_switch_state) return;
+  last_physical_switch_state = current_switch_state;
+
+  // Check if enough time has passed since the last transition to debounce the signal
+  if (current_time - last_enable_interrupt_time > ENABLE_DEBOUNCE_TIME_US)
   {
-    // Switch physically toggled ON
-    last_physical_switch_state = true;
-    system_enabled = true;
-    disable_dc = false;
-    disable_servo = false;
-    
-    // Sync state to prevent jumps and immediate stalls
-    current_time = micros();
-    last_time = current_time;
-    current_distance = get_distance(encoder_pos);
-    target_distance = current_distance;
-    pid_integral = 0;
-    stall_encoder_pos = encoder_pos;
-    
-    Serial.println("ENABLE SWITCH: ON - Robot enabled");
-    wall_follower_enable();
-  }
-  else if (!current_switch_state && last_physical_switch_state)
-  {
-    // Switch physically toggled OFF
-    last_physical_switch_state = false;
-    system_enabled = false;
-    stop(false); // Disable flags
-    set_dc(0);   // Kill power to motors immediately
-    steer(0);    // Center steering
-    Serial.println("ENABLE SWITCH: OFF - Robot paused");
+    last_enable_interrupt_time = current_time;
+    if (current_switch_state)
+      system_enable();
+    else
+      system_disable();
   }
 }
-
 
 // ==========================================
 // ENCODER INTERRUPT HANDLERS
@@ -416,16 +409,11 @@ void motor_control_setup()
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), update_encoder_a, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), update_encoder_b, CHANGE);
 
-  // Initialize motor state
-  disable_dc = !system_enabled;
-  disable_servo = !system_enabled;
-  last_physical_switch_state = system_enabled;
+  // Initialize motors
   set_speed(0);
+  set_steering(0);
   
-  // Initialize timing and stall protection to current state
+  // Initialize timing for the loop_updater and stall protection
   current_time = micros();
   last_time = current_time;
-  current_distance = get_distance(encoder_pos);
-  target_distance = current_distance;
-  stall_encoder_pos = encoder_pos;
 }

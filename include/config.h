@@ -85,6 +85,7 @@
 // ==========================================
 // ENABLE INTERRUPT DEBOUNCE
 // ==========================================
+#define ENABLE_SWITCH_POLL_INTERVAL_US 50000     // 50ms polling interval
 #define ENABLE_DEBOUNCE_TIME_US 100000   // 100ms debounce
 
 // ==========================================

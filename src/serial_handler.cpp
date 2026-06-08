@@ -19,7 +19,7 @@ int tail = 0;
 
 // Time tracking
 extern unsigned long current_time;
-extern unsigned long last_status_time;
+extern unsigned long last_pid_status_time;
 
 // ==========================================
 // SERIAL COMMUNICATION
@@ -110,11 +110,7 @@ void parseMessage(char *msg)
 
   case 'p':
     // Pause
-    stop();
-    current_speed = 0;
-    target_distance = current_distance;
-    system_enabled = false;
-    Serial.println("SERIAL: PAUSE - System disabled");
+    system_disable();
     break;
 
   case 'h':
@@ -163,11 +159,8 @@ void parseMessage(char *msg)
 
   case 'r':
     // Resume with last speed
-    system_enabled = true;
-    disable_dc = false;
-    disable_servo = false;
-    set_speed();
-    Serial.println("SERIAL: RESUME - System enabled");
+    system_enable();
+    set_speed(); // Restore previous speed
     break;
 
   case 'x':
@@ -179,16 +172,12 @@ void parseMessage(char *msg)
 
   case 'm':
     // Master enable
-    disable_dc = false;
-    disable_servo = false;
-    set_speed();
-    system_enabled = true;
-    Serial.println("MASTER ENABLED");
-
+    system_enable();
     break;
 
   case 'l':
-    // Wall follower START
+    // Fully enable system and start autonomous mode
+    system_enable();
     wall_follower_enable();
     break;
 
@@ -220,16 +209,16 @@ void parseMessage(char *msg)
 
 void pid_config_print()
 {
-  if (current_time - last_status_time > STATUS_PRINT_INTERVAL_US)
+  if (current_time - last_pid_status_time > STATUS_PRINT_INTERVAL_US)
   {
-    last_status_time = current_time;
+    last_pid_status_time = current_time;
 
     Serial.print("target_speed: ");
     Serial.print(target_speed);
     Serial.print(" current_speed: ");
     Serial.print(current_speed);
-    Serial.print(" current_dc: ");
-    Serial.print(current_dc);
+    Serial.print(" dc_current_dc: ");
+    Serial.print(dc_current_dc);
     Serial.print(" Kp: ");
     Serial.print(Kp);
     Serial.print(" Ki: ");
@@ -255,10 +244,14 @@ void pid_config_print()
 void serial_setup()
 {
   Serial.begin(SERIAL_BAUD);
-
-  // Only wait for serial if the robot isn't already enabled via the physical switch
+  
+  // Wait for serial only if the robot isn't already enabled via the physical switch
+  // This allows the robot to run without a PC if the switch is ON, 
+  // but blocks for debugging if the switch is OFF.
   while (!Serial && !system_enabled)
   {
+    // Re-check switch in case user toggles it to skip waiting
+    system_enabled = digitalRead(ENABLE_SWITCH_PIN);
     delay(10);
   }
 

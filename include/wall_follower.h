@@ -70,10 +70,9 @@ void wall_follower_setup();
 
 /**
  * @brief Main wall-following update function
- * Should be called every main loop iteration
- * Manages state transitions and executes current state logic
+ * @param enabled Whether the system is active. Logic is suppressed if false, but debug printing remains.
  */
-void wall_follower_update();
+void wall_follower_update(bool enabled);
 
 /**
  * @brief Start wall-following behavior
