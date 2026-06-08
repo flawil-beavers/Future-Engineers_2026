@@ -316,7 +316,7 @@ void wall_follower_setup()
 
   Serial.println("===== WALL FOLLOWER INITIALIZED =====");
   Serial.println("Waiting for enable signal...");
-  Serial.println("Commands: 'w' = start, 's' = stop");
+  Serial.println("Commands: 'l' = start, 'z' = stop");
 }
 
 void wall_follower_update(bool enabled)

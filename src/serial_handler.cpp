@@ -1,6 +1,26 @@
 /**
  * @file serial_handler.cpp
  * @brief Serial communication and command parsing implementation
+ * 
+ * Supported Commands:
+ *   d<val> : Set drive speed (mm/s)
+ *   s<val> : Set steering angle (degrees)
+ *   p      : Emergency system disable
+ *   h      : Hold position (stop)
+ *   r      : Resume with previous speed
+ *   m      : Master system enable
+ *   n      : Print encoder distance
+ *   g      : Print gyro heading
+ *   v      : Print ToF sensor readings
+ *   q<val> : Set motor Kp (val/10)
+ *   w<val> : Set motor Ki (val/100)
+ *   e<val> : Set motor Kd (val/10)
+ *   a<val> : Set default acceleration
+ *   x      : Debug steering timing
+ *   l      : START Wall Follower
+ *   z      : STOP Wall Follower
+ *   u<val> : Set wall distance (mm)
+ *   i/o    : Wall Follower Debug ON/OFF
  */
 
 #include "serial_handler.h"
@@ -176,13 +196,13 @@ void parseMessage(char *msg)
     break;
 
   case 'l':
-    // Fully enable system and start autonomous mode
+    // Start wall follower (Autonomous Mode)
     system_enable();
     wall_follower_enable();
     break;
 
   case 'z':
-    // Wall follower STOP
+    // Stop wall follower (Return to manual)
     wall_follower_disable();
     break;
 
