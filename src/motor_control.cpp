@@ -29,7 +29,6 @@ float last_speed = 0; // Used to store speed before stopping, for resuming
 // Steering state
 int set_degree = 0;
 bool servo_disabled = false;
-int servo_last_angle = 0;
 
 // PID state
 float target_distance = 0;
@@ -54,11 +53,8 @@ float acc = DEFAULT_ACCELERATION;
 
 // Time tracking
 unsigned long current_time = 0;
-unsigned long last_time = 0;
-unsigned long last_loop_time_us = 0;
+static unsigned long last_time = 0;
 unsigned long last_pid_status_time = 0;
-unsigned long last_enable_interrupt_time = 0;
-unsigned long stall_encoder_pos = 0;
 unsigned long steering_diff = 0;
 
 // Enable switch state management
@@ -71,6 +67,7 @@ static bool last_physical_switch_state = false; // Tracks physical switch to det
 
 void steer(int angle)
 {
+  static int servo_last_angle = 0;
   if (angle == servo_last_angle)
   {
     return; // Skip unnecessary writes
@@ -256,6 +253,8 @@ void set_speed(int speed)
 
 void loop_updater()
 {
+  static unsigned long last_loop_time_us = 0;
+
   last_time = current_time;
   last_distance = current_distance;
 
@@ -268,6 +267,7 @@ void loop_updater()
 
 void check_stalling()
 {
+  static unsigned long stall_encoder_pos = 0;
   // Prevent division by zero and only check if enough time has passed
   if (last_loop_time > 0.00001 && (float)fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
       fabs(dc_current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
@@ -341,6 +341,7 @@ void handle_enable_switch()
   last_physical_switch_state = current_switch_state;
 
   // Check if enough time has passed since the last transition to debounce the signal
+  static unsigned long last_enable_interrupt_time = 0;
   if (current_time - last_enable_interrupt_time > ENABLE_DEBOUNCE_TIME_US)
   {
     last_enable_interrupt_time = current_time;

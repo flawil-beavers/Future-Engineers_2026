@@ -13,9 +13,9 @@
 // SERIAL BUFFER
 // ==========================================
 
-char ringBuffer[BUFFER_SIZE];
-int head = 0;
-int tail = 0;
+static char ringBuffer[BUFFER_SIZE];
+static int head = 0;
+static int tail = 0;
 
 // Time tracking
 extern unsigned long current_time;
@@ -147,9 +147,9 @@ void parseMessage(char *msg)
   case 'v':
     // Print ToF distances
     Serial.print("LEFT: ");
-    Serial.print(current_distance_left, 1);
+    Serial.print(get_tof_distance(TOF_LEFT), 1);
     Serial.print(" RIGHT: ");
-    Serial.println(current_distance_right, 1);
+    Serial.println(get_tof_distance(TOF_RIGHT), 1);
     break;
 
   case 'a':

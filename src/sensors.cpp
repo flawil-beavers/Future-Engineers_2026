@@ -12,23 +12,17 @@
 // ==========================================
 
 // Gyro
-Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
-sh2_SensorValue_t sensor_value;
-float current_degree = 0;
-float current_heading = 0;
-float last_yaw_deg = 0;
-bool gyro_initialized = false;
-
-// Time tracking for gyro updates
-unsigned long last_gyro_read = 0;
+static Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
+static sh2_SensorValue_t sensor_value;
+static float current_degree = 0;
+static float current_heading = 0;
 
 // ToF sensors (on separate I2C buses)
-VL53L4CX sensor_left(&Wire, -1);
-VL53L4CX sensor_right(&Wire2, -1);
+static VL53L4CX sensor_left(&Wire, -1);
+static VL53L4CX sensor_right(&Wire2, -1);
 
 // Distance readings in millimeters
-float current_distance_left = -1.0;
-float current_distance_right = -1.0;
+static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
 
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
@@ -36,6 +30,10 @@ float current_distance_right = -1.0;
 
 void update_gyro()
 {
+  static unsigned long last_gyro_read = 0;
+  static float last_yaw_deg = 0;
+  static bool gyro_initialized = false;
+
   if (millis() - last_gyro_read < GYRO_UPDATE_INTERVAL_MS)
   {
     return; // Skip if not enough time has passed
@@ -97,94 +95,102 @@ void update_gyro()
   }
 }
 
-void update_lasers()
-{
-  VL53L4CX_MultiRangingData_t MultiRangingData;
-  uint8_t NewDataReady = 0;
-
-  // ==========================================
-  // LEFT SENSOR (Wire)
-  // ==========================================
-  if (sensor_left.VL53L4CX_GetMeasurementDataReady(&NewDataReady) == VL53L4CX_ERROR_NONE && NewDataReady)
-  {
-    if (sensor_left.VL53L4CX_GetMultiRangingData(&MultiRangingData) == VL53L4CX_ERROR_NONE)
-    {
-      if (MultiRangingData.NumberOfObjectsFound > 0)
-      {
-        // Find measurement with lowest sigma (most reliable)
-        int best_index = 0;
-        uint32_t best_sigma = MultiRangingData.RangeData[0].SigmaMilliMeter;
-
-        for (int i = 1; i < MultiRangingData.NumberOfObjectsFound; i++)
-        {
-          if (MultiRangingData.RangeData[i].SigmaMilliMeter < best_sigma)
-          {
-            best_sigma = MultiRangingData.RangeData[i].SigmaMilliMeter;
-            best_index = i;
-          }
-        }
-
-        uint8_t status = MultiRangingData.RangeData[best_index].RangeStatus;
-        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
-            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
-        {
-          int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
-          current_distance_left = mm;
-        }
-      }
-    }
-    else
-    {
-      Serial.println("Failed to read left sensor data");
-    }
-
-    sensor_left.VL53L4CX_ClearInterruptAndStartMeasurement();
-  }
-
-  // ==========================================
-  // RIGHT SENSOR (Wire2)
-  // ==========================================
-  NewDataReady = 0;
-  if (sensor_right.VL53L4CX_GetMeasurementDataReady(&NewDataReady) == VL53L4CX_ERROR_NONE && NewDataReady)
-  {
-    if (sensor_right.VL53L4CX_GetMultiRangingData(&MultiRangingData) == VL53L4CX_ERROR_NONE)
-    {
-      if (MultiRangingData.NumberOfObjectsFound > 0)
-      {
-        // Find measurement with lowest sigma (most reliable)
-        int best_index = 0;
-        uint32_t best_sigma = MultiRangingData.RangeData[0].SigmaMilliMeter;
-
-        for (int i = 1; i < MultiRangingData.NumberOfObjectsFound; i++)
-        {
-          if (MultiRangingData.RangeData[i].SigmaMilliMeter < best_sigma)
-          {
-            best_sigma = MultiRangingData.RangeData[i].SigmaMilliMeter;
-            best_index = i;
-          }
-        }
-
-        uint8_t status = MultiRangingData.RangeData[best_index].RangeStatus;
-        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
-            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
-        {
-          int32_t mm = MultiRangingData.RangeData[best_index].RangeMilliMeter;
-          current_distance_right = mm;
-        }
-      }
-    }
-    else
-    {
-      Serial.println("Failed to read right sensor data");
-    }
-
-    sensor_right.VL53L4CX_ClearInterruptAndStartMeasurement();
-  }
-}
-
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
+
+/**
+ * @brief Internal helper to poll a ToF sensor and update its distance value.
+ * 
+ * This function implements a professional polling strategy:
+ * 1. Checks if hardware data is ready.
+ * 2. Retrieves multi-ranging data (objects in field of view).
+ * 3. Filters objects to find the one with the lowest Sigma (highest confidence).
+ * 4. Validates the hardware range status before updating the state.
+ * 
+ * @param sensor Reference to the VL53L4CX sensor instance.
+ * @param out_distance Reference to the static variable storing the result.
+ */
+static void read_single_tof(VL53L4CX &sensor, float &out_distance)
+{
+  uint8_t data_ready = 0;
+  if (sensor.VL53L4CX_GetMeasurementDataReady(&data_ready) != VL53L4CX_ERROR_NONE || !data_ready)
+  {
+    return;
+  }
+
+  VL53L4CX_MultiRangingData_t ranging_data;
+  if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
+  {
+    if (ranging_data.NumberOfObjectsFound > 0)
+    {
+      // Find measurement with lowest sigma (mathematically most reliable)
+      int best_idx = 0;
+      uint32_t min_sigma = ranging_data.RangeData[0].SigmaMilliMeter;
+
+      for (int i = 1; i < ranging_data.NumberOfObjectsFound; i++)
+      {
+        if (ranging_data.RangeData[i].SigmaMilliMeter < min_sigma)
+        {
+          min_sigma = ranging_data.RangeData[i].SigmaMilliMeter;
+          best_idx = i;
+        }
+      }
+
+      // Verify the hardware reports a valid lock on the object
+      uint8_t status = ranging_data.RangeData[best_idx].RangeStatus;
+      if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
+          status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+      {
+        out_distance = (float)ranging_data.RangeData[best_idx].RangeMilliMeter;
+      }
+    }
+  }
+  
+  sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+}
+
+void update_lasers()
+{
+  read_single_tof(sensor_left, tof_distances[TOF_LEFT]);
+  read_single_tof(sensor_right, tof_distances[TOF_RIGHT]);
+}
+
+/**
+ * @brief Professional initialization helper for a single ToF sensor
+ * Handles the full hardware handshake and configuration sequence.
+ */
+static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
+{
+  Serial.print("Initializing ToF: ");
+  Serial.println(name);
+
+  sensor.setI2cDevice(bus);
+  if (sensor.begin() != 0 || sensor.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
+  {
+    Serial.print("CRITICAL ERROR: ");
+    Serial.print(name);
+    Serial.println(" failed initialization!");
+    while (1) delay(10);
+  }
+
+  sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
+  if (sensor.VL53L4CX_StartMeasurement() != 0)
+  {
+    Serial.print("ERROR: ");
+    Serial.print(name);
+    Serial.println(" could not start measurements!");
+  }
+}
+
+float get_tof_distance(TofSensor sensor)
+{
+  if (sensor >= 0 && sensor < TOF_COUNT)
+  {
+    return tof_distances[sensor];
+  }
+  return -1.0f;
+}
 
 float get_angle()
 {
@@ -224,99 +230,16 @@ void reset_VL53L4CX_via_I2C(TwoWire &wire)
 
 void sensors_setup()
 {
-  // ==========================================
-  // Initialize I2C buses
-  // ==========================================
   Wire.begin();
-  Wire.setClock(TOF_I2C_CLOCK); // 400kHz
-
+  Wire.setClock(TOF_I2C_CLOCK);
   Wire2.begin();
-  Wire2.setClock(TOF_I2C_CLOCK); // 400kHz
+  Wire2.setClock(TOF_I2C_CLOCK);
 
-  // ==========================================
-  // Initialize ToF Sensors
-  // ==========================================
-  Serial.println("Initializing VL53L4CX Left Sensor (Wire)...");
+  reset_VL53L4CX_via_I2C(Wire);
+  reset_VL53L4CX_via_I2C(Wire2);
 
-  reset_VL53L4CX_via_I2C(Wire);  // Reset left sensor
-  reset_VL53L4CX_via_I2C(Wire2); // Reset right sensor
-
-  // Bind left sensor to Wire
-  sensor_left.setI2cDevice(&Wire);
-
-  if (sensor_left.begin() != 0)
-  {
-    Serial.println("ERROR: VL53L4CX left communication failed!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX Left Base Communication established.");
-
-  // Load calibration
-  if (sensor_left.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
-  {
-    Serial.println("ERROR: InitSensor failed!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX Left Calibration & Firmware Loaded.");
-
-  // Configure distance mode
-  sensor_left.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
-
-  // Start measurements
-  if (sensor_left.VL53L4CX_StartMeasurement() != 0)
-  {
-    Serial.println("ERROR: Could not start VL53L4CX left measurements!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX left initialized.");
-
-  // ==========================================
-  // Initialize Right ToF Sensor
-  // ==========================================
-  Serial.println("Initializing VL53L4CX Right Sensor (Wire2)...");
-
-  sensor_right.setI2cDevice(&Wire2);
-
-  if (sensor_right.begin() != 0)
-  {
-    Serial.println("ERROR: VL53L4CX right communication failed!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX Right Base Communication established.");
-
-  if (sensor_right.InitSensor(VL53L4CX_DEFAULT_DEVICE_ADDRESS) != VL53L4CX_ERROR_NONE)
-  {
-    Serial.println("ERROR: InitSensor failed for right sensor!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX Right Calibration & Firmware Loaded.");
-
-  sensor_right.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
-
-  if (sensor_right.VL53L4CX_StartMeasurement() != 0)
-  {
-    Serial.println("ERROR: Could not start VL53L4CX right measurements!");
-    while (1)
-    {
-      delay(10);
-    }
-  }
-  Serial.println("VL53L4CX right initialized.");
+  init_single_tof(sensor_left, &Wire, "Left_ToF");
+  init_single_tof(sensor_right, &Wire2, "Right_ToF");
 
   // ==========================================
   // Initialize Gyro (BNO085) - SPI

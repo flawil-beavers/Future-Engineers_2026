@@ -10,21 +10,14 @@
 #include <vl53l4cx_class.h>
 
 // ==========================================
-// SENSOR STATE VARIABLES
+// SENSOR TYPES
 // ==========================================
 
-// Gyro
-extern Adafruit_BNO08x bno;
-extern sh2_SensorValue_t sensor_value;
-extern float current_degree;
-
-// ToF sensors
-extern VL53L4CX sensor_left;
-extern VL53L4CX sensor_right;
-
-// Distance readings in millimeters
-extern float current_distance_left;
-extern float current_distance_right;
+enum TofSensor {
+  TOF_LEFT = 0,
+  TOF_RIGHT = 1,
+  TOF_COUNT
+};
 
 // ==========================================
 // SENSOR FUNCTIONS
@@ -66,6 +59,13 @@ float get_angle();
  * @return Current heading in degrees
  */
 float get_heading();
+
+/**
+ * @brief Get the latest distance from a specific ToF sensor
+ * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @return Distance in millimeters, or -1.0 if invalid
+ */
+float get_tof_distance(TofSensor sensor);
 
 /**
  * @brief Initialize all sensors

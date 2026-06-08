@@ -65,14 +65,7 @@ float calculate_target_angle(float turn_angle, float current_angle=get_angle())
  */
 float get_followed_wall_distance(bool following_left_wall=wf_following_left_wall)
 {
-  if (following_left_wall)
-  {
-    return current_distance_left;
-  }
-  else
-  {
-    return current_distance_right;
-  }
+  return get_tof_distance(following_left_wall ? TOF_LEFT : TOF_RIGHT);
 }
 
 // ==========================================
