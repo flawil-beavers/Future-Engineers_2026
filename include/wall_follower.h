@@ -21,9 +21,16 @@
 enum WallFollowerState
 {
   WF_IDLE = 0,        // Waiting for enable signal
-  WF_FOLLOWING = 1,   // Following wall at target distance
-  WF_TURNING = 2,     // Executing 90-degree turn
-  WF_STOPPED = 3      // Finished (3 rounds completed)
+  WF_GYRO_FOLLOW = 1, // Maintaining a specific gyro heading (PD control)
+  WF_FOLLOWING = 2,   // Following wall at target distance (PD control)
+  WF_TURNING = 3,     // Executing 90-degree turn
+  WF_STOPPED = 4      // Finished (3 rounds completed)
+};
+
+enum WallSide
+{
+  SIDE_LEFT = 0,
+  SIDE_RIGHT = 1
 };
 
 // ==========================================
@@ -37,12 +44,17 @@ extern WallFollowerState wf_last_state;
 extern float wf_target_distance;      // Target distance from wall (mm)
 extern float wf_wall_margin;          // Distance threshold to detect gap (m)
 extern int wf_turn_angle;             // Current turn direction (+90 or -90)
-extern bool wf_following_left_wall;   // True = following left wall, False = right wall
+extern WallSide wf_following_wall;    // Which wall side we are following
+
+// Gyro following parameters
+extern float wf_gyro_target;          // The absolute gyro angle to maintain
+extern float wf_gyro_kp;              // Proportional gain for gyro error
+extern float wf_gyro_kd;              // Derivative gain for gyro error
+extern float wf_last_gyro_error;      // Previous error for derivative term
 
 // Timing and control
-extern unsigned long wf_enable_pressed_time;    // When enable was first pressed
-extern unsigned long wf_turn_start_angle;        // Angle when turn started
-extern unsigned long wf_turn_target_angle;       // Target angle to complete turn (current_degree + turn_angle)
+extern float wf_turn_start_angle;        // Angle when turn started
+extern float wf_turn_target_angle;       // Target angle to complete turn (current_degree + turn_angle)
 
 // Round counting
 extern int wf_turn_count;             // Total turns executed
