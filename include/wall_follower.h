@@ -62,6 +62,8 @@ extern int wf_turn_count;             // Total turns executed
 extern float wf_start_angle;        // Heading when wall-following started
 extern int wf_completed_rounds;       // Number of complete rounds (0-3)
 
+// Speed parameters
+extern float wf_normal_speed;         // Speed during straight wall following (mm/s)
 // PD Controller for distance control
 extern float wf_pd_kp;                // Proportional gain for distance error
 extern float wf_pd_kd;                // Derivative gain for distance error

@@ -37,11 +37,14 @@ float wf_start_angle = 0;
 float wf_start_distance = 0;
 int wf_completed_rounds = 0;
 
+// Speed parameters
+float wf_normal_speed = 200.0;        // Default normal speed (mm/s)
+
 // Internal logic flags
 bool wf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
 
 // PD Controller
-float wf_pd_kp = 0.3;                 // Proportional gain
+float wf_pd_kp = 0.5;                 // Proportional gain
 float wf_pd_kd = 0.01;                 // Derivative gain
 float wf_last_distance_error = 0;
 
@@ -74,7 +77,25 @@ float calculate_target_angle(float turn_angle, float current_angle=get_angle())
  */
 float get_followed_wall_distance(WallSide side=wf_following_wall)
 {
-  return get_tof_distance(side == SIDE_LEFT ? TOF_LEFT : TOF_RIGHT);
+  TofSensor sensor = (side == SIDE_LEFT) ? TOF_LEFT : TOF_RIGHT;
+  float raw_dist = get_tof_distance(sensor);
+
+  // If sensor reading is invalid or truly out of range, return as-is
+  if (raw_dist <= 0 || raw_dist >= TOF_OUT_OF_RANGE_MM) {
+    return raw_dist;
+  }
+
+  // We improve accuracy by calculating the angle relative to the stable grid 
+  // established at the beginning (wf_start_angle).
+  float current_heading = get_angle();
+  
+  // The "Ideal" orientation of any wall in a rectangular room is always
+  // StartAngle + (N * 90). We find the one closest to our current target.
+  float angle_error_deg = current_heading - wf_gyro_target;
+
+  // Trigonometric correction: Perpendicular Distance = Measured * cos(theta)
+  float incidence_angle_rad = angle_error_deg * PI / 180.0f;
+  return raw_dist * cos(incidence_angle_rad);
 }
 
 // ==========================================
@@ -112,8 +133,8 @@ void state_gyro_follow()
   if (pd_output < -50) pd_output = -50;
 
   // Apply steering (positive pd_output results in right turn to correct left drift)
-  set_steering(pd_output);
-  set_speed(300);
+  set_steering(pd_output); // Corrects heading
+  set_speed(wf_normal_speed); // Maintain normal speed
   float dist_left = get_tof_distance(TOF_LEFT);
   float dist_right = get_tof_distance(TOF_RIGHT);
 
@@ -244,11 +265,8 @@ void state_following_wall()
     wf_last_distance_error = error;
   }
 
-  // Maintain speed
-  if (current_speed == 0)
-  {
-    set_speed(300); // 200 mm/s
-  }
+  // Always maintain the normal wall following speed
+  set_speed(wf_normal_speed);
 }
 
 /**
@@ -265,7 +283,7 @@ void state_turning()
   {
     set_steering(25); // right turn
   }
-  set_speed(300); // Slightly slower during turn
+  set_speed(wf_normal_speed); // Use dedicated turn speed
 
   // Check if turn is complete
   if ((get_angle() - wf_turn_start_angle - wf_turn_angle) * wf_turn_angle/fabs(wf_turn_angle) > 0)
@@ -278,7 +296,10 @@ void state_turning()
     Serial.print(wf_turn_angle);
     Serial.println("°");
     // Turn complete, resume wall following
-    wf_gyro_target += wf_turn_angle; // Calculate new straight angle
+
+    // Update the target heading by adding exactly 90 degrees based on turn direction
+    wf_gyro_target += wf_turn_angle;
+    
     wf_last_gyro_error = 0;          // Reset D term
     wf_searching_for_wall = true;
     wf_state = WF_GYRO_FOLLOW;
@@ -384,8 +405,8 @@ void wall_follower_enable()
 
     // Enable motors and servo
     dc_state = DC_ENABLED;
-    servo_disabled = false;
-    set_speed(200); // Start moving at 200 mm/s
+    servo_disabled = false; // Ensure servo is enabled
+    set_speed(wf_normal_speed); // Start moving at the configured normal speed
 
     Serial.println("\n===== WALL FOLLOWING STARTED =====");
     Serial.print("Start heading: ");
