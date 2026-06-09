@@ -291,7 +291,7 @@ void system_enable()
   servo_disabled = false;
 
   Serial.println("SYSTEM ENABLED");
-  wall_follower_enable();
+  gyro_follower_enable();
 }
 
 void system_disable()

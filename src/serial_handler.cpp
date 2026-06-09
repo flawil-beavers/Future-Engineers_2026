@@ -198,27 +198,27 @@ void parseMessage(char *msg)
   case 'l':
     // Start wall follower (Autonomous Mode)
     system_enable();
-    wall_follower_enable();
+    gyro_follower_enable();
     break;
 
   case 'z':
     // Stop wall follower (Return to manual)
-    wall_follower_disable();
+    gyro_follower_disable();
     break;
 
   case 'u':
     // Set wall target distance
-    wall_follower_set_target_distance(value);
+    gyro_follower_set_target_distance(value);
     break;
 
   case 'i':
     // Toggle wall follower debug output
-    wall_follower_set_debug(true);
+    gyro_follower_set_debug(true);
     break;
 
   case 'o':
     // Disable wall follower debug output
-    wall_follower_set_debug(false);
+    gyro_follower_set_debug(false);
     break;
 
   default:

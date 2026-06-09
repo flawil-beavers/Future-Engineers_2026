@@ -30,7 +30,7 @@ void setup()
   system_interface_setup(); // Sets up Enable Switch and Serial
   sensors_setup();
   motor_control_setup();
-  wall_follower_setup();
+  gyro_follower_setup();
   
   Serial.println("\n===== INITIALIZATION COMPLETE =====\n");
   // Fully enable system if switch is already HIGH at startup
@@ -63,7 +63,7 @@ void loop()
   update_gyro();
 
   // Update wall follower (internal logic handles suppression but allows telemetry)
-  wall_follower_update(system_enabled);
+  gyro_follower_update(system_enabled);
   
   // Execute motor control logic (may be overridden by wall_follower)
   drive_loop();
