@@ -30,7 +30,8 @@ enum WallFollowerState
 enum WallSide
 {
   SIDE_LEFT = 0,
-  SIDE_RIGHT = 1
+  SIDE_RIGHT = 1,
+  SIDE_UNKNOWN = 2
 };
 
 // ==========================================

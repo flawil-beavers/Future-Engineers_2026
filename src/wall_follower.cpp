@@ -17,7 +17,7 @@ WallFollowerState wf_last_state = WF_IDLE;
 
 // Wall following parameters
 float wf_target_distance = 300.0;     // 300mm target distance from wall
-float wf_wall_margin = 800.0;         // 800.0mm threshold to detect gap/open space
+float wf_wall_margin = TOF_MAX_RELIABLE_DISTANCE_MM; // Threshold to detect gap/open space (mm)
 int wf_turn_angle = 0;                // +90 or -90 degrees
 WallSide wf_following_wall = SIDE_RIGHT; // Which wall are we following
 
@@ -34,14 +34,15 @@ float wf_turn_target_angle = 0;
 // Round counting
 int wf_turn_count = 0;
 float wf_start_angle = 0;
+float wf_start_distance = 0;
 int wf_completed_rounds = 0;
 
 // Internal logic flags
 bool wf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
 
 // PD Controller
-float wf_pd_kp = 0.5;                 // Proportional gain
-float wf_pd_kd = 0.001;                 // Derivative gain
+float wf_pd_kp = 0.3;                 // Proportional gain
+float wf_pd_kd = 0.01;                 // Derivative gain
 float wf_last_distance_error = 0;
 
 // Debug
@@ -112,12 +113,13 @@ void state_gyro_follow()
 
   // Apply steering (positive pd_output results in right turn to correct left drift)
   set_steering(pd_output);
-  set_speed(200);
+  set_speed(300);
   float dist_left = get_tof_distance(TOF_LEFT);
   float dist_right = get_tof_distance(TOF_RIGHT);
 
   // LOGIC A: Initial search for first gap
-  if (wf_turn_count == 0)
+  // Only start checking for the first wall gap after driving 100mm (10cm) for stability
+  if (wf_turn_count == 0 && (get_distance() - wf_start_distance) >= 100.0f)
   {
     if (dist_left > wf_wall_margin && dist_left > 0)
     {
@@ -145,7 +147,7 @@ void state_gyro_follow()
   {
     float current_side_dist = get_followed_wall_distance();
     // If we see a wall closer than a reasonable threshold (e.g., target + 300mm)
-    if (current_side_dist > 0 && current_side_dist < (wf_target_distance + 300.0))
+    if (current_side_dist > 0 && current_side_dist < (wf_target_distance + 100.0))
     {
       Serial.println("Wall re-acquired. Switching to PD control.");
       wf_searching_for_wall = false;
@@ -245,7 +247,7 @@ void state_following_wall()
   // Maintain speed
   if (current_speed == 0)
   {
-    set_speed(200); // 200 mm/s
+    set_speed(300); // 200 mm/s
   }
 }
 
@@ -257,13 +259,13 @@ void state_turning()
 {
   if (wf_turn_angle > 0)
   {
-    set_steering(-40); // left turn
+    set_steering(-25); // left turn
   }
   else
   {
-    set_steering(40); // right turn
+    set_steering(25); // right turn
   }
-  set_speed(150); // Slightly slower during turn
+  set_speed(300); // Slightly slower during turn
 
   // Check if turn is complete
   if ((get_angle() - wf_turn_start_angle - wf_turn_angle) * wf_turn_angle/fabs(wf_turn_angle) > 0)
@@ -370,9 +372,10 @@ void wall_follower_enable()
   if (wf_state == WF_IDLE)
   {
     wf_start_angle = get_angle();
+    wf_start_distance = get_distance();
     wf_gyro_target = wf_start_angle;
     wf_state = WF_GYRO_FOLLOW;
-    wf_following_wall = SIDE_RIGHT; // Start by following right wall
+    wf_following_wall = SIDE_UNKNOWN; // Start by following right wall
     wf_turn_count = 0;
     wf_completed_rounds = 0;
     wf_last_distance_error = 0;
@@ -483,7 +486,7 @@ void wall_follower_set_target_distance(float distance_mm)
 
 void wall_follower_set_wall_margin(float distance_m)
 {
-  wf_wall_margin = distance_m;
+  wf_wall_margin = distance_m * 1000.0; // Convert meters to millimeters
   Serial.print("Wall margin set to: ");
   Serial.print(distance_m);
   Serial.println(" m");

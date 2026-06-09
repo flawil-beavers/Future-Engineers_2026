@@ -120,34 +120,79 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   }
 
   VL53L4CX_MultiRangingData_t ranging_data;
+  float measured_distance = TOF_OUT_OF_RANGE_MM; // Default to out of range
   if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
   {
     if (ranging_data.NumberOfObjectsFound > 0)
     {
-      // Find measurement with lowest sigma (mathematically most reliable)
-      int best_idx = 0;
-      uint32_t min_sigma = ranging_data.RangeData[0].SigmaMilliMeter;
+      int best_idx = -1;
+      int16_t largest_valid_dist = -1;
 
-      for (int i = 1; i < ranging_data.NumberOfObjectsFound; i++)
+      for (int i = 0; i < ranging_data.NumberOfObjectsFound; i++)
       {
-        if (ranging_data.RangeData[i].SigmaMilliMeter < min_sigma)
+        uint8_t status = ranging_data.RangeData[i].RangeStatus;
+        int16_t dist = ranging_data.RangeData[i].RangeMilliMeter;
+        float signal = ranging_data.RangeData[i].SignalRateRtnMegaCps / 65536.0;
+        float sigma = ranging_data.RangeData[i].SigmaMilliMeter / 65536.0;
+
+        // Enhanced reliability check:
+        // 1. Status must be valid or merged pulse.
+        // 2. Signal rate must be high enough (> 0.4 Mcps) to distinguish from noise.
+        // 3. Sigma (standard deviation) must be low enough (< 25mm) for a stable reading.
+        // This filters out "ghost" readings that occur with black/distant targets
+        // which currently cause the sensor to report ~400mm instead of 9999mm (out of range).
+        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
+            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
         {
-          min_sigma = ranging_data.RangeData[i].SigmaMilliMeter;
-          best_idx = i;
+          // if (&sensor == &sensor_right) {
+          //   Serial.print(dist);
+          //   Serial.print(" ");
+          //   Serial.print(signal);
+          //   Serial.print(" ");
+          //   Serial.println(sigma);
+          // }
+          if (signal > 0.3f && sigma < 10.0f)
+          {
+            if (dist > largest_valid_dist)
+            {
+              largest_valid_dist = dist;
+              best_idx = i;
+            }
+          }
         }
       }
-
-      // Verify the hardware reports a valid lock on the object
-      uint8_t status = ranging_data.RangeData[best_idx].RangeStatus;
-      if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
-          status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+      if (best_idx != -1)
       {
-        out_distance = (float)ranging_data.RangeData[best_idx].RangeMilliMeter;
+        measured_distance = (float)largest_valid_dist;
       }
     }
   }
-  
+
+  // Enforce the 600mm limit: If the detected distance is beyond our reliable range
+  // or the sensor hardware reported an out-of-bounds value, treat it as an edge (gap).
+  // This forces the value to 9999.0 (TOF_OUT_OF_RANGE_MM) as requested.
+  if (measured_distance > TOF_MAX_RELIABLE_DISTANCE_MM)
+  {
+    measured_distance = TOF_OUT_OF_RANGE_MM;
+  }
+
+  // Consistency check: limit the change from the previous value (Slew Rate Limiter)
+  // We skip this if the previous value was invalid (-1.0) or if either value is OUT_OF_RANGE
+  // to ensure we still detect gaps (9999.0) and re-acquire walls instantly.
+  if (measured_distance != TOF_OUT_OF_RANGE_MM && out_distance != -1.0f && out_distance != TOF_OUT_OF_RANGE_MM)
+  {
+    float delta = measured_distance - out_distance;
+    if (fabs(delta) > TOF_MAX_DELTA_MM)
+    {
+      measured_distance = out_distance + (delta > 0 ? TOF_MAX_DELTA_MM : -TOF_MAX_DELTA_MM);
+    }
+  }
+
   sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+  
+  // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
+  // The wall_follower logic will still treat distances > 600mm as an edge/gap.
+  out_distance = measured_distance;
 }
 
 void update_lasers()
@@ -175,6 +220,7 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
   }
 
   sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
+  // sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(TOF_TIMING_BUDGET_US);
   if (sensor.VL53L4CX_StartMeasurement() != 0)
   {
     Serial.print("ERROR: ");
