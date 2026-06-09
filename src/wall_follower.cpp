@@ -98,6 +98,12 @@ float get_followed_wall_distance(WallSide side)
 
 float get_followed_wall_distance()
 {
+  if (gf_following_wall == SIDE_UNKNOWN)
+  {
+    float dist_l = get_tof_distance(TOF_LEFT);
+    float dist_r = get_tof_distance(TOF_RIGHT);
+    return (dist_l > dist_r) ? dist_l : dist_r;
+  }
   return get_followed_wall_distance(gf_following_wall);
 }
 
