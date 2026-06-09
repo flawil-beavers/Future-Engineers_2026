@@ -52,7 +52,7 @@ float gf_start_distance = 0;
 int gf_completed_rounds = 0;
 
 // Speed parameters
-float gf_normal_speed = 200.0;        // Default normal speed (mm/s)
+float gf_normal_speed = 400.0;        // Default normal speed (mm/s)
 
 // Internal logic flags
 bool gf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
@@ -165,15 +165,8 @@ void state_following()
     gf_turn_count++;
     gf_completed_rounds = (int)(gf_turn_count / 4);
 
-    if (gf_completed_rounds >= 3)
-    {
-      gf_state = GF_STOPPED;
-    }
-    else
-    {
-      gf_state = GF_TURNING;
-      gf_turn_start_angle = get_angle();
-    }
+    gf_state = GF_TURNING;
+    gf_turn_start_angle = get_angle();
     return;
   }
 
@@ -196,6 +189,11 @@ void state_following()
       dist_pd = gf_pd_kp * dist_error + gf_pd_kd * dist_derivative;
       gf_last_distance_error = dist_error;
     }
+    if (gf_completed_rounds >= 3 && gf_start_distance + 300 < get_distance())
+    {
+      gf_state = GF_STOPPED;
+    }
+
   }
 
   // Combine Steering: Gyro + Distance Correction
