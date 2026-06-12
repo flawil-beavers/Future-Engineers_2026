@@ -12,15 +12,18 @@ Throughout the development process we focused on engineering principles, iterati
 
 # Team Members
 
-| Name | Role |
+| Name | Occupation |
 |--------|--------|
-| Team Member 1 | Hardware & CAD |
-| Team Member 2 | Software Development |
-| Team Member 3 | Electronics & Testing |
+| Philipp Kündig | Student ETH |
+| Damian Hardegger | Electrician |
 
-Coach:
 
-- Coach Name
+Coach: 
+- Stefan Gemperli
+<br>
+<br>   
+
+![Team Photo](Photos/Team-photo.JPG)
 
 ---
 
@@ -199,6 +202,67 @@ Problems observed:
 - Reduced steering precision
 - Inconsistent wheel positioning
 
+---
+# Power Budget
+
+## Power System Overview
+
+The robot is powered by four 14500 Li-Ion cells and distributes power to all electronic subsystems.
+
+### Estimated Current Consumption
+
+| Component | Typical Current |
+|------------|------------|
+| Arduino GIGA R1 WiFi | 200 mA |
+| BNO085 IMU | 15 mA |
+| VL53L4CX ToF Sensor #1 | 40 mA |
+| VL53L4CX ToF Sensor #2 | 40 mA |
+| Arducam BO462 Camera | 120 mA |
+| MG90S Servo (average) | 250 mA |
+| Drive Motor 155 RPM | 300 mA |
+| Voltage Display | 20 mA |
+
+### Total Average Consumption
+
+Average current consumption:
+
+```text
+200 + 15 + 40 + 40 + 120 + 250 + 300 + 20
+
+≈ 985 mA
+≈ 1.0 A
+```
+
+### Peak Current Consumption
+
+During acceleration, steering corrections and obstacle avoidance, the motor and servo can draw significantly more current.
+
+| Component | Peak Current |
+|------------|------------|
+| Drive Motor | 800 mA |
+| MG90S Servo | 700 mA |
+| Remaining Electronics | 435 mA |
+
+Estimated peak current:
+
+```text
+≈ 1.9 A
+```
+
+### Engineering Decision
+
+The power system was designed with sufficient reserve capacity to maintain stable operation under all competition conditions.
+
+During development, a commercial battery holder was initially used. Testing revealed occasional mechanical movement of the batteries, which could potentially affect electrical reliability. To solve this issue, a custom 3D-printed battery holder was designed and manufactured.
+
+Advantages of the custom battery holder:
+
+- Improved battery fixation
+- Increased electrical reliability
+- Better use of available chassis space
+- Easier maintenance and battery replacement
+
+This modification significantly increased the overall robustness of the robot.
 ---
 
 ## Final Solution
@@ -467,217 +531,246 @@ Connector-based VL53L4CX modules.
 Maintenance and reliability improved significantly.
 
 ---
+# Failure Mode Analysis
 
-# Failure Analysis
+## Failure Mode 1 – Steering Servo Too Weak
 
-## Sensor Failure
+### Problem
 
-Potential cause:
+The initial prototype used a very small micro servo for steering.
 
-- Damaged sensor
+### Observed Issues
 
-Mitigation:
+- Inconsistent steering angles
+- Reduced steering precision
+- Difficulty maintaining wheel position under load
 
-- Modular connectors
-- Fast replacement
+### Root Cause
 
----
+The servo did not provide enough torque to reliably control the steering mechanism during dynamic driving situations.
 
-## Wheel Slip
+### Solution
 
-Potential cause:
+The servo was replaced with a TowerPro MG90S metal gear servo.
 
-- Surface variation
+### Result
 
-Mitigation:
-
-- IMU feedback
-- Heading correction
-
----
-
-## Low Battery Voltage
-
-Potential cause:
-
-- Battery discharge
-
-Mitigation:
-
-- Voltage monitoring
-- Regular battery replacement
+- Increased steering torque
+- Improved steering precision
+- Better repeatability
+- Higher mechanical durability
 
 ---
 
-## Camera Lighting Issues
+## Failure Mode 2 – Battery Holder Instability
 
-Potential cause:
+### Problem
 
-- Reflections
-- Changing illumination
+The original commercial battery holder allowed slight battery movement during operation.
 
-Mitigation:
+### Observed Issues
 
-- Colour filtering
-- Threshold optimisation
+- Reduced mechanical stability
+- Potential intermittent electrical contact
+- Difficult maintenance
 
----
+### Root Cause
 
-# Testing and Validation
+The battery holder was not specifically designed for the robot's vibration and acceleration loads.
 
-## Mechanical Testing
+### Solution
 
-Tested:
+The team designed and manufactured a custom 3D-printed battery holder.
 
-- Steering precision
-- Wheel alignment
-- Stability
+### Result
 
----
-
-## Sensor Testing
-
-Tested:
-
-- IMU accuracy
-- Distance sensor repeatability
-- Camera robustness
+- Secure battery mounting
+- Improved electrical reliability
+- Better chassis integration
+- Easier battery replacement
 
 ---
 
-## Navigation Testing
+## Failure Mode 3 – Damaged ToF Sensors During Assembly
 
-Tested:
+### Problem
 
-- Turn consistency
-- Obstacle avoidance
-- Parking accuracy
-- Full challenge runs
+The original VL53L3CX sensors were damaged during soldering.
 
----
+### Observed Issues
 
-# Iterative Development
+- Sensor failures
+- Increased replacement costs
+- Additional development delays
 
-## Version 1
+### Root Cause
 
-Features:
+The small sensor boards required delicate soldering work, increasing the risk of accidental damage.
 
-- Original battery holder
-- Small steering servo
-- Initial sensor setup
+### Solution
 
-Problems:
+The design was changed to Adafruit VL53L4CX modules using Qwiic/STEMMA QT connectors.
 
-- Steering weakness
-- Battery instability
+### Result
 
----
-
-## Version 2
-
-Improvements:
-
-- New battery holder
-- Improved steering
-
-Problems:
-
-- Sensor reliability
+- No soldering required
+- Fast sensor replacement
+- Reduced assembly risk
+- Improved maintainability
 
 ---
 
-## Version 3
+## Failure Mode 4 – Drive Motor Torque Too Low
 
-Improvements:
+### Problem
 
-- VL53L4CX integration
-- Connector-based wiring
+A 310 RPM geared motor was initially tested.
 
-Result:
+### Observed Issues
 
-- Increased reliability
+- Reduced acceleration
+- Poor performance under load
+- Less reliable obstacle avoidance
+- Inconsistent driving behaviour
+
+### Root Cause
+
+The motor prioritised speed over torque and was unable to provide sufficient force for reliable autonomous navigation.
+
+### Solution
+
+The 155 RPM motor with a 100:1 gearbox was selected.
+
+### Result
+
+- Twice the available torque
+- Improved acceleration
+- More consistent driving behaviour
+- Better obstacle avoidance performance
+
+---
+
+## Failure Mode 5 – Wheel Slip
+
+### Problem
+
+Wheel encoders alone can accumulate navigation errors.
+
+### Observed Issues
+
+- Position drift
+- Inaccurate turns
+- Reduced repeatability
+
+### Root Cause
+
+Wheel slip occurs due to changing surface conditions and mechanical tolerances.
+
+### Solution
+
+A BNO085 IMU was integrated into the navigation system.
+
+### Result
+
+- Improved heading estimation
+- More accurate turns
+- Reduced accumulated navigation error
+- Better lap consistency
+
+---
+
+## Failure Mode 6 – Changing Lighting Conditions
+
+### Problem
+
+Competition environments may contain varying lighting conditions.
+
+### Observed Issues
+
+- Reduced colour recognition reliability
+- Potential object detection errors
+
+### Root Cause
+
+Camera-based systems are sensitive to illumination changes and reflections.
+
+### Solution
+
+The vision system uses:
+
+- HSV colour space processing
+- Adjustable thresholds
+- Extensive testing under different lighting conditions
+
+### Result
+
+- Improved robustness
+- More reliable obstacle detection
+- Better overall navigation performance
+
+---
+
+## Failure Mode 7 – Sensor Cable Failure
+
+### Problem
+
+Loose or damaged sensor connections can lead to communication errors.
+
+### Potential Impact
+
+- Loss of distance measurements
+- Reduced navigation performance
+
+### Solution
+
+The robot uses Qwiic/STEMMA QT connector systems and flexible cables designed for repeated use.
+
+### Result
+
+- Improved connection reliability
 - Easier maintenance
+- Faster component replacement
 
 ---
 
-## Final Version
+## Failure Mode 8 – Battery Voltage Drop
 
-The final robot combines:
+### Problem
 
-- Reliable steering
-- Stable power system
-- Robust sensor integration
-- Accurate navigation
+Battery voltage decreases during operation.
 
----
+### Potential Impact
 
-# Bill of Materials
+- Reduced motor speed
+- Inconsistent robot behaviour
 
-| Component | Quantity |
-|------------|------------|
-| Arduino GIGA R1 WiFi | 1 |
-| Adafruit BNO085 IMU | 1 |
-| Arducam BO462 Camera | 1 |
-| VL53L4CX ToF Sensor | 2 |
-| MG90S Servo | 1 |
-| DFRobot 155RPM Geared Motor | 1 |
-| 14500 Li-Ion Batteries | 4 |
-| Custom 3D Printed Battery Holder | 1 |
-| Qwiic/STEMMA QT Cables | 4 |
-| Power Switches | Multiple |
+### Solution
+
+A closed-loop PID speed controller continuously adjusts motor power based on encoder feedback.
+
+### Result
+
+- Constant vehicle speed
+- Improved repeatability
+- Consistent performance throughout a run
 
 ---
 
-# Repository Structure
+## Engineering Conclusion
 
-```text
-Future-Engineers_2026
-│
-├── README.md
-├── CAD
-│   ├── Fusion360
-│   ├── STL
-│   └── Technical Drawings
-│
-├── Electronics
-│   ├── Wiring Diagram
-│   ├── Schematics
-│   └── BOM
-│
-├── Software
-│   ├── Arduino
-│   ├── Vision
-│   └── Documentation
-│
-├── Testing
-│   ├── Mechanical Tests
-│   ├── Sensor Tests
-│   └── Challenge Results
-│
-├── Photos
-│
-├── Videos
-│
-└── Engineering Journal
-```
+The development process revealed several hardware and software weaknesses that were systematically addressed through testing and iteration.
 
+Each identified failure mode resulted in a design improvement that increased:
+
+- Reliability
+- Repeatability
+- Maintainability
+- Competition readiness
+
+This iterative engineering process was a key factor in the development of the final robot.   
+
+
+
+The national menu of Switzerland is fondue. While usually fondue is made from cheese, the team is enjoying a robot fondue 😎🤪
 ---
-
-# Future Improvements
-
-Potential future developments:
-
-- Sensor fusion enhancements
-- Improved path planning
-- Advanced obstacle classification
-- Additional autonomous behaviours
-
----
-
-# Conclusion
-
-The final robot is the result of a continuous engineering process involving testing, evaluation and iterative improvement.
-
-Throughout development, reliability was prioritised over theoretical performance. This resulted in a robust and maintainable robot capable of consistently completing the Future Engineers challenges.
-
-The project demonstrates the application of engineering principles, autonomous systems design, software development and iterative problem solving in a real-world robotics competition environment.
+![Team funny](Photos/Funny-team-photo.JPG)
