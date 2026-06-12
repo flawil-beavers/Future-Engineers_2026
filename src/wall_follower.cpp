@@ -22,6 +22,8 @@
 
 extern long encoder_pos;
 extern float current_distance;
+extern void sensors_set_tof_timing_budget(uint32_t budget_us);
+extern uint32_t sensors_initial_tof_timing_budget;
 
 // ==========================================
 // STATE VARIABLES
@@ -52,10 +54,11 @@ float gf_start_distance = 0;
 int gf_completed_rounds = 0;
 
 // Speed parameters
-float gf_normal_speed = 400.0;        // Default normal speed (mm/s)
+float gf_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the maximal speed without stalling on the 50:1 motor
 
 // Internal logic flags
 bool gf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
+bool gf_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
 
 // PD Controller
 float gf_pd_kp = 0.5;                 // Proportional gain
@@ -127,6 +130,15 @@ void state_idle()
  */
 void state_following()
 {
+  // 0. Dynamic sensor configuration: increase range/sensitivity when side is unknown
+  if (gf_following_wall == SIDE_UNKNOWN && !gf_long_range_active) {
+    sensors_set_tof_timing_budget(300000); // 300ms for long-range discovery
+    gf_long_range_active = true;
+  } else if (gf_following_wall != SIDE_UNKNOWN && gf_long_range_active) {
+    sensors_set_tof_timing_budget(sensors_initial_tof_timing_budget); // Restore initial value
+    gf_long_range_active = false;
+  }
+
   // 1. Primary: Gyro Heading Control
   float gyro_error = get_angle() - gf_gyro_target;
   float gyro_derivative = (gyro_error - gf_last_gyro_error) / last_loop_time;
@@ -143,25 +155,34 @@ void state_following()
    * If the wall disappears (reading exceeds margin), it indicates a corner.
    * The robot will increment its turn count and transition to GF_TURNING.
    */
-  if (gf_start_distance + 300 < get_distance() && current_wall_distance > gf_wall_margin && current_wall_distance > 0)
+  float wall_margin = gf_long_range_active ? 1500 : gf_wall_margin;
+  if (gf_start_distance + 300 < get_distance() && current_wall_distance > wall_margin && current_wall_distance > 0)
   {
     if (gf_following_wall == SIDE_UNKNOWN)
     {
       // Searching for initial direction
       float dist_left = get_tof_distance(TOF_LEFT);
       float dist_right = get_tof_distance(TOF_RIGHT);
-      if (dist_left > gf_wall_margin && dist_left > 0)
+      if (dist_left > wall_margin && dist_left > 0)
       {
         gf_following_wall = SIDE_LEFT;
         gf_turn_angle = 90;
+        Serial.print("Dist Left: ");
+        Serial.println(dist_left);
       }
-      else if (dist_right > gf_wall_margin && dist_right > 0)
+      else if (dist_right > wall_margin && dist_right > 0)
       {
         gf_following_wall = SIDE_RIGHT;
         gf_turn_angle = -90;
+        Serial.print("Dist Right: ");
+        Serial.println(dist_right);
       }
       else
         return;
+
+      // Side determined. Restore budget immediately.
+      sensors_set_tof_timing_budget(sensors_initial_tof_timing_budget);
+      gf_long_range_active = false;
     }
     else
     {
@@ -305,6 +326,7 @@ void gyro_follower_enable()
   gf_last_distance_error = 0;
   gf_last_gyro_error = 0;
   gf_searching_for_wall = false;
+  gf_long_range_active = false;
 
   dc_state = DC_ENABLED;
   servo_disabled = false;
@@ -370,7 +392,10 @@ void gyro_follower_print_debug()
   Serial.print(" | Tof Left: ");
   Serial.print(get_tof_distance(TOF_LEFT), 0);
   Serial.print(" | Tof Right: ");
-  Serial.println(get_tof_distance(TOF_RIGHT), 0);
+  Serial.print(get_tof_distance(TOF_RIGHT), 0);
+  Serial.print(" | long range active: ");
+  Serial.print(gf_long_range_active);
+  Serial.println();
 }
 
 void gyro_follower_set_target_distance(float distance_mm)

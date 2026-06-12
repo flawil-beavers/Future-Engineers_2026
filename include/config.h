@@ -93,8 +93,9 @@
 // ==========================================
 #define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_SHORT
 #define TOF_I2C_CLOCK 400000             // 400kHz I2C clock (standard for VL53L4CX)
-// #define TOF_TIMING_BUDGET_US 200000      // 200ms budget to capture weak signals from black targets at 4m
+#define TOF_TIMING_BUDGET_US 30000      // 200ms budget to capture weak signals from black targets at 4m
 #define TOF_MAX_RELIABLE_DISTANCE_MM 600.0f // Max distance for reliable wall detection (mm)
+#define TOF_MAX_LONG_DISTANCE_MM 4000.0f // Max distance for long-range discovery (mm)
 #define TOF_OUT_OF_RANGE_MM 9999.0f        // Value returned when no object is detected or beyond reliable range (mm)
 #define TOF_MAX_DELTA_MM 100.0f            // Max change allowed between consecutive readings (mm)
 
