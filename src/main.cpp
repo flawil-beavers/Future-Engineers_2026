@@ -17,6 +17,7 @@
 #include "sensors.h"
 #include "serial_handler.h"
 #include "wall_follower.h"
+#include "camera.h"
 
 // ==========================================
 // SETUP - Initialize all subsystems
@@ -30,6 +31,7 @@ void setup()
   system_interface_setup(); // Sets up Enable Switch and Serial
   sensors_setup();
   motor_control_setup();
+  camera_setup();
   gyro_follower_setup();
   
   Serial.println("\n===== INITIALIZATION COMPLETE =====\n");
@@ -61,6 +63,16 @@ void loop()
   // Update distance sensors (needed for all subsystems)
   update_lasers();
   update_gyro();
+
+  // Process camera frames
+  camera_update();
+  CameraResults res = get_camera_results();
+  if (res.red_block.found) {
+    // Logic for red block detection (e.g. steer away or stop)
+  }
+  if (res.green_block.found) {
+    // Logic for green block detection
+  }
 
   // Update wall follower (internal logic handles suppression but allows telemetry)
   gyro_follower_update(system_enabled);

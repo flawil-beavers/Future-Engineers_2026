@@ -1,156 +1,93 @@
-// /*
-//  * This example shows how to capture images from the camera and send them over Web Serial.
-//  *
-//  * There is a companion web app that receives the images and displays them in a canvas.
-//  * It can be found in the "extras" folder of this library.
-//  * The on-board LED lights up while the image is being sent over serial.
-//  *
-//  * Instructions:
-//  * 1. Make sure the correct camera is selected in the #include section below by uncommenting the correct line.
-//  * 2. Upload this sketch to your camera-equipped board.
-//  * 3. Open the web app in a browser (Chrome or Edge) by opening the index.html file
-//  * in the "WebSerialCamera" folder which is located in the "extras" folder.
-//  *
-//  * Initial author: Sebastian Romero @sebromero
-//  */
+#include "camera.h"
+#include "arducam_dvp.h"
+#include "GC2145/gc2145.h"
 
-// #include "arducam_dvp.h"
+// Camera hardware instance
+static GC2145 galaxyCore;
+static Camera cam(galaxyCore);
+static FrameBuffer fb;
+static CameraResults latest_results;
 
-// #ifdef ARDUINO_NICLA_VISION
-//   #include "GC2145/gc2145.h"
-//   GC2145 galaxyCore;
-//   Camera cam(galaxyCore);
-//   #define IMAGE_MODE CAMERA_RGB565
-// #elif defined(ARDUINO_PORTENTA_H7_M7)
-//   // uncomment the correct camera in use
-//   #include "Himax_HM0360/hm0360.h"
-//   HM0360 himax;
-//   // #include "Himax_HM01B0/himax.h"
-//   // HM01B0 himax;
-//   Camera cam(himax);
-//   #define IMAGE_MODE CAMERA_GRAYSCALE
-// #elif defined(ARDUINO_GIGA)
-//   #include "GC2145/gc2145.h"
-//   GC2145 galaxyCore;
-//   Camera cam(galaxyCore);
-//   #define IMAGE_MODE CAMERA_RGB565
-// #else
-// #error "This board is unsupported."
-// #endif
+// Processing constants
+constexpr int WIDTH = 320;
+constexpr int HEIGHT = 240;
+constexpr int COLOR_THRESHOLD = 40; // Sensitivity for color detection
 
-// /*
-// Other buffer instantiation options:
-//   FrameBuffer fb(0x30000000);
-//   FrameBuffer fb(320,240,2);
+void camera_setup() {
+    Serial.println("Initializing GC2145 Camera...");
+    
+    // Using 320x240 RGB565. This resolution covers the full 80 deg DFOV 
+    // by downsampling the sensor array rather than cropping.
+    if (!cam.begin(CAMERA_R320x240, CAMERA_RGB565, 30)) {
+        Serial.println("CRITICAL ERROR: Camera initialization failed!");
+        return;
+    }
 
-// If resolution higher than 320x240 is required, please use external RAM via
-//   #include "SDRAM.h"
-//   FrameBuffer fb(SDRAM_START_ADDRESS);
-//   ...
-//   // and adding in setup()
-//   SDRAM.begin();
-// */
-// constexpr uint16_t CHUNK_SIZE = 512;  // Size of chunks in bytes
-// constexpr uint8_t RESOLUTION  = CAMERA_R320x240; // CAMERA_R160x120
-// constexpr uint8_t CONFIG_SEND_REQUEST = 2;
-// constexpr uint8_t IMAGE_SEND_REQUEST = 1;
+    // Optional: Mirror or flip if the camera is mounted upside down
+    // cam.setHorizontalMirror(true);
+    // cam.setVerticalFlip(true);
 
-// uint8_t START_SEQUENCE[4] = { 0xfa, 0xce, 0xfe, 0xed };
-// uint8_t STOP_SEQUENCE[4] = { 0xda, 0xbb, 0xad, 0x00 };
-// FrameBuffer fb;
+    Serial.println("Camera initialized successfully (Full DFOV active).");
+}
 
-// /**
-//  * Blinks the LED a specified number of times.
-//  * @param ledPin The pin number of the LED.
-//  * @param count The number of times to blink the LED. Default is 0xFFFFFFFF.
-//  */
-// void blinkLED(int ledPin, uint32_t count = 0xFFFFFFFF) {
-//   while (count--) {
-//     digitalWrite(ledPin, LOW);  // turn the LED on (HIGH is the voltage level)
-//     delay(50);                       // wait for a second
-//     digitalWrite(ledPin, HIGH); // turn the LED off by making the voltage LOW
-//     delay(50);                       // wait for a second
-//   }
-// }
+void camera_update() {
+    if (cam.grabFrame(fb, 1000) != 0) {
+        return; // Failed to grab frame
+    }
 
-// void setup() {
-//   pinMode(LED_BUILTIN, OUTPUT);
-//   pinMode(LEDR, OUTPUT);
-//   digitalWrite(LED_BUILTIN, HIGH);
-//   digitalWrite(LEDR, HIGH);
+    uint16_t* buffer = (uint16_t*)fb.getBuffer();
+    
+    // Reset results for this frame
+    latest_results.red_block = {false, 0, 0, 0};
+    latest_results.green_block = {false, 0, 0, 0};
 
-//   // Init the cam QVGA, 30FPS
-//   if (!cam.begin(RESOLUTION, IMAGE_MODE, 30)) {
-//     blinkLED(LEDR);
-//   }
+    long red_x_sum = 0, red_y_sum = 0, red_count = 0;
+    long green_x_sum = 0, green_y_sum = 0, green_count = 0;
 
-//   blinkLED(LED_BUILTIN, 5);
-// }
+    // Simple one-pass scan for color blobs
+    // Note: RGB565 is RRRRRGGGGGGBBBBB
+    for (int y = 0; y < HEIGHT; y += 2) { // Skip lines for performance
+        for (int x = 0; x < WIDTH; x += 2) {
+            uint16_t pixel = buffer[y * WIDTH + x];
+            
+            // Extract components (0-255 scale for easier math)
+            int r = ((pixel >> 11) & 0x1F) << 3;
+            int g = ((pixel >> 5) & 0x3F) << 2;
+            int b = (pixel & 0x1F) << 3;
 
-// /**
-//  * Sends a chunk of data over a serial connection.
-//  *
-//  * @param buffer The buffer containing the data to be sent.
-//  * @param bufferSize The size of the buffer.
-//  */
-// void sendChunk(uint8_t* buffer, size_t bufferSize){
-//   Serial.write(buffer, bufferSize);
-//   Serial.flush();
-//   delay(1); // Optional: Add a small delay to allow the receiver to process the chunk
-// }
+            // Detection Logic
+            // Red: High Red, low Green and Blue
+            if (r > (g + COLOR_THRESHOLD) && r > (b + COLOR_THRESHOLD)) {
+                red_x_sum += x;
+                red_y_sum += y;
+                red_count++;
+            }
+            // Green: High Green, low Red and Blue
+            else if (g > (r + COLOR_THRESHOLD) && g > (b + COLOR_THRESHOLD)) {
+                green_x_sum += x;
+                green_y_sum += y;
+                green_count++;
+            }
+        }
+    }
 
-// /**
-//  * Sends a frame of camera image data over a serial connection.
-//  */
-// void sendFrame(){
-//   // Grab frame and write to serial
-//   if (cam.grabFrame(fb, 3000) == 0) {
-//     byte* buffer = fb.getBuffer();
-//     size_t bufferSize = cam.frameSize();
-//     digitalWrite(LED_BUILTIN, LOW);
+    // Update Red Result
+    if (red_count > 20) { // Minimum pixel count to ignore noise
+        latest_results.red_block.found = true;
+        latest_results.red_block.x = red_x_sum / red_count;
+        latest_results.red_block.y = red_y_sum / red_count;
+        latest_results.red_block.size = red_count;
+    }
 
-//     sendChunk(START_SEQUENCE, sizeof(START_SEQUENCE));
+    // Update Green Result
+    if (green_count > 20) {
+        latest_results.green_block.found = true;
+        latest_results.green_block.x = green_x_sum / green_count;
+        latest_results.green_block.y = green_y_sum / green_count;
+        latest_results.green_block.size = green_count;
+    }
+}
 
-//     // Split buffer into chunks
-//     for(size_t i = 0; i < bufferSize; i += CHUNK_SIZE) {
-//       size_t chunkSize = min(bufferSize - i, CHUNK_SIZE);
-//       sendChunk(buffer + i, chunkSize);
-//     }
-
-//     sendChunk(STOP_SEQUENCE, sizeof(STOP_SEQUENCE));
-
-//     digitalWrite(LED_BUILTIN, HIGH);
-//   } else {
-//     blinkLED(20);
-//   }
-// }
-
-// /**
-//  * Sends the camera configuration over a serial connection.
-//  * This is used to configure the web app to display the image correctly.
-//  */
-// void sendCameraConfig(){
-//   Serial.write(IMAGE_MODE);
-//   Serial.write(RESOLUTION);
-//   Serial.flush();
-//   delay(1);
-// }
-
-// void loop() {
-//   if(!Serial) {
-//     Serial.begin(115200);
-//     while(!Serial);
-//   }
-
-//   if(!Serial.available()) return;
-
-//   byte request = Serial.read();
-
-//   switch(request){
-//     case IMAGE_SEND_REQUEST:
-//       sendFrame();
-//       break;
-//     case CONFIG_SEND_REQUEST:
-//       sendCameraConfig();
-//       break;
-//   }
+CameraResults get_camera_results() {
+    return latest_results;
+}
