@@ -391,6 +391,117 @@ Alternative solutions were considered.
 The camera provides the greatest amount of information and therefore became the primary perception system.
 
 ---
+# Bill of Materials (BOM)
+
+## Electronics
+
+| Component | Quantity | Purpose |
+|------------|------------|------------|
+| Arduino GIGA R1 WiFi | 1 | Main robot controller |
+| Adafruit BNO085 9-DOF IMU | 1 | Orientation and heading estimation |
+| Arducam BO462 Camera | 1 | Wall, obstacle and parking detection |
+| Adafruit VL53L4CX ToF Sensor | 2 | Distance measurement and wall tracking |
+| SparkFun Flexible Qwiic Cable 100mm | 2 | Sensor communication |
+| Pololu Dual MC33926 Motor Driver | 1 | Drive motor control |
+| SVM330-Y Digital Voltmeter | 1 | Battery voltage monitoring |
+| MTS-102 ON-ON Toggle Switch | 4 | Power and subsystem switching |
+
+---
+
+## Drive System
+
+| Component | Quantity | Purpose |
+|------------|------------|------------|
+| DFRobot Micro Metal Geared Motor 155 RPM (100:1) | 1 | Main drive motor |
+| Rear Drive Wheels (43.2 mm diameter) | 2 | Vehicle propulsion |
+| Axles and Bearings | Various | Mechanical transmission |
+
+### Alternative Motor Tested
+
+| Component | Quantity | Result |
+|------------|------------|------------|
+| DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1 | Rejected due to insufficient torque and lower driving consistency |
+
+---
+
+## Steering System
+
+| Component | Quantity | Purpose |
+|------------|------------|------------|
+| TowerPro MG90S Metal Gear Servo | 1 | Front wheel steering |
+
+### Alternative Servo Tested
+
+| Component | Quantity | Result |
+|------------|------------|------------|
+| PDI-1102HB 2g Digital Micro Servo | 1 | Rejected due to insufficient steering torque |
+
+---
+
+## Power System
+
+| Component | Quantity | Purpose |
+|------------|------------|------------|
+| 14500 Li-Ion Battery (3.7V, 750mAh) | 2 | Main power source |
+| Custom 3D Printed Battery Holder | 1 | Secure battery mounting |
+| Battery Wiring Harness | 1 | Power distribution |
+
+### Previous Design
+
+| Component | Quantity | Result |
+|------------|------------|------------|
+| Commercial 2xAA Battery Holder | 2 | Replaced due to poor mechanical reliability |
+
+---
+
+## Mechanical Components
+
+| Component | Quantity | Purpose |
+|------------|------------|------------|
+| Custom 3D Printed Chassis | 1 | Main robot structure |
+| Custom Sensor Mounts | Multiple | Sensor positioning |
+| Custom Battery Holder | 1 | Battery retention |
+| Screws, Nuts and Spacers | Various | Assembly and mounting |
+
+---
+
+## Robot Specifications
+
+| Parameter | Value |
+|------------|------------|
+| Total Weight | 670 g |
+| Wheelbase | 130 mm |
+| Track Width | 100 mm |
+| Wheel Diameter | 43.2 mm |
+| Drive Configuration | Rear-Wheel Drive |
+| Steering Configuration | Front-Wheel Steering |
+
+---
+
+## Cost Overview
+
+| Component | Approximate Cost (CHF) |
+|------------|------------|
+| Arduino GIGA R1 WiFi | 60.90 |
+| BNO085 IMU | 24.95 |
+| VL53L4CX Sensors (2x) | 39.80 |
+| Qwiic Cables | 15.40 |
+| MG90S Servo | 7.90 |
+| DFRobot 155 RPM Motor | 10.90 |
+| 14500 Batteries (4x) | 31.60 |
+| Voltmeter | ~5.00 |
+| Switches | 7.60 |
+| Pololu MC33926 Driver | ~25.00 |
+| Arducam BO462 Camera | ~30.00 |
+| 3D Printed Parts | ~10.00 |
+
+### Estimated Total Cost
+
+**≈ 270–300 CHF**
+
+(The exact total depends on manufacturing costs, spare parts and shipping fees.)
+
+---
 
 # Software Architecture
 
