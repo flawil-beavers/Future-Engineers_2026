@@ -52,6 +52,17 @@ The final robot consists of:
 
 ---
 
+# Assembly
+
+Gather all required materials according to the [**Bill of Materials (BOM)**](#bill-of-materials) and print all necessary **[3D‑Printed‑Parts](./CAD/Car_v71.3mf)**.  
+Use **M3 screws** and **M3nS/M3n nuts** for all mechanical components, and **M2 and M 2.5 screws** with **M2n and M2.5n nuts** for electronic parts.
+
+Start by building the base and then working your way up to the second stage. Always wire all components you add. See the following images for a better understanding:
+
+<!-- Todo: Add images -->
+
+---
+
 # Engineering Process
 
 The development followed a structured engineering workflow.
@@ -563,6 +574,15 @@ GF_STOPPED   -> Triggered after 12 turns (3 laps) are completed.
 The robot detects a corner when the followed wall's distance suddenly exceeds the `gf_wall_margin`. It then increments the `gf_turn_count` and transitions to `GF_TURNING`.
 
 After 12 successful turns, the mission is automatically flagged as complete, and the robot enters `GF_STOPPED`.
+
+---
+
+# Video
+
+Opening Challenge
+
+[![Watch the Opening Challenge](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
+[![YouTube - Opening Challenge](https://img.shields.io/badge/YouTube-▶️%20Opening_Challenge-df3e3e?logo=youtube)](https://youtu.be/7w7cAxLPb28)
 
 ---
 
