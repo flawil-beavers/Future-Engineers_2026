@@ -68,6 +68,27 @@ float get_heading();
 float get_tof_distance(TofSensor sensor);
 
 /**
+ * @brief Get the latest raw distance (before clamping) from a specific ToF sensor
+ * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @return Raw distance in millimeters, or -1.0 if invalid
+ */
+float get_tof_raw_distance(TofSensor sensor);
+
+/**
+ * @brief Get the latest signal rate from a specific ToF sensor.
+ * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @return Signal rate in Mcps, or -1.0 if invalid
+ */
+float get_tof_signal_rate(TofSensor sensor);
+
+/**
+ * @brief Get the latest sigma (measurement uncertainty) from a specific ToF sensor.
+ * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @return Sigma in mm, or -1.0 if invalid
+ */
+float get_tof_sigma(TofSensor sensor);
+
+/**
  * @brief Initialize all sensors
  * Sets up I2C buses, gyro (SPI), and ToF sensors
  * Must be called during setup() before main loop

@@ -24,6 +24,9 @@ extern long encoder_pos;
 extern float current_distance;
 extern void sensors_set_tof_timing_budget(uint32_t budget_us);
 extern uint32_t sensors_initial_tof_timing_budget;
+extern float get_tof_raw_distance(TofSensor sensor);
+extern float get_tof_signal_rate(TofSensor sensor);
+extern float get_tof_sigma(TofSensor sensor);
 
 // ==========================================
 // STATE VARIABLES
@@ -110,6 +113,28 @@ float get_followed_wall_distance()
   return get_followed_wall_distance(gf_following_wall);
 }
 
+void log_tof_diagnostics(const char* reason)
+{
+  float dist_l = get_tof_distance(TOF_LEFT);
+  float dist_r = get_tof_distance(TOF_RIGHT);
+  float raw_l = get_tof_raw_distance(TOF_LEFT);
+  float raw_r = get_tof_raw_distance(TOF_RIGHT);
+  float sig_l = get_tof_signal_rate(TOF_LEFT);
+  float sig_r = get_tof_signal_rate(TOF_RIGHT);
+  float sigma_l = get_tof_sigma(TOF_LEFT);
+  float sigma_r = get_tof_sigma(TOF_RIGHT);
+  float current_deg = get_angle()-gf_start_angle;
+  float distance_since_last_state = current_distance - gf_start_distance;
+
+  Serial.print("[STATE CHANGE] "); Serial.println(reason);
+  Serial.print("  LEFT:  Dist: "); Serial.print(dist_l, 0); Serial.print(" mm (Raw: "); Serial.print(raw_l, 0); 
+  Serial.print(") | Sig: "); Serial.print(sig_l, 2); Serial.print(" | Sigma: "); Serial.println(sigma_l, 2);
+  Serial.print("  RIGHT: Dist: "); Serial.print(dist_r, 0); Serial.print(" mm (Raw: "); Serial.print(raw_r, 0); 
+  Serial.print(") | Sig: "); Serial.print(sig_r, 2); Serial.print(" | Sigma: "); Serial.println(sigma_r, 2);
+  Serial.print("  Current angle: "); Serial.print(current_deg, 1); Serial.println("°");
+  Serial.print("  Distance since last state: "); Serial.print(distance_since_last_state, 0); Serial.println(" mm");
+}
+
 // ==========================================
 // STATE FUNCTIONS
 // ==========================================
@@ -155,8 +180,11 @@ void state_following()
    * If the wall disappears (reading exceeds margin), it indicates a corner.
    * The robot will increment its turn count and transition to GF_TURNING.
    */
+  // Increase blind distance specifically after the first turn to ignore 
+  // potential false gaps or handling specific track geometry.
+  float blind_dist = (gf_turn_count == 1) ? 600.0f : 300.0f;
   float wall_margin = gf_long_range_active ? 1500 : gf_wall_margin;
-  if (gf_start_distance + 300 < get_distance() && current_wall_distance > wall_margin && current_wall_distance > 0)
+  if (gf_start_distance + blind_dist < get_distance() && current_wall_distance > wall_margin && current_wall_distance > 0)
   {
     if (gf_following_wall == SIDE_UNKNOWN)
     {
@@ -192,6 +220,7 @@ void state_following()
     gf_turn_count++;
     gf_completed_rounds = (int)(gf_turn_count / 4);
 
+    log_tof_diagnostics("Corner detected -> TURNING");
     gf_state = GF_TURNING;
     gf_turn_start_angle = get_angle();
     return;
@@ -216,8 +245,9 @@ void state_following()
       dist_pd = gf_pd_kp * dist_error + gf_pd_kd * dist_derivative;
       gf_last_distance_error = dist_error;
     }
-    if (gf_completed_rounds >= 3 && gf_start_distance + 300 < get_distance())
+    if (gf_completed_rounds >= 3 && gf_start_distance + 500 < get_distance())
     {
+      log_tof_diagnostics("Rounds finished -> STOPPED");
       gf_state = GF_STOPPED;
     }
 
@@ -254,6 +284,7 @@ void state_turning()
     gf_last_gyro_error = 0;
     gf_searching_for_wall = true;
     gf_start_distance = get_distance();
+    log_tof_diagnostics("Turn finished -> FOLLOWING");
     gf_state = GF_FOLLOWING;
     set_steering(0);
   }
@@ -274,6 +305,7 @@ void state_stopped()
   Serial.print("Total turns: "); Serial.print(gf_turn_count);
   Serial.print(" | Complete rounds: "); Serial.println(gf_completed_rounds);
   
+  log_tof_diagnostics("Mission complete -> IDLE");
   gf_state = GF_IDLE;
 }
 
@@ -319,6 +351,7 @@ void gyro_follower_enable()
   gf_start_distance = current_distance;
   gf_gyro_target = gf_start_angle;
   
+  log_tof_diagnostics("Manual enable -> FOLLOWING");
   gf_state = GF_FOLLOWING;
   gf_following_wall = SIDE_UNKNOWN;
   gf_turn_count = 0;
@@ -339,6 +372,7 @@ void gyro_follower_enable()
 
 void gyro_follower_disable()
 {
+  log_tof_diagnostics("Manual disable -> IDLE");
   gf_state = GF_IDLE;
   stop();
   set_steering(0);
@@ -370,7 +404,7 @@ void gyro_follower_set_debug(bool enable)
 
 void gyro_follower_print_debug()
 {
-  if (current_time - gf_last_debug_time < 500000)
+  if (current_time - gf_last_debug_time < 200000)
     return;
   gf_last_debug_time = current_time;
 
@@ -395,6 +429,8 @@ void gyro_follower_print_debug()
   Serial.print(get_tof_distance(TOF_RIGHT), 0);
   Serial.print(" | long range active: ");
   Serial.print(gf_long_range_active);
+  Serial.print(" | Distance: ");
+  Serial.print(get_distance(), 0);
   Serial.println();
 }
 

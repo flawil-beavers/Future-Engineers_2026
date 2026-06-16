@@ -17,7 +17,7 @@
 #define SERVO_PIN 4
 #define MOTOR_IN1_PIN 5        // Direction control 1
 #define MOTOR_IN2_PIN 6        // Direction control 2
-#define MOTOR_ENA_PIN 7        // PWM speed control
+#define MOTOR_PWM_PIN 7        // PWM speed control
 
 // ==========================================
 // ENCODER PINS
@@ -73,7 +73,6 @@
 // ==========================================
 // SENSOR UPDATE RATES
 // ==========================================
-#define GYRO_UPDATE_INTERVAL_MS 20  // Update gyro every 20ms
 #define STATUS_PRINT_INTERVAL_US 200000  // Print status every 200ms
 
 // ==========================================

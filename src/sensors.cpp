@@ -31,6 +31,9 @@ static VL53L4CX sensor_right(&Wire2, -1);
 
 // Distance readings in millimeters
 static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
+static float tof_raw_distances[TOF_COUNT] = {-1.0f, -1.0f};
+static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f};
+static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
 
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
@@ -42,11 +45,7 @@ void update_gyro()
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
 
-  if (millis() - last_gyro_read < GYRO_UPDATE_INTERVAL_MS)
-  {
-    return; // Skip if not enough time has passed
-  }
-
+  // The BNO085 INT pin is active low. If HIGH, no data is ready.
   if (digitalRead(BNO085_INT) == HIGH)
   {
     return;
@@ -61,18 +60,19 @@ void update_gyro()
   if (bno.wasReset())
   {
     Serial.println("BNO085 was reset! Reinitializing...");
+    gyro_initialized = false; // Reset local tracking on hardware reset
     delay(10);
-    bno.enableReport(SH2_ROTATION_VECTOR, 50000);
+    bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
     delay(30);
     return; // Drop this frame to let stream stabilize
   }
 
-  // Parse rotation vector if available
+  // Parse Game Rotation Vector (No Magnetometer = No Drift near motors)
   if (has_event)
   {
-    if (sensor_value.sensorId == SH2_ROTATION_VECTOR)
+    if (sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR)
     {
-      sh2_RotationVectorWAcc_t rotationVector = sensor_value.un.rotationVector;
+      sh2_RotationVector_t rotationVector = sensor_value.un.gameRotationVector;
       float r = rotationVector.real;
       float i = rotationVector.i;
       float j = rotationVector.j;
@@ -121,8 +121,13 @@ void update_gyro()
  */
 static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
-  float min_accept_signal = gf_long_range_active ? 0.23f : 0.3f;
-  float max_accept_sigma = gf_long_range_active ? 50.0f : 10.0f;
+  float min_accept_signal = 0.3f;
+  float max_accept_sigma = gf_long_range_active ? 30.0f : 20.0f;
+  float raw_measured_dist = -1.0f;
+  float current_signal_rate = -1.0f;
+  float current_sigma = -1.0f;
+  // float min_accept_signal = gf_long_range_active ? 0.23f : 0.3f;
+  // float max_accept_sigma = gf_long_range_active ? 50.0f : 10.0f;
 
   uint8_t data_ready = 0;
   if (sensor.VL53L4CX_GetMeasurementDataReady(&data_ready) != VL53L4CX_ERROR_NONE || !data_ready)
@@ -132,11 +137,11 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 
   VL53L4CX_MultiRangingData_t ranging_data;
   float measured_distance = TOF_OUT_OF_RANGE_MM; // Default to out of range
+  int best_idx = -1;
   if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
   {
     if (ranging_data.NumberOfObjectsFound > 0)
     {
-      int best_idx = -1;
       int16_t largest_valid_dist = -1;
 
       for (int i = 0; i < ranging_data.NumberOfObjectsFound; i++)
@@ -164,11 +169,21 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
           // Serial.print(" ");
           // Serial.println(sigma);
           
+          // Always update telemetry variables for valid hardware status objects.
+          // This ensures diagnostics reflect the current frame even if filters reject it for control.
+          int s_idx = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+          tof_signal_rates[s_idx] = signal;
+          tof_sigmas[s_idx] = sigma;
+          tof_raw_distances[s_idx] = (float)dist;
+
           if (signal > min_accept_signal && sigma < max_accept_sigma)
           {
             if (dist > largest_valid_dist)
             {
               largest_valid_dist = dist;
+              raw_measured_dist = (float)dist;
+              current_signal_rate = signal;
+              current_sigma = sigma;
               best_idx = i;
             }
           }
@@ -207,6 +222,19 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The wall_follower logic will still treat distances > 600mm as an edge/gap.
   out_distance = measured_distance;
+
+  // Update signal rate and sigma only if a valid measurement was found
+  if (best_idx != -1) {
+    if (&sensor == &sensor_left) {
+      tof_signal_rates[TOF_LEFT] = current_signal_rate;
+      tof_sigmas[TOF_LEFT] = current_sigma;
+      tof_raw_distances[TOF_LEFT] = raw_measured_dist;
+    } else if (&sensor == &sensor_right) {
+      tof_signal_rates[TOF_RIGHT] = current_signal_rate;
+      tof_sigmas[TOF_RIGHT] = current_sigma;
+      tof_raw_distances[TOF_RIGHT] = raw_measured_dist;
+    }
+  }
 }
 
 void update_lasers()
@@ -268,6 +296,33 @@ float get_tof_distance(TofSensor sensor)
   if (sensor >= 0 && sensor < TOF_COUNT)
   {
     return tof_distances[sensor];
+  }
+  return -1.0f;
+}
+
+float get_tof_raw_distance(TofSensor sensor)
+{
+  if (sensor >= 0 && sensor < TOF_COUNT)
+  {
+    return tof_raw_distances[sensor];
+  }
+  return -1.0f;
+}
+
+float get_tof_signal_rate(TofSensor sensor)
+{
+  if (sensor >= 0 && sensor < TOF_COUNT)
+  {
+    return tof_signal_rates[sensor];
+  }
+  return -1.0f;
+}
+
+float get_tof_sigma(TofSensor sensor)
+{
+  if (sensor >= 0 && sensor < TOF_COUNT)
+  {
+    return tof_sigmas[sensor];
   }
   return -1.0f;
 }
@@ -340,10 +395,11 @@ void sensors_setup()
   }
   Serial.println("BNO085 Found on SPI!");
 
-  // Enable rotation vector reports
-  if (!bno.enableReport(SH2_ROTATION_VECTOR, 50000))
+  // Enable Game Rotation Vector (ignores magnetometer interference from motors)
+  // Frequency set to 10ms (100Hz) for better tracking during fast turns
+  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000))
   {
-    Serial.println("ERROR: Failed to enable rotation vector");
+    Serial.println("ERROR: Failed to enable game rotation vector");
     while (1)
     {
       delay(10);

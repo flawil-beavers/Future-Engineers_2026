@@ -124,7 +124,7 @@ void set_dc(float dc)
   }
 
   dc_out = fabs(dc);
-  analogWrite(MOTOR_ENA_PIN, dc_out);
+  analogWrite(MOTOR_PWM_PIN, dc_out);
 
   if (dc > 0)
   {
@@ -392,7 +392,7 @@ void motor_control_setup()
   // Configure motor control pins
   pinMode(MOTOR_IN1_PIN, OUTPUT);
   pinMode(MOTOR_IN2_PIN, OUTPUT);
-  pinMode(MOTOR_ENA_PIN, OUTPUT);
+  pinMode(MOTOR_PWM_PIN, OUTPUT);
 
   // Configure servo
   servo.attach(SERVO_PIN);
@@ -404,7 +404,7 @@ void motor_control_setup()
   // Initialize motor outputs to off
   digitalWrite(MOTOR_IN1_PIN, LOW);
   digitalWrite(MOTOR_IN2_PIN, LOW);
-  analogWrite(MOTOR_ENA_PIN, 0);
+  analogWrite(MOTOR_PWM_PIN, 0);
 
   // Attach encoder interrupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), update_encoder_a, CHANGE);
