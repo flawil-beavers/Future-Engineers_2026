@@ -502,83 +502,67 @@ The camera provides the greatest amount of information and therefore became the 
 (The exact total depends on manufacturing costs, spare parts and shipping fees.)
 
 ---
-
 # Software Architecture
 
-The software is divided into independent modules.
+The software is built on a modular, non-blocking architecture designed for real-time responsiveness on the Arduino GIGA R1.
 
 ```text
 Main Controller
+System Entry (main.cpp)
 │
-├── Camera Processing
-├── Obstacle Detection
-├── Wall Detection
-├── Distance Sensor Processing
-├── IMU Processing
-├── Navigation
-├── Steering Control
-├── Parking Logic
-└── Communication
+├── Sensors (BNO085 Gyro via SPI, Dual VL53L4CX ToF via I2C)
+├── Motor Control (DC Motor PID, Servo Mapping)
+├── Wall Follower (Hybrid Navigation State Machine)
+└── Serial Handler (Telemetry and Command Parsing)
 ```
 
-This modular structure simplifies development and debugging.
+### Key Implementation Details
+
+- **Asynchronous Polling:** Sensors are polled based on hardware readiness flags (using the `BNO085_INT` pin) to prevent CPU stalling.
+- **Slew Rate Limiting:** Distance readings use a delta-limit filter (`TOF_MAX_DELTA_MM`) to reject outlier "ghost" readings.
+- **Dynamic Timing Budgets:** The ToF sensors automatically switch to a high-budget "Discovery Mode" (300 ms) when searching for walls, then return to high-speed mode (30 ms) for active following.
 
 ---
 
 # Navigation Strategy
 
-The robot continuously performs the following loop:
+To solve the WRO Open Challenge (3 laps), we implement a **Hybrid Gyro-Stabilized Wall Following** strategy. This decouples heading stability from lateral distance maintenance.
 
-1. Read sensors
-2. Process camera image
-3. Detect obstacles
-4. Estimate position
-5. Calculate steering correction
-6. Update motor commands
-7. Repeat
+### 1. Geometric Correction (Incidence Compensation)
 
-This process runs continuously throughout the challenge.
+Unlike basic robots that use raw ToF data, our system calculates the **perpendicular distance** to the wall. Using the gyro heading relative to the target, we apply a cosine correction:
+
+$$
+d_{perp} = d_{raw} \cdot \cos(\theta_{error})
+$$
+
+This prevents "phantom distance" increases when the robot is tilted relative to the wall, which is critical for stable PD control.
+
+### 2. Combined Control Law
+
+The steering output is the sum of two PD (Proportional-Derivative) controllers:
+
+- **Primary Control:** Gyroscope-based PD maintains a global grid heading (0°, 90°, 180°, 270°).
+- **Secondary Control:** ToF-based PD nudges the robot to maintain exactly 300 mm from the followed wall.
 
 ---
 
 # State Machine
 
+Our navigation logic is managed by a robust state machine (`GyroFollowerState`):
+
 ```text
-INITIALIZATION
-      ↓
-DIRECTION DETECTION
-      ↓
-WALL FOLLOWING
-      ↓
-OBSTACLE DETECTION
-      ↓
-OBSTACLE AVOIDANCE
-      ↓
-LAP COUNTING
-      ↓
-PARKING
-      ↓
-STOP
+GF_IDLE      -> System waiting for start switch or serial command.
+GF_FOLLOWING -> Combined Gyro + ToF PD control. Tracks turns and laps.
+GF_TURNING   -> Executes 90° pivot turns based on gyro integration.
+GF_STOPPED   -> Triggered after 12 turns (3 laps) are completed.
 ```
 
-The state machine ensures predictable and structured robot behaviour.
+### Corner Detection Logic
 
----
+The robot detects a corner when the followed wall's distance suddenly exceeds the `gf_wall_margin`. It then increments the `gf_turn_count` and transitions to `GF_TURNING`.
 
-# Obstacle Detection Strategy
-
-The robot combines camera data and distance sensor measurements.
-
-Processing pipeline:
-
-1. Capture image
-2. Colour filtering
-3. Contour extraction
-4. Object classification
-5. Position estimation
-6. Steering calculation
-
-This approach allows reliable obstacle detection under varying conditions.
+After 12 successful turns, the mission is automatically flagged as complete, and the robot enters `GF_STOPPED`.
 
 ---
 
