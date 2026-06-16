@@ -24,9 +24,11 @@ enum TofSensor {
 // ==========================================
 
 /**
- * @brief Update gyro heading angle
- * Reads latest rotation vector and calculates yaw angle in degrees
- * Should be called regularly (every ~20ms)
+ * @brief Polls the BNO085 IMU for rotation data and updates the global heading.
+ * 
+ * Uses the Game Rotation Vector to provide drift-free yaw measurements.
+ * Handles sensor resets automatically and calculates cumulative degrees to 
+ * account for multi-turn rotations.
  */
 void update_gyro();
 

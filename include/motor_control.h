@@ -69,7 +69,7 @@ extern bool system_enabled;           // Whether system is currently running
 
 /**
  * @brief Set the steering angle of the servo
- * @param angle Angle in degrees (-60 to +60 degrees from center)
+ * @param angle Target steering angle in degrees (-60 to +60 relative to SERVO_CENTER)
  */
 void steer(int angle);
 
@@ -87,7 +87,7 @@ void set_dc(float dc);
 
 /**
  * @brief Calculate distance from encoder position
- * @param encoder_pos Encoder position in counts (optional, defaults to current encoder position)
+ * @param encoder_pos Encoder position in counts (defaults to global encoder_pos)
  * @return Distance in millimeters
  */
 float get_distance(long encoder_pos = encoder_pos);
@@ -119,13 +119,13 @@ void set_acceleration(int acceleration);
 
 /**
  * @brief Stop motors and optionally hold position
- * @param hold If true, hold position; if false, disable motors
+ * @param hold If true, transition to DC_HOLDING; if false, transition to DC_DISABLED
  */
 void stop(bool hold = false);
 
 /**
  * @brief Set motor speed
- * @param speed Speed in mm/s (or use last speed if not provided)
+ * @param speed Target speed in mm/s. Use -1 to resume using the last recorded speed.
  */
 void set_speed(int speed = -1);
 

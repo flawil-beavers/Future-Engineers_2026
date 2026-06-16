@@ -22,6 +22,10 @@
 // SETUP - Initialize all subsystems
 // ==========================================
 
+/**
+ * @brief System entry point. Initializes hardware and starts the 
+ * control loop interface.
+ */
 void setup()
 {
   Serial.println("\n===== ROBOT INITIALIZATION START =====\n");
@@ -44,6 +48,10 @@ void setup()
 // MAIN LOOP - Coordinate all subsystems
 // ==========================================
 
+/**
+ * @brief Continuous execution loop. Manages sensor updates, 
+ * state machines, and low-level motor control.
+ */
 void loop()
 {
   // Update timing and distances

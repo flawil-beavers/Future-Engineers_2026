@@ -113,6 +113,11 @@ float get_followed_wall_distance()
   return get_followed_wall_distance(gf_following_wall);
 }
 
+/**
+ * @brief Logs detailed ToF sensor data and robot state to Serial.
+ * 
+ * @param reason A string describing the trigger for the log (e.g., state change)
+ */
 void log_tof_diagnostics(const char* reason)
 {
   float dist_l = get_tof_distance(TOF_LEFT);
@@ -139,6 +144,9 @@ void log_tof_diagnostics(const char* reason)
 // STATE FUNCTIONS
 // ==========================================
 
+/**
+ * @brief Idle state. Robot is stationary and waiting for activation.
+ */
 void state_idle()
 {
   // Do nothing

@@ -356,6 +356,13 @@ void handle_enable_switch()
 // ENCODER INTERRUPT HANDLERS
 // ==========================================
 
+/**
+ * @brief Internal helper to update encoder position and direction.
+ * 
+ * Compares the state of both encoder phases to determine the rotation direction.
+ * 
+ * @param encoderPin The pin that triggered the interrupt
+ */
 void update_encoder(int encoderPin)
 {
   int a = digitalRead(ENCODER_PIN_A);
@@ -373,11 +380,17 @@ void update_encoder(int encoderPin)
   encoder_pos += encoder_dir;
 }
 
+/**
+ * @brief ISR for Encoder Phase A transitions.
+ */
 void update_encoder_a()
 {
   update_encoder(ENCODER_PIN_A);
 }
 
+/**
+ * @brief ISR for Encoder Phase B transitions.
+ */
 void update_encoder_b()
 {
   update_encoder(ENCODER_PIN_B);
