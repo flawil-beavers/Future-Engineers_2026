@@ -521,7 +521,6 @@ After 12 successful turns, the mission is automatically flagged as complete, and
 Opening Challenge
 
 [![Watch the Opening Challenge](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
-[![YouTube - Opening Challenge](https://img.shields.io/badge/YouTube-▶️%20Opening_Challenge-df3e3e?logo=youtube)](https://youtu.be/7w7cAxLPb28)
 
 # Robot Photos
 
