@@ -400,7 +400,9 @@ Alternative solutions were considered.
 | Camera | Rich information | Higher processing requirements |
 
 The camera provides the greatest amount of information and therefore became the primary perception system.
-
+---
+# Wiring Diagram
+![Wiring Diagram](Electronics/Wiring_Diagram_FE2026.png)
 ---
 # Bill of Materials (BOM)
 
@@ -415,7 +417,7 @@ The camera provides the greatest amount of information and therefore became the 
 | SparkFun Flexible Qwiic Cable 100mm | 2 | Sensor communication |
 | Pololu Dual MC33926 Motor Driver | 1 | Drive motor control |
 | SVM330-Y Digital Voltmeter | 1 | Battery voltage monitoring |
-| MTS-102 ON-ON Toggle Switch | 4 | Power and subsystem switching |
+| MTS-102 ON-ON Toggle Switch | 2 | Power and subsystem switching |
 
 ---
 
@@ -471,7 +473,7 @@ The camera provides the greatest amount of information and therefore became the 
 |------------|------------|------------|
 | Custom 3D Printed Chassis | 1 | Main robot structure |
 | Custom Sensor Mounts | Multiple | Sensor positioning |
-| Custom Battery Holder | 1 | Battery retention |
+| Custom Battery Holder | 2 | Battery retention |
 | Screws, Nuts and Spacers | Various | Assembly and mounting |
 
 ---
