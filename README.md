@@ -9,15 +9,25 @@ This documentation presents our autonomous vehicle, including its mechanical des
 ---
 
 # Team Members
+<table>
+<tr>
+<td valign="top">
 
-| Team |
-|--------|
-| Philipp Kündig |
-| Damian Hardegger |
+<b>Team Members</b>
 
-|Coach|
-|--------|
-| Stefan Gemperli |
+Philipp Kündig <br>
+Damian Hardegger
+
+</td>
+<td valign="top">
+
+<b>Coach</b>
+
+Stefan Gemperli
+
+</td>
+</tr>
+</table>
 
 <br>
 
