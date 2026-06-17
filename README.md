@@ -509,138 +509,78 @@ Opening Challenge
 
 ---
 
-# Engineering Trade-Offs
-
-## Speed vs Reliability
-
-A faster motor could theoretically improve lap times.
-
-Testing showed:
-
-Advantages:
-
-- Higher speed
-
-Disadvantages:
-
-- Lower torque
-- Less stable driving
-- Worse obstacle avoidance
-
-Final decision:
-
-Use the slower but stronger motor.
-
----
-
-## Small Servo vs MG90S
-
-Advantages of small servo:
-
-- Lower weight
-
-Disadvantages:
-
-- Insufficient steering force
-
-Final decision:
-
-Use MG90S.
-
-Reliability was prioritised over minimal weight savings.
-
----
-
-## Soldered Sensors vs Connector-Based Sensors
-
-Advantages of soldered sensors:
-
-- Lower cost
-
-Disadvantages:
-
-- Difficult replacement
-- Higher risk during assembly
-
-Final decision:
-
-Connector-based VL53L4CX modules.
-
-Maintenance and reliability improved significantly.
-
----
-
 # Failure Mode Analysis
 
-## Failure Mode 1 – Steering Servo Too Weak
+## Failure Mode 1 – Insufficient Steering Servo Torque
 
 ### Problem
 
-The initial prototype used a very small micro servo for steering.
+The first steering prototype used a very small micro servo. While it was lightweight and compact, it struggled to control the steering mechanism reliably during driving.
 
 ### Observed Issues
 
-- Inconsistent steering angles
-- Reduced steering precision
-- Difficulty maintaining wheel position under load
+* Inconsistent steering angles
+* Reduced steering precision
+* Steering position changed under load
 
 ### Root Cause
 
-The servo did not provide enough torque to reliably control the steering mechanism during dynamic driving situations.
+The servo did not provide enough torque for the steering system, especially during quick direction changes and when friction forces acted on the wheels.
 
 ### Solution
 
-The servo was replaced with a TowerPro MG90S metal gear servo.
+Several servos were evaluated and compared. The original servo was replaced with a TowerPro MG90S metal gear servo, which provided significantly higher torque and a more robust gear train.
 
 ### Result
 
-- Increased steering torque
-- Improved steering precision
-- Better repeatability
-- Higher mechanical durability
+* More accurate steering
+* Improved repeatability
+* Better control during turns
+* Increased mechanical durability
 
 ---
 
-## Failure Mode 2 – Battery Holder Instability
+## Failure Mode 2 – Battery Holder Integration
 
 ### Problem
 
-The original commercial battery holder allowed slight battery movement during operation.
+The original design used a commercial battery holder. Integrating it into the chassis proved difficult because it occupied valuable space underneath the vehicle and limited the placement options.
 
 ### Observed Issues
 
-- Reduced mechanical stability
-- Potential intermittent electrical contact
-- Difficult maintenance
+* Inefficient use of space
+* Less favourable weight distribution
+* Batteries were more difficult to access
 
 ### Root Cause
 
-The battery holder was not specifically designed for the robot's vibration and acceleration loads.
+The commercial holder was not designed for the geometry and packaging requirements of the robot.
 
 ### Solution
 
-The team designed and manufactured a custom 3D-printed battery holder.
+The team designed and manufactured two custom 3D-printed battery holders. This allowed one battery to be mounted on each side of the underside of the chassis.
 
 ### Result
 
-- Secure battery mounting
-- Improved electrical reliability
-- Better chassis integration
-- Easier battery replacement
+* Better use of available space
+* Improved weight distribution
+* Lower centre of gravity
+* Faster battery replacement
+* Cleaner chassis integration
 
 ---
 
-## Failure Mode 3 – Damaged ToF Sensors During Assembly
+## Failure Mode 3 – ToF Sensor Damage During Assembly
 
 ### Problem
 
-The original VL53L3CX sensors were damaged during soldering.
+The initial design used VL53L3CX Time-of-Flight sensors that required direct soldering.
 
 ### Observed Issues
 
-- Sensor failures
-- Increased replacement costs
-- Additional development delays
+* One sensor was damaged during assembly
+* Sensor replacement was time-consuming
+* Maintenance became more difficult
 
 ### Root Cause
 
@@ -648,67 +588,128 @@ The small sensor boards required delicate soldering work, increasing the risk of
 
 ### Solution
 
-The design was changed to Adafruit VL53L4CX modules using Qwiic/STEMMA QT connectors.
+The sensors were replaced with Adafruit VL53L4CX modules. These offered improved range, stronger signal performance and support for Qwiic/STEMMA QT connectors.
 
 ### Result
 
-- No soldering required
-- Fast sensor replacement
-- Reduced assembly risk
-- Improved maintainability
+* No direct soldering required
+* Faster replacement process
+* Improved reliability
+* Cleaner wiring
+* Easier maintenance
 
 ---
 
-## Failure Mode 4 – Drive Motor Torque Too Low
+## Failure Mode 4 – Drive Motor Selection
 
 ### Problem
 
-A 310 RPM geared motor was initially tested.
+Two different drive motors were evaluated during development.
 
 ### Observed Issues
 
-- Reduced acceleration
-- Poor performance under load
-- Less reliable obstacle avoidance
-- Inconsistent driving behaviour
+The 310 RPM motor provided higher speed but showed less consistent driving behaviour.
 
 ### Root Cause
 
-The motor prioritised speed over torque and was unable to provide sufficient force for reliable autonomous navigation.
+The motor prioritised speed over torque, making precise speed control and obstacle avoidance more difficult.
 
 ### Solution
 
-The 155 RPM motor with a 100:1 gearbox was selected.
+Both motors were tested on the vehicle under realistic conditions. After comparing acceleration, controllability and consistency, the 155 RPM motor with a 100:1 gearbox was selected.
 
 ### Result
 
-- Twice the available torque
-- Improved acceleration
-- More consistent driving behaviour
-- Better obstacle avoidance performance
+* Higher available torque
+* Improved acceleration
+* Better speed control
+* More reliable autonomous driving
 
 ---
 
-## Failure Mode 7 – Sensor Cable Failure
+## Failure Mode 5 – Magnetometer Drift
 
 ### Problem
 
-Loose or damaged sensor connections can lead to communication errors.
+The BNO085 magnetometer was initially considered for heading estimation.
 
-### Potential Impact
+### Observed Issues
 
-- Loss of distance measurements
-- Reduced navigation performance
+* Unstable heading measurements
+* Significant drift over time
+* Inconsistent orientation readings
+
+### Root Cause
+
+Magnetic interference from the motor, wiring and surrounding electronics affected the magnetometer measurements.
 
 ### Solution
 
-The robot uses Qwiic/STEMMA QT connector systems and flexible cables designed for repeated use.
+The magnetometer was removed from the navigation system. Instead, the robot relies primarily on the gyroscope to measure and verify turning angles.
 
 ### Result
 
-- Improved connection reliability
-- Easier maintenance
-- Faster component replacement
+* More stable orientation measurements
+* Improved turning accuracy
+* Greater repeatability
+
+---
+
+## Failure Mode 6 – Sensor Connection Reliability
+
+### Problem
+
+Poor electrical connections, damaged cables or weak solder joints can cause intermittent sensor failures.
+
+### Observed Issues
+
+* Sporadic communication errors
+* Missing sensor readings
+* Difficult troubleshooting
+
+### Root Cause
+
+Connection problems often appear similar to software bugs. As a result, debugging can take a long time because the software is usually investigated before a hardware fault is discovered.
+
+### Solution
+
+The team reduced the number of soldered connections wherever possible and adopted Qwiic/STEMMA QT connectors for sensor integration.
+
+### Result
+
+* Improved reliability
+* Faster troubleshooting
+* Easier maintenance
+* Reduced risk of wiring faults
+
+---
+
+## Failure Mode 7 – Reduced ToF Performance on Black Surfaces
+
+### Problem
+
+The competition field contains black walls and markings that absorb a large portion of the infrared light emitted by the ToF sensors.
+
+### Observed Issues
+
+* Reduced signal strength
+* Less reliable measurements at longer distances
+* Occasional invalid readings
+
+### Root Cause
+
+The VL53L4CX measures distance using reflected infrared light. Black surfaces reflect significantly less infrared light than bright surfaces, meaning fewer photons return to the sensor.
+
+### Solution
+
+The measurement timing budget was increased, reducing the sampling rate and allowing the sensor to collect more reflected photons per measurement. Additional software filtering was implemented to reject measurements with poor signal quality.
+
+### Result
+
+* Improved measurement stability
+* Better performance on dark surfaces
+* Reliable wall detection during normal operation
+* Consistent navigation close to walls
 
 ---
 
@@ -716,42 +717,34 @@ The robot uses Qwiic/STEMMA QT connector systems and flexible cables designed fo
 
 ### Problem
 
-Battery voltage decreases during operation.
+Battery voltage decreases during operation as the batteries discharge.
 
-### Potential Impact
+### Observed Issues
 
-- Reduced motor speed
-- Inconsistent robot behaviour
+* Reduced motor performance
+* Changes in vehicle speed
+* Potential loss of repeatability
+
+### Root Cause
+
+A lower battery voltage reduces the power available to the drive motor.
 
 ### Solution
 
-A closed-loop PID speed controller continuously adjusts motor power based on encoder feedback.
+A closed-loop PID speed controller continuously adjusts the motor output using encoder feedback.
 
 ### Result
 
-- Constant vehicle speed
-- Improved repeatability
-- Consistent performance throughout a run
+* Constant vehicle speed
+* Improved repeatability
+* Consistent behaviour throughout a run
 
-<!-- Todo: Add ToF not working reliable on black walls -->
 
----
+## Conclusion
 
-## Engineering Conclusion
-<!-- Todo: probably delete -->
+The project showed that the best results come from consistent testing, evaluation, and adjustment. Hardware and software issues were identified and resolved step by step, making the vehicle more stable, reliable, and easier to operate.
 
-The development process revealed several hardware and software weaknesses that were systematically addressed through testing and iteration.
-
-Each identified failure mode resulted in a design improvement that increased:
-
-- Reliability
-- Repeatability
-- Maintainability
-- Competition readiness
-
-This iterative engineering process was a key factor in the development of the final robot.
-
-The national menu of Switzerland is fondue. While usually fondue is made from cheese, the team is enjoying a robot fondue 😎🤪
+As a result, the team was able to develop a ready-to-drive solution that responds better to changing conditions with controlled motor management and a robust sensor setup. This work not only improved performance, but also increased repeatability and competition readiness of the system.
 ---
 
 ![Team funny](Photos/Funny-team-photo.JPG)
