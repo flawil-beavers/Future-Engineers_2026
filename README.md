@@ -2,24 +2,24 @@
 
 ## Team Introduction
 
-We are the **Flawil Beavers**, a team from Switzerland participating in the **World Robot Olympiad (WRO) Future Engineers 2026** category.
+We are the **Flawil Beavers**, a team from Switzerland competing in the WRO Future Engineers 2026 category.
 
-Our goal is to design, build and program a fully autonomous vehicle capable of completing all Future Engineers challenges in a reliable, repeatable and efficient manner.
-
-Throughout the development process we focused on engineering principles, iterative improvement, system reliability and maintainability. Every subsystem was tested individually and as part of the complete robot to ensure consistent performance under competition conditions.
+This documentation presents our autonomous vehicle, including its mechanical design, electronics and software. Our goal was to build a reliable and efficient robot capable of successfully completing the competition challenges.
 
 ---
 
 # Team Members
 
-| Name | Occupation |
-|--------|--------|
-| Philipp Kündig | Student ETH |
-| Damian Hardegger | Electrician |
+| Team |
+|--------|
+| Philipp Kündig |
+| Damian Hardegger |
 
 
-Coach: 
-- Stefan Gemperli
+|Coach|
+|--------|
+| Stefan Gemperli |
+
 <br>
 <br>   
 
