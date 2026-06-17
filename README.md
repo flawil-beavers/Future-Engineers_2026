@@ -9,6 +9,7 @@ This documentation presents our autonomous vehicle, including its mechanical des
 ---
 
 # Team Members
+
 <table>
 <tr>
 <td valign="top">
@@ -34,7 +35,6 @@ Stefan Gemperli
 ![Team Photo](Photos/Team-photo.JPG)
 
 ---
-
 
 # Table of Contents
 
@@ -84,8 +84,6 @@ The chassis was designed to provide:
 - Efficient component placement: Used up almost all space available in our robot
 - Easy 3D printability: All printed parts are printable without any supports necessary
 
-
-
 ### Steering
 
 We used Ackermann steering to enable the robot to turn without the steering wheels slipping. As visible in the following image, the steering was created by drawing a line from the turning point of the Steering Arm to the middle of the back axis.
@@ -98,8 +96,6 @@ One major difficulty in designing the steering was calculating the exact spacing
 ---
 
 ## Battery System
-
-
 
 ### Custom Battery Holders
 
@@ -210,9 +206,7 @@ The robot is powered by four 14500 Li-Ion cells and distributes power to all ele
 | LM2596S-5 DC-DC Converter | 5 mA |
 | TXS0104E Logic Level Converter | 2 mA |
 | Voltage Display | 20 mA |
-|---------|------------|
 | **Total** | **1002 mA** |
-
 
 ### Peak Current Consumption
 
@@ -223,17 +217,15 @@ During acceleration, steering corrections and obstacle avoidance, the motor and 
 | Drive Motor | 800 mA |
 | MG90S Servo | 700 mA |
 | Remaining Electronics | 472 mA |
-
-Estimated peak current:
-
-```text
-≈ 1972 mA
-≈ 2.0 A
-```
+| **Estimated peak current** | **≈ 2.0 A** |
 
 ---
 
 # Electronics Architecture
+
+<!-- Todo: Explain each electronic component in more detail:
+            - Add section about why logic level convert is used
+            - Add section about why we use voltage display -->
 
 ## Main Controller
 
@@ -274,6 +266,7 @@ The magnetometer was also evaluated but was ultimately not used. We observed sig
 The accelerometer is not used for position or speed estimation. Instead, we rely on the motor encoder for movement feedback, which provides more consistent and predictable results for our application.
 
 By focusing on the gyroscope data, we achieved accurate turn control while avoiding the limitations of the other sensors in our specific robot design.
+
 ---
 
 # Distance Sensors
@@ -284,7 +277,6 @@ The first version of the vehicle used VL53L3CX Time-of-Flight sensors. While the
 
 During development, one of the sensors was damaged during the soldering process. This highlighted the need for a more robust and serviceable solution.
 
-
 ## Final Design
 
 ### Adafruit VL53L4CX
@@ -293,15 +285,14 @@ The team replaced the original sensors with Adafruit VL53L4CX modules. In additi
 
 Advantages of the new design:
 
-* Improved sensing range
-* Stronger and more reliable signal quality
-* No direct soldering required
-* Fast sensor replacement
-* Cleaner cable management
-* More flexible integration
+- Improved sensing range
+- Stronger and more reliable signal quality
+- No direct soldering required
+- Fast sensor replacement
+- Cleaner cable management
+- More flexible integration
 
 Using connector-based modules significantly improved reliability and maintainability. Sensors can now be connected or replaced within seconds, reducing the risk of damage and making the overall system more robust for competition use.
-
 
 ---
 
@@ -317,11 +308,11 @@ The camera is intended to be used for object and color detection during the comp
 
 ### Advantages
 
-* Designed for the Arduino GIGA R1 WiFi
-* Well documented with many online examples
-* Easy integration into our system
-* Low image resolution reduces processing requirements
-* Suitable for real-time object and color detection
+- Designed for the Arduino GIGA R1 WiFi
+- Well documented with many online examples
+- Easy integration into our system
+- Low image resolution reduces processing requirements
+- Suitable for real-time object and color detection
 
 The relatively low resolution is an advantage for our application because it reduces the amount of data that must be processed by the microcontroller, allowing for faster image analysis.
 
@@ -452,7 +443,6 @@ At the current stage of development, the camera has been successfully connected 
 
 (The exact total depends on manufacturing costs, spare parts and shipping fees.)
 
-
 # Software Architecture
 
 The software is built on a modular, non-blocking architecture designed for real-time responsiveness on the Arduino GIGA R1.
@@ -524,7 +514,6 @@ Opening Challenge
 [![Watch the Opening Challenge](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
 [![YouTube - Opening Challenge](https://img.shields.io/badge/YouTube-▶️%20Opening_Challenge-df3e3e?logo=youtube)](https://youtu.be/7w7cAxLPb28)
 
-
 # Robot Photos
 
 | ![Left](Photos/robot/PXL_20260617_185159148.MP.jpg) | ![Back](Photos/robot/PXL_20260617_185207747.MP.jpg) | ![Right](Photos/robot/PXL_20260617_185218350.MP.jpg) |
@@ -543,9 +532,9 @@ The first steering prototype used a very small micro servo. While it was lightwe
 
 ### Observed Issues
 
-* Inconsistent steering angles
-* Reduced steering precision
-* Steering position changed under load
+- Inconsistent steering angles
+- Reduced steering precision
+- Steering position changed under load
 
 ### Root Cause
 
@@ -557,10 +546,10 @@ Several servos were evaluated and compared. The original servo was replaced with
 
 ### Result
 
-* More accurate steering
-* Improved repeatability
-* Better control during turns
-* Increased mechanical durability
+- More accurate steering
+- Improved repeatability
+- Better control during turns
+- Increased mechanical durability
 
 ---
 
@@ -572,9 +561,9 @@ The original design used a commercial battery holder. Integrating it into the ch
 
 ### Observed Issues
 
-* Inefficient use of space
-* Less favourable weight distribution
-* Batteries were more difficult to access
+- Inefficient use of space
+- Less favourable weight distribution
+- Batteries were more difficult to access
 
 ### Root Cause
 
@@ -586,11 +575,11 @@ The team designed and manufactured two custom 3D-printed battery holders. This a
 
 ### Result
 
-* Better use of available space
-* Improved weight distribution
-* Lower centre of gravity
-* Faster battery replacement
-* Cleaner chassis integration
+- Better use of available space
+- Improved weight distribution
+- Lower centre of gravity
+- Faster battery replacement
+- Cleaner chassis integration
 
 ---
 
@@ -602,9 +591,9 @@ The initial design used VL53L3CX Time-of-Flight sensors that required direct sol
 
 ### Observed Issues
 
-* One sensor was damaged during assembly
-* Sensor replacement was time-consuming
-* Maintenance became more difficult
+- One sensor was damaged during assembly
+- Sensor replacement was time-consuming
+- Maintenance became more difficult
 
 ### Root Cause
 
@@ -616,11 +605,11 @@ The sensors were replaced with Adafruit VL53L4CX modules. These offered improved
 
 ### Result
 
-* No direct soldering required
-* Faster replacement process
-* Improved reliability
-* Cleaner wiring
-* Easier maintenance
+- No direct soldering required
+- Faster replacement process
+- Improved reliability
+- Cleaner wiring
+- Easier maintenance
 
 ---
 
@@ -644,10 +633,10 @@ Both motors were tested on the vehicle under realistic conditions. After compari
 
 ### Result
 
-* Higher available torque
-* Improved acceleration
-* Better speed control
-* More reliable autonomous driving
+- Higher available torque
+- Improved acceleration
+- Better speed control
+- More reliable autonomous driving
 
 ---
 
@@ -659,9 +648,9 @@ The BNO085 magnetometer was initially considered for heading estimation.
 
 ### Observed Issues
 
-* Unstable heading measurements
-* Significant drift over time
-* Inconsistent orientation readings
+- Unstable heading measurements
+- Significant drift over time
+- Inconsistent orientation readings
 
 ### Root Cause
 
@@ -673,9 +662,9 @@ The magnetometer was removed from the navigation system. Instead, the robot reli
 
 ### Result
 
-* More stable orientation measurements
-* Improved turning accuracy
-* Greater repeatability
+- More stable orientation measurements
+- Improved turning accuracy
+- Greater repeatability
 
 ---
 
@@ -687,9 +676,9 @@ Poor electrical connections, damaged cables or weak solder joints can cause inte
 
 ### Observed Issues
 
-* Sporadic communication errors
-* Missing sensor readings
-* Difficult troubleshooting
+- Sporadic communication errors
+- Missing sensor readings
+- Difficult troubleshooting
 
 ### Root Cause
 
@@ -701,10 +690,10 @@ The team reduced the number of soldered connections wherever possible and adopte
 
 ### Result
 
-* Improved reliability
-* Faster troubleshooting
-* Easier maintenance
-* Reduced risk of wiring faults
+- Improved reliability
+- Faster troubleshooting
+- Easier maintenance
+- Reduced risk of wiring faults
 
 ---
 
@@ -716,9 +705,9 @@ The competition field contains black walls and markings that absorb a large port
 
 ### Observed Issues
 
-* Reduced signal strength
-* Less reliable measurements at longer distances
-* Occasional invalid readings
+- Reduced signal strength
+- Less reliable measurements at longer distances
+- Occasional invalid readings
 
 ### Root Cause
 
@@ -730,10 +719,10 @@ The measurement timing budget was increased, reducing the sampling rate and allo
 
 ### Result
 
-* Improved measurement stability
-* Better performance on dark surfaces
-* Reliable wall detection during normal operation
-* Consistent navigation close to walls
+- Improved measurement stability
+- Better performance on dark surfaces
+- Reliable wall detection during normal operation
+- Consistent navigation close to walls
 
 ---
 
@@ -745,9 +734,9 @@ Battery voltage decreases during operation as the batteries discharge.
 
 ### Observed Issues
 
-* Reduced motor performance
-* Changes in vehicle speed
-* Potential loss of repeatability
+- Reduced motor performance
+- Changes in vehicle speed
+- Potential loss of repeatability
 
 ### Root Cause
 
@@ -759,16 +748,15 @@ A closed-loop PID speed controller continuously adjusts the motor output using e
 
 ### Result
 
-* Constant vehicle speed
-* Improved repeatability
-* Consistent behaviour throughout a run
-
+- Constant vehicle speed
+- Improved repeatability
+- Consistent behaviour throughout a run
 
 ## Conclusion
 
 The project showed that the best results come from consistent testing, evaluation, and adjustment. Hardware and software issues were identified and resolved step by step, making the vehicle more stable, reliable, and easier to operate.
 
-As a result, the team was able to develop a ready-to-drive solution that responds better to changing conditions with controlled motor management and a robust sensor setup. This work not only improved performance, but also increased repeatability and competition readiness of the system.
+As a result, the team was able to develop a ready-to-drive solution that responds better to changing conditions with controlled motor management and a robust sensor setup. This work not only improved performance, but also increased repeatability and competition readiness of the system
 ---
 
 ![Team funny](Photos/Funny-team-photo.JPG)
