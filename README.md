@@ -15,13 +15,12 @@ This documentation presents our autonomous vehicle, including its mechanical des
 | Philipp Kündig |
 | Damian Hardegger |
 
-
 |Coach|
 |--------|
 | Stefan Gemperli |
 
 <br>
-<br>   
+<br>
 
 ![Team Photo](Photos/Team-photo.JPG)
 
@@ -184,6 +183,7 @@ The MG90S was selected because it provides:
 The stronger servo significantly improved navigation consistency.
 
 ---
+
 # Power Budget
 
 ## Power System Overview
@@ -204,6 +204,7 @@ The robot is powered by four 14500 Li-Ion cells and distributes power to all ele
 | Voltage Display | 20 mA |
 |---------|------------|
 | total | 10|
+
 ### Total Average Consumption
 
 Average current consumption:
@@ -228,7 +229,6 @@ Estimated peak current:
 ```text
 ≈ 1.9 A
 ```
-
 
 ---
 
@@ -341,11 +341,14 @@ Alternative solutions were considered.
 | ToF Sensors Only | Accurate distance | Limited environmental awareness |
 | Camera | Rich information | Higher processing requirements |
 
-The camera provides the greatest amount of information and therefore became the primary perception system.
+The camera provides the greatest amount of information and therefore became the primary perception system
 ---
+
 # Wiring Diagram
+
 ![Wiring Diagram](Electronics/Wiring_Diagram_FE2026.png)
 ---
+
 # Bill of Materials (BOM)
 
 ## Electronics
@@ -457,6 +460,7 @@ The camera provides the greatest amount of information and therefore became the 
 (The exact total depends on manufacturing costs, spare parts and shipping fees.)
 
 ---
+
 # Software Architecture
 
 The software is built on a modular, non-blocking architecture designed for real-time responsiveness on the Arduino GIGA R1.
@@ -590,6 +594,7 @@ Connector-based VL53L4CX modules.
 Maintenance and reliability improved significantly.
 
 ---
+
 # Failure Mode Analysis
 
 ## Failure Mode 1 – Steering Servo Too Weak
@@ -769,10 +774,9 @@ Each identified failure mode resulted in a design improvement that increased:
 - Maintainability
 - Competition readiness
 
-This iterative engineering process was a key factor in the development of the final robot.   
-
-
+This iterative engineering process was a key factor in the development of the final robot.
 
 The national menu of Switzerland is fondue. While usually fondue is made from cheese, the team is enjoying a robot fondue 😎🤪
 ---
+
 ![Team funny](Photos/Funny-team-photo.JPG)
