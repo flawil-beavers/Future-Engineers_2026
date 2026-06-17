@@ -27,7 +27,7 @@ This documentation presents our autonomous vehicle, including its mechanical des
 
 ---
 
-# Project Overview
+# Project Overview -> besser Inhaltsverzeichnis
 
 The robot combines computer vision, inertial navigation, distance sensing and closed-loop control to autonomously navigate through the WRO Future Engineers competition field.
 
@@ -63,47 +63,9 @@ Start by building the base and then working your way up to the second stage. Alw
 
 ---
 
-# Engineering Process
-
-The development followed a structured engineering workflow.
-
-## Phase 1 – Requirements Analysis
-
-The WRO Future Engineers regulations were analysed to identify all functional requirements.
-
-Main requirements:
-
-- Fully autonomous operation
-- Obstacle avoidance
-- Reliable navigation
-- Consistent turning behaviour
-- Accurate parking
-- Robust performance under changing conditions
-
-## Phase 2 – Concept Development
-
-Several possible architectures were evaluated.
-
-The team compared:
-
-- Different drive motors
-- Different steering servos
-- Various sensor combinations
-- Multiple power system concepts
-
-## Phase 3 – Prototype Development
-
-Initial prototypes were built and tested.
-
-Weaknesses and failures were documented and used to improve the design.
-
-## Phase 4 – Final Integration
-
-After multiple iterations all subsystems were integrated into the final robot.
-
----
-
 # Mechanical Design
+
+<!-- todo: Add text about chassis design and so on -->
 
 ## Chassis
 
@@ -121,6 +83,8 @@ Special attention was given to the placement of heavy components to maximise sta
 ## Battery System
 
 ### Initial Design
+
+<!-- Todo: Add explanation why we want to use a selfdesigned battery holder. -->
 
 The original design used a commercial battery holder.
 
@@ -176,9 +140,6 @@ The faster motor initially appeared advantageous because of its higher theoretic
 However practical testing revealed:
 
 - Lower torque
-- Reduced acceleration
-- More inconsistent driving behaviour
-- Reduced obstacle avoidance reliability
 
 The slower motor consistently produced better results.
 
@@ -191,9 +152,6 @@ The 155 RPM motor was selected.
 Reasons:
 
 - Higher torque
-- Better acceleration under load
-- More reliable cornering
-- Better repeatability
 
 Although the maximum speed is lower, the overall challenge performance is better.
 
@@ -210,8 +168,20 @@ The first steering design used a very small micro servo.
 Problems observed:
 
 - Insufficient steering force
-- Reduced steering precision
 - Inconsistent wheel positioning
+
+## Final Solution
+
+### TowerPro MG90S Metal Gear Servo
+
+The MG90S was selected because it provides:
+
+- Higher torque
+- Metal gears
+- Better durability
+- More accurate steering
+
+The stronger servo significantly improved navigation consistency.
 
 ---
 # Power Budget
@@ -232,14 +202,13 @@ The robot is powered by four 14500 Li-Ion cells and distributes power to all ele
 | MG90S Servo (average) | 250 mA |
 | Drive Motor 155 RPM | 300 mA |
 | Voltage Display | 20 mA |
-
+|---------|------------|
+| total | 10|
 ### Total Average Consumption
 
 Average current consumption:
 
 ```text
-200 + 15 + 40 + 40 + 120 + 250 + 300 + 20
-
 ≈ 985 mA
 ≈ 1.0 A
 ```
@@ -260,34 +229,6 @@ Estimated peak current:
 ≈ 1.9 A
 ```
 
-### Engineering Decision
-
-The power system was designed with sufficient reserve capacity to maintain stable operation under all competition conditions.
-
-During development, a commercial battery holder was initially used. Testing revealed occasional mechanical movement of the batteries, which could potentially affect electrical reliability. To solve this issue, a custom 3D-printed battery holder was designed and manufactured.
-
-Advantages of the custom battery holder:
-
-- Improved battery fixation
-- Increased electrical reliability
-- Better use of available chassis space
-- Easier maintenance and battery replacement
-
-This modification significantly increased the overall robustness of the robot.
----
-
-## Final Solution
-
-### TowerPro MG90S Metal Gear Servo
-
-The MG90S was selected because it provides:
-
-- Higher torque
-- Metal gears
-- Better durability
-- More accurate steering
-
-The stronger servo significantly improved navigation consistency.
 
 ---
 
@@ -331,6 +272,7 @@ The BNO085 provides:
 
 Wheel encoders alone are insufficient because:
 
+<!-- todo change to fucntion as Gyro -->
 - Wheels can slip
 - Surface friction varies
 - Small errors accumulate
@@ -463,7 +405,7 @@ The camera provides the greatest amount of information and therefore became the 
 
 | Component | Quantity | Result |
 |------------|------------|------------|
-| Commercial 2xAA Battery Holder | 2 | Replaced due to poor mechanical reliability |
+| Commercial 2xAA Battery Holder | 1 | Replaced due to poor mechanical reliability |
 
 ---
 
@@ -767,66 +709,6 @@ The 155 RPM motor with a 100:1 gearbox was selected.
 
 ---
 
-## Failure Mode 5 – Wheel Slip
-
-### Problem
-
-Wheel encoders alone can accumulate navigation errors.
-
-### Observed Issues
-
-- Position drift
-- Inaccurate turns
-- Reduced repeatability
-
-### Root Cause
-
-Wheel slip occurs due to changing surface conditions and mechanical tolerances.
-
-### Solution
-
-A BNO085 IMU was integrated into the navigation system.
-
-### Result
-
-- Improved heading estimation
-- More accurate turns
-- Reduced accumulated navigation error
-- Better lap consistency
-
----
-
-## Failure Mode 6 – Changing Lighting Conditions
-
-### Problem
-
-Competition environments may contain varying lighting conditions.
-
-### Observed Issues
-
-- Reduced colour recognition reliability
-- Potential object detection errors
-
-### Root Cause
-
-Camera-based systems are sensitive to illumination changes and reflections.
-
-### Solution
-
-The vision system uses:
-
-- HSV colour space processing
-- Adjustable thresholds
-- Extensive testing under different lighting conditions
-
-### Result
-
-- Improved robustness
-- More reliable obstacle detection
-- Better overall navigation performance
-
----
-
 ## Failure Mode 7 – Sensor Cable Failure
 
 ### Problem
@@ -871,9 +753,12 @@ A closed-loop PID speed controller continuously adjusts motor power based on enc
 - Improved repeatability
 - Consistent performance throughout a run
 
+<!-- Todo: Add ToF not working reliable on black walls -->
+
 ---
 
 ## Engineering Conclusion
+<!-- Todo: probably delete -->
 
 The development process revealed several hardware and software weaknesses that were systematically addressed through testing and iteration.
 
