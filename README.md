@@ -8,7 +8,7 @@ This documentation presents our autonomous vehicle, including its mechanical des
 
 ---
 
-# Team Members
+## Team Members
 
 <table>
 <tr>
@@ -36,19 +36,28 @@ Stefan Gemperli
 
 ---
 
-# Table of Contents
+## Table of Contents
 
-- [Introduction](#introduction)
-- [Vehicle Design](#vehicle-design)
-  - [Mechanical Design](#mechanical-design)
-  - [Electronics](#electronics)
-- [Software](#software)
-  - [Control System](#control-system)
-  - [Computer Vision](#computer-vision)
-- [Bill of Materials](#bill-of-materials)
-- [Photos](#photos)
-- [Videos](#videos)
+- [Team Introduction](#team-introduction)
 - [Team Members](#team-members)
+- [Assembly](#assembly)
+- [Mechanical Design](#mechanical-design)
+- [Mobility System](#mobility-system)
+- [Steering System](#steering-system)
+- [Power Budget](#power-budget)
+- [Electronics Architecture](#electronics-architecture)
+- [Sensor Architecture](#sensor-architecture)
+- [Distance Sensors](#distance-sensors)
+- [Camera System](#camera-system)
+- [Wiring Diagram](#wiring-diagram)
+- [Bill of Materials (BOM)](#bill-of-materials-bom)
+- [Software Architecture](#software-architecture)
+- [Navigation Strategy](#navigation-strategy)
+- [State Machine](#state-machine)
+- [Video](#video)
+- [Robot Photos](#robot-photos)
+- [Failure Mode Analysis](#failure-mode-analysis)
+- [Conclusion](#conclusion)
 
 ---
 
@@ -757,6 +766,7 @@ A closed-loop PID speed controller continuously adjusts the motor output using e
 The project showed that the best results come from consistent testing, evaluation, and adjustment. Hardware and software issues were identified and resolved step by step, making the vehicle more stable, reliable, and easier to operate.
 
 As a result, the team was able to develop a ready-to-drive solution that responds better to changing conditions with controlled motor management and a robust sensor setup. This work not only improved performance, but also increased repeatability and competition readiness of the system
+
 ---
 
 ![Team funny](Photos/Funny-team-photo.JPG)
