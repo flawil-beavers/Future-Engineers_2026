@@ -20,7 +20,6 @@ This documentation presents our autonomous vehicle, including its mechanical des
 | Stefan Gemperli |
 
 <br>
-<br>
 
 ![Team Photo](Photos/Team-photo.JPG)
 
@@ -65,18 +64,26 @@ Start by building the base and then working your way up to the second stage. Alw
 
 # Mechanical Design
 
-<!-- todo: Add text about chassis design and so on -->
-
 ## Chassis
 
 The chassis was designed to provide:
 
-- High rigidity
-- Low centre of gravity
-- Easy maintenance
-- Efficient component placement
+- High rigidity: We used screws and nuts to connect all 3D printed parts
+- Low centre of gravity: Special attention was given to the placement of heavy components (e.g. Batteries) to maximise stability
+- Easy maintenance: No glue and tape (just for electric isolation), electrical connections with jumper wires
+- Efficient component placement: Used up almost all space available in our robot
+- Easy 3D printability: All printed parts are printable without any supports necessary
 
-Special attention was given to the placement of heavy components to maximise stability.
+
+
+### Steering
+
+We used Ackermann steering to enable the robot to turn without the steering wheels slipping. As visible in the following image, the steering was created by drawing a line from the turning point of the Steering Arm to the middle of the back axis.
+![Ackermann Steering Construction](Photos/Ackermann-construction.png)
+
+By constructing our own steering mechanism, we could focus on creating a very tight turning radius, so to improve future parking and unparking.
+
+One major difficulty in designing the steering was calculating the exact spacing between servo and base plate. We had to make sure that all the connections between 3D printed parts were parallel so to minimise friction when steering.
 
 ---
 
@@ -506,6 +513,13 @@ Opening Challenge
 
 [![Watch the Opening Challenge](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
 [![YouTube - Opening Challenge](https://img.shields.io/badge/YouTube-▶️%20Opening_Challenge-df3e3e?logo=youtube)](https://youtu.be/7w7cAxLPb28)
+
+
+# Robot Photos
+
+| ![Left](Photos/robot/PXL_20260617_185159148.MP.jpg) | ![Back](Photos/robot/PXL_20260617_185207747.MP.jpg) | ![Right](Photos/robot/PXL_20260617_185218350.MP.jpg) |
+|---|---|---|
+| ![Front](Photos/robot/PXL_20260617_185228987.MP.jpg) | ![Top](Photos/robot/PXL_20260617_185256705.MP.jpg) | ![Bottom](Photos/robot/PXL_20260617_185318976.MP.jpg) |
 
 ---
 
