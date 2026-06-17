@@ -26,28 +26,20 @@ This documentation presents our autonomous vehicle, including its mechanical des
 
 ---
 
-# Project Overview -> besser Inhaltsverzeichnis
 
-The robot combines computer vision, inertial navigation, distance sensing and closed-loop control to autonomously navigate through the WRO Future Engineers competition field.
+# Table of Contents
 
-The system was developed according to the following engineering goals:
-
-- Reliability
-- Repeatability
-- Maintainability
-- Robust autonomous navigation
-- Easy troubleshooting
-- Modular architecture
-
-The final robot consists of:
-
-- Arduino GIGA R1 WiFi
-- Arducam BO462 Camera
-- BNO085 IMU
-- VL53L4CX Time-of-Flight Sensors
-- MG90S Steering Servo
-- DFRobot Geared Drive Motor
-- Custom 3D-Printed Battery Holder
+- [Introduction](#introduction)
+- [Vehicle Design](#vehicle-design)
+  - [Mechanical Design](#mechanical-design)
+  - [Electronics](#electronics)
+- [Software](#software)
+  - [Control System](#control-system)
+  - [Computer Vision](#computer-vision)
+- [Bill of Materials](#bill-of-materials)
+- [Photos](#photos)
+- [Videos](#videos)
+- [Team Members](#team-members)
 
 ---
 
@@ -90,30 +82,17 @@ Special attention was given to the placement of heavy components to maximise sta
 
 ## Battery System
 
-### Initial Design
 
-<!-- Todo: Add explanation why we want to use a selfdesigned battery holder. -->
 
-The original design used a commercial battery holder.
+### Custom Battery Holders
 
-During testing several problems were discovered:
+The initial design used a commercial battery holder. However, during the mechanical integration process, it became clear that mounting a standard dual battery holder underneath the vehicle was difficult and inefficient in terms of space usage.
 
-- Batteries could move slightly
-- Electrical contacts were not always reliable
-- Maintenance was difficult
+To solve this problem, we designed and manufactured our own battery holders. The custom design allowed us to mount one holder on each side of the underside of the vehicle, making much better use of the available space.
 
-### Final Design
+This arrangement also improved the vehicle's weight distribution by placing the batteries lower and more symmetrically, resulting in a lower center of gravity. In addition, the custom holders make battery replacement faster and more convenient during testing and maintenance.
 
-The team designed and manufactured a custom 3D-printed battery holder.
-
-Advantages:
-
-- Secure battery fixation
-- Improved electrical reliability
-- Better use of available space
-- Easier maintenance
-
-This modification significantly improved overall system robustness.
+Overall, the self-designed battery holders provided a more **compact**, **practical** and **competition-ready solution** than the original commercial holders.
 
 ---
 
@@ -121,7 +100,7 @@ This modification significantly improved overall system robustness.
 
 ## Drive Motor
 
-Two different drive motors were evaluated.
+Two different drive motors were tested to compare their performance and driving characteristics. After evaluating speed, torque and controllability, the motor that provided the best overall performance for our vehicle was selected.
 
 ### Option 1
 
@@ -147,7 +126,7 @@ The faster motor initially appeared advantageous because of its higher theoretic
 
 However practical testing revealed:
 
-- Lower torque
+- Lower torque and the robot had difficulty driving with the faster motor.
 
 The slower motor consistently produced better results.
 
@@ -161,7 +140,7 @@ Reasons:
 
 - Higher torque
 
-Although the maximum speed is lower, the overall challenge performance is better.
+Although the maximum speed is lower, the overall challenge performance is better and we have no problems with him suddenly getting stuck.
 
 This decision demonstrates a trade-off between speed and reliability.
 
@@ -171,7 +150,7 @@ This decision demonstrates a trade-off between speed and reliability.
 
 ## Initial Prototype
 
-The first steering design used a very small micro servo.
+The first steering design used a very small micro servo because we wanted to be as space-saving as possible.
 
 Problems observed:
 
@@ -189,7 +168,7 @@ The MG90S was selected because it provides:
 - Better durability
 - More accurate steering
 
-The stronger servo significantly improved navigation consistency.
+The more powerful servo drive significantly improved navigation accuracy but requires a bit more space. However, it's worth it.
 
 ---
 
@@ -210,18 +189,13 @@ The robot is powered by four 14500 Li-Ion cells and distributes power to all ele
 | Arducam BO462 Camera | 120 mA |
 | MG90S Servo (average) | 250 mA |
 | Drive Motor 155 RPM | 300 mA |
+| MC33926 Motor Driver | 10 mA |
+| LM2596S-5 DC-DC Converter | 5 mA |
+| TXS0104E Logic Level Converter | 2 mA |
 | Voltage Display | 20 mA |
 |---------|------------|
-| total | 10|
+| **Total** | **1002 mA** |
 
-### Total Average Consumption
-
-Average current consumption:
-
-```text
-≈ 985 mA
-≈ 1.0 A
-```
 
 ### Peak Current Consumption
 
@@ -231,12 +205,13 @@ During acceleration, steering corrections and obstacle avoidance, the motor and 
 |------------|------------|
 | Drive Motor | 800 mA |
 | MG90S Servo | 700 mA |
-| Remaining Electronics | 435 mA |
+| Remaining Electronics | 472 mA |
 
 Estimated peak current:
 
 ```text
-≈ 1.9 A
+≈ 1972 mA
+≈ 2.0 A
 ```
 
 ---
@@ -271,59 +246,45 @@ The controller manages:
 
 ### Purpose
 
-The BNO085 provides:
+The BNO085 was selected because of its high accuracy, low drift and reliable sensor fusion capabilities. During development, several orientation measurement methods were evaluated to determine which provided the most consistent results for autonomous navigation.
 
-- Heading information
-- Rotation measurements
-- Orientation estimation
+### Usage
 
-### Why an IMU?
+In our vehicle, the gyroscope is the primary function used from the IMU. It is used to verify and control the robot's turning angles, providing accurate and repeatable rotation measurements. This approach has proven to be highly reliable during testing.
 
-Wheel encoders alone are insufficient because:
+The magnetometer was also evaluated but was ultimately not used. We observed significant heading drift and instability, most likely caused by magnetic interference from the motor, wiring and other electronic components inside the vehicle.
 
-<!-- todo change to fucntion as Gyro -->
-- Wheels can slip
-- Surface friction varies
-- Small errors accumulate
+The accelerometer is not used for position or speed estimation. Instead, we rely on the motor encoder for movement feedback, which provides more consistent and predictable results for our application.
 
-The IMU allows the robot to determine its orientation independently of wheel movement.
-
-This improves turning precision and repeatability.
-
+By focusing on the gyroscope data, we achieved accurate turn control while avoiding the limitations of the other sensors in our specific robot design.
 ---
 
 # Distance Sensors
 
 ## Initial Design
 
-The original design used VL53L3CX Time-of-Flight sensors.
+The first version of the vehicle used VL53L3CX Time-of-Flight sensors. While these sensors performed well, they required direct soldering of wires to the module, making integration and maintenance more difficult.
 
-Unfortunately several sensors were damaged during soldering.
+During development, one of the sensors was damaged during the soldering process. This highlighted the need for a more robust and serviceable solution.
 
-This revealed an important engineering problem.
-
-### Problems
-
-- Delicate solder joints
-- Difficult replacement process
-- Increased maintenance effort
-
----
 
 ## Final Design
 
 ### Adafruit VL53L4CX
 
-The team switched to connector-based VL53L4CX modules using Qwiic/STEMMA QT connectors.
+The team replaced the original sensors with Adafruit VL53L4CX modules. In addition to offering improved range and signal performance, these modules support Qwiic/STEMMA QT connectors.
 
-Advantages:
+Advantages of the new design:
 
-- No direct soldering
-- Fast replacement
-- Improved reliability
-- Easier maintenance
+* Improved sensing range
+* Stronger and more reliable signal quality
+* No direct soldering required
+* Fast sensor replacement
+* Cleaner cable management
+* More flexible integration
 
-This design significantly reduced the risk of sensor failure.
+Using connector-based modules significantly improved reliability and maintainability. Sensors can now be connected or replaced within seconds, reducing the risk of damage and making the overall system more robust for competition use.
+
 
 ---
 
@@ -331,26 +292,28 @@ This design significantly reduced the risk of sensor failure.
 
 ## Arducam BO462
 
-The camera is the primary perception sensor.
+The Arducam BO462 was selected as the camera for our vehicle because it is specifically designed for use with the Arduino GIGA R1 WiFi. In addition, extensive documentation, examples and community resources are available online, making development and troubleshooting easier.
 
-Functions:
+### Purpose
 
-- Wall detection
-- Obstacle detection
-- Direction determination
-- Parking detection
+The camera is intended to be used for object and color detection during the competition. Its main task is to identify relevant objects and determine their colors rather than capturing highly detailed images.
 
-### Why a Camera?
+### Advantages
 
-Alternative solutions were considered.
+* Designed for the Arduino GIGA R1 WiFi
+* Well documented with many online examples
+* Easy integration into our system
+* Low image resolution reduces processing requirements
+* Suitable for real-time object and color detection
 
-| Technology | Advantages | Disadvantages |
-|------------|------------|------------|
-| Ultrasonic Sensors | Simple | Limited information |
-| ToF Sensors Only | Accurate distance | Limited environmental awareness |
-| Camera | Rich information | Higher processing requirements |
+The relatively low resolution is an advantage for our application because it reduces the amount of data that must be processed by the microcontroller, allowing for faster image analysis.
 
-The camera provides the greatest amount of information and therefore became the primary perception system
+### Challenges
+
+One limitation of the camera is its relatively narrow field of view and limited detection range. Depending on the final challenge setup, this may require additional software optimization or careful positioning of the camera.
+
+At the current stage of development, the camera has been successfully connected and tested. However, it has not yet been fully integrated into the autonomous driving system, and further development is planned.
+
 ---
 
 # Wiring Diagram
@@ -362,113 +325,116 @@ The camera provides the greatest amount of information and therefore became the 
 
 ## Electronics
 
-| Component | Quantity | Purpose |
-|------------|------------|------------|
-| Arduino GIGA R1 WiFi | 1 | Main robot controller |
-| Adafruit BNO085 9-DOF IMU | 1 | Orientation and heading estimation |
-| Arducam BO462 Camera | 1 | Wall, obstacle and parking detection |
-| Adafruit VL53L4CX ToF Sensor | 2 | Distance measurement and wall tracking |
-| SparkFun Flexible Qwiic Cable 100mm | 2 | Sensor communication |
-| Pololu Dual MC33926 Motor Driver | 1 | Drive motor control |
-| SVM330-Y Digital Voltmeter | 1 | Battery voltage monitoring |
-| MTS-102 ON-ON Toggle Switch | 2 | Power and subsystem switching |
+| Component                           | Quantity | Purpose                                 |
+| ----------------------------------- | -------- | --------------------------------------- |
+| Arduino GIGA R1 WiFi                | 1        | Main robot controller                   |
+| Adafruit BNO085 9-DOF IMU           | 1        | Gyroscope-based orientation measurement |
+| Arducam BO462 Camera                | 1        | Object and color detection              |
+| Adafruit VL53L4CX ToF Sensor        | 2        | Distance measurement and wall tracking  |
+| SparkFun Flexible Qwiic Cable 100mm | 2        | Sensor communication                    |
+| Pololu Dual MC33926 Motor Driver    | 1        | Drive motor control                     |
+| LM2596S-5 DC-DC Converter           | 1        | Voltage regulation for electronics      |
+| TXS0104E Logic Level Converter      | 1        | 3.3V ↔ 5V signal level translation      |
+| SVM330-Y Digital Voltmeter          | 1        | Battery voltage monitoring              |
+| MTS-102 ON-ON Toggle Switch         | 2        | Power and subsystem switching           |
 
 ---
 
 ## Drive System
 
-| Component | Quantity | Purpose |
-|------------|------------|------------|
-| DFRobot Micro Metal Geared Motor 155 RPM (100:1) | 1 | Main drive motor |
-| Rear Drive Wheels (43.2 mm diameter) | 2 | Vehicle propulsion |
-| Axles and Bearings | Various | Mechanical transmission |
+| Component                                        | Quantity | Purpose                 |
+| ------------------------------------------------ | -------- | ----------------------- |
+| DFRobot Micro Metal Geared Motor 155 RPM (100:1) | 1        | Main drive motor        |
+| Rear Drive Wheels (43.2 mm diameter)             | 2        | Vehicle propulsion      |
+| Axles and Bearings                               | Various  | Mechanical transmission |
 
 ### Alternative Motor Tested
 
-| Component | Quantity | Result |
-|------------|------------|------------|
-| DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1 | Rejected due to insufficient torque and lower driving consistency |
+| Component                                       | Quantity | Result                                                            |
+| ----------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1        | Rejected due to insufficient torque and lower driving consistency |
 
 ---
 
 ## Steering System
 
-| Component | Quantity | Purpose |
-|------------|------------|------------|
-| TowerPro MG90S Metal Gear Servo | 1 | Front wheel steering |
+| Component                       | Quantity | Purpose              |
+| ------------------------------- | -------- | -------------------- |
+| TowerPro MG90S Metal Gear Servo | 1        | Front wheel steering |
 
 ### Alternative Servo Tested
 
-| Component | Quantity | Result |
-|------------|------------|------------|
-| PDI-1102HB 2g Digital Micro Servo | 1 | Rejected due to insufficient steering torque |
+| Component                         | Quantity | Result                                       |
+| --------------------------------- | -------- | -------------------------------------------- |
+| PDI-1102HB 2g Digital Micro Servo | 1        | Rejected due to insufficient steering torque |
 
 ---
 
 ## Power System
 
-| Component | Quantity | Purpose |
-|------------|------------|------------|
-| 14500 Li-Ion Battery (3.7V, 750mAh) | 2 | Main power source |
-| Custom 3D Printed Battery Holder | 1 | Secure battery mounting |
-| Battery Wiring Harness | 1 | Power distribution |
+| Component                           | Quantity | Purpose                 |
+| ----------------------------------- | -------- | ----------------------- |
+| 14500 Li-Ion Battery (3.7V, 750mAh) | 2        | Main power source       |
+| Custom 3D Printed Battery Holder    | 2        | Secure battery mounting |
+| Battery Wiring Harness              | 1        | Power distribution      |
 
 ### Previous Design
 
-| Component | Quantity | Result |
-|------------|------------|------------|
-| Commercial 2xAA Battery Holder | 1 | Replaced due to poor mechanical reliability |
+| Component                      | Quantity | Result                                                         |
+| ------------------------------ | -------- | -------------------------------------------------------------- |
+| Commercial 2xAA Battery Holder | 1        | Replaced due to inefficient mounting and reduced accessibility |
 
 ---
 
 ## Mechanical Components
 
-| Component | Quantity | Purpose |
-|------------|------------|------------|
-| Custom 3D Printed Chassis | 1 | Main robot structure |
-| Custom Sensor Mounts | Multiple | Sensor positioning |
-| Custom Battery Holder | 2 | Battery retention |
-| Screws, Nuts and Spacers | Various | Assembly and mounting |
+| Component                 | Quantity | Purpose               |
+| ------------------------- | -------- | --------------------- |
+| Custom 3D Printed Chassis | 1        | Main robot structure  |
+| Custom Sensor Mounts      | Multiple | Sensor positioning    |
+| Custom Battery Holders    | 2        | Battery retention     |
+| Screws, Nuts and Spacers  | Various  | Assembly and mounting |
 
 ---
 
 ## Robot Specifications
 
-| Parameter | Value |
-|------------|------------|
-| Total Weight | 670 g |
-| Wheelbase | 130 mm |
-| Track Width | 100 mm |
-| Wheel Diameter | 43.2 mm |
-| Drive Configuration | Rear-Wheel Drive |
+| Parameter              | Value                |
+| ---------------------- | -------------------- |
+| Total Weight           | 670 g                |
+| Wheelbase              | 100 mm               |
+| Track Width            | 100 mm               |
+| Wheel Diameter         | 43.2 mm              |
+| Drive Configuration    | Rear-Wheel Drive     |
 | Steering Configuration | Front-Wheel Steering |
 
 ---
 
 ## Cost Overview
 
-| Component | Approximate Cost (CHF) |
-|------------|------------|
-| Arduino GIGA R1 WiFi | 60.90 |
-| BNO085 IMU | 24.95 |
-| VL53L4CX Sensors (2x) | 39.80 |
-| Qwiic Cables | 15.40 |
-| MG90S Servo | 7.90 |
-| DFRobot 155 RPM Motor | 10.90 |
-| 14500 Batteries (4x) | 31.60 |
-| Voltmeter | ~5.00 |
-| Switches | 7.60 |
-| Pololu MC33926 Driver | ~25.00 |
-| Arducam BO462 Camera | ~30.00 |
-| 3D Printed Parts | ~10.00 |
+| Component                      | Approximate Cost (CHF) |
+| ------------------------------ | ---------------------- |
+| Arduino GIGA R1 WiFi           | 60.90                  |
+| BNO085 IMU                     | 24.95                  |
+| VL53L4CX Sensors (2x)          | 39.80                  |
+| Qwiic Cables                   | 15.40                  |
+| MG90S Servo                    | 7.90                   |
+| DFRobot 155 RPM Motor          | 10.90                  |
+| 14500 Batteries (2x)           | 15.80                  |
+| Voltmeter                      | ~5.00                  |
+| Switches                       | 7.60                   |
+| Pololu MC33926 Driver          | ~25.00                 |
+| LM2596S-5 DC-DC Converter      | ~2.00                  |
+| TXS0104E Logic Level Converter | ~3.00                  |
+| Arducam BO462 Camera           | ~30.00                 |
+| 3D Printed Parts               | ~10.00                 |
 
 ### Estimated Total Cost
 
-**≈ 270–300 CHF**
+**≈ 255–285 CHF**
 
 (The exact total depends on manufacturing costs, spare parts and shipping fees.)
 
----
 
 # Software Architecture
 
