@@ -465,3 +465,17 @@ void gyro_follower_set_pd_gains(float kp, float kd)
   gf_pd_kd = kd;
   Serial.print("Distance PD gains: Kp="); Serial.print(kp); Serial.print(", Kd="); Serial.println(kd);
 }
+float gyro_follower_get_target_heading()
+{
+    return gf_gyro_target;
+}
+
+int gyro_follower_get_turn_count()
+{
+    return gf_turn_count;
+}
+
+int gyro_follower_get_turn_angle()
+{
+    return gf_turn_angle;
+}

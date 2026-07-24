@@ -33,35 +33,70 @@ Vision vision;
  * @brief System entry point. Initializes hardware and starts the
  * control loop interface.
  */
+
 void setup()
 {
-  Serial.println("\n===== ROBOT INITIALIZATION START =====\n");
+    Serial.println(
+        "\n===== ROBOT INITIALIZATION START =====\n"
+    );
 
-  // Initialize each subsystem in order
-  system_interface_setup(); // Sets up Enable Switch and Serial
-  sensors_setup();
-  motor_control_setup();
-  gyro_follower_setup();
 
-  Serial.println("\n===== INITIALIZATION COMPLETE =====\n");
-  // Fully enable system if switch is already HIGH at startup
-  if (system_enabled)
-  {
-    system_enable();
-  }
-  
+    // Common hardware
+    system_interface_setup();
 
-  if (!camera.begin())
-  {
-    Serial.println("Camera failed!");
+    sensors_setup();
 
-    while (true)
-      ;
-  }
-  Serial.println("Camera initialized.");
+    motor_control_setup();
 
-  vision.begin();
-  Serial.println("Vision initialized.");
+    gyro_follower_setup();
+
+
+    // ======================================
+    // OBSTACLE CHALLENGE ONLY
+    // ======================================
+
+    if (
+        CHALLENGE_MODE ==
+        CHALLENGE_OBSTACLE
+    )
+    {
+        if (!camera.begin())
+        {
+            Serial.println(
+                "Camera failed!"
+            );
+
+            while (true)
+                ;
+        }
+
+
+        Serial.println(
+            "Camera initialized."
+        );
+
+
+        vision.begin();
+
+
+        Serial.println(
+            "Vision initialized."
+        );
+
+
+        obstacle_challenge_setup();
+    }
+
+
+    Serial.println(
+        "\n===== INITIALIZATION COMPLETE =====\n"
+    );
+
+
+    if (system_enabled)
+    {
+        system_enable();
+    }
 }
 
 
@@ -75,41 +110,72 @@ void setup()
  */
 void loop()
 {
-  // Update timing and distances
-  loop_updater();
+    // ======================================
+    // COMMON
+    // ======================================
 
-  // Handle enable switch state
-  handle_enable_switch();
+    loop_updater();
 
-  // Check for and process serial commands
-  check_serial_available();
 
-  // Camera + Image processing
-  updateCameraVision();
+    handle_enable_switch();
 
-  // Evaluate results
-  handleObstacleDetection();
 
-  // Debug only during development
-  printVisionDebug();
+    check_serial_available();
 
-  // Monitor motor health
-  check_stalling();
 
-  // Update distance sensors (needed for all subsystems)
-  update_lasers();
-  update_gyro();
+    check_stalling();
 
-  // Update wall follower (internal logic handles suppression but allows telemetry)
-  gyro_follower_update(system_enabled);
 
-  // Execute motor control logic (may be overridden by wall_follower)
-  drive_loop();
+    update_lasers();
 
-  // Optional: Print debug info (uncomment to enable)
-  // pid_config_print();
+
+    update_gyro();
+
+
+    // ======================================
+    // OPEN CHALLENGE
+    // ======================================
+
+    if (
+        CHALLENGE_MODE ==
+        CHALLENGE_OPEN
+    )
+    {
+        // Exactly the existing Open controller.
+
+        gyro_follower_update(
+            system_enabled
+        );
+    }
+
+
+    // ======================================
+    // OBSTACLE CHALLENGE
+    // ======================================
+
+    else
+    {
+        const bool newCameraFrame =
+            updateCameraVision();
+
+
+        obstacle_challenge_update(
+            system_enabled,
+            newCameraFrame
+        );
+
+
+        // Only during development.
+        printVisionDebug();
+    }
+
+
+    // ======================================
+    // MOTOR OUTPUT
+    // ======================================
+
+    drive_loop();
 }
-
 
 
 

@@ -104,3 +104,59 @@
 #define EN_STATE_TRUE_MSG "enable start"
 #define EN_STATE_FALSE_MSG "enable stop"
 
+// ==========================================
+// OBSTACLE AVOIDANCE
+// ==========================================
+
+// Camera processing
+#define OBSTACLE_CAMERA_INTERVAL_MS 50
+
+// Detection validation
+#define OBSTACLE_MIN_AREA 500
+#define OBSTACLE_MIN_HEIGHT 25
+#define OBSTACLE_CONFIRM_FRAMES 2
+#define OBSTACLE_LOST_FRAMES 3
+
+// Desired obstacle positions inside the 320 px image
+// Red must stay on the LEFT -> robot passes on the right
+#define OBSTACLE_RED_TARGET_X 95
+
+// Green must stay on the RIGHT -> robot passes on the left
+#define OBSTACLE_GREEN_TARGET_X 225
+
+// Camera steering
+#define OBSTACLE_CAMERA_KP 0.18f
+#define OBSTACLE_HEADING_KP 0.35f
+#define OBSTACLE_MAX_STEERING 32.0f
+
+// Start slowly while tuning
+#define OBSTACLE_AVOID_SPEED 180
+
+// Continue around obstacle after camera loses it
+#define OBSTACLE_PASS_STEERING 14.0f
+#define OBSTACLE_PASS_DISTANCE_MM 90.0f
+
+// Return to original course heading
+#define OBSTACLE_RECOVER_KP 1.5f
+#define OBSTACLE_RECOVER_MAX_STEERING 25.0f
+#define OBSTACLE_RECOVER_SPEED 180
+#define OBSTACLE_RECOVER_TOLERANCE_DEG 3.0f
+
+// Prevent detecting the same obstacle immediately again
+#define OBSTACLE_REARM_DISTANCE_MM 150.0f
+
+
+
+// ==========================================
+// CHALLENGE MODE
+// ==========================================
+
+enum ChallengeMode : uint8_t
+{
+    CHALLENGE_OPEN,
+    CHALLENGE_OBSTACLE
+};
+
+// Change only this line before a run:
+constexpr ChallengeMode CHALLENGE_MODE =
+    CHALLENGE_OPEN;

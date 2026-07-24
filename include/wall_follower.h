@@ -82,4 +82,9 @@ void gyro_follower_print_debug();
 const char* gyro_follower_state_string(GyroFollowerState _state);
 GyroFollowerState gyro_follower_get_state();
 
+float gyro_follower_get_target_heading();
+int gyro_follower_get_turn_count();
+int gyro_follower_get_turn_angle();
 #endif // WALL_FOLLOWER_H
+
+
