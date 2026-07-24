@@ -17,6 +17,9 @@
 #include "sensors.h"
 #include "serial_handler.h"
 #include "wall_follower.h"
+#include "logger.h"
+// Redirect all Serial output in this file through the USB logger
+#define Serial robot_logger
 
 // ==========================================
 // SETUP - Initialize all subsystems

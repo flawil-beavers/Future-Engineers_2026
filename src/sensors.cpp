@@ -6,6 +6,9 @@
 #include "sensors.h"
 #include "config.h"
 #include <Wire.h>
+#include "logger.h"
+#define Serial robot_logger
+
 
 // ==========================================
 // SENSOR STATE VARIABLES
