@@ -8,7 +8,6 @@
 
 #define Serial robot_logger
 
-
 // ============================================================
 // OBSTACLE AVOIDANCE STATE
 // ============================================================
@@ -34,7 +33,6 @@ static uint8_t oa_lost_frames = 0;
 
 static float oa_last_camera_error = 0.0f;
 
-
 // ============================================================
 // OBSTACLE CHALLENGE STATE
 // ============================================================
@@ -45,7 +43,6 @@ static bool oc_first_corner_complete = false;
 
 static bool oc_was_enabled = false;
 
-
 // ============================================================
 // GENERAL HELPERS
 // ============================================================
@@ -53,8 +50,7 @@ static bool oc_was_enabled = false;
 static float clampValue(
     float value,
     float minimum,
-    float maximum
-)
+    float maximum)
 {
     if (value < minimum)
     {
@@ -69,16 +65,12 @@ static float clampValue(
     return value;
 }
 
-
 static float distanceSince(
-    float startDistance
-)
+    float startDistance)
 {
     return fabsf(
-        get_distance() - startDistance
-    );
+        get_distance() - startDistance);
 }
-
 
 // ============================================================
 // CAMERA UPDATE
@@ -90,32 +82,26 @@ bool updateCameraVision()
 
     if (
         millis() - lastCameraUpdate <
-        OBSTACLE_CAMERA_INTERVAL_MS
-    )
+        OBSTACLE_CAMERA_INTERVAL_MS)
     {
         return false;
     }
 
     lastCameraUpdate = millis();
 
-
     if (!camera.capture())
     {
         Serial.println(
-            "Camera capture failed."
-        );
+            "Camera capture failed.");
 
         return false;
     }
 
-
     return vision.update(
         camera.getBuffer(),
         camera.getWidth(),
-        camera.getHeight()
-    );
+        camera.getHeight());
 }
-
 
 // ============================================================
 // VISION DEBUG
@@ -127,32 +113,26 @@ void printVisionDebug()
 
     if (
         millis() - lastPrint <
-        500
-    )
+        500)
     {
         return;
     }
 
     lastPrint = millis();
 
-
-    const VisionResult& v =
+    const VisionResult &v =
         vision.getResult();
-
 
     Serial.println();
     Serial.println("======================");
     Serial.println("VISION");
     Serial.println("======================");
 
-
     Serial.print("Processing: ");
     Serial.print(
         v.processingTimeUs /
-        1000.0f
-    );
+        1000.0f);
     Serial.println(" ms");
-
 
     // --------------------------------------------------------
     // RED
@@ -165,30 +145,24 @@ void printVisionDebug()
 
         Serial.print("X: ");
         Serial.println(
-            v.red.centerX
-        );
+            v.red.centerX);
 
         Serial.print("Y: ");
         Serial.println(
-            v.red.centerY
-        );
+            v.red.centerY);
 
         Serial.print("Width: ");
         Serial.println(
-            v.red.width()
-        );
+            v.red.width());
 
         Serial.print("Height: ");
         Serial.println(
-            v.red.height()
-        );
+            v.red.height());
 
         Serial.print("Area: ");
         Serial.println(
-            v.red.area
-        );
+            v.red.area);
     }
-
 
     // --------------------------------------------------------
     // GREEN
@@ -201,30 +175,24 @@ void printVisionDebug()
 
         Serial.print("X: ");
         Serial.println(
-            v.green.centerX
-        );
+            v.green.centerX);
 
         Serial.print("Y: ");
         Serial.println(
-            v.green.centerY
-        );
+            v.green.centerY);
 
         Serial.print("Width: ");
         Serial.println(
-            v.green.width()
-        );
+            v.green.width());
 
         Serial.print("Height: ");
         Serial.println(
-            v.green.height()
-        );
+            v.green.height());
 
         Serial.print("Area: ");
         Serial.println(
-            v.green.area
-        );
+            v.green.area);
     }
-
 
     // Orange and blue are still available for debugging,
     // but they are NOT used for navigation or lap counting.
@@ -232,56 +200,40 @@ void printVisionDebug()
     if (v.orange.found)
     {
         Serial.print(
-            "ORANGE debug area: "
-        );
+            "ORANGE debug area: ");
 
         Serial.println(
-            v.orange.area
-        );
+            v.orange.area);
     }
-
 
     if (v.blue.found)
     {
         Serial.print(
-            "BLUE debug area: "
-        );
+            "BLUE debug area: ");
 
         Serial.println(
-            v.blue.area
-        );
+            v.blue.area);
     }
 
-
     Serial.print(
-        "OA state: "
-    );
+        "OA state: ");
 
     Serial.println(
         obstacle_avoidance_state_string(
-            oa_state
-        )
-    );
-
+            oa_state));
 
     Serial.print(
-        "Open/Obstacle turns: "
-    );
+        "Open/Obstacle turns: ");
 
     Serial.println(
-        gyro_follower_get_turn_count()
-    );
-
+        gyro_follower_get_turn_count());
 
     Serial.print(
-        "Target heading: "
-    );
+        "Target heading: ");
 
     Serial.println(
-        gyro_follower_get_target_heading()
-    );
+        gyro_follower_get_target_heading());
 }
-
 
 // ============================================================
 // CAMERA COLOUR CALIBRATION
@@ -293,14 +245,12 @@ void printCameraCalibration()
 
     if (
         millis() - lastPrint <
-        500
-    )
+        500)
     {
         return;
     }
 
     lastPrint = millis();
-
 
     const uint16_t x =
         camera.getWidth() / 2;
@@ -308,91 +258,72 @@ void printCameraCalibration()
     const uint16_t y =
         camera.getHeight() / 2;
 
-
     HSV hsv =
         vision.getHSVAt(
             camera.getBuffer(),
             camera.getWidth(),
             camera.getHeight(),
             x,
-            y
-        );
-
+            y);
 
     Serial.print(
-        "CENTER HSV -> H: "
-    );
+        "CENTER HSV -> H: ");
 
     Serial.print(hsv.h);
 
-
     Serial.print(
-        " S: "
-    );
+        " S: ");
 
     Serial.print(hsv.s);
 
-
     Serial.print(
-        " V: "
-    );
+        " V: ");
 
     Serial.println(hsv.v);
 }
-
 
 // ============================================================
 // GET LARGEST OBSTACLE
 // ============================================================
 
-const Blob* getLargestObstacle()
+const Blob *getLargestObstacle()
 {
-    const VisionResult& v =
+    const VisionResult &v =
         vision.getResult();
-
 
     if (
         !v.red.found &&
-        !v.green.found
-    )
+        !v.green.found)
     {
         return nullptr;
     }
 
-
     if (
         v.red.found &&
-        !v.green.found
-    )
+        !v.green.found)
     {
         return &v.red;
     }
 
-
     if (
         v.green.found &&
-        !v.red.found
-    )
+        !v.red.found)
     {
         return &v.green;
     }
-
 
     // Both visible:
     // use the larger connected object.
 
     if (
         v.red.area >=
-        v.green.area
-    )
+        v.green.area)
     {
         return &v.red;
     }
 
-
     return &v.green;
 }
-
 
 // ============================================================
 // SIMPLE DETECTION DEBUG
@@ -400,123 +331,98 @@ const Blob* getLargestObstacle()
 
 void handleObstacleDetection()
 {
-    const Blob* obstacle =
+    const Blob *obstacle =
         getLargestObstacle();
-
 
     if (obstacle == nullptr)
     {
         return;
     }
 
+    Serial.print(
+        "Obstacle X: ");
 
     Serial.print(
-        "Obstacle X: "
-    );
+        obstacle->centerX);
 
     Serial.print(
-        obstacle->centerX
-    );
-
+        " Area: ");
 
     Serial.print(
-        " Area: "
-    );
+        obstacle->area);
 
     Serial.print(
-        obstacle->area
-    );
-
-
-    Serial.print(
-        " Color: "
-    );
-
+        " Color: ");
 
     if (
         obstacle->color ==
-        ColorType::RED
-    )
+        ColorType::RED)
     {
         Serial.println("RED");
     }
     else if (
         obstacle->color ==
-        ColorType::GREEN
-    )
+        ColorType::GREEN)
     {
         Serial.println("GREEN");
     }
 }
-
 
 // ============================================================
 // VALIDATE OBSTACLE
 // ============================================================
 
 static bool validObstacle(
-    const Blob* obstacle
-)
+    const Blob *obstacle)
 {
     if (obstacle == nullptr)
     {
         return false;
     }
 
-
     if (!obstacle->found)
     {
         return false;
     }
 
-
     if (
         obstacle->color !=
             ColorType::RED &&
         obstacle->color !=
-            ColorType::GREEN
-    )
+            ColorType::GREEN)
     {
         return false;
     }
-
 
     if (
         obstacle->area <
-        OBSTACLE_MIN_AREA
-    )
+        OBSTACLE_MIN_AREA)
     {
         return false;
     }
-
 
     if (
         obstacle->height() <
-        OBSTACLE_MIN_HEIGHT
-    )
+        OBSTACLE_MIN_HEIGHT)
     {
         return false;
     }
 
-
     return true;
 }
-
 
 // ============================================================
 // GET CURRENTLY TRACKED COLOUR
 // ============================================================
 
-static const Blob* getTrackedObstacle()
+static const Blob *getTrackedObstacle()
 {
-    const VisionResult& v =
+    const VisionResult &v =
         vision.getResult();
-
 
     if (
         oa_color ==
-        ColorType::RED
-    )
+        ColorType::RED)
     {
         if (v.red.found)
         {
@@ -526,11 +432,9 @@ static const Blob* getTrackedObstacle()
         return nullptr;
     }
 
-
     if (
         oa_color ==
-        ColorType::GREEN
-    )
+        ColorType::GREEN)
     {
         if (v.green.found)
         {
@@ -540,10 +444,8 @@ static const Blob* getTrackedObstacle()
         return nullptr;
     }
 
-
     return nullptr;
 }
-
 
 // ============================================================
 // TARGET X POSITION
@@ -556,31 +458,24 @@ static const Blob* getTrackedObstacle()
 // ============================================================
 
 static int obstacleTargetX(
-    ColorType color
-)
+    ColorType color)
 {
     if (
         color ==
-        ColorType::RED
-    )
+        ColorType::RED)
     {
-        return
-            OBSTACLE_RED_TARGET_X;
+        return OBSTACLE_RED_TARGET_X;
     }
 
-
-    return
-        OBSTACLE_GREEN_TARGET_X;
+    return OBSTACLE_GREEN_TARGET_X;
 }
-
 
 // ============================================================
 // PASSING DIRECTION
 // ============================================================
 
 static int obstacleAvoidDirection(
-    ColorType color
-)
+    ColorType color)
 {
     // Current assumption:
     //
@@ -591,16 +486,13 @@ static int obstacleAvoidDirection(
 
     if (
         color ==
-        ColorType::RED
-    )
+        ColorType::RED)
     {
         return 1;
     }
 
-
     return -1;
 }
-
 
 // ============================================================
 // AVOIDANCE GETTERS
@@ -608,10 +500,8 @@ static int obstacleAvoidDirection(
 
 bool obstacle_avoidance_active()
 {
-    return
-        oa_state != OA_IDLE;
+    return oa_state != OA_IDLE;
 }
-
 
 ObstacleAvoidanceState
 obstacle_avoidance_get_state()
@@ -619,31 +509,28 @@ obstacle_avoidance_get_state()
     return oa_state;
 }
 
-
-const char*
+const char *
 obstacle_avoidance_state_string(
-    ObstacleAvoidanceState state
-)
+    ObstacleAvoidanceState state)
 {
     switch (state)
     {
-        case OA_IDLE:
-            return "IDLE";
+    case OA_IDLE:
+        return "IDLE";
 
-        case OA_TRACKING:
-            return "TRACKING";
+    case OA_TRACKING:
+        return "TRACKING";
 
-        case OA_PASSING:
-            return "PASSING";
+    case OA_PASSING:
+        return "PASSING";
 
-        case OA_RECOVERING:
-            return "RECOVERING";
+    case OA_RECOVERING:
+        return "RECOVERING";
 
-        default:
-            return "UNKNOWN";
+    default:
+        return "UNKNOWN";
     }
 }
-
 
 // ============================================================
 // RESET AVOIDANCE
@@ -673,15 +560,13 @@ void obstacle_avoidance_reset()
     oa_last_camera_error = 0;
 }
 
-
 // ============================================================
 // OBSTACLE AVOIDANCE UPDATE
 // ============================================================
 
 bool obstacle_avoidance_update(
     bool enabled,
-    bool newCameraFrame
-)
+    bool newCameraFrame)
 {
     if (!enabled)
     {
@@ -689,7 +574,6 @@ bool obstacle_avoidance_update(
 
         return false;
     }
-
 
     // ========================================================
     // IDLE
@@ -704,14 +588,12 @@ bool obstacle_avoidance_update(
 
         if (
             gyro_follower_get_state() !=
-            GF_FOLLOWING
-        )
+            GF_FOLLOWING)
         {
             oa_confirm_frames = 0;
 
             return false;
         }
-
 
         // Do not detect the same obstacle again immediately
         // after passing it.
@@ -719,54 +601,42 @@ bool obstacle_avoidance_update(
         if (
             oa_has_finished_obstacle &&
             distanceSince(
-                oa_last_finish_distance
-            ) <
-            OBSTACLE_REARM_DISTANCE_MM
-        )
+                oa_last_finish_distance) <
+                OBSTACLE_REARM_DISTANCE_MM)
         {
             return false;
         }
-
 
         if (!newCameraFrame)
         {
             return false;
         }
 
-
-        const Blob* obstacle =
+        const Blob *obstacle =
             getLargestObstacle();
-
 
         if (
             !validObstacle(
-                obstacle
-            )
-        )
+                obstacle))
         {
             oa_confirm_frames = 0;
 
             return false;
         }
 
-
         ++oa_confirm_frames;
-
 
         if (
             oa_confirm_frames <
-            OBSTACLE_CONFIRM_FRAMES
-        )
+            OBSTACLE_CONFIRM_FRAMES)
         {
             return false;
         }
-
 
         // Stable obstacle confirmed.
 
         oa_color =
             obstacle->color;
-
 
         // Save the exact heading target of the normal
         // wall follower before taking over steering.
@@ -774,34 +644,25 @@ bool obstacle_avoidance_update(
         oa_base_heading =
             gyro_follower_get_target_heading();
 
-
         oa_last_camera_error =
             obstacle->centerX -
             obstacleTargetX(
-                oa_color
-            );
-
+                oa_color);
 
         oa_lost_frames = 0;
-
 
         oa_state_start_distance =
             get_distance();
 
-
         oa_state =
             OA_TRACKING;
 
-
         Serial.print(
-            "[OA] TRACKING "
-        );
-
+            "[OA] TRACKING ");
 
         if (
             oa_color ==
-            ColorType::RED
-        )
+            ColorType::RED)
         {
             Serial.println("RED");
         }
@@ -810,10 +671,8 @@ bool obstacle_avoidance_update(
             Serial.println("GREEN");
         }
 
-
         return true;
     }
-
 
     // ========================================================
     // TRACKING
@@ -823,9 +682,8 @@ bool obstacle_avoidance_update(
 
     if (oa_state == OA_TRACKING)
     {
-        const Blob* obstacle =
+        const Blob *obstacle =
             getTrackedObstacle();
-
 
         // Only count lost frames when a genuinely new
         // camera image has been processed.
@@ -834,93 +692,70 @@ bool obstacle_avoidance_update(
         {
             if (
                 validObstacle(
-                    obstacle
-                )
-            )
+                    obstacle))
             {
                 oa_lost_frames = 0;
-
 
                 oa_last_camera_error =
                     obstacle->centerX -
                     obstacleTargetX(
-                        oa_color
-                    );
+                        oa_color);
             }
             else
             {
                 if (
                     oa_lost_frames <
-                    255
-                )
+                    255)
                 {
                     ++oa_lost_frames;
                 }
             }
         }
 
-
         // Object disappeared for several camera frames:
         // assume the vehicle has reached/passed its side.
 
         if (
             oa_lost_frames >=
-            OBSTACLE_LOST_FRAMES
-        )
+            OBSTACLE_LOST_FRAMES)
         {
             oa_state =
                 OA_PASSING;
 
-
             oa_state_start_distance =
                 get_distance();
 
-
             Serial.println(
-                "[OA] TRACKING -> PASSING"
-            );
-
+                "[OA] TRACKING -> PASSING");
 
             return true;
         }
-
 
         const float headingError =
             get_angle() -
             oa_base_heading;
 
-
         float steering =
             OBSTACLE_CAMERA_KP *
-                oa_last_camera_error
-            +
+                oa_last_camera_error +
             OBSTACLE_HEADING_KP *
                 headingError;
-
 
         steering =
             clampValue(
                 steering,
                 -OBSTACLE_MAX_STEERING,
-                OBSTACLE_MAX_STEERING
-            );
-
+                OBSTACLE_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
-                steering
-            )
-        );
-
+                steering));
 
         set_speed(
-            OBSTACLE_AVOID_SPEED
-        );
-
+            OBSTACLE_AVOID_SPEED);
 
         return true;
     }
-
 
     // ========================================================
     // PASSING
@@ -932,63 +767,45 @@ bool obstacle_avoidance_update(
     {
         const int direction =
             obstacleAvoidDirection(
-                oa_color
-            );
-
+                oa_color);
 
         const float headingError =
             get_angle() -
             oa_base_heading;
 
-
         float steering =
             direction *
-                OBSTACLE_PASS_STEERING
-            +
+                OBSTACLE_PASS_STEERING +
             OBSTACLE_HEADING_KP *
                 headingError;
-
 
         steering =
             clampValue(
                 steering,
                 -OBSTACLE_MAX_STEERING,
-                OBSTACLE_MAX_STEERING
-            );
-
+                OBSTACLE_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
-                steering
-            )
-        );
-
+                steering));
 
         set_speed(
-            OBSTACLE_AVOID_SPEED
-        );
-
+            OBSTACLE_AVOID_SPEED);
 
         if (
             distanceSince(
-                oa_state_start_distance
-            ) >=
-            OBSTACLE_PASS_DISTANCE_MM
-        )
+                oa_state_start_distance) >=
+            OBSTACLE_PASS_DISTANCE_MM)
         {
             oa_state =
                 OA_RECOVERING;
 
-
             Serial.println(
-                "[OA] PASSING -> RECOVERING"
-            );
+                "[OA] PASSING -> RECOVERING");
         }
-
 
         return true;
     }
-
 
     // ========================================================
     // RECOVERING
@@ -1002,78 +819,59 @@ bool obstacle_avoidance_update(
             get_angle() -
             oa_base_heading;
 
-
         float steering =
             OBSTACLE_RECOVER_KP *
             headingError;
-
 
         steering =
             clampValue(
                 steering,
                 -OBSTACLE_RECOVER_MAX_STEERING,
-                OBSTACLE_RECOVER_MAX_STEERING
-            );
-
+                OBSTACLE_RECOVER_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
-                steering
-            )
-        );
-
+                steering));
 
         set_speed(
-            OBSTACLE_RECOVER_SPEED
-        );
-
+            OBSTACLE_RECOVER_SPEED);
 
         if (
             fabsf(headingError) <=
-            OBSTACLE_RECOVER_TOLERANCE_DEG
-        )
+            OBSTACLE_RECOVER_TOLERANCE_DEG)
         {
             oa_last_finish_distance =
                 get_distance();
 
-
             oa_has_finished_obstacle =
                 true;
-
 
             oa_state =
                 OA_IDLE;
 
-
             oa_color =
                 ColorType::NONE;
-
 
             oa_confirm_frames = 0;
             oa_lost_frames = 0;
 
-
             set_steering(0);
 
-
             Serial.println(
-                "[OA] RECOVERY COMPLETE"
-            );
+                "[OA] RECOVERY COMPLETE");
 
+            // Give the normal wall follower a fresh starting
+            // point after the avoidance maneuver.
+            gyro_follower_rearm_after_obstacle();
 
-            // false means:
-            // normal Wall Follower may take control again.
             return false;
         }
-
 
         return true;
     }
 
-
     return false;
 }
-
 
 // ============================================================
 // OBSTACLE CHALLENGE SETUP
@@ -1089,12 +887,9 @@ void obstacle_challenge_setup()
 
     obstacle_avoidance_reset();
 
-
     Serial.println(
-        "===== OBSTACLE CHALLENGE READY ====="
-    );
+        "===== OBSTACLE CHALLENGE READY =====");
 }
-
 
 // ============================================================
 // IS OBSTACLE DETECTION ALREADY ACTIVE?
@@ -1102,10 +897,8 @@ void obstacle_challenge_setup()
 
 bool obstacle_challenge_active()
 {
-    return
-        oc_first_corner_complete;
+    return oc_first_corner_complete;
 }
-
 
 // ============================================================
 // COMPLETE OBSTACLE CHALLENGE CONTROL
@@ -1113,8 +906,7 @@ bool obstacle_challenge_active()
 
 void obstacle_challenge_update(
     bool enabled,
-    bool newCameraFrame
-)
+    bool newCameraFrame)
 {
     // ========================================================
     // DISABLED
@@ -1130,14 +922,11 @@ void obstacle_challenge_update(
             obstacle_avoidance_reset();
         }
 
-
         oc_was_enabled =
             false;
 
-
         return;
     }
-
 
     // ========================================================
     // NEW RUN
@@ -1153,12 +942,9 @@ void obstacle_challenge_update(
 
         obstacle_avoidance_reset();
 
-
         Serial.println(
-            "[OC] New obstacle run"
-        );
+            "[OC] New obstacle run");
     }
-
 
     // ========================================================
     // FIRST SECTION + FIRST CORNER
@@ -1170,9 +956,7 @@ void obstacle_challenge_update(
     if (!oc_first_corner_complete)
     {
         gyro_follower_update(
-            enabled
-        );
-
+            enabled);
 
         // gf_turn_count becomes 1 when the corner is detected.
         //
@@ -1182,44 +966,32 @@ void obstacle_challenge_update(
         if (
             gyro_follower_get_turn_count() >= 1 &&
             gyro_follower_get_state() ==
-                GF_FOLLOWING
-        )
+                GF_FOLLOWING)
         {
             oc_first_corner_complete =
                 true;
 
-
             obstacle_avoidance_reset();
-
 
             Serial.println();
             Serial.println(
-                "===== OBSTACLE DETECTION ENABLED ====="
-            );
-
+                "===== OBSTACLE DETECTION ENABLED =====");
 
             Serial.print(
-                "Current heading target: "
-            );
+                "Current heading target: ");
 
             Serial.println(
-                gyro_follower_get_target_heading()
-            );
-
+                gyro_follower_get_target_heading());
 
             Serial.print(
-                "Turn direction: "
-            );
+                "Turn direction: ");
 
             Serial.println(
-                gyro_follower_get_turn_angle()
-            );
+                gyro_follower_get_turn_angle());
         }
-
 
         return;
     }
-
 
     // ========================================================
     // AFTER FIRST CORNER
@@ -1227,7 +999,6 @@ void obstacle_challenge_update(
     // Normal navigation is STILL the existing
     // Open Challenge Wall Follower.
     // ========================================================
-
 
     // --------------------------------------------------------
     // The Wall Follower is currently executing a corner,
@@ -1238,16 +1009,13 @@ void obstacle_challenge_update(
 
     if (
         gyro_follower_get_state() !=
-        GF_FOLLOWING
-    )
+        GF_FOLLOWING)
     {
         gyro_follower_update(
-            enabled
-        );
+            enabled);
 
         return;
     }
-
 
     // --------------------------------------------------------
     // Straight section:
@@ -1257,9 +1025,7 @@ void obstacle_challenge_update(
     const bool avoiding =
         obstacle_avoidance_update(
             enabled,
-            newCameraFrame
-        );
-
+            newCameraFrame);
 
     // --------------------------------------------------------
     // No obstacle:
@@ -1269,7 +1035,6 @@ void obstacle_challenge_update(
     if (!avoiding)
     {
         gyro_follower_update(
-            enabled
-        );
+            enabled);
     }
 }

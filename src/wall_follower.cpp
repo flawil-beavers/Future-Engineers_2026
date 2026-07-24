@@ -465,6 +465,23 @@ void gyro_follower_set_pd_gains(float kp, float kd)
   gf_pd_kd = kd;
   Serial.print("Distance PD gains: Kp="); Serial.print(kp); Serial.print(", Kd="); Serial.println(kd);
 }
+
+void gyro_follower_rearm_after_obstacle()
+{
+    // Restart corner detection distance from the
+    // current position after an avoidance maneuver.
+    gf_start_distance = get_distance();
+
+    // Wait until the normal wall has been found again
+    // before applying wall-distance correction.
+    gf_searching_for_wall = true;
+
+    // Prevent old controller errors from affecting
+    // the first control cycle after avoidance.
+    gf_last_distance_error = 0;
+    gf_last_gyro_error = 0;
+}
+
 float gyro_follower_get_target_heading()
 {
     return gf_gyro_target;
