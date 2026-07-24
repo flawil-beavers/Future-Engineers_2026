@@ -19,6 +19,9 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
+#include "logger.h"
+#define Serial robot_logger
+
 
 extern long encoder_pos;
 extern float current_distance;
@@ -315,7 +318,9 @@ void state_stopped()
   
   log_tof_diagnostics("Mission complete -> IDLE");
   gf_state = GF_IDLE;
+  robot_logger.write_to_usb();
 }
+
 
 // ==========================================
 // PUBLIC INTERFACE

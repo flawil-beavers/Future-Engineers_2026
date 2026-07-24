@@ -6,6 +6,8 @@
 #include "motor_control.h"
 #include "config.h"
 #include "wall_follower.h"
+#include "logger.h"
+#define Serial robot_logger
 
 extern void serial_setup();
 
@@ -302,7 +304,9 @@ void system_disable()
   // wall_follower_disable();
 
   Serial.println("SYSTEM DISABLED");
+  robot_logger.write_to_usb();
 }
+
 
 void system_interface_setup()
 {

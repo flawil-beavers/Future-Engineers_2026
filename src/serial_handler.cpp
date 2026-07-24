@@ -28,6 +28,8 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "wall_follower.h"
+#include "logger.h"
+#define Serial robot_logger
 
 // ==========================================
 // SERIAL BUFFER

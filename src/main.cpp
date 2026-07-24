@@ -21,6 +21,9 @@
 
 CameraSystem camera;
 Vision vision;
+#include "logger.h"
+// Redirect all Serial output in this file through the USB logger
+#define Serial robot_logger
 
 // ==========================================
 // SETUP - Initialize all subsystems
