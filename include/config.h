@@ -78,8 +78,8 @@
 // ==========================================
 // STALL DETECTION
 // ==========================================
-#define STALL_THRESHOLD_COUNTS 50         // Encoder counts
-#define STALL_DC_THRESHOLD 0.9           // Trigger at 90% of max DC
+#define STALL_SPEED_THRESHOLD_MMS 1.0f    // Trigger stall if speed < 1.0 mm/s while demanding high torque
+#define STALL_DC_THRESHOLD 0.99           // Trigger at 99% of max DC
 
 // ==========================================
 // ENABLE INTERRUPT DEBOUNCE
