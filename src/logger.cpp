@@ -178,7 +178,7 @@ void USBLogger::write_to_usb() {
         }
     }
 
-    // 6. Write log buffer to file
+    // 6. Write log buffer to file in small chunks with error checking
     FILE *f = fopen(session_filepath, "w");
     if (f == NULL) {
         if (SERIAL_HW) {
@@ -186,15 +186,54 @@ void USBLogger::write_to_usb() {
             SERIAL_HW.println(session_filepath);
         }
     } else {
-        fwrite(log_buffer, 1, buffer_head, f);
+        // Write in small chunks to avoid filesystem buffer overflows
+        static const size_t CHUNK_SIZE = 512;
+        size_t total_written = 0;
+        size_t remaining = buffer_head;
+        const char *src = log_buffer;
+
+        while (remaining > 0) {
+            size_t to_write = (remaining < CHUNK_SIZE) ? remaining : CHUNK_SIZE;
+            size_t written = fwrite(src, 1, to_write, f);
+            total_written += written;
+            
+            if (written < to_write) {
+                // Write failed or truncated — report and stop
+                if (SERIAL_HW) {
+                    SERIAL_HW.print("[LOGGER] WARNING: fwrite truncated at byte ");
+                    SERIAL_HW.print(total_written);
+                    SERIAL_HW.print(" / ");
+                    SERIAL_HW.println(buffer_head);
+                }
+                break;
+            }
+            
+            src += written;
+            remaining -= written;
+        }
+        
         if (buffer_overflow) {
             fprintf(f, "\n*** WARNING: LOG BUFFER OVERFLOW - SOME EARLY LOGS WERE LOST ***\n");
         }
+        
+        // Flush to ensure data is written before unmount
+        fflush(f);
         fclose(f);
+        
         if (SERIAL_HW) {
             SERIAL_HW.print("[LOGGER] Log saved to ");
-            SERIAL_HW.println(session_filepath);
+            SERIAL_HW.print(session_filepath);
+            SERIAL_HW.print(" (");
+            SERIAL_HW.print(total_written);
+            SERIAL_HW.print(" / ");
+            SERIAL_HW.print(buffer_head);
+            SERIAL_HW.println(" bytes written)");
         }
+        
+        // Clear buffer after successful write to avoid re-writing stale data
+        buffer_head = 0;
+        buffer_overflow = false;
+        log_buffer[0] = '\0';
     }
 
     // 7. Safely unmount and power down USB port
