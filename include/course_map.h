@@ -22,6 +22,7 @@ struct CourseSection
     CourseObstacle obstacles[COURSE_MAX_OBSTACLES_PER_SECTION];
     bool originKnown = false;
     bool visited = false;
+    int8_t successfulLane = 0;
 };
 
 void course_map_reset();
@@ -39,4 +40,7 @@ void course_map_record_obstacle(
     int16_t bottomY);
 
 const CourseSection &course_map_get_section(uint8_t section);
+void course_map_record_successful_lane(
+    uint8_t section,
+    int8_t lane);
 void course_map_print();

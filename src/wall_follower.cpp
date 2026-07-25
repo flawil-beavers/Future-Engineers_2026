@@ -52,6 +52,7 @@ float gf_last_gyro_error = 0;
 
 // Timing and control
 float gf_turn_start_angle = 0;
+float gf_corner_phase_start_distance = 0;
 
 // Round counting
 int gf_turn_count = 0;
@@ -67,6 +68,7 @@ bool gf_searching_for_wall = false;   // True when waiting to "re-acquire" a wal
 bool gf_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
 bool gf_obstacle_mode = false;
 uint8_t gf_corner_gap_samples = 0;
+float gf_wall_correction_resume_distance = 0;
 
 // PD Controller
 float gf_pd_kp = 0.5;                 // Proportional gain
@@ -210,9 +212,13 @@ void state_following()
    * If the wall disappears (reading exceeds margin), it indicates a corner.
    * The robot will increment its turn count and transition to GF_TURNING.
    */
-  // Increase blind distance specifically after the first turn to ignore 
-  // potential false gaps or handling specific track geometry.
-  float blind_dist = (gf_turn_count == 1) ? 600.0f : 300.0f;
+  // The initial position can be part-way along the start section, so its
+  // first corner needs only a short lockout. After a known corner a new
+  // straight is about one metre long; accepting another corner after only
+  // 300 mm caused false turns after obstacle manoeuvres.
+  float blind_dist =
+      (gf_obstacle_mode && gf_turn_count > 0) ? 650.0f :
+      ((gf_turn_count == 1) ? 600.0f : 300.0f);
   float wall_margin = gf_long_range_active ? 1500 : gf_wall_margin;
   bool beyond_blind_distance = gf_start_distance + blind_dist < get_distance();
   bool heading_plausible = fabs(gyro_error) < (gf_obstacle_mode ? 12.0f : 180.0f);
@@ -280,7 +286,11 @@ void state_following()
       if (current_wall_distance < (gf_target_distance + 100.0)) gf_searching_for_wall = false;
     }
 
-    if (!gf_searching_for_wall) {
+    const bool post_turn_gyro_only =
+        gf_obstacle_mode &&
+        get_distance() < gf_wall_correction_resume_distance;
+
+    if (!gf_searching_for_wall && !post_turn_gyro_only) {
       float dist_error = current_wall_distance - gf_target_distance;
       float dist_derivative = (dist_error - gf_last_distance_error) / safe_loop_time;
       dist_pd = gf_pd_kp * dist_error + gf_pd_kd * dist_derivative;
@@ -309,7 +319,15 @@ void state_following()
   if (total_steering < -60) total_steering = -60;
 
   set_steering(total_steering);
-  set_speed(gf_normal_speed);
+
+  // An Ackermann-steered car needs a calm corner exit.  Keep the first part
+  // of the new straight slow while gyro-only steering makes it parallel;
+  // using the close return from the old wall here pulled the car across the
+  // corridor in clockwise runs.
+  const bool post_turn_gyro_only =
+      gf_obstacle_mode &&
+      get_distance() < gf_wall_correction_resume_distance;
+  set_speed(post_turn_gyro_only ? 160.0f : gf_normal_speed);
 }
 
 /**
@@ -321,8 +339,23 @@ void state_following()
  */
 void state_turning()
 {
-  set_steering(gf_turn_angle > 0 ? -25 : 25);
-  set_speed(gf_normal_speed);
+  const float cornerSteering =
+      gf_obstacle_mode ? OBSTACLE_CORNER_STEERING : 25.0f;
+  set_steering(
+      gf_turn_angle > 0
+          ? -cornerSteering
+          : cornerSteering);
+  if (gf_obstacle_mode)
+  {
+    set_speed(
+        gf_turn_count <= 4
+            ? OBSTACLE_FIRST_LAP_CORNER_SPEED
+            : OBSTACLE_LATER_LAP_CORNER_SPEED);
+  }
+  else
+  {
+    set_speed(gf_normal_speed);
+  }
 
   if ((get_angle() - gf_turn_start_angle - gf_turn_angle) * gf_turn_angle/fabs(gf_turn_angle) > 0)
   {
@@ -330,9 +363,88 @@ void state_turning()
     gf_last_gyro_error = 0;
     gf_searching_for_wall = true;
     gf_start_distance = get_distance();
-    log_tof_diagnostics("Turn finished -> FOLLOWING");
+    gf_wall_correction_resume_distance =
+        gf_start_distance + (gf_obstacle_mode ? 300.0f : 0.0f);
+    if (gf_obstacle_mode && gf_turn_count <= 4)
+    {
+      gf_corner_phase_start_distance = get_distance();
+      log_tof_diagnostics("Turn arc finished -> FIRST-LAP REVERSING");
+      gf_state = GF_CORNER_REVERSING;
+    }
+    else
+    {
+      log_tof_diagnostics("Turn finished -> FOLLOWING");
+      gf_state = GF_FOLLOWING;
+    }
+    set_steering(0);
+  }
+}
+
+void state_corner_reversing()
+{
+  const float direction = (gf_turn_angle > 0) ? 1.0f : -1.0f;
+  const float signed_overshoot =
+      (get_angle() - gf_gyro_target) * direction;
+  const float reverse_distance =
+      fabsf(get_distance() - gf_corner_phase_start_distance);
+
+  set_steering(
+      gf_turn_angle > 0
+          ? -OBSTACLE_FIRST_LAP_REVERSE_STEERING
+          : OBSTACLE_FIRST_LAP_REVERSE_STEERING);
+  set_speed(-OBSTACLE_FIRST_LAP_REVERSE_SPEED);
+
+  if ((reverse_distance >=
+           OBSTACLE_FIRST_LAP_REVERSE_MIN_MM &&
+       signed_overshoot <=
+           OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG) ||
+      reverse_distance >=
+          OBSTACLE_FIRST_LAP_REVERSE_MAX_MM)
+  {
+    gf_corner_phase_start_distance = get_distance();
+    gf_last_gyro_error = 0;
+    gf_state = GF_CORNER_ALIGNING;
+    set_steering(0);
+    Serial.print("[GF] Reverse alignment complete distance=");
+    Serial.print(reverse_distance, 0);
+    Serial.print(" heading_error=");
+    Serial.println(get_angle() - gf_gyro_target, 1);
+  }
+}
+
+void state_corner_aligning()
+{
+  const float heading_error = get_angle() - gf_gyro_target;
+  const float align_distance =
+      fabsf(get_distance() - gf_corner_phase_start_distance);
+
+  float steering = 0.85f * heading_error;
+  if (steering > 18.0f) steering = 18.0f;
+  if (steering < -18.0f) steering = -18.0f;
+
+  set_steering(static_cast<int>(steering));
+  set_speed(OBSTACLE_FIRST_LAP_ALIGN_SPEED);
+
+  const bool aligned =
+      align_distance >= OBSTACLE_FIRST_LAP_ALIGN_MIN_MM &&
+      fabsf(heading_error) <=
+          OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG;
+  const bool distance_limit =
+      align_distance >= OBSTACLE_FIRST_LAP_ALIGN_MAX_MM;
+
+  if (aligned || distance_limit)
+  {
+    gf_start_distance = get_distance();
+    gf_wall_correction_resume_distance = gf_start_distance + 200.0f;
+    gf_searching_for_wall = true;
+    gf_last_gyro_error = 0;
+    gf_last_distance_error = 0;
     gf_state = GF_FOLLOWING;
     set_steering(0);
+    log_tof_diagnostics(
+        aligned
+            ? "First-lap corner aligned -> FOLLOWING"
+            : "First-lap alignment distance limit -> FOLLOWING");
   }
 }
 
@@ -381,6 +493,8 @@ void gyro_follower_update(bool enabled)
     case GF_IDLE: state_idle(); break;
     case GF_FOLLOWING: state_following(); break;
     case GF_TURNING: state_turning(); break;
+    case GF_CORNER_REVERSING: state_corner_reversing(); break;
+    case GF_CORNER_ALIGNING: state_corner_aligning(); break;
     case GF_STOPPED: state_stopped(); break;
     }
   }
@@ -398,6 +512,7 @@ void gyro_follower_enable()
   gf_start_angle = get_angle();
   gf_start_distance = current_distance;
   gf_gyro_target = gf_start_angle;
+  gf_wall_correction_resume_distance = gf_start_distance;
   
   log_tof_diagnostics("Manual enable -> FOLLOWING");
   gf_state = GF_FOLLOWING;
@@ -439,6 +554,8 @@ const char* gyro_follower_state_string(GyroFollowerState _state)
     case GF_IDLE: return "IDLE";
     case GF_FOLLOWING: return "FOLLOWING";
     case GF_TURNING: return "TURNING";
+    case GF_CORNER_REVERSING: return "CORNER_REVERSING";
+    case GF_CORNER_ALIGNING: return "CORNER_ALIGNING";
     case GF_STOPPED: return "STOPPED";
     default: return "UNKNOWN";
   }
@@ -503,10 +620,6 @@ void gyro_follower_set_pd_gains(float kp, float kd)
 
 void gyro_follower_rearm_after_obstacle()
 {
-    // Restart corner detection distance from the
-    // current position after an avoidance maneuver.
-    gf_start_distance = get_distance();
-
     // Wait until the normal wall has been found again
     // before applying wall-distance correction.
     gf_searching_for_wall = true;
@@ -532,6 +645,11 @@ int gyro_follower_get_turn_angle()
     return gf_turn_angle;
 }
 
+WallSide gyro_follower_get_following_wall()
+{
+  return gf_following_wall;
+}
+
 void gyro_follower_set_speed(float speed_mm_s)
 {
   if (speed_mm_s < 0)
@@ -547,4 +665,31 @@ void gyro_follower_set_obstacle_mode(bool enable)
 {
   gf_obstacle_mode = enable;
   gf_corner_gap_samples = 0;
+}
+
+void gyro_follower_select_wall(
+    WallSide side,
+    float target_distance_mm)
+{
+  if (side == SIDE_UNKNOWN)
+    return;
+
+  if (target_distance_mm < 120.0f)
+    target_distance_mm = 120.0f;
+  if (target_distance_mm > 350.0f)
+    target_distance_mm = 350.0f;
+
+  if (gf_following_wall != side ||
+      fabsf(gf_target_distance - target_distance_mm) > 1.0f)
+  {
+    gf_following_wall = side;
+    gf_target_distance = target_distance_mm;
+    gf_searching_for_wall = true;
+    gf_last_distance_error = 0;
+
+    Serial.print("[GF] Planned lane ");
+    Serial.print(side == SIDE_LEFT ? "LEFT" : "RIGHT");
+    Serial.print(" wall_mm=");
+    Serial.println(target_distance_mm, 0);
+  }
 }

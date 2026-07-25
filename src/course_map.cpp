@@ -73,7 +73,8 @@ void course_map_record_obstacle(
         Serial.print(imageX);
         Serial.print(" bottom=");
         Serial.println(bottomY);
-        return;
+        // Colour and encounter order are still valuable. The learned-lap
+        // planner deliberately ignores this unanchored millimetre value.
     }
 
     // A completed avoidance can occasionally see the same pillar again.
@@ -136,6 +137,21 @@ const CourseSection &course_map_get_section(uint8_t section)
     return courseSections[section];
 }
 
+void course_map_record_successful_lane(
+    uint8_t section,
+    int8_t lane)
+{
+    if (section >= COURSE_SECTION_COUNT ||
+        (lane != -1 && lane != 1))
+        return;
+
+    courseSections[section].successfulLane = lane;
+    Serial.print("[MAP] S");
+    Serial.print(section);
+    Serial.print(" successful lane=");
+    Serial.println(lane < 0 ? "LEFT" : "RIGHT");
+}
+
 void course_map_print()
 {
     Serial.println("===== COURSE MAP =====");
@@ -146,6 +162,13 @@ void course_map_print()
         Serial.print(section);
         Serial.print(" origin=");
         Serial.println(courseSection.originKnown ? "KNOWN" : "UNKNOWN");
+        Serial.print("  successful_lane=");
+        Serial.println(
+            courseSection.successfulLane < 0
+                ? "LEFT"
+                : (courseSection.successfulLane > 0
+                       ? "RIGHT"
+                       : "UNKNOWN"));
 
         for (uint8_t i = 0; i < COURSE_MAX_OBSTACLES_PER_SECTION; ++i)
         {

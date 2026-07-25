@@ -121,28 +121,28 @@
 
 // Desired obstacle positions inside the 320 px image
 // Red must stay on the LEFT -> robot passes on the right
-#define OBSTACLE_RED_TARGET_X 95
+#define OBSTACLE_RED_TARGET_X 120
 
 // Green must stay on the RIGHT -> robot passes on the left
-#define OBSTACLE_GREEN_TARGET_X 225
+#define OBSTACLE_GREEN_TARGET_X 200
 
 // Camera steering
-#define OBSTACLE_CAMERA_KP 0.18f
-#define OBSTACLE_HEADING_KP 0.35f
-#define OBSTACLE_MAX_STEERING 32.0f
+#define OBSTACLE_CAMERA_KP 0.10f
+#define OBSTACLE_HEADING_KP 0.30f
+#define OBSTACLE_MAX_STEERING 20.0f
 
 // Start slowly while tuning
-#define OBSTACLE_AVOID_SPEED 180
+#define OBSTACLE_AVOID_SPEED 160
 #define OBSTACLE_CRUISE_SPEED 220
 
 // Continue around obstacle after camera loses it
-#define OBSTACLE_PASS_STEERING 14.0f
-#define OBSTACLE_PASS_DISTANCE_MM 90.0f
+#define OBSTACLE_PASS_STEERING 8.0f
+#define OBSTACLE_PASS_DISTANCE_MM 60.0f
 
 // Return to original course heading
-#define OBSTACLE_RECOVER_KP 1.5f
-#define OBSTACLE_RECOVER_MAX_STEERING 25.0f
-#define OBSTACLE_RECOVER_SPEED 180
+#define OBSTACLE_RECOVER_KP 1.0f
+#define OBSTACLE_RECOVER_MAX_STEERING 18.0f
+#define OBSTACLE_RECOVER_SPEED 160
 #define OBSTACLE_RECOVER_TOLERANCE_DEG 3.0f
 
 // Prevent detecting the same obstacle immediately again
@@ -172,6 +172,31 @@
 #define OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM 100.0f
 #define OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM 300.0f
 #define OBSTACLE_CORNER_SETTLE_HEADING_DEG 4.0f
+#define OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG 6.0f
+
+// Measured Ackermann geometry:
+// servo -40 -> R ~= 154.6 mm -> 90 degree arc ~= 242.8 mm
+// servo +40 -> R ~= 158.8 mm -> 90 degree arc ~= 249.4 mm
+#define OBSTACLE_CORNER_STEERING 40.0f
+#define OBSTACLE_FIRST_LAP_CORNER_SPEED 140.0f
+#define OBSTACLE_LATER_LAP_CORNER_SPEED 180.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_SPEED 80.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_STEERING 40.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_MIN_MM 25.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_MAX_MM 55.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG 2.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_SPEED 120.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_MIN_MM 120.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_MAX_MM 260.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG 3.0f
+
+// Learned-lap lane planner. Official signs sit roughly 400 mm from a wall;
+// a 190 mm vehicle-centre offset leaves useful clearance on both sides.
+#define OBSTACLE_PLANNED_LANE_WALL_MM 190.0f
+#define OBSTACLE_PLANNED_SWITCH_AFTER_MM 200.0f
+#define OBSTACLE_PLANNED_NEXT_SECTION_MM 180.0f
+#define OBSTACLE_START_SECTION_SWITCH_MM 500.0f
+#define OBSTACLE_START_SECTION_NEXT_PLAN_MM 750.0f
 
 
 

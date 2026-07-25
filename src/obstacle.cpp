@@ -47,6 +47,9 @@ static uint8_t oc_current_lap = 0;
 static float oc_section_start_distance = 0.0f;
 static GyroFollowerState oc_last_navigation_state = GF_IDLE;
 static bool oc_corner_settling = false;
+static int oc_last_completed_turn = 0;
+static bool oc_known_obstacle_used[
+    COURSE_MAX_OBSTACLES_PER_SECTION] = {false, false};
 
 // ============================================================
 // GENERAL HELPERS
@@ -118,17 +121,168 @@ static float obstacleSectionDistance()
     return fabsf(get_distance() - oc_section_start_distance);
 }
 
+static WallSide wallForColor(ColorType color)
+{
+    return color == ColorType::GREEN
+        ? SIDE_LEFT
+        : SIDE_RIGHT;
+}
+
+static uint8_t sortedKnownObstacles(
+    uint8_t sectionIndex,
+    const CourseObstacle *ordered[
+        COURSE_MAX_OBSTACLES_PER_SECTION])
+{
+    const CourseSection &section =
+        course_map_get_section(sectionIndex);
+    uint8_t count = 0;
+
+    for (uint8_t i = 0;
+         i < COURSE_MAX_OBSTACLES_PER_SECTION;
+         ++i)
+    {
+        if (section.obstacles[i].known)
+            ordered[count++] = &section.obstacles[i];
+    }
+
+    if (count == 2 &&
+        ordered[0]->firstDetectionDistanceMm >
+            ordered[1]->firstDetectionDistanceMm)
+    {
+        const CourseObstacle *temporary = ordered[0];
+        ordered[0] = ordered[1];
+        ordered[1] = temporary;
+    }
+
+    return count;
+}
+
+static bool updateLearnedLanePlan()
+{
+    if (oc_current_lap == 0)
+        return false;
+
+    const CourseObstacle *current[
+        COURSE_MAX_OBSTACLES_PER_SECTION] = {nullptr, nullptr};
+    const uint8_t currentCount =
+        sortedKnownObstacles(
+            oc_current_section,
+            current);
+
+    if (currentCount == 0)
+    {
+        const CourseSection &section =
+            course_map_get_section(oc_current_section);
+        WallSide guessedWall = SIDE_UNKNOWN;
+
+        if (section.successfulLane < 0)
+            guessedWall = SIDE_LEFT;
+        else if (section.successfulLane > 0)
+            guessedWall = SIDE_RIGHT;
+        else
+        {
+            guessedWall =
+                gyro_follower_get_following_wall();
+            if (guessedWall == SIDE_UNKNOWN)
+                guessedWall = SIDE_LEFT;
+        }
+
+        gyro_follower_select_wall(
+            guessedWall,
+            OBSTACLE_PLANNED_LANE_WALL_MM);
+
+        static int lastGuessSection = -1;
+        if (lastGuessSection != oc_current_section)
+        {
+            lastGuessSection = oc_current_section;
+            Serial.print("[MAP] EXCEPTION: guessing S");
+            Serial.print(oc_current_section);
+            Serial.print(" from traversed lane ");
+            Serial.println(
+                guessedWall == SIDE_LEFT
+                    ? "LEFT"
+                    : "RIGHT");
+        }
+        return true;
+    }
+
+    ColorType desiredColor = ColorType::NONE;
+    const float sectionDistance = obstacleSectionDistance();
+
+    if (currentCount > 0)
+    {
+        desiredColor = current[0]->color;
+
+        if (currentCount == 2 &&
+            sectionDistance >=
+                (oc_current_section == 0
+                     ? OBSTACLE_START_SECTION_SWITCH_MM
+                     : current[0]->firstDetectionDistanceMm +
+                           OBSTACLE_PLANNED_SWITCH_AFTER_MM))
+        {
+            desiredColor = current[1]->color;
+        }
+
+        const CourseObstacle *last =
+            current[currentCount - 1];
+        if (sectionDistance >=
+                (oc_current_section == 0
+                     ? OBSTACLE_START_SECTION_NEXT_PLAN_MM
+                     : last->firstDetectionDistanceMm +
+                           OBSTACLE_PLANNED_NEXT_SECTION_MM))
+        {
+            const CourseObstacle *next[
+                COURSE_MAX_OBSTACLES_PER_SECTION] =
+                    {nullptr, nullptr};
+            const uint8_t nextCount =
+                sortedKnownObstacles(
+                    (oc_current_section + 1) %
+                        COURSE_SECTION_COUNT,
+                    next);
+            if (nextCount > 0)
+                desiredColor = next[0]->color;
+        }
+    }
+
+    if (desiredColor != ColorType::NONE)
+    {
+        gyro_follower_select_wall(
+            wallForColor(desiredColor),
+            OBSTACLE_PLANNED_LANE_WALL_MM);
+    }
+
+    return true;
+}
+
 static void updateCourseProgress()
 {
     const GyroFollowerState navigationState =
         gyro_follower_get_state();
 
+    if (oc_current_lap == 0 &&
+        oc_last_navigation_state == GF_FOLLOWING &&
+        navigationState == GF_TURNING)
+    {
+        const WallSide wall =
+            gyro_follower_get_following_wall();
+        if (wall == SIDE_LEFT || wall == SIDE_RIGHT)
+        {
+            course_map_record_successful_lane(
+                oc_current_section,
+                wall == SIDE_LEFT ? -1 : 1);
+        }
+    }
+
     // A new straight section starts only after the gyro-controlled 90 degree
     // turn has completed. This makes the section reference repeatable.
+    const int completedTurns =
+        gyro_follower_get_turn_count();
+
     if (
-        oc_last_navigation_state == GF_TURNING &&
-        navigationState == GF_FOLLOWING)
+        navigationState == GF_FOLLOWING &&
+        completedTurns > oc_last_completed_turn)
     {
+        oc_last_completed_turn = completedTurns;
         oc_current_section =
             (oc_current_section + 1) % COURSE_SECTION_COUNT;
         oc_current_lap =
@@ -137,6 +291,12 @@ static void updateCourseProgress()
                 COURSE_SECTION_COUNT);
         oc_section_start_distance = get_distance();
         oc_corner_settling = true;
+        for (uint8_t i = 0;
+             i < COURSE_MAX_OBSTACLES_PER_SECTION;
+             ++i)
+        {
+            oc_known_obstacle_used[i] = false;
+        }
 
         course_map_enter_section(
             oc_current_section,
@@ -660,6 +820,64 @@ static int obstacleAvoidDirection(
     return -1;
 }
 
+static int expectedKnownObstacleIndex(
+    float sectionDistance,
+    ColorType &expectedColor)
+{
+    expectedColor = ColorType::NONE;
+    if (oc_current_lap == 0)
+        return -1;
+
+    const CourseSection &section =
+        course_map_get_section(oc_current_section);
+
+    int bestIndex = -1;
+    float bestDifference = 100000.0f;
+    for (uint8_t i = 0;
+         i < COURSE_MAX_OBSTACLES_PER_SECTION;
+         ++i)
+    {
+        const CourseObstacle &known = section.obstacles[i];
+        if (!known.known ||
+            oc_known_obstacle_used[i] ||
+            known.firstLap >= oc_current_lap)
+            continue;
+
+        const float difference =
+            sectionDistance -
+            known.firstDetectionDistanceMm;
+
+        // Start looking before the former camera trigger, but do not keep a
+        // stale prediction active throughout the rest of the section.
+        if (difference < -220.0f || difference > 260.0f)
+            continue;
+
+        if (fabsf(difference) < bestDifference)
+        {
+            bestDifference = fabsf(difference);
+            bestIndex = i;
+            expectedColor = known.color;
+        }
+    }
+
+    return bestIndex;
+}
+
+static bool validKnownColorObservation(
+    const Blob *obstacle,
+    ColorType expectedColor)
+{
+    if (obstacle == nullptr ||
+        !obstacle->found ||
+        obstacle->color != expectedColor)
+        return false;
+
+    return obstacle->area >= 100 &&
+           obstacle->height() >= 12 &&
+           obstacle->maxY >= 90 &&
+           obstacle->width() <= 120;
+}
+
 // ============================================================
 // AVOIDANCE GETTERS
 // ============================================================
@@ -783,9 +1001,20 @@ bool obstacle_avoidance_update(
         const Blob *obstacle =
             getLargestObstacle();
 
+        ColorType expectedColor = ColorType::NONE;
+        const int expectedIndex =
+            expectedKnownObstacleIndex(
+                obstacleSectionDistance(),
+                expectedColor);
+        const bool memoryConfirmed =
+            expectedIndex >= 0 &&
+            validKnownColorObservation(
+                obstacle,
+                expectedColor);
+
         if (
-            !validObstacle(
-                obstacle))
+            !memoryConfirmed &&
+            !validObstacle(obstacle))
         {
             oa_confirm_frames = 0;
             oa_candidate_color = ColorType::NONE;
@@ -793,7 +1022,20 @@ bool obstacle_avoidance_update(
             return false;
         }
 
-        if (obstacle->color != oa_candidate_color)
+        if (memoryConfirmed)
+        {
+            oa_candidate_color = obstacle->color;
+            oa_confirm_frames = OBSTACLE_CONFIRM_FRAMES;
+            oc_known_obstacle_used[expectedIndex] = true;
+            Serial.print("[MAP] Predicted ");
+            Serial.print(
+                expectedColor == ColorType::RED
+                    ? "RED"
+                    : "GREEN");
+            Serial.print(" confirmed at ");
+            Serial.println(obstacleSectionDistance(), 0);
+        }
+        else if (obstacle->color != oa_candidate_color)
         {
             oa_candidate_color = obstacle->color;
             oa_confirm_frames = 1;
@@ -1183,10 +1425,19 @@ void obstacle_challenge_update(
         oc_section_start_distance = get_distance();
         oc_last_navigation_state =
             gyro_follower_get_state();
+        oc_last_completed_turn =
+            gyro_follower_get_turn_count();
         oc_corner_settling = false;
+        for (uint8_t i = 0;
+             i < COURSE_MAX_OBSTACLES_PER_SECTION;
+             ++i)
+        {
+            oc_known_obstacle_used[i] = false;
+        }
 
-        // The randomly selected starting zone can contain a relevant sign
-        // before the first corner. Its local origin is therefore offset.
+        // The rules allow starting in the parking lot or in the middle zone
+        // above it. Store colour/order, but do not treat its encoder origin
+        // like the repeatable origin after a corner.
         course_map_enter_section(
             oc_current_section,
             false);
@@ -1196,11 +1447,13 @@ void obstacle_challenge_update(
     }
 
     updateCourseProgress();
+    const bool learnedLaneActive =
+        updateLearnedLanePlan();
 
-    // Give the unchanged wall/gyro follower exclusive steering control just
-    // after a corner. It exits once both a minimum travel distance and a
-    // small heading error are reached. The maximum distance prevents a bad
-    // gyro sample from blocking obstacle detection indefinitely.
+    // Let the gyro follower align the car just after a corner, while vision
+    // already looks ahead. A confirmed sign at the beginning of the new
+    // section must be allowed to take control before the normal settle
+    // distance has elapsed.
     if (
         oc_corner_settling &&
         gyro_follower_get_state() == GF_FOLLOWING)
@@ -1210,6 +1463,28 @@ void obstacle_challenge_update(
             fabsf(
                 get_angle() -
                 gyro_follower_get_target_heading());
+
+        // Vision may already see the next sign, but an Ackermann car must
+        // first be nearly parallel to the new section. Otherwise a sign seen
+        // far to one side during the turn commands a large, wrong arc.
+        const bool alignedForEarlyTakeover =
+            headingError <=
+            OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG;
+
+        const bool obstacleNeedsControl =
+            !learnedLaneActive &&
+            alignedForEarlyTakeover &&
+            obstacle_avoidance_update(
+                enabled,
+                newCameraFrame);
+
+        if (obstacleNeedsControl)
+        {
+            oc_corner_settling = false;
+            Serial.println(
+                "[OC] Early obstacle during corner exit");
+            return;
+        }
 
         gyro_follower_update(enabled);
 
@@ -1263,9 +1538,11 @@ void obstacle_challenge_update(
     // --------------------------------------------------------
 
     const bool avoiding =
-        obstacle_avoidance_update(
-            enabled,
-            newCameraFrame);
+        oc_current_lap == 0
+            ? obstacle_avoidance_update(
+                  enabled,
+                  newCameraFrame)
+            : false;
 
     // --------------------------------------------------------
     // No obstacle:

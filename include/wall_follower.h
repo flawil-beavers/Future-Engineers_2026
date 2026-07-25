@@ -24,6 +24,8 @@ enum GyroFollowerState {
     GF_IDLE,        ///< System is inactive, waiting for enable command
     GF_FOLLOWING,   ///< Straight-line navigation using Gyro and ToF correction
     GF_TURNING,     ///< Executing a 90-degree pivot turn
+    GF_CORNER_REVERSING, ///< First-lap reverse heading correction
+    GF_CORNER_ALIGNING,  ///< First-lap forward alignment
     GF_STOPPED      ///< Mission complete, final halt state
 };
 
@@ -80,6 +82,9 @@ void gyro_follower_set_pd_gains(float kp, float kd);
 void gyro_follower_set_debug(bool enable);
 void gyro_follower_set_speed(float speed_mm_s);
 void gyro_follower_set_obstacle_mode(bool enable);
+void gyro_follower_select_wall(
+    WallSide side,
+    float target_distance_mm);
 void gyro_follower_print_debug();
 void gyro_follower_rearm_after_obstacle();
 const char* gyro_follower_state_string(GyroFollowerState _state);
@@ -88,6 +93,7 @@ GyroFollowerState gyro_follower_get_state();
 float gyro_follower_get_target_heading();
 int gyro_follower_get_turn_count();
 int gyro_follower_get_turn_angle();
+WallSide gyro_follower_get_following_wall();
 #endif // WALL_FOLLOWER_H
 
 
