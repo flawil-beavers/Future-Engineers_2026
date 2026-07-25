@@ -151,11 +151,24 @@ void USBLogger::write_to_usb() {
         return;
     }
 
-    // 4. Mount FAT filesystem
-    int err = usb_fs.mount(&msd);
+    // 4. Mount FAT filesystem with retry
+    int err = 0;
+    for (int mount_attempt = 0; mount_attempt < 3; mount_attempt++) {
+        err = usb_fs.mount(&msd);
+        if (err == 0) {
+            break;
+        }
+        if (SERIAL_HW) {
+            SERIAL_HW.print("[LOGGER] USB mount attempt ");
+            SERIAL_HW.print(mount_attempt + 1);
+            SERIAL_HW.print(" failed. Error: ");
+            SERIAL_HW.println(err);
+        }
+        delay(100);
+    }
     if (err) {
         if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] USB mount failed. Error: ");
+            SERIAL_HW.print("[LOGGER] USB mount failed after retries. Error: ");
             SERIAL_HW.println(err);
         }
         digitalWrite(LEDR, HIGH);
@@ -179,10 +192,11 @@ void USBLogger::write_to_usb() {
     }
 
     // 6. Write log buffer to file in small chunks with error checking
-    FILE *f = fopen(session_filepath, "w");
+    // Use append mode so repeated writes in the same run extend the same log file.
+    FILE *f = fopen(session_filepath, "a");
     if (f == NULL) {
         if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] Could not create file: ");
+            SERIAL_HW.print("[LOGGER] Could not open file for append: ");
             SERIAL_HW.println(session_filepath);
         }
     } else {
