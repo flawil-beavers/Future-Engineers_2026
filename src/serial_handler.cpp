@@ -29,6 +29,7 @@
 #include "sensors.h"
 #include "wall_follower.h"
 #include "obstacle.h"
+#include "course_map.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -233,6 +234,11 @@ void parseMessage(char *msg)
     // Print raw HSV at the exact center of the current camera frame.
     // Place the block so the center crosshair would lie on its surface.
     printCameraCalibration();
+    break;
+
+  case 'j':
+    // Print the currently learned four-section obstacle map.
+    course_map_print();
     break;
 
   default:

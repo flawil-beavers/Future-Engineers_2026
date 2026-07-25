@@ -133,6 +133,7 @@
 
 // Start slowly while tuning
 #define OBSTACLE_AVOID_SPEED 180
+#define OBSTACLE_CRUISE_SPEED 220
 
 // Continue around obstacle after camera loses it
 #define OBSTACLE_PASS_STEERING 14.0f
@@ -158,6 +159,19 @@
 // Upright WRO obstacle blocks are taller than they are wide. This rejects
 // broad greenish background regions and blobs merged with the horizon.
 #define OBSTACLE_MAX_WIDTH_HEIGHT_RATIO 1.25f
+
+// A new manoeuvre may only start from a reasonably complete pillar. Once a
+// pillar is confirmed, the separate tracking rules remain tolerant at edges.
+#define OBSTACLE_START_MIN_X 30
+#define OBSTACLE_START_MAX_X 290
+#define OBSTACLE_MAX_START_WIDTH 80
+#define OBSTACLE_MAX_START_HEIGHT 120
+
+// After every 90 degree corner, let the normal gyro controller remove turn
+// overshoot before camera avoidance can take steering priority.
+#define OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM 100.0f
+#define OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM 300.0f
+#define OBSTACLE_CORNER_SETTLE_HEADING_DEG 4.0f
 
 
 

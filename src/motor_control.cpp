@@ -69,8 +69,8 @@ static bool last_physical_switch_state = false; // Tracks physical switch to det
 
 void steer(int angle)
 {
-  static int servo_last_angle = 0;
-  if (angle == servo_last_angle)
+  static int servo_last_command = 1000;
+  if (angle == servo_last_command)
   {
     return; // Skip unnecessary writes
   }
@@ -79,7 +79,8 @@ void steer(int angle)
     return;
   }
 
-  angle = angle + SERVO_CENTER;
+  int commanded_angle = angle;
+  angle = commanded_angle + SERVO_CENTER;
 
   if (angle > SERVO_MAX_ANGLE)
   {
@@ -91,7 +92,7 @@ void steer(int angle)
   }
 
   servo.write(angle);
-  servo_last_angle = angle;
+  servo_last_command = commanded_angle;
 }
 
 void set_steering(int angle)

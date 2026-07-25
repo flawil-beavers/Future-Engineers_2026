@@ -65,6 +65,8 @@ float gf_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the 
 // Internal logic flags
 bool gf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
 bool gf_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
+bool gf_obstacle_mode = false;
+uint8_t gf_corner_gap_samples = 0;
 
 // PD Controller
 float gf_pd_kp = 0.5;                 // Proportional gain
@@ -95,6 +97,17 @@ float get_followed_wall_distance(WallSide side)
 {
   TofSensor sensor = (side == SIDE_LEFT) ? TOF_LEFT : TOF_RIGHT;
   float raw_dist = get_tof_distance(sensor);
+
+  if (gf_obstacle_mode &&
+      (raw_dist <= 0 || raw_dist >= TOF_OUT_OF_RANGE_MM))
+  {
+    float fallback = get_tof_raw_distance(sensor);
+    float signal = get_tof_signal_rate(sensor);
+    float sigma = get_tof_sigma(sensor);
+    if (fallback > 0 && fallback <= TOF_MAX_RELIABLE_DISTANCE_MM &&
+        signal >= 0.15f && sigma <= 35.0f)
+      raw_dist = fallback;
+  }
 
   if (raw_dist <= 0 || raw_dist >= TOF_OUT_OF_RANGE_MM) {
     return raw_dist;
@@ -177,8 +190,14 @@ void state_following()
 
   // 1. Primary: Gyro Heading Control
   float gyro_error = get_angle() - gf_gyro_target;
-  float gyro_derivative = (gyro_error - gf_last_gyro_error) / last_loop_time;
+  float safe_loop_time = (last_loop_time > 0.001f) ? last_loop_time : 0.001f;
+  float gyro_derivative = (gyro_error - gf_last_gyro_error) / safe_loop_time;
   float gyro_pd = gf_gyro_kp * gyro_error + gf_gyro_kd * gyro_derivative;
+  if (gf_obstacle_mode) {
+    gyro_pd = 0.85f * gyro_error + 0.012f * gyro_derivative;
+    if (gyro_pd > 24.0f) gyro_pd = 24.0f;
+    if (gyro_pd < -24.0f) gyro_pd = -24.0f;
+  }
   gf_last_gyro_error = gyro_error;
 
   // 2. Secondary: Wall Distance Correction
@@ -195,8 +214,19 @@ void state_following()
   // potential false gaps or handling specific track geometry.
   float blind_dist = (gf_turn_count == 1) ? 600.0f : 300.0f;
   float wall_margin = gf_long_range_active ? 1500 : gf_wall_margin;
-  if (gf_start_distance + blind_dist < get_distance() && current_wall_distance > wall_margin && current_wall_distance > 0)
+  bool beyond_blind_distance = gf_start_distance + blind_dist < get_distance();
+  bool heading_plausible = fabs(gyro_error) < (gf_obstacle_mode ? 12.0f : 180.0f);
+  bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
+  if (beyond_blind_distance && heading_plausible && gap_seen) {
+    if (gf_corner_gap_samples < 255) gf_corner_gap_samples++;
+  } else {
+    gf_corner_gap_samples = 0;
+  }
+
+  uint8_t required_gap_samples = gf_obstacle_mode ? 4 : 1;
+  if (gf_corner_gap_samples >= required_gap_samples)
   {
+    gf_corner_gap_samples = 0;
     if (gf_following_wall == SIDE_UNKNOWN)
     {
       // Searching for initial direction
@@ -252,8 +282,13 @@ void state_following()
 
     if (!gf_searching_for_wall) {
       float dist_error = current_wall_distance - gf_target_distance;
-      float dist_derivative = (dist_error - gf_last_distance_error) / last_loop_time;
+      float dist_derivative = (dist_error - gf_last_distance_error) / safe_loop_time;
       dist_pd = gf_pd_kp * dist_error + gf_pd_kd * dist_derivative;
+      if (gf_obstacle_mode) {
+        dist_pd = 0.18f * dist_error + 0.003f * dist_derivative;
+        if (dist_pd > 14.0f) dist_pd = 14.0f;
+        if (dist_pd < -14.0f) dist_pd = -14.0f;
+      }
       gf_last_distance_error = dist_error;
     }
     if (gf_completed_rounds >= 3 && gf_start_distance + 500 < get_distance())
@@ -495,4 +530,21 @@ int gyro_follower_get_turn_count()
 int gyro_follower_get_turn_angle()
 {
     return gf_turn_angle;
+}
+
+void gyro_follower_set_speed(float speed_mm_s)
+{
+  if (speed_mm_s < 0)
+    speed_mm_s = 0;
+
+  gf_normal_speed = speed_mm_s;
+  Serial.print("Gyro follower speed set to: ");
+  Serial.print(gf_normal_speed, 0);
+  Serial.println(" mm/s");
+}
+
+void gyro_follower_set_obstacle_mode(bool enable)
+{
+  gf_obstacle_mode = enable;
+  gf_corner_gap_samples = 0;
 }

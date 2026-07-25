@@ -85,8 +85,7 @@ void obstacle_challenge_update(
 );
 
 /**
- * @brief Returns true after the first Open-style corner
- *        has been completed and obstacle detection is active.
+ * @brief Returns true while an obstacle challenge run is active.
  */
 bool obstacle_challenge_active();
 

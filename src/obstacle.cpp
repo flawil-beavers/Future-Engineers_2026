@@ -4,6 +4,7 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "wall_follower.h"
+#include "course_map.h"
 #include "logger.h"
 
 #define Serial robot_logger
@@ -38,12 +39,14 @@ static float oa_last_camera_error = 0.0f;
 // OBSTACLE CHALLENGE STATE
 // ============================================================
 
-// Obstacle detection is intentionally disabled until the
-// first Open-Challenge-style corner has been fully completed.
-static bool oc_first_corner_complete = false;
-
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
+
+static uint8_t oc_current_section = 0;
+static uint8_t oc_current_lap = 0;
+static float oc_section_start_distance = 0.0f;
+static GyroFollowerState oc_last_navigation_state = GF_IDLE;
+static bool oc_corner_settling = false;
 
 // ============================================================
 // GENERAL HELPERS
@@ -108,6 +111,49 @@ static void setAvoidanceSpeed(int speed)
     {
         set_speed(speed);
     }
+}
+
+static float obstacleSectionDistance()
+{
+    return fabsf(get_distance() - oc_section_start_distance);
+}
+
+static void updateCourseProgress()
+{
+    const GyroFollowerState navigationState =
+        gyro_follower_get_state();
+
+    // A new straight section starts only after the gyro-controlled 90 degree
+    // turn has completed. This makes the section reference repeatable.
+    if (
+        oc_last_navigation_state == GF_TURNING &&
+        navigationState == GF_FOLLOWING)
+    {
+        oc_current_section =
+            (oc_current_section + 1) % COURSE_SECTION_COUNT;
+        oc_current_lap =
+            static_cast<uint8_t>(
+                gyro_follower_get_turn_count() /
+                COURSE_SECTION_COUNT);
+        oc_section_start_distance = get_distance();
+        oc_corner_settling = true;
+
+        course_map_enter_section(
+            oc_current_section,
+            true);
+
+        Serial.print("[OC] Lap ");
+        Serial.print(oc_current_lap);
+        Serial.print(" section ");
+        Serial.println(oc_current_section);
+
+        if (oc_current_section == 0)
+        {
+            course_map_print();
+        }
+    }
+
+    oc_last_navigation_state = navigationState;
 }
 
 // ============================================================
@@ -470,6 +516,15 @@ static bool validObstacle(
     }
 
     if (
+        obstacle->centerX < OBSTACLE_START_MIN_X ||
+        obstacle->centerX > OBSTACLE_START_MAX_X ||
+        obstacle->width() > OBSTACLE_MAX_START_WIDTH ||
+        obstacle->height() > OBSTACLE_MAX_START_HEIGHT)
+    {
+        return false;
+    }
+
+    if (
         static_cast<float>(obstacle->width()) >
         static_cast<float>(obstacle->height()) *
             OBSTACLE_MAX_WIDTH_HEIGHT_RATIO)
@@ -761,6 +816,14 @@ bool obstacle_avoidance_update(
             obstacle->color;
         oa_candidate_color = ColorType::NONE;
 
+        course_map_record_obstacle(
+            oc_current_section,
+            oc_current_lap,
+            oa_color,
+            obstacleSectionDistance(),
+            obstacle->centerX,
+            obstacle->maxY);
+
         // Save the exact heading target of the normal
         // wall follower before taking over steering.
 
@@ -1017,8 +1080,9 @@ bool obstacle_avoidance_update(
 
 void obstacle_challenge_setup()
 {
-    oc_first_corner_complete =
-        false;
+    gyro_follower_set_obstacle_mode(true);
+    gyro_follower_set_speed(
+        OBSTACLE_CRUISE_SPEED);
 
     oc_was_enabled =
         false;
@@ -1035,13 +1099,15 @@ void obstacle_challenge_setup()
 
 bool obstacle_challenge_active()
 {
-    return oc_first_corner_complete;
+    return oc_was_enabled;
 }
 
 void obstacle_bench_test_set(bool enable)
 {
     oc_bench_test = enable;
     obstacle_avoidance_reset();
+    gyro_follower_set_speed(
+        OBSTACLE_CRUISE_SPEED);
 
     // This is deliberately independent of the physical enable switch.
     // No obstacle-test path may energize the drive motor.
@@ -1091,9 +1157,6 @@ void obstacle_challenge_update(
     {
         if (oc_was_enabled)
         {
-            oc_first_corner_complete =
-                false;
-
             obstacle_avoidance_reset();
         }
 
@@ -1112,67 +1175,69 @@ void obstacle_challenge_update(
         oc_was_enabled =
             true;
 
-        oc_first_corner_complete =
-            false;
-
         obstacle_avoidance_reset();
+        course_map_reset();
+
+        oc_current_section = 0;
+        oc_current_lap = 0;
+        oc_section_start_distance = get_distance();
+        oc_last_navigation_state =
+            gyro_follower_get_state();
+        oc_corner_settling = false;
+
+        // The randomly selected starting zone can contain a relevant sign
+        // before the first corner. Its local origin is therefore offset.
+        course_map_enter_section(
+            oc_current_section,
+            false);
 
         Serial.println(
             "[OC] New obstacle run");
     }
 
-    // ========================================================
-    // FIRST SECTION + FIRST CORNER
-    //
-    // EXACTLY the existing Open Challenge controller.
-    // No obstacle avoidance yet.
-    // ========================================================
+    updateCourseProgress();
 
-    if (!oc_first_corner_complete)
+    // Give the unchanged wall/gyro follower exclusive steering control just
+    // after a corner. It exits once both a minimum travel distance and a
+    // small heading error are reached. The maximum distance prevents a bad
+    // gyro sample from blocking obstacle detection indefinitely.
+    if (
+        oc_corner_settling &&
+        gyro_follower_get_state() == GF_FOLLOWING)
     {
-        gyro_follower_update(
-            enabled);
-
-        // gf_turn_count becomes 1 when the corner is detected.
-        //
-        // GF_FOLLOWING means the 90-degree gyro turn has
-        // already finished.
-
-        if (
-            gyro_follower_get_turn_count() >= 1 &&
-            gyro_follower_get_state() ==
-                GF_FOLLOWING)
-        {
-            oc_first_corner_complete =
-                true;
-
-            obstacle_avoidance_reset();
-
-            Serial.println();
-            Serial.println(
-                "===== OBSTACLE DETECTION ENABLED =====");
-
-            Serial.print(
-                "Current heading target: ");
-
-            Serial.println(
+        const float settleDistance = obstacleSectionDistance();
+        const float headingError =
+            fabsf(
+                get_angle() -
                 gyro_follower_get_target_heading());
 
-            Serial.print(
-                "Turn direction: ");
+        gyro_follower_update(enabled);
 
-            Serial.println(
-                gyro_follower_get_turn_angle());
+        if (
+            (settleDistance >=
+                 OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM &&
+             headingError <=
+                 OBSTACLE_CORNER_SETTLE_HEADING_DEG) ||
+            settleDistance >=
+                OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM)
+        {
+            oc_corner_settling = false;
+            gyro_follower_rearm_after_obstacle();
+
+            Serial.print("[OC] Section aligned distance=");
+            Serial.print(settleDistance, 0);
+            Serial.print(" heading_error=");
+            Serial.println(headingError, 1);
         }
 
         return;
     }
 
     // ========================================================
-    // AFTER FIRST CORNER
+    // ALL STRAIGHT SECTIONS
     //
-    // Normal navigation is STILL the existing
-    // Open Challenge Wall Follower.
+    // Detection is active immediately because the official starting zone is
+    // random and a relevant sign can appear before the first corner.
     // ========================================================
 
     // --------------------------------------------------------
