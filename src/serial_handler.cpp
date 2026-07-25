@@ -21,6 +21,9 @@
  *   z      : STOP Wall Follower
  *   u<val> : Set wall distance (mm)
  *   i/o    : Wall Follower Debug ON/OFF
+ *   c      : START calibration sequence
+ *   t      : Print current position (x, y, heading, confidence)
+ *   k      : Print calibration data summary
  */
 
 #include "serial_handler.h"
@@ -28,6 +31,9 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "wall_follower.h"
+#include "calibration.h"
+#include "position_estimator.h"
+#include "mode_manager.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -199,13 +205,12 @@ void parseMessage(char *msg)
 
   case 'l':
     // Start wall follower (Autonomous Mode)
-    system_enable();
-    gyro_follower_enable();
+    mode_switch(MODE_GYRO_FOLLOW);
     break;
 
   case 'z':
-    // Stop wall follower (Return to manual)
-    gyro_follower_disable();
+    // Stop all modes
+    mode_stop_all();
     break;
 
   case 'u':
@@ -221,6 +226,25 @@ void parseMessage(char *msg)
   case 'o':
     // Disable wall follower debug output
     gyro_follower_set_debug(false);
+    break;
+
+  case 'c':
+    // Start calibration
+    mode_switch(MODE_CALIBRATION);
+    break;
+
+  case 't':
+    // Print position
+    position_print();
+    break;
+
+  case 'k':
+    // Print calibration data
+    if (calibration_has_data()) {
+      calibration_print_results();
+    } else {
+      Serial.println("No calibration data available. Run 'c' first.");
+    }
     break;
 
   default:
@@ -267,15 +291,22 @@ void serial_setup()
 {
   Serial.begin(SERIAL_BAUD);
   
-  // Wait for serial only if the robot isn't already enabled via the physical switch
-  // This allows the robot to run without a PC if the switch is ON, 
-  // but blocks for debugging if the switch is OFF.
-  while (!Serial && !system_enabled)
+  // Non-blocking serial wait: try for 2 seconds, then continue regardless.
+  // This allows the robot to work fully standalone without a USB serial connection.
+  // If a serial monitor is connected, it will be detected within the timeout.
+  unsigned long serial_timeout = millis() + 2000;
+  while (!Serial && millis() < serial_timeout && !system_enabled)
   {
     // Re-check switch in case user toggles it to skip waiting
     system_enabled = digitalRead(ENABLE_SWITCH_PIN);
     delay(10);
   }
 
-  Serial.println("===== SERIAL INITIALIZED =====");
+  if (Serial) {
+    Serial.println("===== SERIAL INITIALIZED (USB connected) =====");
+  } else {
+    // No serial connection detected - robot will run standalone.
+    // All Serial.print calls will be buffered to the USB logger RAM
+    // and flushed to the USB stick on stop events.
+  }
 }

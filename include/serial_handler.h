@@ -25,6 +25,9 @@
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Enable wall follower debug output
  *   o         : Disable wall follower debug output
+ *   c         : Start calibration sequence (measures turn radii)
+ *   t         : Print current position (x, y, heading, confidence)
+ *   k         : Print calibration data summary
  */
 
 #include <Arduino.h>

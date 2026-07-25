@@ -6,6 +6,7 @@
 #include "motor_control.h"
 #include "config.h"
 #include "wall_follower.h"
+#include "mode_manager.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -293,7 +294,8 @@ void system_enable()
   servo_disabled = false;
 
   Serial.println("SYSTEM ENABLED");
-  gyro_follower_enable();
+  // Note: The active mode (gyro follow, calibration, etc.) is started
+  // by the mode manager, not here. This function only enables motors.
 }
 
 void system_disable()
@@ -350,9 +352,9 @@ void handle_enable_switch()
   {
     last_enable_interrupt_time = current_time;
     if (current_switch_state)
-      system_enable();
+      mode_resume();    // Resume the pending mode
     else
-      system_disable();
+      mode_pause();     // Pause the current mode, remember it
   }
 }
 

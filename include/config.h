@@ -99,8 +99,43 @@
 #define TOF_MAX_DELTA_MM 100.0f            // Max change allowed between consecutive readings (mm)
 
 // ==========================================
+// BUILD MODE SELECTION
+// ==========================================
+// Uncomment the line below to run in calibration mode.
+// In calibration mode, the robot automatically runs turn radius calibration
+// on startup after a 5-second delay (time to unplug USB if needed).
+// Keep it commented for normal autonomous operation.
+#define CALIBRATION_MODE
+
+// ==========================================
+// CALIBRATION CONFIGURATION
+// ==========================================
+#define CAL_SPEED_MMS 150.0f            // Speed during calibration (mm/s)
+#define CAL_STARTUP_DELAY_MS 5000       // Delay before calibration starts (to unplug USB)
+
+// Calibration polynomial coefficients: R(δ) = a0 + a1*|δ| + a2*|δ|² + a3*|δ|³
+// These are populated after running the calibration program.
+// Copy the values printed by calibration_print_results() into here.
+#define CAL_LEFT_A0 0.0f
+#define CAL_LEFT_A1 0.0f
+#define CAL_LEFT_A2 0.0f
+#define CAL_LEFT_A3 0.0f
+#define CAL_RIGHT_A0 0.0f
+#define CAL_RIGHT_A1 0.0f
+#define CAL_RIGHT_A2 0.0f
+#define CAL_RIGHT_A3 0.0f
+
+// Ackermann correction factors (for reference/comparison)
+#define CAL_LEFT_K 0.0f
+#define CAL_RIGHT_K 0.0f
+
+// ==========================================
+// POSITION ESTIMATOR CONFIGURATION
+// ==========================================
+#define POSITION_PRINT_INTERVAL_US 500000  // Print position every 500ms
+
+// ==========================================
 // ENABLE/DISABLE FLAGS MESSAGES
 // ==========================================
 #define EN_STATE_TRUE_MSG "enable start"
 #define EN_STATE_FALSE_MSG "enable stop"
-
