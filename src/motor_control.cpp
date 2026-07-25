@@ -186,12 +186,14 @@ void pid_speed()
 
 void drive_loop()
 {
+  // Steering is also serviced while the drive motor is disabled. This is
+  // required for the stationary obstacle bench test.
+  steer(set_degree);
+
   if (last_loop_time == 0 || dc_state == DC_DISABLED)
   {
     return; // Don't run until timing is initialized
   }
-
-  steer(set_degree);
 
   if (dc_state == DC_ENABLED)
   {

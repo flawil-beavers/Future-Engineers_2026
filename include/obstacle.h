@@ -89,3 +89,10 @@ void obstacle_challenge_update(
  *        has been completed and obstacle detection is active.
  */
 bool obstacle_challenge_active();
+
+/**
+ * @brief Enable/disable a stationary camera/steering test.
+ *        The drive motor is forced off while this mode is active.
+ */
+void obstacle_bench_test_set(bool enable);
+bool obstacle_bench_test_active();

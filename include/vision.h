@@ -146,8 +146,10 @@ private:
 // Regions of Interest
 // ============================================================
 
-// Red / green obstacle detection
-static constexpr uint16_t OBSTACLE_Y_MIN = 35;
+// Red / green obstacle detection. The upper image contains greenish
+// background reflections under the track lighting; starting at Y=80 keeps
+// those regions disconnected from real blocks approaching from below.
+static constexpr uint16_t OBSTACLE_Y_MIN = 80;
 static constexpr uint16_t OBSTACLE_Y_MAX = 239;
 
 // Orange / blue floor line detection

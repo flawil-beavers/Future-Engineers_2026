@@ -28,6 +28,7 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "wall_follower.h"
+#include "obstacle.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -221,6 +222,17 @@ void parseMessage(char *msg)
   case 'o':
     // Disable wall follower debug output
     gyro_follower_set_debug(false);
+    break;
+
+  case 'b':
+    // Stationary obstacle test: b1 = on, b0 = off.
+    obstacle_bench_test_set(value != 0);
+    break;
+
+  case 'c':
+    // Print raw HSV at the exact center of the current camera frame.
+    // Place the block so the center crosshair would lie on its surface.
+    printCameraCalibration();
     break;
 
   default:

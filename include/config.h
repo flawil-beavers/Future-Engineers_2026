@@ -112,8 +112,10 @@
 #define OBSTACLE_CAMERA_INTERVAL_MS 50
 
 // Detection validation
-#define OBSTACLE_MIN_AREA 500
-#define OBSTACLE_MIN_HEIGHT 25
+#define OBSTACLE_RED_MIN_AREA 300
+#define OBSTACLE_RED_MIN_HEIGHT 21
+#define OBSTACLE_GREEN_MIN_AREA 400
+#define OBSTACLE_GREEN_MIN_HEIGHT 21
 #define OBSTACLE_CONFIRM_FRAMES 2
 #define OBSTACLE_LOST_FRAMES 3
 
@@ -145,6 +147,18 @@
 // Prevent detecting the same obstacle immediately again
 #define OBSTACLE_REARM_DISTANCE_MM 150.0f
 
+// Side-barrier protection while camera avoidance owns the steering.
+#define OBSTACLE_WALL_GUARD_DISTANCE_MM 170.0f
+#define OBSTACLE_WALL_GUARD_KP 0.12f
+#define OBSTACLE_WALL_GUARD_MAX_STEERING 18.0f
+
+// A block must extend this far down in the logical 320x240 image.
+#define OBSTACLE_MIN_BOTTOM_Y 100
+
+// Upright WRO obstacle blocks are taller than they are wide. This rejects
+// broad greenish background regions and blobs merged with the horizon.
+#define OBSTACLE_MAX_WIDTH_HEIGHT_RATIO 1.25f
+
 
 
 // ==========================================
@@ -159,4 +173,4 @@ enum ChallengeMode : uint8_t
 
 // Change only this line before a run:
 constexpr ChallengeMode CHALLENGE_MODE =
-    CHALLENGE_OPEN;
+    CHALLENGE_OBSTACLE;

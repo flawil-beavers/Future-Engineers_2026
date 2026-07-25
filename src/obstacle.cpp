@@ -30,6 +30,7 @@ static bool oa_has_finished_obstacle = false;
 
 static uint8_t oa_confirm_frames = 0;
 static uint8_t oa_lost_frames = 0;
+static ColorType oa_candidate_color = ColorType::NONE;
 
 static float oa_last_camera_error = 0.0f;
 
@@ -42,6 +43,7 @@ static float oa_last_camera_error = 0.0f;
 static bool oc_first_corner_complete = false;
 
 static bool oc_was_enabled = false;
+static bool oc_bench_test = false;
 
 // ============================================================
 // GENERAL HELPERS
@@ -70,6 +72,42 @@ static float distanceSince(
 {
     return fabsf(
         get_distance() - startDistance);
+}
+
+static float applyWallGuard(float steering)
+{
+    const float left = get_tof_distance(TOF_LEFT);
+    const float right = get_tof_distance(TOF_RIGHT);
+    float correction = 0.0f;
+
+    if (left > 0.0f && left < OBSTACLE_WALL_GUARD_DISTANCE_MM)
+    {
+        correction +=
+            (OBSTACLE_WALL_GUARD_DISTANCE_MM - left) *
+            OBSTACLE_WALL_GUARD_KP;
+    }
+
+    if (right > 0.0f && right < OBSTACLE_WALL_GUARD_DISTANCE_MM)
+    {
+        correction -=
+            (OBSTACLE_WALL_GUARD_DISTANCE_MM - right) *
+            OBSTACLE_WALL_GUARD_KP;
+    }
+
+    correction = clampValue(
+        correction,
+        -OBSTACLE_WALL_GUARD_MAX_STEERING,
+        OBSTACLE_WALL_GUARD_MAX_STEERING);
+
+    return steering + correction;
+}
+
+static void setAvoidanceSpeed(int speed)
+{
+    if (!oc_bench_test)
+    {
+        set_speed(speed);
+    }
 }
 
 // ============================================================
@@ -159,6 +197,10 @@ void printVisionDebug()
         Serial.println(
             v.red.height());
 
+        Serial.print("Bottom Y: ");
+        Serial.println(
+            v.red.maxY);
+
         Serial.print("Area: ");
         Serial.println(
             v.red.area);
@@ -188,6 +230,10 @@ void printVisionDebug()
         Serial.print("Height: ");
         Serial.println(
             v.green.height());
+
+        Serial.print("Bottom Y: ");
+        Serial.println(
+            v.green.maxY);
 
         Serial.print("Area: ");
         Serial.println(
@@ -312,12 +358,16 @@ const Blob *getLargestObstacle()
         return &v.green;
     }
 
-    // Both visible:
-    // use the larger connected object.
+    // Prefer the object nearest the bottom of the image. It is normally the
+    // next block, while blob area varies more strongly with segmentation.
+    if (v.red.maxY != v.green.maxY)
+    {
+        return (v.red.maxY > v.green.maxY)
+            ? &v.red
+            : &v.green;
+    }
 
-    if (
-        v.red.area >=
-        v.green.area)
+    if (v.red.area >= v.green.area)
     {
         return &v.red;
     }
@@ -394,21 +444,82 @@ static bool validObstacle(
         return false;
     }
 
-    if (
-        obstacle->area <
-        OBSTACLE_MIN_AREA)
+    const uint32_t minimumArea =
+        (obstacle->color == ColorType::RED)
+            ? OBSTACLE_RED_MIN_AREA
+            : OBSTACLE_GREEN_MIN_AREA;
+
+    const int minimumHeight =
+        (obstacle->color == ColorType::RED)
+            ? OBSTACLE_RED_MIN_HEIGHT
+            : OBSTACLE_GREEN_MIN_HEIGHT;
+
+    if (obstacle->area < minimumArea)
+    {
+        return false;
+    }
+
+    if (obstacle->height() < minimumHeight)
+    {
+        return false;
+    }
+
+    if (obstacle->maxY < OBSTACLE_MIN_BOTTOM_Y)
     {
         return false;
     }
 
     if (
-        obstacle->height() <
-        OBSTACLE_MIN_HEIGHT)
+        static_cast<float>(obstacle->width()) >
+        static_cast<float>(obstacle->height()) *
+            OBSTACLE_MAX_WIDTH_HEIGHT_RATIO)
     {
         return false;
     }
 
     return true;
+}
+
+static bool validTrackedObstacle(
+    const Blob *obstacle)
+{
+    if (validObstacle(obstacle))
+    {
+        return true;
+    }
+
+    if (
+        obstacle == nullptr ||
+        !obstacle->found ||
+        obstacle->color != oa_color)
+    {
+        return false;
+    }
+
+    // A confirmed block becomes smaller when it is clipped by a side of the
+    // image. These relaxed limits are tracking-only: they can never start a
+    // maneuver, so orange/blue line fragments remain unable to trigger one.
+    const bool nearSide =
+        obstacle->centerX <= 75 ||
+        obstacle->centerX >= 245;
+
+    if (!nearSide)
+    {
+        return false;
+    }
+
+    if (
+        obstacle->area < 100 ||
+        obstacle->height() < 15 ||
+        obstacle->maxY < OBSTACLE_MIN_BOTTOM_Y)
+    {
+        return false;
+    }
+
+    return
+        static_cast<float>(obstacle->width()) <=
+        static_cast<float>(obstacle->height()) *
+            OBSTACLE_MAX_WIDTH_HEIGHT_RATIO;
 }
 
 // ============================================================
@@ -556,6 +667,7 @@ void obstacle_avoidance_reset()
     oa_confirm_frames = 0;
 
     oa_lost_frames = 0;
+    oa_candidate_color = ColorType::NONE;
 
     oa_last_camera_error = 0;
 }
@@ -587,6 +699,7 @@ bool obstacle_avoidance_update(
         // controller is actually driving a straight section.
 
         if (
+            !oc_bench_test &&
             gyro_follower_get_state() !=
             GF_FOLLOWING)
         {
@@ -620,11 +733,20 @@ bool obstacle_avoidance_update(
                 obstacle))
         {
             oa_confirm_frames = 0;
+            oa_candidate_color = ColorType::NONE;
 
             return false;
         }
 
-        ++oa_confirm_frames;
+        if (obstacle->color != oa_candidate_color)
+        {
+            oa_candidate_color = obstacle->color;
+            oa_confirm_frames = 1;
+        }
+        else if (oa_confirm_frames < 255)
+        {
+            ++oa_confirm_frames;
+        }
 
         if (
             oa_confirm_frames <
@@ -637,6 +759,7 @@ bool obstacle_avoidance_update(
 
         oa_color =
             obstacle->color;
+        oa_candidate_color = ColorType::NONE;
 
         // Save the exact heading target of the normal
         // wall follower before taking over steering.
@@ -691,7 +814,7 @@ bool obstacle_avoidance_update(
         if (newCameraFrame)
         {
             if (
-                validObstacle(
+                validTrackedObstacle(
                     obstacle))
             {
                 oa_lost_frames = 0;
@@ -719,6 +842,15 @@ bool obstacle_avoidance_update(
             oa_lost_frames >=
             OBSTACLE_LOST_FRAMES)
         {
+            if (oc_bench_test)
+            {
+                oa_state = OA_PASSING;
+                oa_state_start_distance = get_distance();
+                Serial.println(
+                    "[BENCH] OBJECT LOST -> PASSING HOLD");
+                return true;
+            }
+
             oa_state =
                 OA_PASSING;
 
@@ -741,6 +873,8 @@ bool obstacle_avoidance_update(
             OBSTACLE_HEADING_KP *
                 headingError;
 
+        steering = applyWallGuard(steering);
+
         steering =
             clampValue(
                 steering,
@@ -751,7 +885,7 @@ bool obstacle_avoidance_update(
             static_cast<int>(
                 steering));
 
-        set_speed(
+        setAvoidanceSpeed(
             OBSTACLE_AVOID_SPEED);
 
         return true;
@@ -779,6 +913,8 @@ bool obstacle_avoidance_update(
             OBSTACLE_HEADING_KP *
                 headingError;
 
+        steering = applyWallGuard(steering);
+
         steering =
             clampValue(
                 steering,
@@ -789,7 +925,7 @@ bool obstacle_avoidance_update(
             static_cast<int>(
                 steering));
 
-        set_speed(
+        setAvoidanceSpeed(
             OBSTACLE_AVOID_SPEED);
 
         if (
@@ -823,6 +959,8 @@ bool obstacle_avoidance_update(
             OBSTACLE_RECOVER_KP *
             headingError;
 
+        steering = applyWallGuard(steering);
+
         steering =
             clampValue(
                 steering,
@@ -833,7 +971,7 @@ bool obstacle_avoidance_update(
             static_cast<int>(
                 steering));
 
-        set_speed(
+        setAvoidanceSpeed(
             OBSTACLE_RECOVER_SPEED);
 
         if (
@@ -900,6 +1038,27 @@ bool obstacle_challenge_active()
     return oc_first_corner_complete;
 }
 
+void obstacle_bench_test_set(bool enable)
+{
+    oc_bench_test = enable;
+    obstacle_avoidance_reset();
+
+    // This is deliberately independent of the physical enable switch.
+    // No obstacle-test path may energize the drive motor.
+    stop(false);
+    servo_disabled = !enable;
+    set_steering(0);
+
+    Serial.println(enable
+        ? "[BENCH] ON - DRIVE MOTOR LOCKED OFF"
+        : "[BENCH] OFF");
+}
+
+bool obstacle_bench_test_active()
+{
+    return oc_bench_test;
+}
+
 // ============================================================
 // COMPLETE OBSTACLE CHALLENGE CONTROL
 // ============================================================
@@ -908,6 +1067,22 @@ void obstacle_challenge_update(
     bool enabled,
     bool newCameraFrame)
 {
+    if (oc_bench_test)
+    {
+        // Reassert the safety condition on every loop, even if the physical
+        // enable switch or another serial command was used accidentally.
+        if (dc_state != DC_DISABLED)
+        {
+            stop(false);
+        }
+        servo_disabled = false;
+
+        obstacle_avoidance_update(
+            true,
+            newCameraFrame);
+        return;
+    }
+
     // ========================================================
     // DISABLED
     // ========================================================

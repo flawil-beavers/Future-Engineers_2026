@@ -147,7 +147,9 @@ HSV Vision::rgbToHSV(const RGB &rgb) const
 
 ColorType Vision::classifyColor(const HSV &hsv) const
 {
-    if (hsv.v < 35)
+    // The measured green WRO block is very dark with this camera
+    // (typically V=28). Reject only pixels darker than that sample.
+    if (hsv.v < 20)
     {
         return ColorType::NONE;
     }
@@ -155,8 +157,8 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // RED
 
     if (
-        (hsv.h <= 8 || hsv.h >= 352) &&
-        hsv.s >= 130 &&
+        (hsv.h <= 18 || hsv.h >= 352) &&
+        hsv.s >= 175 &&
         hsv.v >= 70)
     {
         return ColorType::RED;
@@ -176,10 +178,11 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // GREEN
 
     if (
-        hsv.h >= 85 &&
-        hsv.h <= 155 &&
-        hsv.s >= 55 &&
-        hsv.v >= 40)
+        hsv.h >= 45 &&
+        hsv.h <= 180 &&
+        hsv.s >= 30 &&
+        hsv.v >= 20 &&
+        hsv.v <= 100)
     {
         return ColorType::GREEN;
     }
