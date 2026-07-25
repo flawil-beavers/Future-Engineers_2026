@@ -17,6 +17,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
+#include "wall_follower.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -28,6 +29,7 @@ extern float current_distance;
 extern unsigned long current_time;
 extern float last_loop_time;
 extern int set_degree;
+extern bool servo_disabled;
 
 // ==========================================
 // CALIBRATION STATE
@@ -54,6 +56,14 @@ static bool cal_is_right_turn = false;    // Currently measuring right (negative
 static int cal_phase = 0;                 // 0=left turns, 1=right turns
 static float cal_drive_start_time = 0;    // Time when we started driving (ms)
 static bool cal_printed_angle_header = false;
+static int cal_center_best_value = SERVO_CENTER;
+static float cal_center_target_heading = 0.0f;
+static float cal_center_last_heading_error = 0.0f;
+static float cal_center_weighted_mean = 0.0f;
+static float cal_center_weight_sum = 0.0f;
+static float cal_center_weighted_m2 = 0.0f;
+static float cal_center_uncertainty = 0.0f;
+static unsigned long cal_center_last_debug_time = 0;
 
 // ==========================================
 // POLYNOMIAL FITTING (Least Squares)
@@ -319,8 +329,9 @@ void calibration_start()
     cal_left.ackermann_rmse_mm = 0;
     cal_right.ackermann_rmse_mm = 0;
     
-    // Get first angle
-    cal_current_angle = cal_angle_sequence[0];
+    // Get first angle — negative for left turn (contradicts phase label, but 
+    // this is the correct sign: negative steering = left, positive = right)
+    cal_current_angle = -cal_angle_sequence[0];
     
     Serial.println("\n\n========================================");
     Serial.println("CALIBRATION STARTED");
@@ -344,7 +355,79 @@ void calibration_start()
     
     Serial.print("Starting turn: angle=");
     Serial.print(cal_current_angle);
-    Serial.println(" (left)");
+    Serial.println(" (left / negative = left turn)");
+}
+
+static void update_center_estimate(float steering_cmd, float heading_error)
+{
+    // Weight each sample by how trustworthy it is. Samples taken when the
+    // heading error is small are more reliable, while large errors or strong
+    // steering saturation are treated as less certain. The resulting estimate
+    // is therefore less sensitive to noisy outliers and gives a useful
+    // uncertainty value for the final servo-center estimate.
+    float abs_heading_error = fabsf(heading_error);
+    float certainty = 1.0f / (1.0f + abs_heading_error / 8.0f);
+    certainty = constrain(certainty, 0.05f, 1.0f);
+
+    if (fabsf(steering_cmd) > 45.0f) {
+        certainty *= 0.6f;
+    }
+
+    float sample_weight = constrain(certainty, 0.05f, 1.0f);
+
+    float previous_mean = cal_center_weighted_mean;
+    cal_center_weight_sum += sample_weight;
+    float delta = steering_cmd - previous_mean;
+    cal_center_weighted_mean += delta * sample_weight / cal_center_weight_sum;
+    float delta2 = steering_cmd - cal_center_weighted_mean;
+    cal_center_weighted_m2 += sample_weight * delta * delta2;
+
+    float weighted_variance = (cal_center_weight_sum > 0.0f) ? (cal_center_weighted_m2 / cal_center_weight_sum) : 0.0f;
+    float weighted_std_dev = sqrtf(fmaxf(0.0f, weighted_variance));
+    float std_error_of_mean = (cal_center_weight_sum > 1.0f) ? (weighted_std_dev / sqrtf(cal_center_weight_sum)) : weighted_std_dev;
+    cal_center_uncertainty = std_error_of_mean;
+}
+
+static void start_center_calibration()
+{
+    cal_center_target_heading = get_angle();
+    cal_center_last_heading_error = 0.0f;
+    gyro_follower_reset_filter();
+    cal_center_weighted_mean = 0.0f;
+    cal_center_weight_sum = 0.0f;
+    cal_center_weighted_m2 = 0.0f;
+    cal_center_uncertainty = 0.0f;
+    cal_center_last_debug_time = millis();
+    cal_start_distance = current_distance;
+    cal_drive_start_time = millis();
+
+    set_steering(0);
+    set_speed(CAL_SPEED_MMS);
+    cal_state = CAL_CENTER_DRIVE;
+
+    Serial.println("Starting straight 2 m servo-center calibration...");
+    Serial.println("The robot will keep the original heading and estimate the neutral servo position.");
+    Serial.print("Driving for ");
+    Serial.print(CAL_CENTER_DISTANCE_MM / 1000.0f, 1);
+    Serial.println(" m or until the safety timeout is reached.");
+}
+
+void calibration_start_center()
+{
+    cal_state = CAL_CENTER_DRIVE;
+    cal_current_angle_index = 0;
+    cal_center_best_value = SERVO_CENTER;
+    cal_current_angle = SERVO_CENTER;
+
+    Serial.println("\n\n========================================");
+    Serial.println("STRAIGHT SERVO-CENTER CALIBRATION");
+    Serial.println("========================================");
+    Serial.print("Using gyro-follow steering gains Kp=");
+    Serial.print(gyro_follower_get_gyro_kp(), 3);
+    Serial.print(", Kd=");
+    Serial.println(gyro_follower_get_gyro_kd(), 3);
+
+    start_center_calibration();
 }
 
 void calibration_update()
@@ -352,13 +435,77 @@ void calibration_update()
     if (cal_state == CAL_IDLE || cal_state == CAL_DONE) {
         return;
     }
+
+    if (cal_state == CAL_CENTER_DRIVE) {
+        float heading_error = get_angle() - cal_center_target_heading;
+        float steering_cmd = gyro_follower_compute_steering(heading_error, cal_center_last_heading_error, last_loop_time);
+        cal_center_last_heading_error = heading_error;
+
+        if (steering_cmd > 60.0f) steering_cmd = 60.0f;
+        if (steering_cmd < -60.0f) steering_cmd = -60.0f;
+
+        int steering_command = (int)steering_cmd;
+        set_steering(steering_command);
+
+        // The ideal neutral servo position is the value that makes the gyro-follow
+        // controller need zero steering over a straight run. We estimate it by
+        // combining the steering corrections in a weighted average that gives more
+        // trust to samples taken when the heading error is small and less trust to
+        // noisy or saturated samples. That makes the result more robust than a plain
+        // mean and gives a useful uncertainty value for how confident we are in the
+        // final estimate.
+        update_center_estimate(steering_cmd, heading_error);
+
+        float distance_traveled = current_distance - cal_start_distance;
+        bool timed_out = (millis() - cal_drive_start_time) >= CAL_CENTER_MAX_TIME_MS;
+
+        if ((millis() - cal_center_last_debug_time) >= CAL_CENTER_DEBUG_INTERVAL_MS) {
+            cal_center_last_debug_time = millis();
+            float mean_steering = cal_center_weighted_mean;
+            float certainty = 100.0f / (1.0f + cal_center_uncertainty);
+            int current_estimate = constrain((int)roundf(SERVO_CENTER + mean_steering), SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
+
+            Serial.print("[CAL] servo=");
+            Serial.print(SERVO_CENTER);
+            Serial.print(" estimate=");
+            Serial.print(current_estimate);
+            Serial.print(" uncertainty=±");
+            Serial.print(cal_center_uncertainty, 1);
+            Serial.print(" deg certainty=");
+            Serial.print(certainty, 0);
+            Serial.print("% heading_error=");
+            Serial.print(heading_error, 1);
+            Serial.println(" deg");
+        }
+
+        if (distance_traveled >= CAL_CENTER_DISTANCE_MM || timed_out) {
+            float average_steering = cal_center_weighted_mean;
+            cal_center_best_value = constrain((int)roundf(SERVO_CENTER + average_steering), SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
+
+            set_steering(0);
+            stop(false);
+            cal_state = CAL_DONE;
+
+            Serial.println("Straight calibration complete.");
+            Serial.print("Final estimate: servo center = ");
+            Serial.print(cal_center_best_value);
+            Serial.print(" (weighted steering = ");
+            Serial.print(average_steering, 2);
+            Serial.print(" deg, uncertainty = ±");
+            Serial.print(cal_center_uncertainty, 2);
+            Serial.print(" deg, certainty = ");
+            Serial.print(100.0f / (1.0f + cal_center_uncertainty), 0);
+            Serial.println("%)");
+        }
+        return;
+    }
     
     if (cal_state == CAL_DRIVING) {
         // Check if we've completed 360° of rotation
         float angle_delta = fabs(get_angle() - cal_start_angle);
         
-        // Need at least 355° to account for gyro noise
-        if (angle_delta >= 355.0f) {
+        // Need at least 360° to account for gyro noise
+        if (angle_delta >= 360.0f) {
             // Reached 360°! Record measurement
             finalize_measurement();
             
@@ -382,6 +529,9 @@ void calibration_update()
     else if (cal_state == CAL_STOPPING) {
         // Wait 1 second for robot to settle
         if ((millis() - cal_drive_start_time) > 1000) {
+            // Re-enable servo before advancing to next angle
+            // (stop() in finalize_measurement disables it)
+            servo_disabled = false;
             cal_state = CAL_NEXT_ANGLE;
             cal_drive_start_time = millis();
         }
@@ -408,8 +558,10 @@ void calibration_update()
         }
         
         // Set next angle
+        // Negative steering = left turn (phase 0 = left)
+        // Positive steering = right turn (phase 1 = right)
         int abs_angle = cal_angle_sequence[cal_current_angle_index];
-        cal_current_angle = cal_is_right_turn ? -abs_angle : abs_angle;
+        cal_current_angle = cal_is_right_turn ? abs_angle : -abs_angle;
         
         Serial.print("\nNext angle: ");
         Serial.print(cal_current_angle);

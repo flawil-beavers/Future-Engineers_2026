@@ -21,7 +21,8 @@
  *   z      : STOP Wall Follower
  *   u<val> : Set wall distance (mm)
  *   i/o    : Wall Follower Debug ON/OFF
- *   c      : START calibration sequence
+ *   c      : START turn-radius calibration sequence
+ *   b      : START straight servo-center calibration
  *   t      : Print current position (x, y, heading, confidence)
  *   k      : Print calibration data summary
  */
@@ -137,8 +138,8 @@ void parseMessage(char *msg)
     break;
 
   case 'p':
-    // Pause
-    system_disable();
+    // Pause (stops motors, remembers mode, flushes USB log)
+    mode_pause();
     break;
 
   case 'h':
@@ -229,8 +230,13 @@ void parseMessage(char *msg)
     break;
 
   case 'c':
-    // Start calibration
+    // Start turn-radius calibration
     mode_switch(MODE_CALIBRATION);
+    break;
+
+  case 'b':
+    // Start straight servo-center calibration
+    mode_switch(MODE_STRAIGHT_CALIBRATION);
     break;
 
   case 't':

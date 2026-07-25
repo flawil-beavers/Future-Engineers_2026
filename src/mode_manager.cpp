@@ -41,14 +41,11 @@ static void stop_mode(RobotMode mode)
             gyro_follower_disable();
             break;
         case MODE_CALIBRATION:
-            // Calibration has its own state machine; set it to IDLE.
-            // We do this by checking if it's active and stopping motors.
-            if (calibration_is_active()) {
-                stop(false);
-                // Calibration will see CAL_IDLE next update and do nothing.
-                // We manually reset its state to prevent stale measurements.
-                calibration_stop();
-            }
+        case MODE_STRAIGHT_CALIBRATION:
+            // Always stop calibration regardless of state (IDLE, DRIVING, DONE, etc.)
+            // calibration_stop() handles all states internally.
+            stop(false);
+            calibration_stop();
             break;
         case MODE_NONE:
             // Nothing to stop
@@ -71,6 +68,9 @@ static void start_mode(RobotMode mode)
             break;
         case MODE_CALIBRATION:
             calibration_start();
+            break;
+        case MODE_STRAIGHT_CALIBRATION:
+            calibration_start_center();
             break;
         case MODE_NONE:
             // Nothing to start
@@ -126,26 +126,29 @@ void mode_pause()
         
         Serial.print("Paused. Pending mode: ");
         Serial.println(mode_name(pending_mode));
-    } else {
-        // Already stopped, just make sure motors are off
-        stop(false);
     }
+    
+    // Always fully disable the system: stop motors, set enabled=false, flush USB log
+    system_disable();
 }
 
 void mode_resume()
 {
+    // Always enable the system (motors, steering)
+    system_enable();
+    
     if (pending_mode != MODE_NONE) {
         RobotMode mode_to_start = pending_mode;
         pending_mode = MODE_NONE; // Clear before starting to avoid re-entry
         
         current_mode = mode_to_start;
-        system_enable();
         start_mode(mode_to_start);
         
         Serial.print("Resumed mode: ");
         Serial.println(mode_name(mode_to_start));
     } else {
-        Serial.println("No pending mode to resume.");
+        // No pending mode, but motors are now enabled for manual control
+        Serial.println("System enabled (no pending mode).");
     }
 }
 
@@ -163,9 +166,10 @@ void mode_stop_all()
 const char* mode_name(RobotMode mode)
 {
     switch (mode) {
-        case MODE_NONE:        return "NONE";
-        case MODE_GYRO_FOLLOW: return "GYRO_FOLLOW";
-        case MODE_CALIBRATION: return "CALIBRATION";
-        default:               return "UNKNOWN";
+        case MODE_NONE:                 return "NONE";
+        case MODE_GYRO_FOLLOW:          return "GYRO_FOLLOW";
+        case MODE_CALIBRATION:          return "CALIBRATION";
+        case MODE_STRAIGHT_CALIBRATION: return "STRAIGHT_CALIBRATION";
+        default:                        return "UNKNOWN";
     }
 }

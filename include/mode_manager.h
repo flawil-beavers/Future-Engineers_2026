@@ -29,9 +29,10 @@
  * Add new modes here for future expansion.
  */
 enum RobotMode {
-    MODE_NONE,          ///< No active mode, motors stopped
-    MODE_GYRO_FOLLOW,   ///< Gyro-stabilized wall following
-    MODE_CALIBRATION,   ///< Turn radius calibration
+    MODE_NONE,                  ///< No active mode, motors stopped
+    MODE_GYRO_FOLLOW,           ///< Gyro-stabilized wall following
+    MODE_CALIBRATION,           ///< Turn radius calibration
+    MODE_STRAIGHT_CALIBRATION,  ///< Straight-line servo-center calibration
     // Future modes add here, e.g.:
     // MODE_LINE_FOLLOW,
     // MODE_OBSTACLE_AVOID,

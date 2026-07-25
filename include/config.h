@@ -52,7 +52,7 @@
 // ==========================================
 // STEERING CONFIGURATION
 // ==========================================
-#define SERVO_CENTER 81        // Center neutral position
+#define SERVO_CENTER 80        // Center neutral position
 #define MAX_STEERING 50
 #define SERVO_MAX_ANGLE (SERVO_CENTER + MAX_STEERING)  // Max right turn
 #define SERVO_MIN_ANGLE (SERVO_CENTER - MAX_STEERING)  // Max left turn
@@ -112,22 +112,25 @@
 // ==========================================
 #define CAL_SPEED_MMS 150.0f            // Speed during calibration (mm/s)
 #define CAL_STARTUP_DELAY_MS 5000       // Delay before calibration starts (to unplug USB)
+#define CAL_CENTER_DISTANCE_MM 2000.0f  // Distance to drive during straight calibration
+#define CAL_CENTER_MAX_TIME_MS 15000    // Safety timeout for the straight calibration run
+#define CAL_CENTER_DEBUG_INTERVAL_MS 500 // Print live calibration status every 500 ms
 
 // Calibration polynomial coefficients: R(δ) = a0 + a1*|δ| + a2*|δ|² + a3*|δ|³
 // These are populated after running the calibration program.
 // Copy the values printed by calibration_print_results() into here.
-#define CAL_LEFT_A0 0.0f
-#define CAL_LEFT_A1 0.0f
-#define CAL_LEFT_A2 0.0f
-#define CAL_LEFT_A3 0.0f
-#define CAL_RIGHT_A0 0.0f
-#define CAL_RIGHT_A1 0.0f
-#define CAL_RIGHT_A2 0.0f
-#define CAL_RIGHT_A3 0.0f
+#define CAL_LEFT_A0 1481.4659f
+#define CAL_LEFT_A1 100.413338f
+#define CAL_LEFT_A2 2.75952291f
+#define CAL_LEFT_A3 0.02698299f
+#define CAL_RIGHT_A0 1422.9576f
+#define CAL_RIGHT_A1 -100.615837f
+#define CAL_RIGHT_A2 2.91633201f
+#define CAL_RIGHT_A3 -0.02982690f
 
 // Ackermann correction factors (for reference/comparison)
-#define CAL_LEFT_K 0.0f
-#define CAL_RIGHT_K 0.0f
+#define CAL_LEFT_K 1.3101f
+#define CAL_RIGHT_K 1.2688f
 
 // ==========================================
 // POSITION ESTIMATOR CONFIGURATION

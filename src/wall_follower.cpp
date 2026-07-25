@@ -49,6 +49,7 @@ float gf_gyro_target = 0;             // Target gyro angle
 float gf_gyro_kp = 2.5;               // Proportional gain
 float gf_gyro_kd = 0.05;              // Derivative gain
 float gf_last_gyro_error = 0;
+float gf_steering_filter = 0.0f;      // Smoothed steering output for stable heading control
 
 // Timing and control
 float gf_turn_start_angle = 0;
@@ -177,8 +178,7 @@ void state_following()
 
   // 1. Primary: Gyro Heading Control
   float gyro_error = get_angle() - gf_gyro_target;
-  float gyro_derivative = (gyro_error - gf_last_gyro_error) / last_loop_time;
-  float gyro_pd = gf_gyro_kp * gyro_error + gf_gyro_kd * gyro_derivative;
+  float gyro_pd = gyro_follower_compute_steering(gyro_error, gf_last_gyro_error, last_loop_time);
   gf_last_gyro_error = gyro_error;
 
   // 2. Secondary: Wall Distance Correction
@@ -371,6 +371,7 @@ void gyro_follower_enable()
   gf_completed_rounds = 0;
   gf_last_distance_error = 0;
   gf_last_gyro_error = 0;
+  gf_steering_filter = 0.0f;
   gf_searching_for_wall = false;
   gf_long_range_active = false;
 
@@ -415,6 +416,12 @@ void gyro_follower_set_debug(bool enable)
   Serial.println(enable ? "Gyro follower debug ON" : "Gyro follower debug OFF");
 }
 
+void gyro_follower_reset_filter()
+{
+  gf_steering_filter = 0.0f;
+  gf_last_gyro_error = 0.0f;
+}
+
 void gyro_follower_print_debug()
 {
   if (current_time - gf_last_debug_time < 200000)
@@ -445,6 +452,47 @@ void gyro_follower_print_debug()
   Serial.print(" | Distance: ");
   Serial.print(get_distance(), 0);
   Serial.println();
+}
+
+float gyro_follower_compute_steering(float heading_error_deg, float last_error_deg, float dt_s)
+{
+  if (dt_s < 1e-4f) dt_s = 1e-4f;
+
+  float gyro_derivative = (heading_error_deg - last_error_deg) / dt_s;
+  float raw_output = gf_gyro_kp * heading_error_deg + gf_gyro_kd * gyro_derivative;
+
+  // Add a tiny deadband to suppress chatter around the target heading.
+  if (fabsf(raw_output) < 0.25f) {
+    raw_output = 0.0f;
+  }
+
+  // Low-pass filter the steering output so the servo does not chase every tiny
+  // gyro fluctuation. The filter is faster when the loop is fast and slower when
+  // the loop is slower, keeping the response smooth without making it sluggish.
+  float alpha = constrain(dt_s / 0.06f, 0.1f, 0.6f);
+  float filtered_output = gf_steering_filter + alpha * (raw_output - gf_steering_filter);
+
+  // Also rate-limit the steering change so the robot does not jump between
+  // servo values while the heading error is still settling.
+  float max_step = 90.0f * dt_s;
+  if (filtered_output - gf_steering_filter > max_step) {
+    filtered_output = gf_steering_filter + max_step;
+  } else if (filtered_output - gf_steering_filter < -max_step) {
+    filtered_output = gf_steering_filter - max_step;
+  }
+
+  gf_steering_filter = filtered_output;
+  return gf_steering_filter;
+}
+
+float gyro_follower_get_gyro_kp()
+{
+  return gf_gyro_kp;
+}
+
+float gyro_follower_get_gyro_kd()
+{
+  return gf_gyro_kd;
 }
 
 void gyro_follower_set_target_distance(float distance_mm)

@@ -79,6 +79,10 @@ void gyro_follower_set_wall_margin(float distance_m);
 void gyro_follower_set_pd_gains(float kp, float kd);
 void gyro_follower_set_debug(bool enable);
 void gyro_follower_print_debug();
+void gyro_follower_reset_filter();
+float gyro_follower_compute_steering(float heading_error_deg, float last_error_deg, float dt_s);
+float gyro_follower_get_gyro_kp();
+float gyro_follower_get_gyro_kd();
 const char* gyro_follower_state_string(GyroFollowerState _state);
 GyroFollowerState gyro_follower_get_state();
 

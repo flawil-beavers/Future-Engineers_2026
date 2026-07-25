@@ -23,7 +23,8 @@ enum CalibrationState {
     CAL_DRIVING,        ///< Driving in a circle, waiting for 360°
     CAL_STOPPING,       ///< Reached 360°, stopping motors
     CAL_NEXT_ANGLE,     ///< Transitioning to next angle
-    CAL_DONE            ///< All angles measured
+    CAL_CENTER_DRIVE,   ///< Driving straight to estimate the servo center
+    CAL_DONE            ///< All angles measured or center calibration complete
 };
 
 // ==========================================
@@ -70,6 +71,11 @@ extern int cal_current_angle;
  * Resets all state and begins measuring at the first steering angle.
  */
 void calibration_start();
+
+/**
+ * @brief Start the straight-line servo-center calibration sequence.
+ */
+void calibration_start_center();
 
 /**
  * @brief Main calibration update function. Call every loop.
