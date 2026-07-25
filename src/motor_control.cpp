@@ -271,21 +271,33 @@ void loop_updater()
 
 void check_stalling()
 {
-  static unsigned long stall_encoder_pos = 0;
-  // Prevent division by zero and only check if enough time has passed
-  if (last_loop_time > 0.00001 && (float)fabs(stall_encoder_pos - encoder_pos)/last_loop_time < STALL_THRESHOLD_COUNTS &&
-      fabs(dc_current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD &&
-      dc_state != DC_DISABLED)
-  {
-    Serial.print("Stall detected, stopping robot: diff_distance:");
-    Serial.print(fabs(stall_encoder_pos - encoder_pos));
-    Serial.print(", dc_current_dc: ");
-    Serial.println(dc_current_dc);
+  static float last_stall_distance = 0;
 
-    system_disable();
+  // Only check if:
+  //   - Enough time has passed since last check
+  //   - Motor is actively running
+  //   - Motor is demanding high power (trying hard but going nowhere)
+  if (last_loop_time > 0.00001f &&
+      dc_state != DC_DISABLED &&
+      fabs(dc_current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD)
+  {
+    // Compute actual robot speed in mm/s from the distance change
+    float speed_mms = fabs(current_distance - last_stall_distance) / last_loop_time;
+
+    if (speed_mms < STALL_SPEED_THRESHOLD_MMS)
+    {
+      Serial.print("Stall detected! Speed: ");
+      Serial.print(speed_mms, 5);
+      Serial.print(" mm/s (threshold: ");
+      Serial.print(STALL_SPEED_THRESHOLD_MMS);
+      Serial.print(" mm/s), DC: ");
+      Serial.println(dc_current_dc);
+
+      system_disable();
+    }
   }
 
-  stall_encoder_pos = encoder_pos;
+  last_stall_distance = current_distance;
 }
 
 void system_enable()
