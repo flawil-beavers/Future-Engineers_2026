@@ -40,7 +40,7 @@
 // ==========================================
 // MOTOR CONTROL CONSTANTS
 // ==========================================
-#define GEAR_RATIO 50                                       // Motor gear ratio
+#define GEAR_RATIO 30                                       // Motor gear ratio
 #define ENCODER_COUNTS_PER_REV (GEAR_RATIO * 7 * 4)         // CPR of the motor
 #define ENCODER_COUNTS_PER_WHEEL_REV (28.0 / 20.0 * ENCODER_COUNTS_PER_REV) // CPR of the wheel
 #define COUNTER_TO_MM (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV)  // mm per encoder count
