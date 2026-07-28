@@ -42,6 +42,23 @@ static float oa_last_camera_error = 0.0f;
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
 
+enum ParkingExitState : uint8_t
+{
+    PARKING_EXIT_IDLE,
+    PARKING_EXIT_FIRST_ARC,
+    PARKING_EXIT_COUNTER_ARC,
+    PARKING_EXIT_STRAIGHTENING,
+    PARKING_EXIT_TEST_HOLD,
+    PARKING_EXIT_DONE
+};
+
+static ParkingExitState oc_parking_exit_state =
+    PARKING_EXIT_IDLE;
+static float oc_parking_exit_state_distance = 0.0f;
+static float oc_parking_exit_start_heading = 0.0f;
+static int oc_parking_exit_steering = 0;
+static uint32_t oc_parking_exit_brake_start_ms = 0;
+
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
 static float oc_section_start_distance = 0.0f;
@@ -119,6 +136,210 @@ static void setAvoidanceSpeed(int speed)
 static float obstacleSectionDistance()
 {
     return fabsf(get_distance() - oc_section_start_distance);
+}
+
+static void resetParkingExit()
+{
+    oc_parking_exit_state =
+        OBSTACLE_PARKING_EXIT_ENABLED
+            ? PARKING_EXIT_IDLE
+            : PARKING_EXIT_DONE;
+    oc_parking_exit_state_distance = get_distance();
+    oc_parking_exit_start_heading = get_angle();
+    oc_parking_exit_steering = 0;
+    oc_parking_exit_brake_start_ms = 0;
+}
+
+static bool updateParkingExit()
+{
+    if (oc_parking_exit_state == PARKING_EXIT_DONE)
+        return false;
+
+    if (oc_parking_exit_state == PARKING_EXIT_TEST_HOLD)
+    {
+        // Keep the drive motor de-energized until the enable switch is turned
+        // off. This prevents the remaining Obstacle Challenge from starting.
+        if (dc_state != DC_DISABLED)
+            stop(false);
+        return true;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_STRAIGHTENING)
+    {
+        // Do not cut motor power at full speed. Centre the wheels immediately
+        // and let the speed controller ramp its target to zero first.
+        set_steering(0);
+        steer(0);
+        set_speed(0);
+
+        const uint32_t brakeTimeMs =
+            oc_parking_exit_steering < 0
+                ? OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS
+                : OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS;
+
+        if (
+            millis() - oc_parking_exit_brake_start_ms <
+                brakeTimeMs)
+        {
+            return true;
+        }
+
+        const float finalHeadingError =
+            fabsf(get_angle() - oc_parking_exit_start_heading);
+
+        stop(false);
+
+        Serial.print("[PARK EXIT] Stopped heading_error=");
+        Serial.println(finalHeadingError, 1);
+
+        if (OBSTACLE_PARKING_EXIT_TEST_ONLY)
+        {
+            oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+            Serial.println(
+                "[PARK EXIT] Test complete - drive motor locked off");
+            robot_logger.write_to_usb();
+            return true;
+        }
+
+        oc_parking_exit_state = PARKING_EXIT_DONE;
+        gyro_follower_enable();
+        oc_section_start_distance = get_distance();
+        oc_last_navigation_state = gyro_follower_get_state();
+        oc_last_completed_turn = gyro_follower_get_turn_count();
+
+        Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
+        return false;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_IDLE)
+    {
+        const float left = get_tof_distance(TOF_LEFT);
+        const float right = get_tof_distance(TOF_RIGHT);
+
+        // The parking lot is against the outer wall. Steer away from the
+        // clearly nearer side wall. Positive steering is right.
+        if (
+            left > 0.0f &&
+            right > 0.0f &&
+            fabsf(left - right) >=
+                OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM)
+        {
+            oc_parking_exit_steering =
+                left < right
+                    ? OBSTACLE_PARKING_EXIT_STEERING
+                    : -OBSTACLE_PARKING_EXIT_STEERING;
+        }
+        else
+        {
+            // Do not guess the driving direction if the side sensors do not
+            // identify the outer wall reliably.
+            set_speed(0);
+            set_steering(0);
+            return true;
+        }
+
+        oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_start_heading = get_angle();
+        oc_parking_exit_state = PARKING_EXIT_FIRST_ARC;
+
+        Serial.print("[PARK EXIT] Start wall left=");
+        Serial.print(left, 0);
+        Serial.print(" right=");
+        Serial.println(right, 0);
+        Serial.print("[PARK EXIT] First arc, steering=");
+        Serial.println(oc_parking_exit_steering);
+    }
+
+    const float stateDistance =
+        distanceSince(oc_parking_exit_state_distance);
+
+    if (oc_parking_exit_state == PARKING_EXIT_FIRST_ARC)
+    {
+        set_speed(OBSTACLE_PARKING_EXIT_SPEED);
+        set_steering(oc_parking_exit_steering);
+
+        const float firstArcTarget =
+            oc_parking_exit_steering < 0
+                ? OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM
+                : OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM;
+
+        if (stateDistance >= firstArcTarget)
+        {
+            const float firstArcHeading =
+                fabsf(
+                    get_angle() -
+                    oc_parking_exit_start_heading);
+
+            Serial.print("[PARK EXIT] First distance=");
+            Serial.print(stateDistance, 0);
+            Serial.print(" heading=");
+            Serial.println(firstArcHeading, 1);
+
+            oc_parking_exit_state_distance = get_distance();
+            oc_parking_exit_state = PARKING_EXIT_COUNTER_ARC;
+            Serial.println("[PARK EXIT] Counter arc");
+        }
+
+        return true;
+    }
+
+    const float headingError =
+        fabsf(get_angle() - oc_parking_exit_start_heading);
+
+    float counterSteering =
+        static_cast<float>(OBSTACLE_PARKING_EXIT_STEERING);
+    int counterSpeed =
+        OBSTACLE_PARKING_EXIT_COUNTER_SPEED;
+
+    if (
+        headingError <
+            OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG)
+    {
+        counterSteering = clampValue(
+            OBSTACLE_PARKING_EXIT_STEERING *
+                headingError /
+                OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG,
+            OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING,
+            static_cast<float>(
+                OBSTACLE_PARKING_EXIT_STEERING));
+        counterSpeed =
+            OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED;
+    }
+
+    set_speed(counterSpeed);
+    set_steering(
+        oc_parking_exit_steering < 0
+            ? static_cast<int>(counterSteering)
+            : -static_cast<int>(counterSteering));
+
+    const bool parallelAgain =
+        stateDistance >=
+            OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM &&
+        headingError <=
+            OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG;
+    const bool safetyDistanceReached =
+        stateDistance >=
+            OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM;
+
+    if (parallelAgain || safetyDistanceReached)
+    {
+        set_steering(0);
+        // Apply the straight-ahead command immediately. stop(false) disables
+        // the servo, so waiting for the next drive_loop() would leave the
+        // wheels at the counter-steering angle during measurement.
+        steer(0);
+
+        Serial.print("[PARK EXIT] Counter distance=");
+        Serial.print(stateDistance, 0);
+        Serial.print(" heading_error=");
+        Serial.println(headingError, 1);
+
+        oc_parking_exit_brake_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_STRAIGHTENING;
+        return true;
+    }
+
+    return true;
 }
 
 static WallSide wallForColor(ColorType color)
@@ -1329,6 +1550,7 @@ void obstacle_challenge_setup()
     oc_was_enabled =
         false;
 
+    resetParkingExit();
     obstacle_avoidance_reset();
 
     Serial.println(
@@ -1342,6 +1564,13 @@ void obstacle_challenge_setup()
 bool obstacle_challenge_active()
 {
     return oc_was_enabled;
+}
+
+bool obstacle_parking_exit_active()
+{
+    // Keep verbose camera output disabled in the isolated test hold too, so
+    // the small logger cannot overwrite the manoeuvre's diagnostic lines.
+    return oc_parking_exit_state != PARKING_EXIT_DONE;
 }
 
 void obstacle_bench_test_set(bool enable)
@@ -1404,6 +1633,7 @@ void obstacle_challenge_update(
 
         oc_was_enabled =
             false;
+        resetParkingExit();
 
         return;
     }
@@ -1416,6 +1646,14 @@ void obstacle_challenge_update(
     {
         oc_was_enabled =
             true;
+
+        // The isolated parking test only needs manoeuvre diagnostics. Clearing
+        // verbose startup output also keeps the useful data on USB drives that
+        // currently truncate each write after about 1024 bytes.
+        if (OBSTACLE_PARKING_EXIT_TEST_ONLY)
+        {
+            robot_logger.clear();
+        }
 
         obstacle_avoidance_reset();
         course_map_reset();
@@ -1444,6 +1682,13 @@ void obstacle_challenge_update(
 
         Serial.println(
             "[OC] New obstacle run");
+    }
+
+    // This path exists only in the Obstacle Challenge. While it owns the
+    // steering, camera avoidance and the regular challenge remain untouched.
+    if (updateParkingExit())
+    {
+        return;
     }
 
     updateCourseProgress();

@@ -108,6 +108,38 @@
 // OBSTACLE AVOIDANCE
 // ==========================================
 
+// Optional start manoeuvre for an Obstacle Challenge run that begins inside
+// the parking lot. Set to false when starting in the middle zone above it.
+// This flag has no effect on the Open Challenge.
+constexpr bool OBSTACLE_PARKING_EXIT_ENABLED = true;
+
+// Development mode: execute only the parking exit and stop afterwards.
+// Set to false once the isolated manoeuvre has been tuned successfully.
+constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = false;
+
+// The parking lot is 200 mm wide and the Obstacle track is 1000 mm wide.
+// With the inner edge of the 120 mm wide car placed at the parking lot's open
+// edge, its centre starts about 140 mm from the outer wall. The first three
+// tests ended 60-80 mm beyond the track centre, so the outward arc is reduced.
+// The counter-arc is gyro-terminated because the left/right steering radii and
+// servo transition distances are not identical in practice.
+#define OBSTACLE_PARKING_EXIT_STEERING 40
+#define OBSTACLE_PARKING_EXIT_SPEED 120
+#define OBSTACLE_PARKING_EXIT_COUNTER_SPEED 80
+// Separate calibration is intentional: the measured Ackermann radii and the
+// servo linkage are not perfectly symmetric.
+#define OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM 239.0f
+#define OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM 250.0f
+#define OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM 180.0f
+#define OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM 400.0f
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG 30.0f
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED 50
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING 8.0f
+#define OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG 2.0f
+#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS 450
+#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS 250
+#define OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM 80.0f
+
 // Camera processing
 #define OBSTACLE_CAMERA_INTERVAL_MS 50
 

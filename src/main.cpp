@@ -165,8 +165,12 @@ void loop()
         );
 
 
-        // Only during development.
-        printVisionDebug();
+        // Large camera log writes can delay the gyro-controlled parking exit.
+        if (!obstacle_parking_exit_active())
+        {
+            // Only during development.
+            printVisionDebug();
+        }
     }
 
 

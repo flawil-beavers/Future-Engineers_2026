@@ -88,6 +88,7 @@ void obstacle_challenge_update(
  * @brief Returns true while an obstacle challenge run is active.
  */
 bool obstacle_challenge_active();
+bool obstacle_parking_exit_active();
 
 /**
  * @brief Enable/disable a stationary camera/steering test.
