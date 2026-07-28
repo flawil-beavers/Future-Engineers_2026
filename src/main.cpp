@@ -28,6 +28,7 @@
 #include "wall_follower.h"
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
+#include "pid_autotune.h"
 #include "calibration.h"
 #include "position_estimator.h"
 #include "mode_manager.h"
@@ -174,9 +175,18 @@ void loop()
       drive_loop();
       break;
 
+    case MODE_PID_AUTOTUNE:
+      // PID speed controller auto-tuning (relay feedback method)
+      // Uses its own internal speed control; drive_loop is not called
+      // because pid_autotune_update() directly controls set_dc()
+      pid_autotune_update();
+      break;
+
     case MODE_NONE:
     default:
-      // No active mode - nothing to do
+      // No active mode - still run drive_loop() so manual serial commands
+      // (s<angle>, d<speed>, etc.) actually take effect.
+      drive_loop();
       break;
   }
 }

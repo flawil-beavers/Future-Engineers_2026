@@ -187,12 +187,15 @@ void pid_speed()
 
 void drive_loop()
 {
+  // Always execute steering, regardless of DC motor state.
+  // This allows manual serial commands (s<angle>) to work even
+  // when the DC motor is disabled.
+  steer(set_degree);
+
   if (last_loop_time == 0 || dc_state == DC_DISABLED)
   {
-    return; // Don't run until timing is initialized
+    return; // Don't run PID/speed control until timing is initialized
   }
-
-  steer(set_degree);
 
   if (dc_state == DC_ENABLED)
   {
@@ -441,8 +444,12 @@ void motor_control_setup()
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_A), update_encoder_a, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN_B), update_encoder_b, CHANGE);
 
-  // Initialize motors
-  set_speed(0);
+  // Initialize motor state variables without enabling the DC motor.
+  // The DC motor should only be enabled when the user explicitly sends
+  // a serial command (m, r, d) or toggles the enable switch.
+  // set_speed(0) would set dc_state = DC_ENABLED, which is wrong at startup.
+  target_speed = 0;
+  last_speed = 0;
   set_steering(0);
   
   // Initialize timing for the loop_updater and stall protection

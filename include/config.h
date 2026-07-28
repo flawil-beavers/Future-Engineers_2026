@@ -71,6 +71,15 @@
 #define DEFAULT_ACCELERATION 700    // mm/s^2
 
 // ==========================================
+// PID AUTOTUNE PARAMETERS
+// ==========================================
+#define PID_AT_RELAY_AMPLITUDE  40      // Relay DC amplitude (±DC from baseline)
+#define PID_AT_TARGET_SPEED     250     // Target speed for tuning (mm/s)
+#define PID_AT_MIN_CYCLES       3       // Min oscillation cycles before computing gains
+#define PID_AT_MAX_DISTANCE_MM  1000    // Max travel from start in any direction (mm)
+#define PID_AT_MAX_TIME_US      30000000 // 30-second safety timeout (microseconds)
+
+// ==========================================
 // SENSOR UPDATE RATES
 // ==========================================
 #define STATUS_PRINT_INTERVAL_US 200000  // Print status every 200ms

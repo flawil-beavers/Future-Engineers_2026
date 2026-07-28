@@ -16,6 +16,7 @@
 #include "motor_control.h"
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
+#include "pid_autotune.h"
 #include "wall_follower.h"
 #include "logger.h"
 #define Serial robot_logger
@@ -51,6 +52,10 @@ static void stop_mode(RobotMode mode)
             stop(false);
             servo_center_cal_stop();
             break;
+        case MODE_PID_AUTOTUNE:
+            stop(false);
+            pid_autotune_stop();
+            break;
         case MODE_NONE:
             // Nothing to stop
             break;
@@ -75,6 +80,9 @@ static void start_mode(RobotMode mode)
             break;
         case MODE_SERVO_CENTER_CAL:
             servo_center_cal_start();
+            break;
+        case MODE_PID_AUTOTUNE:
+            pid_autotune_start();
             break;
         case MODE_NONE:
             // Nothing to start
@@ -174,6 +182,7 @@ const char* mode_name(RobotMode mode)
         case MODE_GYRO_FOLLOW:          return "GYRO_FOLLOW";
         case MODE_TURN_RADIUS_CAL:      return "TURN_RADIUS_CAL";
         case MODE_SERVO_CENTER_CAL:     return "SERVO_CENTER_CAL";
+        case MODE_PID_AUTOTUNE:         return "PID_AUTOTUNE";
         default:                        return "UNKNOWN";
     }
 }

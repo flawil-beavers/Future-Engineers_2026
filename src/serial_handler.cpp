@@ -23,6 +23,7 @@
  *   i/o    : Wall Follower Debug ON/OFF
  *   c      : START turn-radius calibration sequence
  *   b      : START straight servo-center calibration
+ *   y      : START PID autotune (relay feedback method)
  *   t      : Print current position (x, y, heading, confidence)
  *   k      : Print calibration data summary
  */
@@ -34,6 +35,7 @@
 #include "wall_follower.h"
 #include "calibration.h"
 #include "position_estimator.h"
+#include "pid_autotune.h"
 #include "mode_manager.h"
 #include "logger.h"
 #define Serial robot_logger
@@ -237,6 +239,11 @@ void parseMessage(char *msg)
   case 'b':
     // Start straight servo-center calibration
     mode_switch(MODE_SERVO_CENTER_CAL);
+    break;
+
+  case 'y':
+    // Start PID autotune
+    mode_switch(MODE_PID_AUTOTUNE);
     break;
 
   case 't':
