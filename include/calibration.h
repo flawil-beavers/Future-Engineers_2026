@@ -2,50 +2,42 @@
 
 /**
  * @file calibration.h
- * @brief Automatic turn radius calibration subsystem
+ * @brief Shared calibration data types and utility functions
  * 
- * Drives the robot in circles at various steering angles, measures the
- * actual turn radius using encoder distance and gyro heading, and outputs
- * a polynomial fit: R(servo_angle) = a0 + a1*|δ| + a2*|δ|² + a3*|δ|³
+ * Provides the data structures and utility functions used by both
+ * turn radius calibration and servo-center calibration, including:
+ *   - Measurement point and result data structures
+ *   - Polynomial fitting (3rd-degree least squares)
+ *   - Ackermann model fitting
+ *   - Calibrated radius lookup from polynomial coefficients
+ *   - Result printing and CSV export
  * 
- * The servo "angle" here refers to the offset from SERVO_CENTER (81),
- * i.e. the value passed to set_steering(). Range: ±50.
+ * The global coefficient storage (tr_cal_left, tr_cal_right) is
+ * populated either by running turn radius calibration at runtime
+ * or by loading pre-computed coefficients from config.h.
  */
 
 #include <Arduino.h>
 
 // ==========================================
-// CALIBRATION STATE MACHINE
-// ==========================================
-
-enum CalibrationState {
-    CAL_IDLE,           ///< Not running
-    CAL_DRIVING,        ///< Driving in a circle, waiting for 360°
-    CAL_STOPPING,       ///< Reached 360°, stopping motors
-    CAL_NEXT_ANGLE,     ///< Transitioning to next angle
-    CAL_CENTER_DRIVE,   ///< Driving straight to estimate the servo center
-    CAL_DONE            ///< All angles measured or center calibration complete
-};
-
-// ==========================================
-// CALIBRATION DATA STRUCTURE
+// CALIBRATION DATA STRUCTURES
 // ==========================================
 
 /**
- * @brief A single calibration measurement point
+ * @brief A single turn radius calibration measurement point
  */
-struct CalPoint {
+struct TRCalPoint {
     int servo_angle;        ///< Servo offset from center (e.g. 25, -30)
     float radius_mm;        ///< Measured turn radius
     float distance_mm;      ///< Total distance traveled for 360°
 };
 
 /**
- * @brief Complete calibration results for one direction
+ * @brief Complete turn radius calibration results for one direction
  */
-struct CalResult {
+struct TRCalResult {
     int num_points;                 ///< Number of valid measurements
-    CalPoint points[12];            ///< Measurement data (max 12 angles)
+    TRCalPoint points[12];          ///< Measurement data (max 12 angles)
     float coeffs[4];                ///< Polynomial coefficients a0..a3
     float rmse_mm;                  ///< RMSE of polynomial fit
     float correction_factor_K;      ///< Best-fit K for R = K * L/tan(model_angle)
@@ -53,49 +45,15 @@ struct CalResult {
 };
 
 // ==========================================
-// EXTERNAL STATE
+// EXTERNAL STATE (global coefficient storage)
 // ==========================================
 
-extern CalibrationState cal_state;
-extern CalResult cal_left;
-extern CalResult cal_right;
-extern int cal_current_angle_index;
-extern int cal_current_angle;
+extern TRCalResult tr_cal_left;
+extern TRCalResult tr_cal_right;
 
 // ==========================================
-// PUBLIC FUNCTIONS
+// SHARED UTILITY FUNCTIONS
 // ==========================================
-
-/**
- * @brief Start the calibration sequence
- * Resets all state and begins measuring at the first steering angle.
- */
-void calibration_start();
-
-/**
- * @brief Start the straight-line servo-center calibration sequence.
- */
-void calibration_start_center();
-
-/**
- * @brief Main calibration update function. Call every loop.
- * 
- * Drives the state machine: drives in circles, measures radius,
- * advances through angles, and finally outputs results.
- */
-void calibration_update();
-
-/**
- * @brief Stop calibration immediately. Resets state to CAL_IDLE.
- * Safe to call even if calibration is not running.
- */
-void calibration_stop();
-
-/**
- * @brief Check if calibration is currently running
- * @return true if calibration state machine is active
- */
-bool calibration_is_active();
 
 /**
  * @brief Get the calibrated turn radius for a given servo angle
@@ -108,6 +66,7 @@ float get_calibrated_radius(int servo_angle);
 
 /**
  * @brief Print calibration results to serial
+ * Uses the global tr_cal_left / tr_cal_right coefficient storage.
  */
 void calibration_print_results();
 
@@ -128,3 +87,34 @@ void calibration_set_coefficients(const float left_coeffs[4], const float right_
  * @return true if coefficients are valid (non-zero)
  */
 bool calibration_has_data();
+
+// ==========================================
+// POLYNOMIAL FITTING (used by turn radius calibration)
+// ==========================================
+
+/**
+ * @brief Fit a 3rd-degree polynomial y = a0 + a1*x + a2*x² + a3*x³
+ * using the normal equations (least squares).
+ */
+void fit_polynomial_3rd(const float* x, const float* y, int n, float* coeffs);
+
+/**
+ * @brief Compute the RMSE of a polynomial fit
+ */
+float compute_rmse(const float* x, const float* y, int n, const float* coeffs);
+
+/**
+ * @brief Fit the Ackermann model: R = K * L / tan(δ_model)
+ * Returns the best-fit correction factor K.
+ */
+float fit_ackermann_k(const float* x, const float* y, int n, float L);
+
+/**
+ * @brief Compute RMSE for the Ackermann model with given K
+ */
+float compute_ackermann_rmse(const float* x, const float* y, int n, float L, float K);
+
+/**
+ * @brief Compute both polynomial and Ackermann fits for a TRCalResult
+ */
+void compute_fits(TRCalResult* result, bool is_left);

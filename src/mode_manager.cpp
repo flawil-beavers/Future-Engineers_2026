@@ -14,7 +14,8 @@
 
 #include "mode_manager.h"
 #include "motor_control.h"
-#include "calibration.h"
+#include "turn_radius_calibration.h"
+#include "servo_center_calibration.h"
 #include "wall_follower.h"
 #include "logger.h"
 #define Serial robot_logger
@@ -40,12 +41,15 @@ static void stop_mode(RobotMode mode)
         case MODE_GYRO_FOLLOW:
             gyro_follower_disable();
             break;
-        case MODE_CALIBRATION:
-        case MODE_STRAIGHT_CALIBRATION:
+        case MODE_TURN_RADIUS_CAL:
             // Always stop calibration regardless of state (IDLE, DRIVING, DONE, etc.)
-            // calibration_stop() handles all states internally.
+            // turn_radius_cal_stop() handles all states internally.
             stop(false);
-            calibration_stop();
+            turn_radius_cal_stop();
+            break;
+        case MODE_SERVO_CENTER_CAL:
+            stop(false);
+            servo_center_cal_stop();
             break;
         case MODE_NONE:
             // Nothing to stop
@@ -66,11 +70,11 @@ static void start_mode(RobotMode mode)
         case MODE_GYRO_FOLLOW:
             gyro_follower_enable();
             break;
-        case MODE_CALIBRATION:
-            calibration_start();
+        case MODE_TURN_RADIUS_CAL:
+            turn_radius_cal_start();
             break;
-        case MODE_STRAIGHT_CALIBRATION:
-            calibration_start_center();
+        case MODE_SERVO_CENTER_CAL:
+            servo_center_cal_start();
             break;
         case MODE_NONE:
             // Nothing to start
@@ -168,8 +172,8 @@ const char* mode_name(RobotMode mode)
     switch (mode) {
         case MODE_NONE:                 return "NONE";
         case MODE_GYRO_FOLLOW:          return "GYRO_FOLLOW";
-        case MODE_CALIBRATION:          return "CALIBRATION";
-        case MODE_STRAIGHT_CALIBRATION: return "STRAIGHT_CALIBRATION";
+        case MODE_TURN_RADIUS_CAL:      return "TURN_RADIUS_CAL";
+        case MODE_SERVO_CENTER_CAL:     return "SERVO_CENTER_CAL";
         default:                        return "UNKNOWN";
     }
 }

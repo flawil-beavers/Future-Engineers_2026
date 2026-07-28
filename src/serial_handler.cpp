@@ -231,12 +231,12 @@ void parseMessage(char *msg)
 
   case 'c':
     // Start turn-radius calibration
-    mode_switch(MODE_CALIBRATION);
+    mode_switch(MODE_TURN_RADIUS_CAL);
     break;
 
   case 'b':
     // Start straight servo-center calibration
-    mode_switch(MODE_STRAIGHT_CALIBRATION);
+    mode_switch(MODE_SERVO_CENTER_CAL);
     break;
 
   case 't':

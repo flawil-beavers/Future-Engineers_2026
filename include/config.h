@@ -110,7 +110,7 @@
 // ==========================================
 // CALIBRATION CONFIGURATION
 // ==========================================
-#define CAL_SPEED_MMS 150.0f            // Speed during calibration (mm/s)
+#define CAL_SPEED_MMS 250.0f            // Speed during calibration (mm/s)
 #define CAL_STARTUP_DELAY_MS 5000       // Delay before calibration starts (to unplug USB)
 #define CAL_CENTER_DISTANCE_MM 2000.0f  // Distance to drive during straight calibration
 #define CAL_CENTER_MAX_TIME_MS 15000    // Safety timeout for the straight calibration run

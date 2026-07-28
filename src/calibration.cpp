@@ -1,23 +1,20 @@
 /**
  * @file calibration.cpp
- * @brief Automatic turn radius calibration implementation
+ * @brief Shared calibration utility functions
  * 
- * Calibration state machine:
- *   CAL_IDLE → CAL_DRIVING → CAL_STOPPING → (loop back) → CAL_DONE
+ * Provides polynomial fitting (3rd-degree least squares), Ackermann model
+ * fitting, calibrated radius lookup, result printing, and coefficient
+ * storage that are shared between the turn radius calibration and
+ * servo-center calibration subsystems.
  * 
- * For each steering angle, the robot drives in a circle until the gyro
- * reports 360° of rotation. The encoder distance is then used to compute
- * the actual turn radius: R = distance / (2*π).
- * 
- * After all angles are measured, the results are fitted to both a
- * 3rd-degree polynomial and the theoretical Ackermann model.
+ * The global TRCalResult variables (tr_cal_left, tr_cal_right) store
+ * the polynomial coefficients either from runtime calibration or from
+ * pre-computed values loaded from config.h.
  */
 
 #include "calibration.h"
 #include "config.h"
 #include "motor_control.h"
-#include "sensors.h"
-#include "wall_follower.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -32,38 +29,15 @@ extern int set_degree;
 extern bool servo_disabled;
 
 // ==========================================
-// CALIBRATION STATE
+// GLOBAL COEFFICIENT STORAGE
 // ==========================================
 
-CalibrationState cal_state = CAL_IDLE;
-CalResult cal_left;
-CalResult cal_right;
-int cal_current_angle_index = 0;
-int cal_current_angle = 0;
-
-// ==========================================
-// INTERNAL STATE
-// ==========================================
-
-// The sequence of servo angles to test (absolute values, both directions)
-static const int cal_angle_sequence[] = {10, 15, 20, 25, 30, 35, 40};
-static const int cal_num_angles = sizeof(cal_angle_sequence) / sizeof(cal_angle_sequence[0]);
-
-// Per-measurement tracking
-static float cal_start_distance = 0;      // Encoder distance at start of current circle
-static float cal_start_angle = 0;         // Gyro angle at start of current circle
-static bool cal_is_right_turn = false;    // Currently measuring right (negative) angles?
-static int cal_phase = 0;                 // 0=left turns, 1=right turns
-static float cal_drive_start_time = 0;    // Time when we started driving (ms)
-static bool cal_printed_angle_header = false;
-static int cal_center_best_value = SERVO_CENTER;
-static float cal_center_target_heading = 0.0f;
-static float cal_center_last_heading_error = 0.0f;
-static float cal_center_weighted_mean = 0.0f;
-static float cal_center_weight_sum = 0.0f;
-static float cal_center_weighted_m2 = 0.0f;
-static float cal_center_uncertainty = 0.0f;
-static unsigned long cal_center_last_debug_time = 0;
+// Note: The actual values for tr_cal_left and tr_cal_right are defined
+// in turn_radius_calibration.cpp, but extern'd in calibration.h so that
+// shared functions (calibration_print_results, get_calibrated_radius, etc.)
+// can access them without depending on the turn radius calibration module.
+// This is intentional to allow coefficient lookup without needing the
+// calibration state machine to be active.
 
 // ==========================================
 // POLYNOMIAL FITTING (Least Squares)
@@ -78,7 +52,7 @@ static unsigned long cal_center_last_debug_time = 0;
  * @param n Number of data points
  * @param coeffs Output array of 4 coefficients [a0, a1, a2, a3]
  */
-static void fit_polynomial_3rd(const float* x, const float* y, int n, float* coeffs)
+void fit_polynomial_3rd(const float* x, const float* y, int n, float* coeffs)
 {
     // Build the Vandermonde-like matrix: X = [1, x, x², x³]
     // Normal equations: (X^T * X) * coeffs = X^T * y
@@ -156,7 +130,7 @@ static void fit_polynomial_3rd(const float* x, const float* y, int n, float* coe
 /**
  * @brief Compute the RMSE of a polynomial fit
  */
-static float compute_rmse(const float* x, const float* y, int n, const float* coeffs)
+float compute_rmse(const float* x, const float* y, int n, const float* coeffs)
 {
     float sum_sq = 0;
     for (int i = 0; i < n; i++) {
@@ -182,7 +156,7 @@ static float compute_rmse(const float* x, const float* y, int n, const float* co
  * where δ_i is the servo angle converted to radians (treating servo angle
  * as proportional to wheel angle).
  */
-static float fit_ackermann_k(const float* x, const float* y, int n, float L)
+float fit_ackermann_k(const float* x, const float* y, int n, float L)
 {
     // x = servo angles (degrees), y = measured radii (mm)
     // Model: R = K * L / tan(α * x) where α is some unknown scale factor.
@@ -215,7 +189,7 @@ static float fit_ackermann_k(const float* x, const float* y, int n, float L)
 /**
  * @brief Compute RMSE for the Ackermann model with given K
  */
-static float compute_ackermann_rmse(const float* x, const float* y, int n, float L, float K)
+float compute_ackermann_rmse(const float* x, const float* y, int n, float L, float K)
 {
     float sum_sq = 0;
     for (int i = 0; i < n; i++) {
@@ -231,52 +205,10 @@ static float compute_ackermann_rmse(const float* x, const float* y, int n, float
     return sqrtf(sum_sq / n);
 }
 
-// ==========================================
-// HELPER: Process a complete measurement
-// ==========================================
-
 /**
- * @brief Finalize the current measurement and store it
+ * @brief Compute fits for a TRCalResult
  */
-static void finalize_measurement()
-{
-    float distance_delta = current_distance - cal_start_distance;
-    float angle_delta = fabs(get_angle() - cal_start_angle);
-    
-    if (angle_delta < 1.0f) {
-        Serial.println("ERROR: No significant rotation detected, skipping");
-        return;
-    }
-    
-    // Radius = arc_length / angle (in radians)
-    float angle_rad = angle_delta * PI / 180.0f;
-    float radius_mm = distance_delta / angle_rad;
-    
-    CalResult* result = cal_is_right_turn ? &cal_right : &cal_left;
-    int idx = result->num_points;
-    
-    if (idx < 12) {
-        result->points[idx].servo_angle = cal_current_angle;
-        result->points[idx].radius_mm = radius_mm;
-        result->points[idx].distance_mm = distance_delta;
-        result->num_points++;
-        
-        Serial.print("MEASURED: angle=");
-        Serial.print(cal_current_angle);
-        Serial.print(", distance=");
-        Serial.print(distance_delta, 1);
-        Serial.print(" mm, rotation=");
-        Serial.print(angle_delta, 1);
-        Serial.print("°, radius=");
-        Serial.print(radius_mm, 1);
-        Serial.println(" mm");
-    }
-}
-
-/**
- * @brief Compute fits for a CalResult
- */
-static void compute_fits(CalResult* result, bool is_left)
+void compute_fits(TRCalResult* result, bool is_left)
 {
     if (result->num_points < 4) {
         Serial.print("WARNING: Too few points (");
@@ -306,297 +238,13 @@ static void compute_fits(CalResult* result, bool is_left)
 // PUBLIC FUNCTIONS
 // ==========================================
 
-void calibration_start()
-{
-    // Reset state
-    cal_state = CAL_DRIVING;
-    cal_current_angle_index = 0;
-    cal_phase = 0;
-    cal_left.num_points = 0;
-    cal_right.num_points = 0;
-    cal_is_right_turn = false;
-    cal_printed_angle_header = false;
-    
-    // Clear calibration results
-    for (int i = 0; i < 4; i++) {
-        cal_left.coeffs[i] = 0;
-        cal_right.coeffs[i] = 0;
-    }
-    cal_left.rmse_mm = 0;
-    cal_right.rmse_mm = 0;
-    cal_left.correction_factor_K = 0;
-    cal_right.correction_factor_K = 0;
-    cal_left.ackermann_rmse_mm = 0;
-    cal_right.ackermann_rmse_mm = 0;
-    
-    // Get first angle — negative for left turn (contradicts phase label, but 
-    // this is the correct sign: negative steering = left, positive = right)
-    cal_current_angle = -cal_angle_sequence[0];
-    
-    Serial.println("\n\n========================================");
-    Serial.println("CALIBRATION STARTED");
-    Serial.println("========================================");
-    Serial.print("Wheelbase: 100 mm\n");
-    Serial.print("Calibration speed: ");
-    Serial.print(CAL_SPEED_MMS);
-    Serial.println(" mm/s");
-    Serial.println("Testing angles: 10, 15, 20, 25, 30, 35, 40 (both directions)");
-    Serial.println();
-    
-    // Set steering and speed for first angle
-    // Note: system_enable() is called by the mode manager before this
-    set_steering(cal_current_angle);
-    set_speed(CAL_SPEED_MMS);
-    
-    // Record initial state
-    cal_start_distance = current_distance;
-    cal_start_angle = get_angle();
-    cal_drive_start_time = millis();
-    
-    Serial.print("Starting turn: angle=");
-    Serial.print(cal_current_angle);
-    Serial.println(" (left / negative = left turn)");
-}
-
-static void update_center_estimate(float steering_cmd, float heading_error)
-{
-    // Weight each sample by how trustworthy it is. Samples taken when the
-    // heading error is small are more reliable, while large errors or strong
-    // steering saturation are treated as less certain. The resulting estimate
-    // is therefore less sensitive to noisy outliers and gives a useful
-    // uncertainty value for the final servo-center estimate.
-    float abs_heading_error = fabsf(heading_error);
-    float certainty = 1.0f / (1.0f + abs_heading_error / 8.0f);
-    certainty = constrain(certainty, 0.05f, 1.0f);
-
-    if (fabsf(steering_cmd) > 45.0f) {
-        certainty *= 0.6f;
-    }
-
-    float sample_weight = constrain(certainty, 0.05f, 1.0f);
-
-    float previous_mean = cal_center_weighted_mean;
-    cal_center_weight_sum += sample_weight;
-    float delta = steering_cmd - previous_mean;
-    cal_center_weighted_mean += delta * sample_weight / cal_center_weight_sum;
-    float delta2 = steering_cmd - cal_center_weighted_mean;
-    cal_center_weighted_m2 += sample_weight * delta * delta2;
-
-    float weighted_variance = (cal_center_weight_sum > 0.0f) ? (cal_center_weighted_m2 / cal_center_weight_sum) : 0.0f;
-    float weighted_std_dev = sqrtf(fmaxf(0.0f, weighted_variance));
-    float std_error_of_mean = (cal_center_weight_sum > 1.0f) ? (weighted_std_dev / sqrtf(cal_center_weight_sum)) : weighted_std_dev;
-    cal_center_uncertainty = std_error_of_mean;
-}
-
-static void start_center_calibration()
-{
-    cal_center_target_heading = get_angle();
-    cal_center_last_heading_error = 0.0f;
-    gyro_follower_reset_filter();
-    cal_center_weighted_mean = 0.0f;
-    cal_center_weight_sum = 0.0f;
-    cal_center_weighted_m2 = 0.0f;
-    cal_center_uncertainty = 0.0f;
-    cal_center_last_debug_time = millis();
-    cal_start_distance = current_distance;
-    cal_drive_start_time = millis();
-
-    set_steering(0);
-    set_speed(CAL_SPEED_MMS);
-    cal_state = CAL_CENTER_DRIVE;
-
-    Serial.println("Starting straight 2 m servo-center calibration...");
-    Serial.println("The robot will keep the original heading and estimate the neutral servo position.");
-    Serial.print("Driving for ");
-    Serial.print(CAL_CENTER_DISTANCE_MM / 1000.0f, 1);
-    Serial.println(" m or until the safety timeout is reached.");
-}
-
-void calibration_start_center()
-{
-    cal_state = CAL_CENTER_DRIVE;
-    cal_current_angle_index = 0;
-    cal_center_best_value = SERVO_CENTER;
-    cal_current_angle = SERVO_CENTER;
-
-    Serial.println("\n\n========================================");
-    Serial.println("STRAIGHT SERVO-CENTER CALIBRATION");
-    Serial.println("========================================");
-    Serial.print("Using gyro-follow steering gains Kp=");
-    Serial.print(gyro_follower_get_gyro_kp(), 3);
-    Serial.print(", Kd=");
-    Serial.println(gyro_follower_get_gyro_kd(), 3);
-
-    start_center_calibration();
-}
-
-void calibration_update()
-{
-    if (cal_state == CAL_IDLE || cal_state == CAL_DONE) {
-        return;
-    }
-
-    if (cal_state == CAL_CENTER_DRIVE) {
-        float heading_error = get_angle() - cal_center_target_heading;
-        float steering_cmd = gyro_follower_compute_steering(heading_error, cal_center_last_heading_error, last_loop_time);
-        cal_center_last_heading_error = heading_error;
-
-        if (steering_cmd > 60.0f) steering_cmd = 60.0f;
-        if (steering_cmd < -60.0f) steering_cmd = -60.0f;
-
-        int steering_command = (int)steering_cmd;
-        set_steering(steering_command);
-
-        // The ideal neutral servo position is the value that makes the gyro-follow
-        // controller need zero steering over a straight run. We estimate it by
-        // combining the steering corrections in a weighted average that gives more
-        // trust to samples taken when the heading error is small and less trust to
-        // noisy or saturated samples. That makes the result more robust than a plain
-        // mean and gives a useful uncertainty value for how confident we are in the
-        // final estimate.
-        update_center_estimate(steering_cmd, heading_error);
-
-        float distance_traveled = current_distance - cal_start_distance;
-        bool timed_out = (millis() - cal_drive_start_time) >= CAL_CENTER_MAX_TIME_MS;
-
-        if ((millis() - cal_center_last_debug_time) >= CAL_CENTER_DEBUG_INTERVAL_MS) {
-            cal_center_last_debug_time = millis();
-            float mean_steering = cal_center_weighted_mean;
-            float certainty = 100.0f / (1.0f + cal_center_uncertainty);
-            int current_estimate = constrain((int)roundf(SERVO_CENTER + mean_steering), SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
-
-            Serial.print("[CAL] servo=");
-            Serial.print(SERVO_CENTER);
-            Serial.print(" estimate=");
-            Serial.print(current_estimate);
-            Serial.print(" uncertainty=±");
-            Serial.print(cal_center_uncertainty, 1);
-            Serial.print(" deg certainty=");
-            Serial.print(certainty, 0);
-            Serial.print("% heading_error=");
-            Serial.print(heading_error, 1);
-            Serial.println(" deg");
-        }
-
-        if (distance_traveled >= CAL_CENTER_DISTANCE_MM || timed_out) {
-            float average_steering = cal_center_weighted_mean;
-            cal_center_best_value = constrain((int)roundf(SERVO_CENTER + average_steering), SERVO_MIN_ANGLE, SERVO_MAX_ANGLE);
-
-            set_steering(0);
-            stop(false);
-            cal_state = CAL_DONE;
-
-            Serial.println("Straight calibration complete.");
-            Serial.print("Final estimate: servo center = ");
-            Serial.print(cal_center_best_value);
-            Serial.print(" (weighted steering = ");
-            Serial.print(average_steering, 2);
-            Serial.print(" deg, uncertainty = ±");
-            Serial.print(cal_center_uncertainty, 2);
-            Serial.print(" deg, certainty = ");
-            Serial.print(100.0f / (1.0f + cal_center_uncertainty), 0);
-            Serial.println("%)");
-        }
-        return;
-    }
-    
-    if (cal_state == CAL_DRIVING) {
-        // Check if we've completed 360° of rotation
-        float angle_delta = fabs(get_angle() - cal_start_angle);
-        
-        // Need at least 360° to account for gyro noise
-        if (angle_delta >= 360.0f) {
-            // Reached 360°! Record measurement
-            finalize_measurement();
-            
-            // Stop motors
-            stop(false);
-            cal_state = CAL_STOPPING;
-            cal_drive_start_time = millis();
-            
-            Serial.println("Circle complete, stopping...");
-        } else {
-            // Safety timeout: if we've been driving too long without reaching 360°
-            float elapsed = (millis() - cal_drive_start_time) / 1000.0f;
-            if (elapsed > 30.0f) {
-                Serial.println("TIMEOUT: No 360° rotation detected, aborting this angle");
-                stop(false);
-                cal_state = CAL_STOPPING;
-                cal_drive_start_time = millis();
-            }
-        }
-    }
-    else if (cal_state == CAL_STOPPING) {
-        // Wait 1 second for robot to settle
-        if ((millis() - cal_drive_start_time) > 1000) {
-            // Re-enable servo before advancing to next angle
-            // (stop() in finalize_measurement disables it)
-            servo_disabled = false;
-            cal_state = CAL_NEXT_ANGLE;
-            cal_drive_start_time = millis();
-        }
-    }
-    else if (cal_state == CAL_NEXT_ANGLE) {
-        // Advance to next angle
-        cal_current_angle_index++;
-        
-        // Check if we finished all angles in current phase
-        if (cal_current_angle_index >= cal_num_angles) {
-            if (cal_phase == 0) {
-                // Finished left turns, switch to right turns
-                cal_phase = 1;
-                cal_current_angle_index = 0;
-                cal_is_right_turn = true;
-                Serial.println("\n--- Switching to RIGHT turns ---\n");
-            } else {
-                // All done
-                cal_state = CAL_DONE;
-                Serial.println("\nAll angles measured!");
-                calibration_print_results();
-                return;
-            }
-        }
-        
-        // Set next angle
-        // Negative steering = left turn (phase 0 = left)
-        // Positive steering = right turn (phase 1 = right)
-        int abs_angle = cal_angle_sequence[cal_current_angle_index];
-        cal_current_angle = cal_is_right_turn ? abs_angle : -abs_angle;
-        
-        Serial.print("\nNext angle: ");
-        Serial.print(cal_current_angle);
-        Serial.println("°");
-        
-        // Start driving
-        set_steering(cal_current_angle);
-        set_speed(CAL_SPEED_MMS);
-        
-        cal_start_distance = current_distance;
-        cal_start_angle = get_angle();
-        cal_drive_start_time = millis();
-        cal_state = CAL_DRIVING;
-    }
-}
-
-void calibration_stop()
-{
-    cal_state = CAL_IDLE;
-    stop(false);
-    Serial.println("Calibration stopped.");
-}
-
-bool calibration_is_active()
-{
-    return cal_state != CAL_IDLE && cal_state != CAL_DONE;
-}
-
 float get_calibrated_radius(int servo_angle)
 {
     if (servo_angle == 0) return -1;
     
     bool is_right = (servo_angle < 0);
     float abs_angle = fabs((float)servo_angle);
-    const float* coeffs = is_right ? cal_right.coeffs : cal_left.coeffs;
+    const float* coeffs = is_right ? tr_cal_right.coeffs : tr_cal_left.coeffs;
     
     // Check if coefficients are valid (non-zero)
     bool has_data = false;
@@ -621,7 +269,7 @@ void calibration_print_results()
     
     // Print polynomial coefficients and RMSE for both directions
     for (int dir = 0; dir < 2; dir++) {
-        CalResult* result = (dir == 0) ? &cal_left : &cal_right;
+        TRCalResult* result = (dir == 0) ? &tr_cal_left : &tr_cal_right;
         const char* dir_name = (dir == 0) ? "LEFT" : "RIGHT";
         
         Serial.print("--- ");
@@ -668,29 +316,29 @@ void calibration_print_results()
     Serial.println("--- METHOD COMPARISON ---");
     Serial.print("Method | Left RMSE | Right RMSE\n");
     Serial.print("Polynomial (3rd deg) | ");
-    Serial.print(cal_left.rmse_mm, 2);
+    Serial.print(tr_cal_left.rmse_mm, 2);
     Serial.print(" mm | ");
-    Serial.print(cal_right.rmse_mm, 2);
+    Serial.print(tr_cal_right.rmse_mm, 2);
     Serial.println(" mm");
     Serial.print("Ackermann (K*L/tan(δ)) | ");
-    Serial.print(cal_left.ackermann_rmse_mm, 2);
+    Serial.print(tr_cal_left.ackermann_rmse_mm, 2);
     Serial.print(" mm | ");
-    Serial.print(cal_right.ackermann_rmse_mm, 2);
+    Serial.print(tr_cal_right.ackermann_rmse_mm, 2);
     Serial.println(" mm");
     Serial.println();
     
     // Print config.h-ready constants
     Serial.println("--- COPY THESE INTO config.h ---");
-    Serial.print("#define CAL_LEFT_A0 "); Serial.println(cal_left.coeffs[0], 4);
-    Serial.print("#define CAL_LEFT_A1 "); Serial.println(cal_left.coeffs[1], 6);
-    Serial.print("#define CAL_LEFT_A2 "); Serial.println(cal_left.coeffs[2], 8);
-    Serial.print("#define CAL_LEFT_A3 "); Serial.println(cal_left.coeffs[3], 8);
-    Serial.print("#define CAL_RIGHT_A0 "); Serial.println(cal_right.coeffs[0], 4);
-    Serial.print("#define CAL_RIGHT_A1 "); Serial.println(cal_right.coeffs[1], 6);
-    Serial.print("#define CAL_RIGHT_A2 "); Serial.println(cal_right.coeffs[2], 8);
-    Serial.print("#define CAL_RIGHT_A3 "); Serial.println(cal_right.coeffs[3], 8);
-    Serial.print("#define CAL_LEFT_K "); Serial.println(cal_left.correction_factor_K, 4);
-    Serial.print("#define CAL_RIGHT_K "); Serial.println(cal_right.correction_factor_K, 4);
+    Serial.print("#define CAL_LEFT_A0 "); Serial.println(tr_cal_left.coeffs[0], 4);
+    Serial.print("#define CAL_LEFT_A1 "); Serial.println(tr_cal_left.coeffs[1], 6);
+    Serial.print("#define CAL_LEFT_A2 "); Serial.println(tr_cal_left.coeffs[2], 8);
+    Serial.print("#define CAL_LEFT_A3 "); Serial.println(tr_cal_left.coeffs[3], 8);
+    Serial.print("#define CAL_RIGHT_A0 "); Serial.println(tr_cal_right.coeffs[0], 4);
+    Serial.print("#define CAL_RIGHT_A1 "); Serial.println(tr_cal_right.coeffs[1], 6);
+    Serial.print("#define CAL_RIGHT_A2 "); Serial.println(tr_cal_right.coeffs[2], 8);
+    Serial.print("#define CAL_RIGHT_A3 "); Serial.println(tr_cal_right.coeffs[3], 8);
+    Serial.print("#define CAL_LEFT_K "); Serial.println(tr_cal_left.correction_factor_K, 4);
+    Serial.print("#define CAL_RIGHT_K "); Serial.println(tr_cal_right.correction_factor_K, 4);
     Serial.println();
     Serial.println("========================================\n");
     
@@ -703,21 +351,21 @@ void calibration_print_csv()
     Serial.println("\n--- CALIBRATION CSV ---");
     Serial.println("Direction,ServoCmd,Radius_mm,Distance_mm");
     
-    for (int i = 0; i < cal_left.num_points; i++) {
+    for (int i = 0; i < tr_cal_left.num_points; i++) {
         Serial.print("LEFT,");
-        Serial.print(cal_left.points[i].servo_angle);
+        Serial.print(tr_cal_left.points[i].servo_angle);
         Serial.print(",");
-        Serial.print(cal_left.points[i].radius_mm, 1);
+        Serial.print(tr_cal_left.points[i].radius_mm, 1);
         Serial.print(",");
-        Serial.println(cal_left.points[i].distance_mm, 1);
+        Serial.println(tr_cal_left.points[i].distance_mm, 1);
     }
-    for (int i = 0; i < cal_right.num_points; i++) {
+    for (int i = 0; i < tr_cal_right.num_points; i++) {
         Serial.print("RIGHT,");
-        Serial.print(cal_right.points[i].servo_angle);
+        Serial.print(tr_cal_right.points[i].servo_angle);
         Serial.print(",");
-        Serial.print(cal_right.points[i].radius_mm, 1);
+        Serial.print(tr_cal_right.points[i].radius_mm, 1);
         Serial.print(",");
-        Serial.println(cal_right.points[i].distance_mm, 1);
+        Serial.println(tr_cal_right.points[i].distance_mm, 1);
     }
     
     Serial.println("--- END CSV ---");
@@ -726,8 +374,8 @@ void calibration_print_csv()
 void calibration_set_coefficients(const float left_coeffs[4], const float right_coeffs[4])
 {
     for (int i = 0; i < 4; i++) {
-        cal_left.coeffs[i] = left_coeffs[i];
-        cal_right.coeffs[i] = right_coeffs[i];
+        tr_cal_left.coeffs[i] = left_coeffs[i];
+        tr_cal_right.coeffs[i] = right_coeffs[i];
     }
     Serial.println("Calibration coefficients loaded from config");
 }
@@ -735,7 +383,7 @@ void calibration_set_coefficients(const float left_coeffs[4], const float right_
 bool calibration_has_data()
 {
     for (int i = 0; i < 4; i++) {
-        if (fabs(cal_left.coeffs[i]) > 1e-6f && fabs(cal_right.coeffs[i]) > 1e-6f) {
+        if (fabs(tr_cal_left.coeffs[i]) > 1e-6f && fabs(tr_cal_right.coeffs[i]) > 1e-6f) {
             return true;
         }
     }

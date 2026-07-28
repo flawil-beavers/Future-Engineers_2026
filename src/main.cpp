@@ -26,6 +26,8 @@
 #include "sensors.h"
 #include "serial_handler.h"
 #include "wall_follower.h"
+#include "turn_radius_calibration.h"
+#include "servo_center_calibration.h"
 #include "calibration.h"
 #include "position_estimator.h"
 #include "mode_manager.h"
@@ -127,10 +129,10 @@ void loop()
   if (cal_auto_start_pending && (millis() - cal_auto_start_time >= CAL_STARTUP_DELAY_MS)) {
     cal_auto_start_pending = false;
     if (system_enabled) {
-      mode_switch(MODE_CALIBRATION);
+      mode_switch(MODE_TURN_RADIUS_CAL);
       Serial.println("Auto-calibration started.");
     } else {
-      pending_mode = MODE_CALIBRATION;
+      pending_mode = MODE_TURN_RADIUS_CAL;
       Serial.println("Auto-calibration skipped (system disabled). Toggle switch to enable.");
     }
   }
@@ -158,17 +160,17 @@ void loop()
       drive_loop();
       break;
 
-    case MODE_CALIBRATION:
+    case MODE_TURN_RADIUS_CAL:
       // Turn radius calibration (controls steering/speed directly)
       check_stalling();
-      calibration_update();
+      turn_radius_cal_update();
       drive_loop();   // Execute the steering and speed set by calibration
       break;
 
-    case MODE_STRAIGHT_CALIBRATION:
+    case MODE_SERVO_CENTER_CAL:
       // Straight-line servo-center calibration
       check_stalling();
-      calibration_update();
+      servo_center_cal_update();
       drive_loop();
       break;
 

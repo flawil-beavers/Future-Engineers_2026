@@ -1,0 +1,110 @@
+
+===== ROBOT INITIALIZATION START =====
+
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+gf_long_range_active: 0
+Initializing ToF: Right_ToF
+gf_long_range_active: 0
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+Calibration mode active. Waiting 5 seconds before starting...
+Unplug USB now if running on battery.
+Position initialized: (0.00, 0.00), heading=0.00°
+Auto-calibration skipped (system disabled). Toggle switch to enable.
+SYSTEM ENABLED
+
+
+========================================
+CALIBRATION STARTED
+========================================
+Wheelbase: 100 mm
+Calibration speed: 250.00 mm/s
+Testing angles: 10, 15, 20, 25, 30, 35, 40 (both directions)
+
+Starting turn: angle=-10 (left / negative = left turn)
+Resumed mode: CALIBRATION
+MEASURED: angle=-10, distaTIMEOUT: Required turn angle not reached, aborting this angle
+
+Next angle: -50°
+MEASURED: angle=-50, distance=701.7 mm, rotation=361.1°, radius=111.3 mm
+Circle complete, stopping...
+
+--- Switching to RIGHT turns ---
+
+
+Next angle: 10°
+MEASURED: angle=10, distance=3935.2 mm, rotation=360.0°, radius=626.2 mm
+Circle complete, stopping...
+
+Next angle: 15°
+MEASURED: angle=15, distance=2672.3 mm, rotation=360.2°, radius=425.1 mm
+Circle complete, stopping...
+
+Next angle: 20°
+MEASURED: angle=20, distance=2005.5 mm, rotation=360.4°, radius=318.8 mm
+Circle complete, stopping...
+
+Next angle: 25°
+MEASURED: angle=25, distance=1653.2 mm, rotation=360.3°, radius=262.9 mm
+Circle complete, stopping...
+
+Next angle: 30°
+MEASURED: angle=30, distance=1378.1 mm, rotation=360.2°, radius=219.2 mm
+Circle complete, stopping...
+
+Next angle: 35°
+MEASURED: angle=35, distance=1150.5 mm, rotation=360.3°, radius=183.0 mm
+Circle complete, stopping...
+
+Next angle: 40°
+MEASURED: angle=40, distance=973.0 mmTIMEOUT: Required turn angle not reached, aborting this angle
+
+Next angle: 50°
+MEASURED: angle=50, distance=752.1 mm, rotation=360.3°, radius=119.6 mm
+Circle complete, stopping...
+
+All angles measured!
+
+
+========================================
+       CALIBRATION COMPLETE
+========================================
+
+--- LEFT TURNS ---
+ServoCmd, Radius_mm, Distance_mm
+-10, 838.4, 5269.9
+-15, 487.4, 3063.0
+-20, 340.6, 2140.0
+-25, 266.7, 1677.1
+-30, 219.2, 1377.7
+-35, 180.9, 1137.3
+-40, 149.7, 942.9
+-50, 111.3, 701.7
+
+Polynomial Fit: R(δ) = 1790.1403 + 128.9612*δ + 3.462460*δ² + 0.03115961*δ³
+  RMSE: 23.03 mm
+
+Ackermann Correction Factor K: 1.2978
+  Ackermann RMSE: 37.01 mm
+  Theoretical: R = K * L / tan(δ)  where L=100mm, δ=servo_angle
+
+--- RIGHT TURNS ---
+ServoCmd, Radius_mm, Distance_mm
+10, 626.2, 3935.2
+15, 425.1, 2672.3
+20, 318.8, 2005.5
+25, 262.9, 1653.2
+30, 219.2, 1378.1
+35, 183.0, 1150.5
+40, 154.5, 973.0
+50, 119.6, 752.1
+
+Polynomial Fit: R(δ) = 1172.2466 + -72
