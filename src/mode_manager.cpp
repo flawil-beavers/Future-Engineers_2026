@@ -244,7 +244,9 @@ static ModeResult update_active_mode()
         pid_autotune_update();
         if (pid_atune_state != AT_DONE)
             return MODE_RESULT_RUNNING;
-        return pid_atune_result.aborted
+        return (pid_atune_result.aborted ||
+                !pid_atune_result.valid ||
+                !pid_atune_result.applied)
             ? MODE_RESULT_FAILED
             : MODE_RESULT_COMPLETED;
 

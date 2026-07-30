@@ -334,6 +334,8 @@ void pid_config_print()
     Serial.print(target_speed);
     Serial.print(" current_speed: ");
     Serial.print(current_speed);
+    Serial.print(" measured_speed: ");
+    Serial.print(measured_speed);
     Serial.print(" dc_current_dc: ");
     Serial.print(dc_current_dc);
     Serial.print(" Kp: ");

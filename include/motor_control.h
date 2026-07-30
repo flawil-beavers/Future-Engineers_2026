@@ -32,6 +32,7 @@ extern DCState dc_state;
 extern float dc_current_dc;
 extern int target_speed;
 extern float current_speed;
+extern float measured_speed;
 
 // Steering state
 extern int set_degree;
@@ -83,7 +84,7 @@ void set_steering(int angle);
  * @brief Set the duty cycle of the DC motor
  * @param dc Duty cycle value (-255 to +255)
  */
-void set_dc(float dc);
+void set_dc(float dc, bool rate_limit = true);
 
 /**
  * @brief Calculate distance from encoder position

@@ -64,6 +64,11 @@ constexpr auto PID_KP = 0.8; // Proportional gain
 constexpr auto PID_KI = 0.2; // Integral gain
 constexpr auto PID_KD = 0.1; // Derivative gain
 constexpr auto PID_I_MAX = 150.0; // Max integral term clamping
+constexpr unsigned long SPEED_MEASUREMENT_WINDOW_US = 50000;
+constexpr float SPEED_FILTER_ALPHA = 0.35f;
+constexpr float HOLD_POSITION_KP = 0.8f;
+constexpr float HOLD_POSITION_KI = 0.2f;
+constexpr float HOLD_POSITION_KD = 0.1f;
 
 // ==========================================
 // ACCELERATION SETTINGS
@@ -78,6 +83,10 @@ constexpr auto PID_AT_TARGET_SPEED = 250;
 constexpr auto PID_AT_MIN_CYCLES = 3;
 constexpr auto PID_AT_MAX_DISTANCE_MM = 1000;
 constexpr auto PID_AT_MAX_TIME_US = 30000000;
+constexpr float PID_AT_HYSTERESIS_MMS = 8.0f;
+constexpr int PID_AT_WARMUP_CROSSINGS = 4;
+constexpr float PID_AT_MAX_PERIOD_VARIATION = 0.35f;
+constexpr float PID_AT_MIN_SPEED_AMPLITUDE = 8.0f;
 
 // ==========================================
 // SENSOR UPDATE RATES

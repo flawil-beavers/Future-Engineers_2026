@@ -27,6 +27,9 @@ DCState dc_state = DC_DISABLED;
 float dc_current_dc = 0;
 int target_speed = 0;
 float current_speed = 0;
+float measured_speed = 0;
+static bool speed_measurement_ready = false;
+static float speed_measurement_dt = 0.05f;
 float last_speed = 0; // Used to store speed before stopping, for resuming
 
 // Steering state
@@ -101,7 +104,7 @@ void set_steering(int angle)
   set_degree = angle;
 }
 
-void set_dc(float dc)
+void set_dc(float dc, bool rate_limit)
 {
   if (dc_state == DC_DISABLED || fabs(dc) < MOTOR_MIN_DC)
   {
@@ -118,11 +121,13 @@ void set_dc(float dc)
   }
 
   // Rate-limit acceleration
-  if (dc > dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
+  if (rate_limit &&
+      dc > dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
   {
     dc = dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time;
   }
-  else if (dc < dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
+  else if (rate_limit &&
+           dc < dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
   {
     dc = dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time;
   }
@@ -171,8 +176,20 @@ void pid_speed()
     return;
   }
 
-  float error = target_distance - current_distance;
-  pid_integral += error * last_loop_time;
+  const bool holding = dc_state == DC_HOLDING;
+  float controller_dt = last_loop_time;
+  if (!holding)
+  {
+    if (!speed_measurement_ready)
+      return;
+    speed_measurement_ready = false;
+    controller_dt = speed_measurement_dt;
+  }
+
+  const float error = holding
+      ? target_distance - current_distance
+      : current_speed - measured_speed;
+  pid_integral += error * controller_dt;
   pid_before_checking = pid_integral;
 
   // Clamp integral term
@@ -181,8 +198,14 @@ void pid_speed()
     pid_integral = i_max * (pid_integral / fabs(pid_integral));
   }
 
-  float speed = Kp * error + Ki * pid_integral + Kd * (error - last_error) / last_loop_time;
-  if (dc_state == DC_HOLDING)
+  const float controller_kp = holding ? HOLD_POSITION_KP : Kp;
+  const float controller_ki = holding ? HOLD_POSITION_KI : Ki;
+  const float controller_kd = holding ? HOLD_POSITION_KD : Kd;
+  float speed =
+      controller_kp * error +
+      controller_ki * pid_integral +
+      controller_kd * (error - last_error) / controller_dt;
+  if (holding)
   {
     speed = constrain(speed, -HOLD_MAX_DC, HOLD_MAX_DC);
   }
@@ -264,6 +287,8 @@ void set_speed(int speed)
 void loop_updater()
 {
   static unsigned long last_loop_time_us = 0;
+  static unsigned long speed_sample_start_us = 0;
+  static float speed_sample_start_distance = 0;
 
   last_time = current_time;
   last_distance = current_distance;
@@ -273,6 +298,29 @@ void loop_updater()
   last_loop_time = last_loop_time_us / 1000000.0; // Convert to seconds
 
   current_distance = get_distance(encoder_pos);
+
+  if (speed_sample_start_us == 0)
+  {
+    speed_sample_start_us = current_time;
+    speed_sample_start_distance = current_distance;
+  }
+  else
+  {
+    const unsigned long speed_elapsed_us =
+        current_time - speed_sample_start_us;
+    if (speed_elapsed_us >= SPEED_MEASUREMENT_WINDOW_US)
+    {
+      const float raw_speed =
+          (current_distance - speed_sample_start_distance) /
+          (speed_elapsed_us / 1000000.0f);
+      measured_speed +=
+          SPEED_FILTER_ALPHA * (raw_speed - measured_speed);
+      speed_measurement_dt = speed_elapsed_us / 1000000.0f;
+      speed_measurement_ready = true;
+      speed_sample_start_us = current_time;
+      speed_sample_start_distance = current_distance;
+    }
+  }
 }
 
 void check_stalling()

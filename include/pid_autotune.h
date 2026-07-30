@@ -51,10 +51,14 @@ struct PIDAtuneResult {
     float Ki;               ///< Recommended integral gain
     float Kd;               ///< Recommended derivative gain
     float overshoot;        ///< Measured overshoot (fraction of target)
+    float speed_amplitude;  ///< Average relay-induced speed amplitude (mm/s)
+    float period_variation; ///< Relative half-period standard deviation
     int   zero_crossings;   ///< Number of zero-crossings measured
     float distance_forward; ///< Total forward distance traveled (mm)
     float distance_backward;///< Total backward distance traveled (mm)
     bool  aborted;          ///< True if tuning was aborted (distance/time limit)
+    bool  valid;            ///< True when the identified oscillation passed validation
+    bool  applied;          ///< True after gains were copied to the motor PID
 };
 
 // ==========================================
