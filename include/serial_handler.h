@@ -27,8 +27,9 @@
  *   c         : Start Camera Calibration mode
  *   j         : Print learned obstacle course map
  *   u<dist>   : Set wall target distance (mm)
- *   i         : Enable wall follower debug output
- *   o         : Disable wall follower debug output
+ *   i         : Print all serial commands
+ *   f         : Enable navigation debug output
+ *   o         : Disable navigation debug output
  *   C         : Start turn-radius calibration sequence
  *   B         : Start straight servo-center calibration
  *   y         : Start PID autotune

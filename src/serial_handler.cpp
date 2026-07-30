@@ -27,7 +27,8 @@
  *   y      : PID AUTOTUNE mode
  *   z      : STOP active mode
  *   u<val> : Set wall distance (mm)
- *   i/o    : Wall Follower Debug ON/OFF
+ *   i      : Print serial command information
+ *   f/o    : Navigation debug ON/OFF
  */
 
 #include "serial_handler.h"
@@ -51,6 +52,35 @@
 static char ringBuffer[BUFFER_SIZE];
 static int head = 0;
 static int tail = 0;
+
+static void print_serial_command_info()
+{
+  Serial.println("\n===== SERIAL COMMANDS =====");
+  Serial.println("i          : Show this command list");
+  Serial.println("m          : Select MANUAL mode");
+  Serial.println("l          : Start OPEN CHALLENGE mode");
+  Serial.println("O          : Start OBSTACLE CHALLENGE mode");
+  Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
+  Serial.println("c          : Start CAMERA CALIBRATION mode");
+  Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
+  Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
+  Serial.println("y          : Start PID AUTOTUNE mode");
+  Serial.println("p / r      : Pause / resume current mode");
+  Serial.println("z          : Stop active and pending mode");
+  Serial.println("d<speed>   : Manual drive speed in mm/s");
+  Serial.println("s<angle>   : Manual steering angle in degrees");
+  Serial.println("a<value>   : Set acceleration in mm/s^2");
+  Serial.println("u<distance>: Set navigation wall distance in mm");
+  Serial.println("f / o      : Navigation debug ON / OFF");
+  Serial.println("n / g / v  : Print encoder / gyro / ToF data");
+  Serial.println("t          : Print estimated position");
+  Serial.println("j          : Print learned obstacle course map");
+  Serial.println("k          : Print calibration data");
+  Serial.println("q/w/e<val> : Set motor Kp / Ki / Kd");
+  Serial.println("x          : Print steering timing");
+  Serial.println("h          : Hold position");
+  Serial.println("===========================\n");
+}
 
 // Time tracking
 extern unsigned long current_time;
@@ -224,7 +254,11 @@ void parseMessage(char *msg)
     break;
 
   case 'i':
-    // Toggle wall follower debug output
+    print_serial_command_info();
+    break;
+
+  case 'f':
+    // Enable navigation-controller debug output
     navigation_set_debug(true);
     break;
 
