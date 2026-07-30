@@ -15,6 +15,7 @@
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
+static bool resume_after_logging = false;
 
 static bool obstacle_camera_setup()
 {
@@ -39,6 +40,10 @@ static void stop_mode(RobotMode mode)
     case MODE_MANUAL:
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_HOLD:
+        stop(false);
         break;
 
     case MODE_OPEN_CHALLENGE:
@@ -87,6 +92,11 @@ static bool start_mode(RobotMode mode)
     case MODE_MANUAL:
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_HOLD:
+        stop(true);
+        servo_disabled = false;
         break;
 
     case MODE_OPEN_CHALLENGE:
@@ -174,17 +184,23 @@ void mode_switch(RobotMode new_mode)
     Serial.println(mode_name(new_mode));
 }
 
-void mode_update()
+static ModeResult update_active_mode()
 {
     switch (current_mode) {
     case MODE_MANUAL:
         drive_loop();
-        break;
+        return MODE_RESULT_RUNNING;
+
+    case MODE_HOLD:
+        drive_loop();
+        return MODE_RESULT_RUNNING;
 
     case MODE_OPEN_CHALLENGE:
         navigation_update(system_enabled);
         drive_loop();
-        break;
+        return navigation_is_complete()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
 
     case MODE_OBSTACLE_CHALLENGE: {
         const bool new_camera_frame = updateCameraVision();
@@ -192,7 +208,9 @@ void mode_update()
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
-        break;
+        return navigation_is_complete()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
     }
 
     case MODE_OBSTACLE_BENCH:
@@ -200,37 +218,72 @@ void mode_update()
             system_enabled,
             updateCameraVision());
         drive_loop();
-        break;
+        return MODE_RESULT_RUNNING;
 
     case MODE_CAMERA_CALIBRATION:
         if (updateCameraVision())
             printCameraCalibration();
         drive_loop();
-        break;
+        return MODE_RESULT_RUNNING;
 
     case MODE_TURN_RADIUS_CAL:
         turn_radius_cal_update();
         drive_loop();
-        break;
+        return turn_radius_state == TR_DONE
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
 
     case MODE_SERVO_CENTER_CAL:
         servo_center_cal_update();
         drive_loop();
-        break;
+        return servo_center_state == SC_DONE
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
 
     case MODE_PID_AUTOTUNE:
         pid_autotune_update();
-        break;
+        if (pid_atune_state != AT_DONE)
+            return MODE_RESULT_RUNNING;
+        return pid_atune_result.aborted
+            ? MODE_RESULT_FAILED
+            : MODE_RESULT_COMPLETED;
 
     case MODE_NONE:
         // Service steering output while stopped without energizing the motor.
         drive_loop();
-        break;
+        return MODE_RESULT_RUNNING;
     }
+
+    return MODE_RESULT_FAILED;
+}
+
+void mode_update()
+{
+    if (resume_after_logging && !robot_logger.is_busy()) {
+        resume_after_logging = false;
+        mode_resume();
+    }
+
+    const RobotMode updated_mode = current_mode;
+    const ModeResult result = update_active_mode();
+    if (updated_mode == MODE_NONE || result == MODE_RESULT_RUNNING)
+        return;
+
+    Serial.print("Mode ");
+    Serial.print(mode_name(updated_mode));
+    Serial.println(
+        result == MODE_RESULT_COMPLETED
+            ? " completed."
+            : " failed.");
+
+    stop_mode(updated_mode);
+    current_mode = MODE_NONE;
+    pending_mode = MODE_NONE;
 }
 
 void mode_pause()
 {
+    resume_after_logging = false;
     if (current_mode != MODE_NONE) {
         pending_mode = current_mode;
         stop_mode(current_mode);
@@ -245,6 +298,12 @@ void mode_pause()
 
 void mode_resume()
 {
+    if (robot_logger.is_busy()) {
+        resume_after_logging = true;
+        Serial.println("Resume deferred until USB logging is complete.");
+        return;
+    }
+
     system_enable();
 
     if (pending_mode == MODE_NONE) {
@@ -269,6 +328,7 @@ void mode_resume()
 
 void mode_stop_all()
 {
+    resume_after_logging = false;
     stop_mode(current_mode);
     current_mode = MODE_NONE;
     pending_mode = MODE_NONE;
@@ -282,6 +342,7 @@ const char* mode_name(RobotMode mode)
     switch (mode) {
     case MODE_NONE:               return "NONE";
     case MODE_MANUAL:             return "MANUAL";
+    case MODE_HOLD:               return "HOLD";
     case MODE_OPEN_CHALLENGE:     return "OPEN_CHALLENGE";
     case MODE_OBSTACLE_CHALLENGE: return "OBSTACLE_CHALLENGE";
     case MODE_OBSTACLE_BENCH:     return "OBSTACLE_BENCH";

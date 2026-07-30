@@ -538,37 +538,6 @@ static void updateCourseProgress()
 }
 
 // ============================================================
-// CAMERA UPDATE
-// ============================================================
-
-bool updateCameraVision()
-{
-    static uint32_t lastCameraUpdate = 0;
-
-    if (
-        millis() - lastCameraUpdate <
-        OBSTACLE_CAMERA_INTERVAL_MS)
-    {
-        return false;
-    }
-
-    lastCameraUpdate = millis();
-
-    if (!camera.capture())
-    {
-        Serial.println(
-            "Camera capture failed.");
-
-        return false;
-    }
-
-    return vision.update(
-        camera.getBuffer(),
-        camera.getWidth(),
-        camera.getHeight());
-}
-
-// ============================================================
 // VISION DEBUG
 // ============================================================
 
@@ -706,100 +675,6 @@ void printVisionDebug()
 
     Serial.println(
         navigation_get_target_heading());
-}
-
-// ============================================================
-// CAMERA COLOUR CALIBRATION
-// ============================================================
-
-void printCameraCalibration()
-{
-    static uint32_t lastPrint = 0;
-
-    if (
-        millis() - lastPrint <
-        500)
-    {
-        return;
-    }
-
-    lastPrint = millis();
-
-    const uint16_t x =
-        camera.getWidth() / 2;
-
-    const uint16_t y =
-        camera.getHeight() / 2;
-
-    HSV hsv =
-        vision.getHSVAt(
-            camera.getBuffer(),
-            camera.getWidth(),
-            camera.getHeight(),
-            x,
-            y);
-
-    Serial.print(
-        "CENTER HSV -> H: ");
-
-    Serial.print(hsv.h);
-
-    Serial.print(
-        " S: ");
-
-    Serial.print(hsv.s);
-
-    Serial.print(
-        " V: ");
-
-    Serial.println(hsv.v);
-}
-
-// ============================================================
-// GET LARGEST OBSTACLE
-// ============================================================
-
-const Blob *getLargestObstacle()
-{
-    const VisionResult &v =
-        vision.getResult();
-
-    if (
-        !v.red.found &&
-        !v.green.found)
-    {
-        return nullptr;
-    }
-
-    if (
-        v.red.found &&
-        !v.green.found)
-    {
-        return &v.red;
-    }
-
-    if (
-        v.green.found &&
-        !v.red.found)
-    {
-        return &v.green;
-    }
-
-    // Prefer the object nearest the bottom of the image. It is normally the
-    // next block, while blob area varies more strongly with segmentation.
-    if (v.red.maxY != v.green.maxY)
-    {
-        return (v.red.maxY > v.green.maxY)
-            ? &v.red
-            : &v.green;
-    }
-
-    if (v.red.area >= v.green.area)
-    {
-        return &v.red;
-    }
-
-    return &v.green;
 }
 
 // ============================================================

@@ -180,8 +180,7 @@ void parseMessage(char *msg)
     break;
 
   case 'h':
-    // Hold position
-    stop(true);
+    mode_switch(MODE_HOLD);
     break;
 
   case 'q':

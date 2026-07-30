@@ -31,6 +31,7 @@
 enum RobotMode {
     MODE_NONE,                  ///< No active mode, motors stopped
     MODE_MANUAL,                ///< Direct serial speed and steering control
+    MODE_HOLD,                  ///< Actively hold the current encoder position
     MODE_OPEN_CHALLENGE,        ///< Gyro-stabilized Open Challenge
     MODE_OBSTACLE_CHALLENGE,    ///< Camera-based Obstacle Challenge
     MODE_OBSTACLE_BENCH,        ///< Stationary camera/steering obstacle test
@@ -38,6 +39,12 @@ enum RobotMode {
     MODE_TURN_RADIUS_CAL,       ///< Turn-radius calibration
     MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
+};
+
+enum ModeResult {
+    MODE_RESULT_RUNNING,
+    MODE_RESULT_COMPLETED,
+    MODE_RESULT_FAILED
 };
 
 // ==========================================

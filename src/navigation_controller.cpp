@@ -231,7 +231,8 @@ void state_following()
     nav_corner_gap_samples = 0;
   }
 
-  uint8_t required_gap_samples = nav_obstacle_mode ? 4 : 1;
+  uint8_t required_gap_samples =
+      nav_obstacle_mode ? 4 : OPEN_CORNER_CONFIRM_SAMPLES;
   if (nav_corner_gap_samples >= required_gap_samples)
   {
     nav_corner_gap_samples = 0;
@@ -465,8 +466,7 @@ void state_stopped()
   Serial.print("Total turns: "); Serial.print(nav_turn_count);
   Serial.print(" | Complete rounds: "); Serial.println(nav_completed_rounds);
   
-  log_tof_diagnostics("Mission complete -> IDLE");
-  nav_state = NAV_IDLE;
+  log_tof_diagnostics("Mission complete");
   robot_logger.write_to_usb();
 }
 
@@ -523,6 +523,7 @@ void navigation_enable()
   nav_completed_rounds = 0;
   nav_last_distance_error = 0;
   nav_last_gyro_error = 0;
+  navigation_reset_filter();
   nav_searching_for_wall = false;
   nav_long_range_active = false;
 
@@ -539,6 +540,7 @@ void navigation_disable()
 {
   log_tof_diagnostics("Manual disable -> IDLE");
   nav_state = NAV_IDLE;
+  navigation_reset_filter();
   stop();
   set_steering(0);
   Serial.println("Navigation controller disabled");
@@ -567,6 +569,11 @@ void navigation_set_debug(bool enable)
 {
   nav_debug_enabled = enable;
   Serial.println(enable ? "Navigation controller debug ON" : "Navigation controller debug OFF");
+}
+
+bool navigation_is_complete()
+{
+  return nav_state == NAV_STOPPED;
 }
 
 void navigation_reset_filter()

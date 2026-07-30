@@ -8,133 +8,137 @@
 // ==========================================
 // SERIAL CONFIGURATION
 // ==========================================
-#define SERIAL_BAUD 115200
-#define BUFFER_SIZE 64
+constexpr auto SERIAL_BAUD = 115200;
+constexpr auto BUFFER_SIZE = 64;
 
 // ==========================================
 // MOTOR & STEERING PINS
 // ==========================================
-#define SERVO_PIN 4
-#define MOTOR_IN1_PIN 5        // Direction control 1
-#define MOTOR_IN2_PIN 6        // Direction control 2
-#define MOTOR_PWM_PIN 7        // PWM speed control
+constexpr auto SERVO_PIN = 4;
+constexpr auto MOTOR_IN1_PIN = 5; // Direction control 1
+constexpr auto MOTOR_IN2_PIN = 6; // Direction control 2
+constexpr auto MOTOR_PWM_PIN = 7; // PWM speed control
 
 // ==========================================
 // ENCODER PINS
 // ==========================================
-#define ENCODER_PIN_A 3        // Phase A
-#define ENCODER_PIN_B 2        // Phase B
+constexpr auto ENCODER_PIN_A = 3; // Phase A
+constexpr auto ENCODER_PIN_B = 2; // Phase B
 
 // ==========================================
 // BNO085 IMU (GYRO) - SPI CONFIGURATION
 // ==========================================
-#define BNO085_CS 10
-#define BNO085_INT A0
-#define BNO085_RST A1
+constexpr auto BNO085_CS = 10;
+constexpr auto BNO085_INT = A0;
+constexpr auto BNO085_RST = A1;
 
 // ==========================================
 // ENABLE SWITCH
 // ==========================================
-#define ENABLE_SWITCH_PIN A2   // Enable switch - HIGH to enable, LOW to disable
+constexpr auto ENABLE_SWITCH_PIN = A2; // Enable switch - HIGH to enable, LOW to disable
 
 // ==========================================
 // MOTOR CONTROL CONSTANTS
 // ==========================================
-#define GEAR_RATIO 30                                       // Motor gear ratio
-#define ENCODER_COUNTS_PER_REV (GEAR_RATIO * 7 * 4)         // CPR of the motor
-#define ENCODER_COUNTS_PER_WHEEL_REV (28.0 / 20.0 * ENCODER_COUNTS_PER_REV) // CPR of the wheel
-#define COUNTER_TO_MM (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV)  // mm per encoder count
+constexpr auto GEAR_RATIO = 30; // Motor gear ratio
+constexpr auto ENCODER_COUNTS_PER_REV = (GEAR_RATIO * 7 * 4); // CPR of the motor
+constexpr auto ENCODER_COUNTS_PER_WHEEL_REV = (28.0 / 20.0 * ENCODER_COUNTS_PER_REV); // CPR of the wheel
+constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
 
-#define MOTOR_MAX_DC 200                                    // Max duty cycle (0-255)
-#define MOTOR_MIN_DC (0.34 * 255)                           // Min duty cycle to overcome static friction
-#define MOTOR_MAX_ACC_DC 255                                // Max acceleration duty cycle (DC/s)
+constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
+constexpr auto MOTOR_MIN_DC = (0.34 * 255); // Min duty cycle to overcome static friction
+constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 
 // ==========================================
 // STEERING CONFIGURATION
 // ==========================================
-#define SERVO_CENTER 81        // Center neutral position
-#define MAX_STEERING 50
-#define SERVO_MAX_ANGLE (SERVO_CENTER + MAX_STEERING)  // Max right turn
-#define SERVO_MIN_ANGLE (SERVO_CENTER - MAX_STEERING)  // Max left turn
+constexpr auto SERVO_CENTER = 81; // Center neutral position
+constexpr auto MAX_STEERING = 50;
+constexpr auto SERVO_MAX_ANGLE = (SERVO_CENTER + MAX_STEERING); // Max right turn
+constexpr auto SERVO_MIN_ANGLE = (SERVO_CENTER - MAX_STEERING); // Max left turn
 
 // ==========================================
 // PID CONTROLLER TUNING
 // ==========================================
-#define PID_KP 0.8             // Proportional gain
-#define PID_KI 0.2             // Integral gain
-#define PID_KD 0.1             // Derivative gain
-#define PID_I_MAX 150.0        // Max integral term clamping
+constexpr auto PID_KP = 0.8; // Proportional gain
+constexpr auto PID_KI = 0.2; // Integral gain
+constexpr auto PID_KD = 0.1; // Derivative gain
+constexpr auto PID_I_MAX = 150.0; // Max integral term clamping
 
 // ==========================================
 // ACCELERATION SETTINGS
 // ==========================================
-#define DEFAULT_ACCELERATION 700    // mm/s^2
+constexpr auto DEFAULT_ACCELERATION = 700; // mm/s^2
 
 // ==========================================
 // PID AUTOTUNE PARAMETERS
 // ==========================================
-#define PID_AT_RELAY_AMPLITUDE 40
-#define PID_AT_TARGET_SPEED 250
-#define PID_AT_MIN_CYCLES 3
-#define PID_AT_MAX_DISTANCE_MM 1000
-#define PID_AT_MAX_TIME_US 30000000
+constexpr auto PID_AT_RELAY_AMPLITUDE = 40;
+constexpr auto PID_AT_TARGET_SPEED = 250;
+constexpr auto PID_AT_MIN_CYCLES = 3;
+constexpr auto PID_AT_MAX_DISTANCE_MM = 1000;
+constexpr auto PID_AT_MAX_TIME_US = 30000000;
 
 // ==========================================
 // SENSOR UPDATE RATES
 // ==========================================
-#define STATUS_PRINT_INTERVAL_US 200000  // Print status every 200ms
+constexpr auto STATUS_PRINT_INTERVAL_US = 200000; // Print status every 200ms
 
 // ==========================================
 // STALL DETECTION
 // ==========================================
-#define STALL_SPEED_THRESHOLD_MMS 1.0f    // Trigger stall if speed < 1.0 mm/s while demanding high torque
-#define STALL_DC_THRESHOLD 0.99           // Trigger at 99% of max DC
+constexpr auto STALL_SPEED_THRESHOLD_MMS = 1.0f; // Trigger stall if speed < 1.0 mm/s while demanding high torque
+constexpr auto STALL_DC_THRESHOLD = 0.99; // Trigger at 99% of max DC
+constexpr unsigned long STALL_DETECTION_WINDOW_US = 100000;
+constexpr float HOLD_MAX_DC = 110.0f;
+constexpr float HOLD_OVERLOAD_THRESHOLD = 0.95f;
+constexpr unsigned long HOLD_OVERLOAD_WINDOW_US = 2000000;
 
 // ==========================================
 // ENABLE INTERRUPT DEBOUNCE
 // ==========================================
-#define ENABLE_SWITCH_POLL_INTERVAL_US 50000     // 50ms polling interval
-#define ENABLE_DEBOUNCE_TIME_US 100000   // 100ms debounce
+constexpr auto ENABLE_SWITCH_POLL_INTERVAL_US = 50000; // 50ms polling interval
+constexpr auto ENABLE_DEBOUNCE_TIME_US = 100000; // 100ms debounce
 
 // ==========================================
 // SENSOR READING MODES
 // ==========================================
 #define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_SHORT
-#define TOF_I2C_CLOCK 400000             // 400kHz I2C clock (standard for VL53L4CX)
-#define TOF_TIMING_BUDGET_US 30000      // 200ms budget to capture weak signals from black targets at 4m
-#define TOF_MAX_RELIABLE_DISTANCE_MM 600.0f // Max distance for reliable wall detection (mm)
-#define TOF_MAX_LONG_DISTANCE_MM 4000.0f // Max distance for long-range discovery (mm)
-#define TOF_OUT_OF_RANGE_MM 9999.0f        // Value returned when no object is detected or beyond reliable range (mm)
-#define TOF_MAX_DELTA_MM 100.0f            // Max change allowed between consecutive readings (mm)
+constexpr auto TOF_I2C_CLOCK = 400000; // 400kHz I2C clock (standard for VL53L4CX)
+constexpr auto TOF_TIMING_BUDGET_US = 30000; // 200ms budget to capture weak signals from black targets at 4m
+constexpr auto TOF_MAX_RELIABLE_DISTANCE_MM = 600.0f; // Max distance for reliable wall detection (mm)
+constexpr auto TOF_MAX_LONG_DISTANCE_MM = 4000.0f; // Max distance for long-range discovery (mm)
+constexpr auto TOF_OUT_OF_RANGE_MM = 9999.0f; // Value returned when no object is detected or beyond reliable range (mm)
+constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecutive readings (mm)
 
 // ==========================================
 // CALIBRATION AND POSITION ESTIMATION
 // ==========================================
-#define CAL_SPEED_MMS 250.0f
-#define CAL_STARTUP_DELAY_MS 5000
-#define CAL_CENTER_DISTANCE_MM 2000.0f
-#define CAL_CENTER_MAX_TIME_MS 15000
-#define CAL_CENTER_DEBUG_INTERVAL_MS 500
+constexpr auto CAL_SPEED_MMS = 250.0f;
+constexpr auto CAL_STARTUP_DELAY_MS = 5000;
+constexpr auto CAL_CENTER_DISTANCE_MM = 2000.0f;
+constexpr auto CAL_CENTER_MAX_TIME_MS = 15000;
+constexpr auto CAL_CENTER_DEBUG_INTERVAL_MS = 500;
 
 // Turn-radius polynomial: R(delta) = a0 + a1|delta| + a2|delta|^2 + a3|delta|^3
-#define CAL_LEFT_A0 1481.4659f
-#define CAL_LEFT_A1 100.413338f
-#define CAL_LEFT_A2 2.75952291f
-#define CAL_LEFT_A3 0.02698299f
-#define CAL_RIGHT_A0 1422.9576f
-#define CAL_RIGHT_A1 -100.615837f
-#define CAL_RIGHT_A2 2.91633201f
-#define CAL_RIGHT_A3 -0.02982690f
-#define CAL_LEFT_K 1.3101f
-#define CAL_RIGHT_K 1.2688f
+constexpr auto CAL_LEFT_A0 = 1481.4659f;
+constexpr auto CAL_LEFT_A1 = 100.413338f;
+constexpr auto CAL_LEFT_A2 = 2.75952291f;
+constexpr auto CAL_LEFT_A3 = 0.02698299f;
+constexpr auto CAL_RIGHT_A0 = 1422.9576f;
+constexpr auto CAL_RIGHT_A1 = -100.615837f;
+constexpr auto CAL_RIGHT_A2 = 2.91633201f;
+constexpr auto CAL_RIGHT_A3 = -0.02982690f;
+constexpr auto CAL_LEFT_K = 1.3101f;
+constexpr auto CAL_RIGHT_K = 1.2688f;
 
-#define POSITION_PRINT_INTERVAL_US 500000
+constexpr auto POSITION_PRINT_INTERVAL_US = 500000;
 
 // ==========================================
 // ENABLE/DISABLE FLAGS MESSAGES
 // ==========================================
-#define EN_STATE_TRUE_MSG "enable start"
-#define EN_STATE_FALSE_MSG "enable stop"
+constexpr auto EN_STATE_TRUE_MSG = "enable start";
+constexpr auto EN_STATE_FALSE_MSG = "enable stop";
 
 // ==========================================
 // OBSTACLE AVOIDANCE
@@ -155,112 +159,113 @@ constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = false;
 // tests ended 60-80 mm beyond the track centre, so the outward arc is reduced.
 // The counter-arc is gyro-terminated because the left/right steering radii and
 // servo transition distances are not identical in practice.
-#define OBSTACLE_PARKING_EXIT_STEERING 40
-#define OBSTACLE_PARKING_EXIT_SPEED 120
-#define OBSTACLE_PARKING_EXIT_COUNTER_SPEED 80
+constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 40;
+constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 120;
+constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_SPEED = 80;
 // Separate calibration is intentional: the measured Ackermann radii and the
 // servo linkage are not perfectly symmetric.
-#define OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM 239.0f
-#define OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM 250.0f
-#define OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM 180.0f
-#define OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM 400.0f
-#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG 30.0f
-#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED 50
-#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING 8.0f
-#define OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG 2.0f
-#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS 450
-#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS 250
-#define OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM 80.0f
+constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM = 239.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM = 250.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM = 180.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM = 400.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG = 30.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED = 50;
+constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING = 8.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG = 2.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS = 450;
+constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS = 250;
+constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 
 // Camera processing
-#define OBSTACLE_CAMERA_INTERVAL_MS 50
+constexpr auto OBSTACLE_CAMERA_INTERVAL_MS = 50;
 
 // Detection validation
-#define OBSTACLE_RED_MIN_AREA 300
-#define OBSTACLE_RED_MIN_HEIGHT 21
-#define OBSTACLE_GREEN_MIN_AREA 400
-#define OBSTACLE_GREEN_MIN_HEIGHT 21
-#define OBSTACLE_CONFIRM_FRAMES 2
-#define OBSTACLE_LOST_FRAMES 3
+constexpr auto OBSTACLE_RED_MIN_AREA = 300;
+constexpr auto OBSTACLE_RED_MIN_HEIGHT = 21;
+constexpr auto OBSTACLE_GREEN_MIN_AREA = 400;
+constexpr auto OBSTACLE_GREEN_MIN_HEIGHT = 21;
+constexpr auto OBSTACLE_CONFIRM_FRAMES = 2;
+constexpr auto OBSTACLE_LOST_FRAMES = 3;
+constexpr uint8_t OPEN_CORNER_CONFIRM_SAMPLES = 3;
 
 // Desired obstacle positions inside the 320 px image
 // Red must stay on the LEFT -> robot passes on the right
-#define OBSTACLE_RED_TARGET_X 120
+constexpr auto OBSTACLE_RED_TARGET_X = 120;
 
 // Green must stay on the RIGHT -> robot passes on the left
-#define OBSTACLE_GREEN_TARGET_X 200
+constexpr auto OBSTACLE_GREEN_TARGET_X = 200;
 
 // Camera steering
-#define OBSTACLE_CAMERA_KP 0.10f
-#define OBSTACLE_HEADING_KP 0.30f
-#define OBSTACLE_MAX_STEERING 20.0f
+constexpr auto OBSTACLE_CAMERA_KP = 0.10f;
+constexpr auto OBSTACLE_HEADING_KP = 0.30f;
+constexpr auto OBSTACLE_MAX_STEERING = 20.0f;
 
 // Start slowly while tuning
-#define OBSTACLE_AVOID_SPEED 160
-#define OBSTACLE_CRUISE_SPEED 220
+constexpr auto OBSTACLE_AVOID_SPEED = 160;
+constexpr auto OBSTACLE_CRUISE_SPEED = 220;
 
 // Continue around obstacle after camera loses it
-#define OBSTACLE_PASS_STEERING 8.0f
-#define OBSTACLE_PASS_DISTANCE_MM 60.0f
+constexpr auto OBSTACLE_PASS_STEERING = 8.0f;
+constexpr auto OBSTACLE_PASS_DISTANCE_MM = 60.0f;
 
 // Return to original course heading
-#define OBSTACLE_RECOVER_KP 1.0f
-#define OBSTACLE_RECOVER_MAX_STEERING 18.0f
-#define OBSTACLE_RECOVER_SPEED 160
-#define OBSTACLE_RECOVER_TOLERANCE_DEG 3.0f
+constexpr auto OBSTACLE_RECOVER_KP = 1.0f;
+constexpr auto OBSTACLE_RECOVER_MAX_STEERING = 18.0f;
+constexpr auto OBSTACLE_RECOVER_SPEED = 160;
+constexpr auto OBSTACLE_RECOVER_TOLERANCE_DEG = 3.0f;
 
 // Prevent detecting the same obstacle immediately again
-#define OBSTACLE_REARM_DISTANCE_MM 150.0f
+constexpr auto OBSTACLE_REARM_DISTANCE_MM = 150.0f;
 
 // Side-barrier protection while camera avoidance owns the steering.
-#define OBSTACLE_WALL_GUARD_DISTANCE_MM 170.0f
-#define OBSTACLE_WALL_GUARD_KP 0.12f
-#define OBSTACLE_WALL_GUARD_MAX_STEERING 18.0f
+constexpr auto OBSTACLE_WALL_GUARD_DISTANCE_MM = 170.0f;
+constexpr auto OBSTACLE_WALL_GUARD_KP = 0.12f;
+constexpr auto OBSTACLE_WALL_GUARD_MAX_STEERING = 18.0f;
 
 // A block must extend this far down in the logical 320x240 image.
-#define OBSTACLE_MIN_BOTTOM_Y 100
+constexpr auto OBSTACLE_MIN_BOTTOM_Y = 100;
 
 // Upright WRO obstacle blocks are taller than they are wide. This rejects
 // broad greenish background regions and blobs merged with the horizon.
-#define OBSTACLE_MAX_WIDTH_HEIGHT_RATIO 1.25f
+constexpr auto OBSTACLE_MAX_WIDTH_HEIGHT_RATIO = 1.25f;
 
 // A new manoeuvre may only start from a reasonably complete pillar. Once a
 // pillar is confirmed, the separate tracking rules remain tolerant at edges.
-#define OBSTACLE_START_MIN_X 30
-#define OBSTACLE_START_MAX_X 290
-#define OBSTACLE_MAX_START_WIDTH 80
-#define OBSTACLE_MAX_START_HEIGHT 120
+constexpr auto OBSTACLE_START_MIN_X = 30;
+constexpr auto OBSTACLE_START_MAX_X = 290;
+constexpr auto OBSTACLE_MAX_START_WIDTH = 80;
+constexpr auto OBSTACLE_MAX_START_HEIGHT = 120;
 
 // After every 90 degree corner, let the normal gyro controller remove turn
 // overshoot before camera avoidance can take steering priority.
-#define OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM 100.0f
-#define OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM 300.0f
-#define OBSTACLE_CORNER_SETTLE_HEADING_DEG 4.0f
-#define OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG 6.0f
+constexpr auto OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM = 100.0f;
+constexpr auto OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM = 300.0f;
+constexpr auto OBSTACLE_CORNER_SETTLE_HEADING_DEG = 4.0f;
+constexpr auto OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG = 6.0f;
 
 // Measured Ackermann geometry:
 // servo -40 -> R ~= 154.6 mm -> 90 degree arc ~= 242.8 mm
 // servo +40 -> R ~= 158.8 mm -> 90 degree arc ~= 249.4 mm
-#define OBSTACLE_CORNER_STEERING 40.0f
-#define OBSTACLE_FIRST_LAP_CORNER_SPEED 140.0f
-#define OBSTACLE_LATER_LAP_CORNER_SPEED 180.0f
-#define OBSTACLE_FIRST_LAP_REVERSE_SPEED 80.0f
-#define OBSTACLE_FIRST_LAP_REVERSE_STEERING 40.0f
-#define OBSTACLE_FIRST_LAP_REVERSE_MIN_MM 25.0f
-#define OBSTACLE_FIRST_LAP_REVERSE_MAX_MM 55.0f
-#define OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG 2.0f
-#define OBSTACLE_FIRST_LAP_ALIGN_SPEED 120.0f
-#define OBSTACLE_FIRST_LAP_ALIGN_MIN_MM 120.0f
-#define OBSTACLE_FIRST_LAP_ALIGN_MAX_MM 260.0f
-#define OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG 3.0f
+constexpr auto OBSTACLE_CORNER_STEERING = 40.0f;
+constexpr auto OBSTACLE_FIRST_LAP_CORNER_SPEED = 140.0f;
+constexpr auto OBSTACLE_LATER_LAP_CORNER_SPEED = 180.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_SPEED = 80.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_STEERING = 40.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_MIN_MM = 25.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_MAX_MM = 55.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG = 2.0f;
+constexpr auto OBSTACLE_FIRST_LAP_ALIGN_SPEED = 120.0f;
+constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MIN_MM = 120.0f;
+constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MAX_MM = 260.0f;
+constexpr auto OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG = 3.0f;
 
 // Learned-lap lane planner. Official signs sit roughly 400 mm from a wall;
 // a 190 mm vehicle-centre offset leaves useful clearance on both sides.
-#define OBSTACLE_PLANNED_LANE_WALL_MM 190.0f
-#define OBSTACLE_PLANNED_SWITCH_AFTER_MM 200.0f
-#define OBSTACLE_PLANNED_NEXT_SECTION_MM 180.0f
-#define OBSTACLE_START_SECTION_SWITCH_MM 500.0f
-#define OBSTACLE_START_SECTION_NEXT_PLAN_MM 750.0f
+constexpr auto OBSTACLE_PLANNED_LANE_WALL_MM = 190.0f;
+constexpr auto OBSTACLE_PLANNED_SWITCH_AFTER_MM = 200.0f;
+constexpr auto OBSTACLE_PLANNED_NEXT_SECTION_MM = 180.0f;
+constexpr auto OBSTACLE_START_SECTION_SWITCH_MM = 500.0f;
+constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 
 
 

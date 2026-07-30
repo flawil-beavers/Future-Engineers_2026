@@ -1,92 +1,70 @@
 /**
  * @file logger.cpp
- * @brief USB RAM-buffered logger implementation.
- * 
- * This file must NOT include config.h (which would cause circular macro issues).
- * It uses _UART_USB_ directly, which is the underlying Arduino GIGA USB CDC serial.
+ * @brief Non-blocking USB RAM-buffered logger.
  */
 
 #include "logger.h"
 
 #include <Arduino_USBHostMbed5.h>
 #include <FATFileSystem.h>
+#include <string.h>
 
-// Use the raw Arduino GIGA USB CDC serial object directly.
-// On the GIGA R1, 'Serial' is a macro for '_UART_USB_', which is the USB CDC.
-// We reference the underlying object to avoid the macro clash with our own logger.
 #define SERIAL_HW _UART_USB_
 
-// USB Host MSD and FileSystem instances (static to this file)
 static USBHostMSD msd;
 static mbed::FATFileSystem usb_fs("usb");
 
-// ---------------------------------------------------------------------------
-// Constructor
-// ---------------------------------------------------------------------------
-USBLogger::USBLogger() {
-    buffer_head = 0;
-    buffer_overflow = false;
+USBLogger::USBLogger()
+    : buffer_head(0),
+      buffer_overflow(false),
+      session_file_num(-1),
+      logger_state(LOGGER_IDLE),
+      state_started_ms(0),
+      next_attempt_ms(0),
+      connect_attempts(0),
+      mount_attempts(0),
+      retry_cycles(0),
+      consecutive_write_failures(0),
+      flush_remaining(0),
+      active_file(nullptr),
+      filesystem_mounted(false)
+{
     log_buffer[0] = '\0';
-    session_file_num = -1;
     session_filepath[0] = '\0';
-
-    // Ensure USB port power is OFF by default (only power on during write_to_usb)
     pinMode(PA_15, OUTPUT);
     digitalWrite(PA_15, LOW);
 }
- 
-// ---------------------------------------------------------------------------
-// Stream interface — delegates to hardware UART
-// ---------------------------------------------------------------------------
-void USBLogger::begin(unsigned long baud) {
+
+void USBLogger::begin(unsigned long baud)
+{
     SERIAL_HW.begin(baud);
 }
 
-int USBLogger::available() {
-    return SERIAL_HW.available();
-}
+int USBLogger::available() { return SERIAL_HW.available(); }
+int USBLogger::read() { return SERIAL_HW.read(); }
+int USBLogger::peek() { return SERIAL_HW.peek(); }
+void USBLogger::flush() { SERIAL_HW.flush(); }
+USBLogger::operator bool() { return (bool)SERIAL_HW; }
 
-int USBLogger::read() {
-    return SERIAL_HW.read();
-}
-
-int USBLogger::peek() {
-    return SERIAL_HW.peek();
-}
-
-void USBLogger::flush() {
-    SERIAL_HW.flush();
-}
-
-USBLogger::operator bool() {
-    return (bool)SERIAL_HW;
-}
-
-// ---------------------------------------------------------------------------
-// Print interface — buffer the char AND forward to hardware serial if connected
-// ---------------------------------------------------------------------------
-size_t USBLogger::write(uint8_t c) {
+size_t USBLogger::write(uint8_t c)
+{
     buffer_char((char)c);
-    if (SERIAL_HW) {
+    if (SERIAL_HW)
         SERIAL_HW.write(c);
-    }
     return 1;
 }
 
-size_t USBLogger::write(const uint8_t *buffer, size_t size) {
-    for (size_t i = 0; i < size; i++) {
+size_t USBLogger::write(const uint8_t *buffer, size_t size)
+{
+    for (size_t i = 0; i < size; ++i)
         buffer_char((char)buffer[i]);
-    }
-    if (SERIAL_HW) {
+    if (SERIAL_HW)
         SERIAL_HW.write(buffer, size);
-    }
     return size;
 }
 
-// ---------------------------------------------------------------------------
-// Private helper — append one char to RAM buffer
-// ---------------------------------------------------------------------------
-void USBLogger::buffer_char(char c) {
+void USBLogger::buffer_char(char c)
+{
     if (buffer_head < LOG_BUFFER_SIZE - 1) {
         log_buffer[buffer_head++] = c;
         log_buffer[buffer_head] = '\0';
@@ -95,263 +73,267 @@ void USBLogger::buffer_char(char c) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// clear() — reset buffer
-// ---------------------------------------------------------------------------
-void USBLogger::clear() {
+void USBLogger::clear()
+{
+    if (is_busy())
+        return;
+
     buffer_head = 0;
     buffer_overflow = false;
     log_buffer[0] = '\0';
     session_file_num = -1;
     session_filepath[0] = '\0';
-
-    // Ensure USB port power is OFF (only power on during write_to_usb)
-    pinMode(PA_15, OUTPUT);
     digitalWrite(PA_15, LOW);
-
-    // Ensure LED pins are configured and all LEDs are OFF (GIGA LEDs are active low)
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    digitalWrite(LEDR, HIGH);
-    digitalWrite(LEDG, HIGH);
-    digitalWrite(LEDB, HIGH);
 }
 
-// ---------------------------------------------------------------------------
-// write_to_usb() — mount drive, write buffered log, unmount, LED feedback
-//
-// LED feedback patterns (GIGA R1 LEDs are active LOW):
-//   - RED solid         : Write in progress, do not remove USB
-//   - GREEN 1s          : All data saved successfully
-//   - 3x RED blinks     : No USB drive detected or mount failed
-//   - YELLOW 2s         : Write was truncated (partial data loss)
-// ---------------------------------------------------------------------------
-void USBLogger::write_to_usb() {
-    // Nothing to save
-    if (buffer_head == 0) {
-        return;
-    }
+bool USBLogger::is_busy() const
+{
+    return logger_state != LOGGER_IDLE;
+}
 
-    // 1. RED LED ON — signals "USB write in progress, do not power off"
+void USBLogger::write_to_usb()
+{
+    if (buffer_head == 0 || is_busy())
+        return;
+
+    flush_remaining = buffer_head;
+    retry_cycles = 0;
+    begin_attempt();
+}
+
+void USBLogger::begin_attempt()
+{
+    logger_state = LOGGER_POWER_SETTLE;
+    state_started_ms = millis();
+    next_attempt_ms = state_started_ms + 300;
+    connect_attempts = 0;
+    mount_attempts = 0;
+    consecutive_write_failures = 0;
+    active_file = nullptr;
+    filesystem_mounted = false;
+
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
-    digitalWrite(LEDR, LOW);   // Active LOW = ON
-    digitalWrite(LEDG, HIGH);  // OFF
-
-    if (SERIAL_HW) {
-        SERIAL_HW.println("\n[LOGGER] Saving log to USB drive...");
-    }
-
-    // 2. Power up USB-A port via PA_15 power enable pin
-    if (SERIAL_HW) {
-        SERIAL_HW.println("[LOGGER] USB port power ON, quick connect...");
-    }
+    digitalWrite(LEDR, LOW);
+    digitalWrite(LEDG, HIGH);
     pinMode(PA_15, OUTPUT);
     digitalWrite(PA_15, HIGH);
-    delay(300); // Short settle for fast sticks
 
-    // 3. Two-phase connect: fast path first, then slow path for power-hungry sticks
-    bool connected = false;
+    if (SERIAL_HW)
+        SERIAL_HW.println("[LOGGER] Asynchronous USB save started.");
+}
 
-    // --- Phase 1: Quick connect (for cheap, fast sticks) ---
+void USBLogger::remove_written_prefix(size_t count)
+{
+    if (count == 0 || count > buffer_head)
+        return;
+
+    memmove(log_buffer, log_buffer + count, buffer_head - count);
+    buffer_head -= count;
+    log_buffer[buffer_head] = '\0';
+    flush_remaining =
+        count >= flush_remaining ? 0 : flush_remaining - count;
+}
+
+void USBLogger::retry_or_fail(const char *reason)
+{
     if (SERIAL_HW) {
-        SERIAL_HW.println("[LOGGER] Phase 1: quick connect (5 attempts)...");
-    }
-    for (int i = 0; i < 5; i++) {
-        if (msd.connect()) {
-            connected = true;
-            if (SERIAL_HW) {
-                SERIAL_HW.print("[LOGGER] USB connected on attempt ");
-                SERIAL_HW.println(i + 1);
-            }
-            break;
-        }
-        delay(100);
+        SERIAL_HW.print("[LOGGER] ");
+        SERIAL_HW.println(reason);
     }
 
-    // --- Phase 2: Extended connect (for slow, power-hungry sticks like Intenso) ---
-    if (!connected) {
-        if (SERIAL_HW) {
-            SERIAL_HW.println("[LOGGER] Phase 1 failed, retrying with extended settle (1200ms)...");
-        }
-        delay(1200); // Additional settle time for power-hungry sticks
-        if (SERIAL_HW) {
-            SERIAL_HW.println("[LOGGER] Phase 2: extended connect (30 attempts)...");
-        }
-        for (int i = 0; i < 30; i++) {
-            if (msd.connect()) {
-                connected = true;
-                if (SERIAL_HW) {
-                    SERIAL_HW.print("[LOGGER] USB connected on attempt ");
-                    SERIAL_HW.print(i + 1);
-                    SERIAL_HW.println("/30 (phase 2)");
-                }
-                break;
-            }
-            if ((i + 1) % 5 == 0 && SERIAL_HW) {
-                SERIAL_HW.print("[LOGGER] USB connect attempt ");
-                SERIAL_HW.print(i + 1);
-                SERIAL_HW.println("/30 (phase 2)...");
-            }
-            delay(100);
-        }
+    if (active_file != nullptr) {
+        fclose(active_file);
+        active_file = nullptr;
     }
-
-    if (!connected) {
-        if (SERIAL_HW) SERIAL_HW.println("[LOGGER] No USB drive detected. Log not saved.");
-        digitalWrite(LEDR, HIGH); // RED OFF
-        digitalWrite(PA_15, LOW); // Cut USB power
-        // 3x RED blinks → "No USB drive found"
-        for (int i = 0; i < 3; i++) {
-            digitalWrite(LEDR, LOW);
-            delay(200);
-            digitalWrite(LEDR, HIGH);
-            delay(200);
-        }
-        return;
+    if (filesystem_mounted) {
+        usb_fs.unmount();
+        filesystem_mounted = false;
     }
-
-    // 4. Mount FAT filesystem with retry
-    int err = 0;
-    for (int mount_attempt = 0; mount_attempt < 3; mount_attempt++) {
-        err = usb_fs.mount(&msd);
-        if (err == 0) {
-            break;
-        }
-        if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] USB mount attempt ");
-            SERIAL_HW.print(mount_attempt + 1);
-            SERIAL_HW.print(" failed. Error: ");
-            SERIAL_HW.println(err);
-        }
-        delay(100);
-    }
-    if (err) {
-        if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] USB mount failed after retries. Error code: ");
-            SERIAL_HW.print(err);
-            SERIAL_HW.print(" (");
-            // Print human-readable error description
-            if (err == -1) SERIAL_HW.print("Device not connected or no media");
-            else if (err == -2) SERIAL_HW.print("Filesystem corrupt or unsupported format (try exFAT → FAT32)");
-            else if (err == -5) SERIAL_HW.print("I/O error");
-            else if (err == -13) SERIAL_HW.print("Permission denied");
-            else if (err == -22) SERIAL_HW.print("Invalid argument");
-            else SERIAL_HW.print("Unknown error");
-            SERIAL_HW.println(")");
-        }
-        digitalWrite(LEDR, HIGH);
-        digitalWrite(PA_15, LOW);
-        // 3x RED blinks → "USB filesystem error"
-        for (int i = 0; i < 3; i++) {
-            digitalWrite(LEDR, LOW);
-            delay(200);
-            digitalWrite(LEDR, HIGH);
-            delay(200);
-        }
-        return;
-    }
-
-    // 5. Find next available sequential filename if not already determined for this boot/reset session
-    if (session_file_num < 1) {
-        int log_num = 1;
-        while (true) {
-            snprintf(session_filepath, sizeof(session_filepath), "/usb/log_%d.txt", log_num);
-            FILE *probe = fopen(session_filepath, "r");
-            if (probe == NULL) {
-                session_file_num = log_num;
-                break; // This filename is free
-            }
-            fclose(probe);
-            log_num++;
-        }
-    }
-
-    // 6. Write log buffer to file in small chunks with error checking
-    // Use append mode so repeated writes in the same run extend the same log file.
-    bool write_truncated = false;
-    FILE *f = fopen(session_filepath, "a");
-    if (f == NULL) {
-        if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] Could not open file for append: ");
-            SERIAL_HW.println(session_filepath);
-        }
-        write_truncated = true; // Treat file-open failure as a write failure
-    } else {
-        // Write in small chunks to avoid filesystem buffer overflows
-        static const size_t CHUNK_SIZE = 512;
-        size_t total_written = 0;
-        size_t remaining = buffer_head;
-        const char *src = log_buffer;
-
-        while (remaining > 0) {
-            size_t to_write = (remaining < CHUNK_SIZE) ? remaining : CHUNK_SIZE;
-            size_t written = fwrite(src, 1, to_write, f);
-            total_written += written;
-            
-            if (written < to_write) {
-                // Write failed or truncated — report and stop
-                write_truncated = true;
-                if (SERIAL_HW) {
-                    SERIAL_HW.print("[LOGGER] WARNING: fwrite truncated at byte ");
-                    SERIAL_HW.print(total_written);
-                    SERIAL_HW.print(" / ");
-                    SERIAL_HW.println(buffer_head);
-                }
-                break;
-            }
-            
-            src += written;
-            remaining -= written;
-        }
-        
-        if (buffer_overflow) {
-            fprintf(f, "\n*** WARNING: LOG BUFFER OVERFLOW - SOME EARLY LOGS WERE LOST ***\n");
-        }
-        
-        // Flush to ensure data is written before unmount
-        fflush(f);
-        fclose(f);
-        
-        if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] Log saved to ");
-            SERIAL_HW.print(session_filepath);
-            SERIAL_HW.print(" (");
-            SERIAL_HW.print(total_written);
-            SERIAL_HW.print(" / ");
-            SERIAL_HW.print(buffer_head);
-            SERIAL_HW.println(" bytes written)");
-        }
-        
-        // Clear buffer after successful write to avoid re-writing stale data
-        buffer_head = 0;
-        buffer_overflow = false;
-        log_buffer[0] = '\0';
-    }
-
-    // 7. Safely unmount and power down USB port
-    usb_fs.unmount();
     digitalWrite(PA_15, LOW);
 
-    // 8. LED feedback based on result
-    if (write_truncated) {
-        // YELLOW (RED + GREEN) for 2s → "Partial data loss"
+    if (++retry_cycles < 3 && flush_remaining > 0) {
+        begin_attempt();
+        return;
+    }
+
+    finish_attempt(false);
+}
+
+void USBLogger::finish_attempt(bool success)
+{
+    if (active_file != nullptr) {
+        fflush(active_file);
+        fclose(active_file);
+        active_file = nullptr;
+    }
+    if (filesystem_mounted) {
+        usb_fs.unmount();
+        filesystem_mounted = false;
+    }
+    digitalWrite(PA_15, LOW);
+
+    state_started_ms = millis();
+    if (success) {
+        buffer_overflow = false;
+        digitalWrite(LEDR, HIGH);
+        digitalWrite(LEDG, LOW);
+        logger_state = LOGGER_SUCCESS_FEEDBACK;
+        if (SERIAL_HW)
+            SERIAL_HW.println("[LOGGER] Requested log data saved.");
+    } else {
         digitalWrite(LEDR, LOW);
         digitalWrite(LEDG, LOW);
-        delay(2000);
-        digitalWrite(LEDR, HIGH);
-        digitalWrite(LEDG, HIGH);
-    } else {
-        // GREEN for 1s → "All data saved safely"
-        digitalWrite(LEDR, HIGH); // RED OFF
-        digitalWrite(LEDG, LOW);  // GREEN ON
-        delay(1000);
-        digitalWrite(LEDG, HIGH); // GREEN OFF
+        logger_state = LOGGER_ERROR_FEEDBACK;
+        if (SERIAL_HW)
+            SERIAL_HW.println("[LOGGER] Save incomplete; unwritten bytes remain buffered.");
     }
 }
 
-// ---------------------------------------------------------------------------
-// Global singleton
-// ---------------------------------------------------------------------------
+void USBLogger::update()
+{
+    const unsigned long now = millis();
+
+    switch (logger_state) {
+    case LOGGER_IDLE:
+        return;
+
+    case LOGGER_POWER_SETTLE:
+        if ((long)(now - next_attempt_ms) >= 0) {
+            logger_state = LOGGER_CONNECT_QUICK;
+            next_attempt_ms = now;
+        }
+        return;
+
+    case LOGGER_CONNECT_QUICK:
+        if ((long)(now - next_attempt_ms) < 0)
+            return;
+        if (msd.connect()) {
+            logger_state = LOGGER_MOUNT;
+            next_attempt_ms = now;
+            return;
+        }
+        ++connect_attempts;
+        next_attempt_ms = now + 100;
+        if (connect_attempts >= 5) {
+            logger_state = LOGGER_CONNECT_EXTENDED_WAIT;
+            next_attempt_ms = now + 1200;
+        }
+        return;
+
+    case LOGGER_CONNECT_EXTENDED_WAIT:
+        if ((long)(now - next_attempt_ms) >= 0) {
+            logger_state = LOGGER_CONNECT_EXTENDED;
+            connect_attempts = 0;
+            next_attempt_ms = now;
+        }
+        return;
+
+    case LOGGER_CONNECT_EXTENDED:
+        if ((long)(now - next_attempt_ms) < 0)
+            return;
+        if (msd.connect()) {
+            logger_state = LOGGER_MOUNT;
+            next_attempt_ms = now;
+            return;
+        }
+        ++connect_attempts;
+        next_attempt_ms = now + 100;
+        if (connect_attempts >= 30)
+            retry_or_fail("USB drive not detected.");
+        return;
+
+    case LOGGER_MOUNT: {
+        if ((long)(now - next_attempt_ms) < 0)
+            return;
+        const int error = usb_fs.mount(&msd);
+        if (error == 0) {
+            filesystem_mounted = true;
+            logger_state = LOGGER_OPEN_FILE;
+            return;
+        }
+        ++mount_attempts;
+        next_attempt_ms = now + 100;
+        if (mount_attempts >= 3)
+            retry_or_fail("USB filesystem mount failed.");
+        return;
+    }
+
+    case LOGGER_OPEN_FILE:
+        if (session_file_num < 1) {
+            int log_number = 1;
+            do {
+                snprintf(
+                    session_filepath,
+                    sizeof(session_filepath),
+                    "/usb/log_%d.txt",
+                    log_number++);
+                FILE *probe = fopen(session_filepath, "r");
+                if (probe == nullptr)
+                    break;
+                fclose(probe);
+            } while (true);
+            session_file_num = log_number - 1;
+        }
+
+        active_file = fopen(session_filepath, "a");
+        if (active_file == nullptr) {
+            retry_or_fail("Could not open log file.");
+            return;
+        }
+        logger_state = LOGGER_WRITE;
+        return;
+
+    case LOGGER_WRITE: {
+        if (flush_remaining == 0) {
+            if (buffer_overflow)
+                fprintf(
+                    active_file,
+                    "\n*** WARNING: LOG BUFFER OVERFLOW ***\n");
+            finish_attempt(true);
+            return;
+        }
+
+        static const size_t CHUNK_SIZE = 512;
+        size_t requested =
+            flush_remaining < CHUNK_SIZE
+                ? flush_remaining
+                : CHUNK_SIZE;
+        if (requested > buffer_head)
+            requested = buffer_head;
+
+        const size_t written =
+            fwrite(log_buffer, 1, requested, active_file);
+        if (written > 0) {
+            remove_written_prefix(written);
+            consecutive_write_failures = 0;
+            fflush(active_file);
+        }
+
+        if (written < requested) {
+            ++consecutive_write_failures;
+            clearerr(active_file);
+            if (consecutive_write_failures >= 3)
+                retry_or_fail("Repeated partial USB write.");
+        }
+        return;
+    }
+
+    case LOGGER_SUCCESS_FEEDBACK:
+        if (now - state_started_ms >= 1000) {
+            digitalWrite(LEDG, HIGH);
+            logger_state = LOGGER_IDLE;
+        }
+        return;
+
+    case LOGGER_ERROR_FEEDBACK:
+        if (now - state_started_ms >= 2000) {
+            digitalWrite(LEDR, HIGH);
+            digitalWrite(LEDG, HIGH);
+            logger_state = LOGGER_IDLE;
+        }
+        return;
+    }
+}
+
 USBLogger robot_logger;

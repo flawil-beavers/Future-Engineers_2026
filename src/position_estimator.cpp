@@ -50,7 +50,7 @@ static float total_distance_traveled = 0;
 static bool pos_initialized = false;
 
 // Slip detection
-static float slip_log_timer = 0;        // Timer for throttle
+static unsigned long slip_log_timer = 0; // micros() timestamp for throttling
 
 // ==========================================
 // INTERNAL HELPERS

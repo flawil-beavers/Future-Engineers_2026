@@ -182,6 +182,10 @@ void pid_speed()
   }
 
   float speed = Kp * error + Ki * pid_integral + Kd * (error - last_error) / last_loop_time;
+  if (dc_state == DC_HOLDING)
+  {
+    speed = constrain(speed, -HOLD_MAX_DC, HOLD_MAX_DC);
+  }
   set_dc(speed);
   last_error = error;
 }
@@ -273,34 +277,86 @@ void loop_updater()
 
 void check_stalling()
 {
-  static float last_stall_distance = 0;
+  static unsigned long window_start_us = 0;
+  static float window_start_distance = 0;
+  static unsigned long hold_overload_start_us = 0;
 
-  // Only check if:
-  //   - Enough time has passed since last check
-  //   - Motor is actively running
-  //   - Motor is demanding high power (trying hard but going nowhere)
-  if (last_loop_time > 0.00001f &&
-      dc_state != DC_DISABLED &&
-      fabs(dc_current_dc) > MOTOR_MAX_DC * STALL_DC_THRESHOLD)
+  if (dc_state == DC_HOLDING)
   {
-    // Compute actual robot speed in mm/s from the distance change
-    float speed_mms = fabs(current_distance - last_stall_distance) / last_loop_time;
+    const bool holding_at_limit =
+        fabsf(dc_current_dc) >=
+        HOLD_MAX_DC * HOLD_OVERLOAD_THRESHOLD;
 
-    if (speed_mms < STALL_SPEED_THRESHOLD_MMS)
+    if (!holding_at_limit)
     {
-      Serial.print("Stall detected! Speed: ");
-      Serial.print(speed_mms, 5);
-      Serial.print(" mm/s (threshold: ");
-      Serial.print(STALL_SPEED_THRESHOLD_MMS);
-      Serial.print(" mm/s), DC: ");
-      Serial.println(dc_current_dc);
+      hold_overload_start_us = 0;
+      return;
+    }
 
-      // Preserve the active mode so it can only resume through the mode system.
+    if (hold_overload_start_us == 0)
+    {
+      hold_overload_start_us = current_time;
+      return;
+    }
+
+    if (current_time - hold_overload_start_us >=
+        HOLD_OVERLOAD_WINDOW_US)
+    {
+      Serial.println(
+          "Holding overload: maximum holding effort exceeded for 2 seconds.");
+      hold_overload_start_us = 0;
       mode_pause();
     }
+    return;
   }
 
-  last_stall_distance = current_distance;
+  hold_overload_start_us = 0;
+
+  // DC_HOLDING intentionally produces torque at almost zero speed. It needs a
+  // separate overload policy and must not be interpreted as a driving stall.
+  const bool high_drive_load =
+      dc_state == DC_ENABLED &&
+      fabs(dc_current_dc) >
+          MOTOR_MAX_DC * STALL_DC_THRESHOLD;
+
+  if (!high_drive_load)
+  {
+    window_start_us = current_time;
+    window_start_distance = current_distance;
+    return;
+  }
+
+  if (window_start_us == 0)
+  {
+    window_start_us = current_time;
+    window_start_distance = current_distance;
+    return;
+  }
+
+  const unsigned long elapsed_us =
+      current_time - window_start_us;
+  if (elapsed_us < STALL_DETECTION_WINDOW_US)
+    return;
+
+  const float elapsed_s = elapsed_us / 1000000.0f;
+  const float speed_mms =
+      fabsf(current_distance - window_start_distance) /
+      elapsed_s;
+
+  window_start_us = current_time;
+  window_start_distance = current_distance;
+
+  if (speed_mms >= STALL_SPEED_THRESHOLD_MMS)
+    return;
+
+  Serial.print("Stall detected over ");
+  Serial.print(elapsed_us / 1000);
+  Serial.print(" ms. Speed: ");
+  Serial.print(speed_mms, 2);
+  Serial.print(" mm/s, DC: ");
+  Serial.println(dc_current_dc);
+
+  mode_pause();
 }
 
 void system_enable()

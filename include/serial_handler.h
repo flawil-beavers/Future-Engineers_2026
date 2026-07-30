@@ -10,7 +10,7 @@
  *   s<angle>  : Select manual mode and set steering angle (degrees)
  *   n         : Print current distance
  *   p         : Pause/stop
- *   h         : Hold position
+ *   h         : Select HOLD mode
  *   q<value>  : Set Kp tuning parameter (value/10)
  *   w<value>  : Set Ki tuning parameter (value/100)
  *   e<value>  : Set Kd tuning parameter (value/10)

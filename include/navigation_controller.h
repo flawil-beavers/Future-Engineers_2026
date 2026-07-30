@@ -61,6 +61,7 @@ void navigation_setup();
  * @param enabled Whether the autonomous system should be active.
  */
 void navigation_update(bool enabled);
+bool navigation_is_complete();
 
 /**
  * @brief Activates the autonomous navigation mode.

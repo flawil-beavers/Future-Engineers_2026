@@ -267,7 +267,7 @@ void turn_radius_cal_update()
         if (tr_cal_current_angle_index >= tr_cal_num_angles) {
             if (tr_cal_phase == 0) {
                 // Finished left turns — pause and wait for user to toggle switch
-                // or send 'c' via serial to continue with right turns.
+                // or send 'C' via serial to continue with right turns.
                 // The left data is preserved in tr_cal_left so that
                 // turn_radius_cal_start() can detect it and resume.
                 turn_radius_state = TR_DONE;
@@ -276,7 +276,7 @@ void turn_radius_cal_update()
                 Serial.println("LEFT TURNS COMPLETE!");
                 Serial.println("========================================");
                 Serial.println("Toggle the enable switch OFF then ON to start RIGHT turns.");
-                Serial.println("(Or send 'c' via serial to continue.)");
+                Serial.println("(Or send 'C' via serial to continue.)");
                 Serial.println("========================================\n");
                 return;
             } else {
