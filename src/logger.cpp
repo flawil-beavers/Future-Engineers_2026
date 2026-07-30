@@ -144,18 +144,58 @@ void USBLogger::write_to_usb() {
     }
 
     // 2. Power up USB-A port via PA_15 power enable pin
+    if (SERIAL_HW) {
+        SERIAL_HW.println("[LOGGER] USB port power ON, quick connect...");
+    }
     pinMode(PA_15, OUTPUT);
     digitalWrite(PA_15, HIGH);
-    delay(300); // Let device settle
+    delay(300); // Short settle for fast sticks
 
-    // 3. Connect with up to 10 attempts (1 second total)
+    // 3. Two-phase connect: fast path first, then slow path for power-hungry sticks
     bool connected = false;
-    for (int i = 0; i < 10; i++) {
+
+    // --- Phase 1: Quick connect (for cheap, fast sticks) ---
+    if (SERIAL_HW) {
+        SERIAL_HW.println("[LOGGER] Phase 1: quick connect (5 attempts)...");
+    }
+    for (int i = 0; i < 5; i++) {
         if (msd.connect()) {
             connected = true;
+            if (SERIAL_HW) {
+                SERIAL_HW.print("[LOGGER] USB connected on attempt ");
+                SERIAL_HW.println(i + 1);
+            }
             break;
         }
         delay(100);
+    }
+
+    // --- Phase 2: Extended connect (for slow, power-hungry sticks like Intenso) ---
+    if (!connected) {
+        if (SERIAL_HW) {
+            SERIAL_HW.println("[LOGGER] Phase 1 failed, retrying with extended settle (1200ms)...");
+        }
+        delay(1200); // Additional settle time for power-hungry sticks
+        if (SERIAL_HW) {
+            SERIAL_HW.println("[LOGGER] Phase 2: extended connect (30 attempts)...");
+        }
+        for (int i = 0; i < 30; i++) {
+            if (msd.connect()) {
+                connected = true;
+                if (SERIAL_HW) {
+                    SERIAL_HW.print("[LOGGER] USB connected on attempt ");
+                    SERIAL_HW.print(i + 1);
+                    SERIAL_HW.println("/30 (phase 2)");
+                }
+                break;
+            }
+            if ((i + 1) % 5 == 0 && SERIAL_HW) {
+                SERIAL_HW.print("[LOGGER] USB connect attempt ");
+                SERIAL_HW.print(i + 1);
+                SERIAL_HW.println("/30 (phase 2)...");
+            }
+            delay(100);
+        }
     }
 
     if (!connected) {
@@ -189,8 +229,17 @@ void USBLogger::write_to_usb() {
     }
     if (err) {
         if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] USB mount failed after retries. Error: ");
-            SERIAL_HW.println(err);
+            SERIAL_HW.print("[LOGGER] USB mount failed after retries. Error code: ");
+            SERIAL_HW.print(err);
+            SERIAL_HW.print(" (");
+            // Print human-readable error description
+            if (err == -1) SERIAL_HW.print("Device not connected or no media");
+            else if (err == -2) SERIAL_HW.print("Filesystem corrupt or unsupported format (try exFAT → FAT32)");
+            else if (err == -5) SERIAL_HW.print("I/O error");
+            else if (err == -13) SERIAL_HW.print("Permission denied");
+            else if (err == -22) SERIAL_HW.print("Invalid argument");
+            else SERIAL_HW.print("Unknown error");
+            SERIAL_HW.println(")");
         }
         digitalWrite(LEDR, HIGH);
         digitalWrite(PA_15, LOW);
