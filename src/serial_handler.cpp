@@ -17,8 +17,15 @@
  *   e<val> : Set motor Kd (val/10)
  *   a<val> : Set default acceleration
  *   x      : Debug steering timing
- *   l      : START Wall Follower
- *   z      : STOP Wall Follower
+ *   m      : MANUAL mode
+ *   l      : OPEN CHALLENGE mode
+ *   O      : OBSTACLE CHALLENGE mode
+ *   b1/b0  : OBSTACLE BENCH mode on/off
+ *   c      : CAMERA CALIBRATION mode
+ *   C      : TURN RADIUS CALIBRATION mode
+ *   B      : SERVO CENTER CALIBRATION mode
+ *   y      : PID AUTOTUNE mode
+ *   z      : STOP active mode
  *   u<val> : Set wall distance (mm)
  *   i/o    : Wall Follower Debug ON/OFF
  */
@@ -122,12 +129,13 @@ void parseMessage(char *msg)
   switch (cmd[0])
   {
   case 'd':
-    // Set drive speed
+    // Direct drive commands consistently select manual mode.
+    mode_switch(MODE_MANUAL);
     set_speed(value);
     break;
 
   case 's':
-    // Set steering angle
+    mode_switch(MODE_MANUAL);
     set_steering(value);
     break;
 
@@ -137,8 +145,8 @@ void parseMessage(char *msg)
     break;
 
   case 'p':
-    // Pause
-    system_disable();
+    // Pause active mode and remember it for resume.
+    mode_pause();
     break;
 
   case 'h':
@@ -186,9 +194,7 @@ void parseMessage(char *msg)
     break;
 
   case 'r':
-    // Resume with last speed
-    system_enable();
-    set_speed(); // Restore previous speed
+    mode_resume();
     break;
 
   case 'x':
@@ -199,19 +205,17 @@ void parseMessage(char *msg)
     break;
 
   case 'm':
-    // Master enable
-    system_enable();
+    // Enter direct manual control.
+    mode_switch(MODE_MANUAL);
     break;
 
   case 'l':
-    // Start wall follower (Autonomous Mode)
-    system_enable();
-    gyro_follower_enable();
+    // Start Open Challenge.
+    mode_switch(MODE_OPEN_CHALLENGE);
     break;
 
   case 'z':
-    // Stop wall follower (Return to manual)
-    gyro_follower_disable();
+    mode_stop_all();
     break;
 
   case 'u':
@@ -230,14 +234,21 @@ void parseMessage(char *msg)
     break;
 
   case 'b':
-    // Stationary obstacle test: b1 = on, b0 = off.
-    obstacle_bench_test_set(value != 0);
+    // Stationary obstacle test: b1 = mode on, b0 = stop.
+    if (value != 0)
+      mode_switch(MODE_OBSTACLE_BENCH);
+    else if (current_mode == MODE_OBSTACLE_BENCH)
+      mode_stop_all();
     break;
 
   case 'c':
-    // Print raw HSV at the exact center of the current camera frame.
-    // Place the block so the center crosshair would lie on its surface.
-    printCameraCalibration();
+    // Start stationary live camera-colour calibration mode.
+    mode_switch(MODE_CAMERA_CALIBRATION);
+    break;
+
+  case 'O':
+    // Start Obstacle Challenge.
+    mode_switch(MODE_OBSTACLE_CHALLENGE);
     break;
 
   case 'j':

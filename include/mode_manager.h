@@ -30,14 +30,14 @@
  */
 enum RobotMode {
     MODE_NONE,                  ///< No active mode, motors stopped
-    MODE_GYRO_FOLLOW,           ///< Gyro-stabilized wall following
-    MODE_TURN_RADIUS_CAL,       ///< Turn radius calibration (drives in circles)
-    MODE_SERVO_CENTER_CAL,      ///< Straight-line servo-center calibration
+    MODE_MANUAL,                ///< Direct serial speed and steering control
+    MODE_OPEN_CHALLENGE,        ///< Gyro-stabilized Open Challenge
+    MODE_OBSTACLE_CHALLENGE,    ///< Camera-based Obstacle Challenge
+    MODE_OBSTACLE_BENCH,        ///< Stationary camera/steering obstacle test
+    MODE_CAMERA_CALIBRATION,     ///< Stationary live camera HSV calibration
+    MODE_TURN_RADIUS_CAL,       ///< Turn-radius calibration
+    MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
-    // Future modes add here, e.g.:
-    // MODE_LINE_FOLLOW,
-    // MODE_OBSTACLE_AVOID,
-    // MODE_MANUAL_OVERRIDE,
 };
 
 // ==========================================
@@ -61,6 +61,11 @@ extern RobotMode pending_mode;      ///< Mode to resume when switch toggles ON
  * @param new_mode The mode to switch to
  */
 void mode_switch(RobotMode new_mode);
+
+/**
+ * @brief Run one update of the active mode.
+ */
+void mode_update();
 
 /**
  * @brief Pause the current mode. Stops motors but remembers the mode.

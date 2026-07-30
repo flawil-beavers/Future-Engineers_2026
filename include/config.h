@@ -268,12 +268,6 @@ constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = false;
 // CHALLENGE MODE
 // ==========================================
 
-enum ChallengeMode : uint8_t
-{
-    CHALLENGE_OPEN,
-    CHALLENGE_OBSTACLE
-};
-
-// Change only this line before a run:
-constexpr ChallengeMode CHALLENGE_MODE =
-    CHALLENGE_OBSTACLE;
+// Default mode selected during setup. If the physical enable switch is LOW,
+// it remains pending until the switch is enabled.
+#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE

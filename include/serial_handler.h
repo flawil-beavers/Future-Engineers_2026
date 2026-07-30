@@ -6,8 +6,8 @@
  * 
  * Handles incoming serial commands and responses.
  * Commands:
- *   d<speed>  : Set drive speed (mm/s)
- *   s<angle>  : Set steering angle (degrees)
+ *   d<speed>  : Select manual mode and set drive speed (mm/s)
+ *   s<angle>  : Select manual mode and set steering angle (degrees)
  *   n         : Print current distance
  *   p         : Pause/stop
  *   h         : Hold position
@@ -17,13 +17,14 @@
  *   g         : Print current gyro angle
  *   v         : Print ToF distances
  *   a<value>  : Set acceleration (mm/s^2)
- *   r         : Resume with last speed
+ *   r         : Resume the pending mode
  *   x         : Print steering timing difference
- *   m         : Master enable (motors + steering)
- *   w         : Wall follower START
- *   z         : Wall follower STOP
- *   b1/b0     : Stationary obstacle bench test ON/OFF
- *   c         : Print camera-center HSV for colour calibration
+ *   m         : Select manual mode
+ *   l         : Start Open Challenge mode
+ *   O         : Start Obstacle Challenge mode
+ *   z         : Stop the active mode
+ *   b1/b0     : Start/stop Obstacle Bench mode
+ *   c         : Start Camera Calibration mode
  *   j         : Print learned obstacle course map
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Enable wall follower debug output
