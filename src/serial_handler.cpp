@@ -30,6 +30,10 @@
 #include "wall_follower.h"
 #include "obstacle.h"
 #include "course_map.h"
+#include "calibration.h"
+#include "position_estimator.h"
+#include "pid_autotune.h"
+#include "mode_manager.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -239,6 +243,35 @@ void parseMessage(char *msg)
   case 'j':
     // Print the currently learned four-section obstacle map.
     course_map_print();
+    break;
+
+  case 'C':
+    // Start turn-radius calibration (uppercase avoids the camera command).
+    mode_switch(MODE_TURN_RADIUS_CAL);
+    break;
+
+  case 'B':
+    // Start straight servo-center calibration (uppercase avoids bench test).
+    mode_switch(MODE_SERVO_CENTER_CAL);
+    break;
+
+  case 'y':
+    // Start PID autotune.
+    mode_switch(MODE_PID_AUTOTUNE);
+    break;
+
+  case 't':
+    // Print current dead-reckoning position.
+    position_print();
+    break;
+
+  case 'k':
+    // Print turn-radius calibration data.
+    if (calibration_has_data()) {
+      calibration_print_results();
+    } else {
+      Serial.println("No calibration data available. Run 'C' first.");
+    }
     break;
 
   default:

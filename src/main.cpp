@@ -18,6 +18,12 @@
 #include "serial_handler.h"
 #include "wall_follower.h"
 #include "obstacle.h"
+#include "calibration.h"
+#include "position_estimator.h"
+#include "turn_radius_calibration.h"
+#include "servo_center_calibration.h"
+#include "pid_autotune.h"
+#include "mode_manager.h"
 
 CameraSystem camera;
 Vision vision;
@@ -50,6 +56,16 @@ void setup()
 
     gyro_follower_setup();
 
+    // Make the measured turn-radius model available to position estimation.
+    {
+        float left_coeffs[4] = {
+            CAL_LEFT_A0, CAL_LEFT_A1, CAL_LEFT_A2, CAL_LEFT_A3
+        };
+        float right_coeffs[4] = {
+            CAL_RIGHT_A0, CAL_RIGHT_A1, CAL_RIGHT_A2, CAL_RIGHT_A3
+        };
+        calibration_set_coefficients(left_coeffs, right_coeffs);
+    }
 
     // ======================================
     // OBSTACLE CHALLENGE ONLY
@@ -131,6 +147,9 @@ void loop()
 
     update_gyro();
 
+    // Dead-reckoning estimate is maintained in both challenge modes.
+    update_position();
+
 
     // ======================================
     // OPEN CHALLENGE
@@ -141,11 +160,36 @@ void loop()
         CHALLENGE_OPEN
     )
     {
-        // Exactly the existing Open controller.
+        // Open-challenge driving and all calibration tools share the
+        // position-estimate branch's centralized mode manager.
+        switch (current_mode)
+        {
+        case MODE_GYRO_FOLLOW:
+            gyro_follower_update(system_enabled);
+            drive_loop();
+            break;
 
-        gyro_follower_update(
-            system_enabled
-        );
+        case MODE_TURN_RADIUS_CAL:
+            turn_radius_cal_update();
+            drive_loop();
+            break;
+
+        case MODE_SERVO_CENTER_CAL:
+            servo_center_cal_update();
+            drive_loop();
+            break;
+
+        case MODE_PID_AUTOTUNE:
+            // Autotune directly controls the motor output.
+            pid_autotune_update();
+            break;
+
+        case MODE_NONE:
+        default:
+            // Keep manual serial steering/speed commands responsive.
+            drive_loop();
+            break;
+        }
     }
 
 
@@ -171,14 +215,9 @@ void loop()
             // Only during development.
             printVisionDebug();
         }
+
+        drive_loop();
     }
-
-
-    // ======================================
-    // MOTOR OUTPUT
-    // ======================================
-
-    drive_loop();
 }
 
 

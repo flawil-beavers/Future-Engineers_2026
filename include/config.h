@@ -71,6 +71,15 @@
 #define DEFAULT_ACCELERATION 700    // mm/s^2
 
 // ==========================================
+// PID AUTOTUNE PARAMETERS
+// ==========================================
+#define PID_AT_RELAY_AMPLITUDE 40
+#define PID_AT_TARGET_SPEED 250
+#define PID_AT_MIN_CYCLES 3
+#define PID_AT_MAX_DISTANCE_MM 1000
+#define PID_AT_MAX_TIME_US 30000000
+
+// ==========================================
 // SENSOR UPDATE RATES
 // ==========================================
 #define STATUS_PRINT_INTERVAL_US 200000  // Print status every 200ms
@@ -97,6 +106,29 @@
 #define TOF_MAX_LONG_DISTANCE_MM 4000.0f // Max distance for long-range discovery (mm)
 #define TOF_OUT_OF_RANGE_MM 9999.0f        // Value returned when no object is detected or beyond reliable range (mm)
 #define TOF_MAX_DELTA_MM 100.0f            // Max change allowed between consecutive readings (mm)
+
+// ==========================================
+// CALIBRATION AND POSITION ESTIMATION
+// ==========================================
+#define CAL_SPEED_MMS 250.0f
+#define CAL_STARTUP_DELAY_MS 5000
+#define CAL_CENTER_DISTANCE_MM 2000.0f
+#define CAL_CENTER_MAX_TIME_MS 15000
+#define CAL_CENTER_DEBUG_INTERVAL_MS 500
+
+// Turn-radius polynomial: R(delta) = a0 + a1|delta| + a2|delta|^2 + a3|delta|^3
+#define CAL_LEFT_A0 1481.4659f
+#define CAL_LEFT_A1 100.413338f
+#define CAL_LEFT_A2 2.75952291f
+#define CAL_LEFT_A3 0.02698299f
+#define CAL_RIGHT_A0 1422.9576f
+#define CAL_RIGHT_A1 -100.615837f
+#define CAL_RIGHT_A2 2.91633201f
+#define CAL_RIGHT_A3 -0.02982690f
+#define CAL_LEFT_K 1.3101f
+#define CAL_RIGHT_K 1.2688f
+
+#define POSITION_PRINT_INTERVAL_US 500000
 
 // ==========================================
 // ENABLE/DISABLE FLAGS MESSAGES

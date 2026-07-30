@@ -49,6 +49,7 @@ float gf_gyro_target = 0;             // Target gyro angle
 float gf_gyro_kp = 2.5;               // Proportional gain
 float gf_gyro_kd = 0.05;              // Derivative gain
 float gf_last_gyro_error = 0;
+float gf_steering_filter = 0.0f;
 
 // Timing and control
 float gf_turn_start_angle = 0;
@@ -194,7 +195,8 @@ void state_following()
   float gyro_error = get_angle() - gf_gyro_target;
   float safe_loop_time = (last_loop_time > 0.001f) ? last_loop_time : 0.001f;
   float gyro_derivative = (gyro_error - gf_last_gyro_error) / safe_loop_time;
-  float gyro_pd = gf_gyro_kp * gyro_error + gf_gyro_kd * gyro_derivative;
+  float gyro_pd = gyro_follower_compute_steering(
+      gyro_error, gf_last_gyro_error, safe_loop_time);
   if (gf_obstacle_mode) {
     gyro_pd = 0.85f * gyro_error + 0.012f * gyro_derivative;
     if (gyro_pd > 24.0f) gyro_pd = 24.0f;
@@ -565,6 +567,54 @@ void gyro_follower_set_debug(bool enable)
 {
   gf_debug_enabled = enable;
   Serial.println(enable ? "Gyro follower debug ON" : "Gyro follower debug OFF");
+}
+
+void gyro_follower_reset_filter()
+{
+  gf_steering_filter = 0.0f;
+  gf_last_gyro_error = 0.0f;
+}
+
+float gyro_follower_compute_steering(
+    float heading_error_deg,
+    float last_error_deg,
+    float dt_s)
+{
+  if (dt_s < 1e-4f)
+    dt_s = 1e-4f;
+
+  float gyro_derivative =
+      (heading_error_deg - last_error_deg) / dt_s;
+  float raw_output =
+      gf_gyro_kp * heading_error_deg +
+      gf_gyro_kd * gyro_derivative;
+
+  if (fabsf(raw_output) < 0.25f)
+    raw_output = 0.0f;
+
+  float alpha = constrain(dt_s / 0.06f, 0.1f, 0.6f);
+  float filtered_output =
+      gf_steering_filter +
+      alpha * (raw_output - gf_steering_filter);
+
+  float max_step = 90.0f * dt_s;
+  if (filtered_output - gf_steering_filter > max_step)
+    filtered_output = gf_steering_filter + max_step;
+  else if (filtered_output - gf_steering_filter < -max_step)
+    filtered_output = gf_steering_filter - max_step;
+
+  gf_steering_filter = filtered_output;
+  return gf_steering_filter;
+}
+
+float gyro_follower_get_gyro_kp()
+{
+  return gf_gyro_kp;
+}
+
+float gyro_follower_get_gyro_kd()
+{
+  return gf_gyro_kd;
 }
 
 void gyro_follower_print_debug()

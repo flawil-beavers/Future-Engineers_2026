@@ -28,6 +28,11 @@
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Enable wall follower debug output
  *   o         : Disable wall follower debug output
+ *   C         : Start turn-radius calibration sequence
+ *   B         : Start straight servo-center calibration
+ *   y         : Start PID autotune
+ *   t         : Print current position (x, y, heading, confidence)
+ *   k         : Print calibration data summary
  */
 
 #include <Arduino.h>

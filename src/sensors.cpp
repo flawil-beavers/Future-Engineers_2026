@@ -44,17 +44,22 @@ static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
 
 void update_gyro()
 {
-  static unsigned long last_gyro_read = 0;
+  static unsigned long last_gyro_data_time = 0;
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
 
   // The BNO085 INT pin is active low. If HIGH, no data is ready.
   if (digitalRead(BNO085_INT) == HIGH)
   {
+    if (last_gyro_data_time != 0 && millis() - last_gyro_data_time > 200)
+    {
+      Serial.println("[GYRO] No data for 200ms, re-enabling reports...");
+      bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
+      gyro_initialized = false;
+      last_gyro_data_time = millis();
+    }
     return;
   }
-
-  last_gyro_read = millis();
 
   // Get sensor event
   bool has_event = bno.getSensorEvent(&sensor_value);
@@ -75,6 +80,7 @@ void update_gyro()
   {
     if (sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR)
     {
+      last_gyro_data_time = millis();
       sh2_RotationVector_t rotationVector = sensor_value.un.gameRotationVector;
       float r = rotationVector.real;
       float i = rotationVector.i;

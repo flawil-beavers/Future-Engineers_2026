@@ -29,6 +29,10 @@ USBLogger::USBLogger() {
     log_buffer[0] = '\0';
     session_file_num = -1;
     session_filepath[0] = '\0';
+
+    // Ensure USB port power is OFF by default (only power on during write_to_usb)
+    pinMode(PA_15, OUTPUT);
+    digitalWrite(PA_15, LOW);
 }
  
 // ---------------------------------------------------------------------------
@@ -101,6 +105,10 @@ void USBLogger::clear() {
     session_file_num = -1;
     session_filepath[0] = '\0';
 
+    // Ensure USB port power is OFF (only power on during write_to_usb)
+    pinMode(PA_15, OUTPUT);
+    digitalWrite(PA_15, LOW);
+
     // Ensure LED pins are configured and all LEDs are OFF (GIGA LEDs are active low)
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
@@ -112,6 +120,12 @@ void USBLogger::clear() {
 
 // ---------------------------------------------------------------------------
 // write_to_usb() — mount drive, write buffered log, unmount, LED feedback
+//
+// LED feedback patterns (GIGA R1 LEDs are active LOW):
+//   - RED solid         : Write in progress, do not remove USB
+//   - GREEN 1s          : All data saved successfully
+//   - 3x RED blinks     : No USB drive detected or mount failed
+//   - YELLOW 2s         : Write was truncated (partial data loss)
 // ---------------------------------------------------------------------------
 void USBLogger::write_to_usb() {
     // Nothing to save
@@ -146,8 +160,15 @@ void USBLogger::write_to_usb() {
 
     if (!connected) {
         if (SERIAL_HW) SERIAL_HW.println("[LOGGER] No USB drive detected. Log not saved.");
-        digitalWrite(LEDR, HIGH); // LED OFF
+        digitalWrite(LEDR, HIGH); // RED OFF
         digitalWrite(PA_15, LOW); // Cut USB power
+        // 3x RED blinks → "No USB drive found"
+        for (int i = 0; i < 3; i++) {
+            digitalWrite(LEDR, LOW);
+            delay(200);
+            digitalWrite(LEDR, HIGH);
+            delay(200);
+        }
         return;
     }
 
@@ -173,6 +194,13 @@ void USBLogger::write_to_usb() {
         }
         digitalWrite(LEDR, HIGH);
         digitalWrite(PA_15, LOW);
+        // 3x RED blinks → "USB filesystem error"
+        for (int i = 0; i < 3; i++) {
+            digitalWrite(LEDR, LOW);
+            delay(200);
+            digitalWrite(LEDR, HIGH);
+            delay(200);
+        }
         return;
     }
 
@@ -193,12 +221,14 @@ void USBLogger::write_to_usb() {
 
     // 6. Write log buffer to file in small chunks with error checking
     // Use append mode so repeated writes in the same run extend the same log file.
+    bool write_truncated = false;
     FILE *f = fopen(session_filepath, "a");
     if (f == NULL) {
         if (SERIAL_HW) {
             SERIAL_HW.print("[LOGGER] Could not open file for append: ");
             SERIAL_HW.println(session_filepath);
         }
+        write_truncated = true; // Treat file-open failure as a write failure
     } else {
         // Write in small chunks to avoid filesystem buffer overflows
         static const size_t CHUNK_SIZE = 512;
@@ -213,6 +243,7 @@ void USBLogger::write_to_usb() {
             
             if (written < to_write) {
                 // Write failed or truncated — report and stop
+                write_truncated = true;
                 if (SERIAL_HW) {
                     SERIAL_HW.print("[LOGGER] WARNING: fwrite truncated at byte ");
                     SERIAL_HW.print(total_written);
@@ -254,11 +285,21 @@ void USBLogger::write_to_usb() {
     usb_fs.unmount();
     digitalWrite(PA_15, LOW);
 
-    // 8. GREEN LED for 1s → signals "Safe to power off / remove USB"
-    digitalWrite(LEDR, HIGH); // RED OFF
-    digitalWrite(LEDG, LOW);  // GREEN ON
-    delay(1000);
-    digitalWrite(LEDG, HIGH); // GREEN OFF
+    // 8. LED feedback based on result
+    if (write_truncated) {
+        // YELLOW (RED + GREEN) for 2s → "Partial data loss"
+        digitalWrite(LEDR, LOW);
+        digitalWrite(LEDG, LOW);
+        delay(2000);
+        digitalWrite(LEDR, HIGH);
+        digitalWrite(LEDG, HIGH);
+    } else {
+        // GREEN for 1s → "All data saved safely"
+        digitalWrite(LEDR, HIGH); // RED OFF
+        digitalWrite(LEDG, LOW);  // GREEN ON
+        delay(1000);
+        digitalWrite(LEDG, HIGH); // GREEN OFF
+    }
 }
 
 // ---------------------------------------------------------------------------
