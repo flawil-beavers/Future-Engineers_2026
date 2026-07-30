@@ -24,7 +24,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "logger.h"
 #define Serial robot_logger
 

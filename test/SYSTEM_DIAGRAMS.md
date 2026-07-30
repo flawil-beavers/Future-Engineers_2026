@@ -18,7 +18,7 @@
           (Motor Command)      (Wall Follower Command)
                   │                     │
        ┌──────────▼─────────┐ ┌────────▼────────────┐
-       │ motor_control.cpp  │ │ wall_follower.cpp   │
+       │ motor_control.cpp  │ │ navigation_controller.cpp   │
        │   (manual mode)    │ │   (autonomous mode) │
        └──────────┬─────────┘ └────────┬────────────┘
                   │                     │
@@ -54,7 +54,7 @@
         │                         │
         ▼                         ▼
    ┌──────────┐           ┌────────────┐
-   │ sensors. │           │wall_follower│
+   │ sensors. │           │navigation_controller│
    │cpp       │           │.cpp        │
    └─────────┬┘           └─────┬──────┘
              │                  │
@@ -75,7 +75,7 @@
 └────────────────┬────────────────────────────────────────────────────┘
                  │
                  │ Serial Command: 'w'
-                 │ wall_follower_enable()
+                 │ navigation_enable()
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -146,7 +146,7 @@
 └────────┬────────────────────────────────────────────────────────────┘
          │
          │ Serial Command: 'z' (or 'w' to restart)
-         │ wall_follower_disable()
+         │ navigation_disable()
          │
          ▼
          (Back to IDLE)
@@ -255,24 +255,24 @@ After Turn 12 (90° right): Heading ≈ 360°, wf_turn_count = 12
          │  └─ Update timing, calculate encoder distance
          │
          ├─ check_serial_available()
-         │  └─ Read serial commands, call wall_follower functions
+         │  └─ Read serial commands, call navigation_controller functions
          │
          ├─ check_stalling()
          │  └─ Safety check, stop if stalled
          │
-         ├─ update_lasers() ◄─── Sensors updated BEFORE wall_follower
-         │  └─ Read ToF distances (needed by wall_follower)
+         ├─ update_lasers() ◄─── Sensors updated BEFORE navigation_controller
+         │  └─ Read ToF distances (needed by navigation_controller)
          │
-         ├─ update_gyro() ◄───── Sensors updated BEFORE wall_follower
+         ├─ update_gyro() ◄───── Sensors updated BEFORE navigation_controller
          │  └─ Read gyro heading (needed for round counting)
          │
-         ├─ wall_follower_update() ◄─── Main autonomous logic
+         ├─ navigation_update() ◄─── Main autonomous logic
          │  ├─ Read sensor globals (current_distance_left_m, etc)
          │  ├─ Execute state machine logic
          │  └─ Call motor control functions
          │
          └─ drive_loop()
-            └─ Motor PID (may be overridden by wall_follower)
+            └─ Motor PID (may be overridden by navigation_controller)
 ```
 
 ## Memory Map - Global Variables
@@ -288,12 +288,12 @@ motor_control module:
 └─ ... and 30+ more state variables
 
 sensors module:
-├─ current_degree (float) ◄── Used by wall_follower
-├─ current_distance_left_m (float) ◄── Used by wall_follower
-├─ current_distance_right_m (float) ◄── Used by wall_follower
+├─ current_degree (float) ◄── Used by navigation_controller
+├─ current_distance_left_m (float) ◄── Used by navigation_controller
+├─ current_distance_right_m (float) ◄── Used by navigation_controller
 └─ ... and 5+ more sensor variables
 
-wall_follower module:
+navigation_controller module:
 ├─ wf_state (WallFollowerState)
 ├─ wf_turn_count (int)
 ├─ wf_completed_rounds (int)

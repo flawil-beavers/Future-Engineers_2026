@@ -1,5 +1,5 @@
 /**
- * @file wall_follower.cpp
+ * @file navigation_controller.cpp
  * @brief Gyro-Stabilized Wall Following Control Implementation
  * 
  * This module implements a hybrid navigation strategy:
@@ -9,13 +9,13 @@
  *    accuracy even when the robot is not perfectly parallel to the wall.
  * 
  * State Machine:
- * - GF_IDLE: Waiting for activation.
- * - GF_FOLLOWING: Moving straight using Gyro + ToF.
- * - GF_TURNING: Executing a 90-degree pivot turn based on gyro feedback.
- * - GF_STOPPED: Mission complete (3 rounds finished).
+ * - NAV_IDLE: Waiting for activation.
+ * - NAV_FOLLOWING: Moving straight using Gyro + ToF.
+ * - NAV_TURNING: Executing a 90-degree pivot turn based on gyro feedback.
+ * - NAV_STOPPED: Mission complete (3 rounds finished).
  */
 
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
@@ -35,50 +35,50 @@ extern float get_tof_sigma(TofSensor sensor);
 // STATE VARIABLES
 // ==========================================
 
-GyroFollowerState gf_state = GF_IDLE;
-GyroFollowerState gf_last_state = GF_IDLE;
+NavigationState nav_state = NAV_IDLE;
+NavigationState nav_last_state = NAV_IDLE;
 
 // Wall following parameters
-float gf_target_distance = 300.0;     // 300mm target distance from wall
-float gf_wall_margin = TOF_MAX_RELIABLE_DISTANCE_MM; // Threshold to detect gap/open space (mm)
-int gf_turn_angle = 0;                // +90 or -90 degrees
-WallSide gf_following_wall = SIDE_UNKNOWN; // Which wall are we following
+float nav_target_distance = 300.0;     // 300mm target distance from wall
+float nav_wall_margin = TOF_MAX_RELIABLE_DISTANCE_MM; // Threshold to detect gap/open space (mm)
+int nav_turn_angle = 0;                // +90 or -90 degrees
+WallSide nav_following_wall = SIDE_UNKNOWN; // Which wall are we following
 
 // Gyro following parameters
-float gf_gyro_target = 0;             // Target gyro angle
-float gf_gyro_kp = 2.5;               // Proportional gain
-float gf_gyro_kd = 0.05;              // Derivative gain
-float gf_last_gyro_error = 0;
-float gf_steering_filter = 0.0f;
+float nav_gyro_target = 0;             // Target gyro angle
+float nav_gyro_kp = 2.5;               // Proportional gain
+float nav_gyro_kd = 0.05;              // Derivative gain
+float nav_last_gyro_error = 0;
+float nav_steering_filter = 0.0f;
 
 // Timing and control
-float gf_turn_start_angle = 0;
-float gf_corner_phase_start_distance = 0;
+float nav_turn_start_angle = 0;
+float nav_corner_phase_start_distance = 0;
 
 // Round counting
-int gf_turn_count = 0;
-float gf_start_angle = 0;
-float gf_start_distance = 0;
-int gf_completed_rounds = 0;
+int nav_turn_count = 0;
+float nav_start_angle = 0;
+float nav_start_distance = 0;
+int nav_completed_rounds = 0;
 
 // Speed parameters
-float gf_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the maximal speed without stalling on the 50:1 motor
+float nav_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the maximal speed without stalling on the 50:1 motor
 
 // Internal logic flags
-bool gf_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
-bool gf_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
-bool gf_obstacle_mode = false;
-uint8_t gf_corner_gap_samples = 0;
-float gf_wall_correction_resume_distance = 0;
+bool nav_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
+bool nav_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
+bool nav_obstacle_mode = false;
+uint8_t nav_corner_gap_samples = 0;
+float nav_wall_correction_resume_distance = 0;
 
 // PD Controller
-float gf_pd_kp = 0.5;                 // Proportional gain
-float gf_pd_kd = 0.01;                // Derivative gain
-float gf_last_distance_error = 0;
+float nav_pd_kp = 0.5;                 // Proportional gain
+float nav_pd_kd = 0.01;                // Derivative gain
+float nav_last_distance_error = 0;
 
 // Telemetry and Debug
-bool gf_debug_enabled = false;
-unsigned long gf_last_debug_time = 0;
+bool nav_debug_enabled = false;
+unsigned long nav_last_debug_time = 0;
 
 // Time tracking
 extern unsigned long current_time;
@@ -101,7 +101,7 @@ float get_followed_wall_distance(WallSide side)
   TofSensor sensor = (side == SIDE_LEFT) ? TOF_LEFT : TOF_RIGHT;
   float raw_dist = get_tof_distance(sensor);
 
-  if (gf_obstacle_mode &&
+  if (nav_obstacle_mode &&
       (raw_dist <= 0 || raw_dist >= TOF_OUT_OF_RANGE_MM))
   {
     float fallback = get_tof_raw_distance(sensor);
@@ -116,20 +116,20 @@ float get_followed_wall_distance(WallSide side)
     return raw_dist;
   }
 
-  float angle_error_deg = get_angle() - gf_gyro_target;
+  float angle_error_deg = get_angle() - nav_gyro_target;
   float incidence_angle_rad = angle_error_deg * PI / 180.0f;
   return raw_dist * cos(incidence_angle_rad);
 }
 
 float get_followed_wall_distance()
 {
-  if (gf_following_wall == SIDE_UNKNOWN)
+  if (nav_following_wall == SIDE_UNKNOWN)
   {
     float dist_l = get_tof_distance(TOF_LEFT);
     float dist_r = get_tof_distance(TOF_RIGHT);
     return (dist_l > dist_r) ? dist_l : dist_r;
   }
-  return get_followed_wall_distance(gf_following_wall);
+  return get_followed_wall_distance(nav_following_wall);
 }
 
 /**
@@ -147,8 +147,8 @@ void log_tof_diagnostics(const char* reason)
   float sig_r = get_tof_signal_rate(TOF_RIGHT);
   float sigma_l = get_tof_sigma(TOF_LEFT);
   float sigma_r = get_tof_sigma(TOF_RIGHT);
-  float current_deg = get_angle()-gf_start_angle;
-  float distance_since_last_state = current_distance - gf_start_distance;
+  float current_deg = get_angle()-nav_start_angle;
+  float distance_since_last_state = current_distance - nav_start_distance;
 
   Serial.print("[STATE CHANGE] "); Serial.println(reason);
   Serial.print("  LEFT:  Dist: "); Serial.print(dist_l, 0); Serial.print(" mm (Raw: "); Serial.print(raw_l, 0); 
@@ -183,26 +183,26 @@ void state_idle()
 void state_following()
 {
   // 0. Dynamic sensor configuration: increase range/sensitivity when side is unknown
-  if (gf_following_wall == SIDE_UNKNOWN && !gf_long_range_active) {
+  if (nav_following_wall == SIDE_UNKNOWN && !nav_long_range_active) {
     sensors_set_tof_timing_budget(300000); // 300ms for long-range discovery
-    gf_long_range_active = true;
-  } else if (gf_following_wall != SIDE_UNKNOWN && gf_long_range_active) {
+    nav_long_range_active = true;
+  } else if (nav_following_wall != SIDE_UNKNOWN && nav_long_range_active) {
     sensors_set_tof_timing_budget(sensors_initial_tof_timing_budget); // Restore initial value
-    gf_long_range_active = false;
+    nav_long_range_active = false;
   }
 
   // 1. Primary: Gyro Heading Control
-  float gyro_error = get_angle() - gf_gyro_target;
+  float gyro_error = get_angle() - nav_gyro_target;
   float safe_loop_time = (last_loop_time > 0.001f) ? last_loop_time : 0.001f;
-  float gyro_derivative = (gyro_error - gf_last_gyro_error) / safe_loop_time;
-  float gyro_pd = gyro_follower_compute_steering(
-      gyro_error, gf_last_gyro_error, safe_loop_time);
-  if (gf_obstacle_mode) {
+  float gyro_derivative = (gyro_error - nav_last_gyro_error) / safe_loop_time;
+  float gyro_pd = navigation_compute_steering(
+      gyro_error, nav_last_gyro_error, safe_loop_time);
+  if (nav_obstacle_mode) {
     gyro_pd = 0.85f * gyro_error + 0.012f * gyro_derivative;
     if (gyro_pd > 24.0f) gyro_pd = 24.0f;
     if (gyro_pd < -24.0f) gyro_pd = -24.0f;
   }
-  gf_last_gyro_error = gyro_error;
+  nav_last_gyro_error = gyro_error;
 
   // 2. Secondary: Wall Distance Correction
   float current_wall_distance = get_followed_wall_distance();
@@ -212,45 +212,45 @@ void state_following()
    * DETECTION LOGIC: Trigger Turn
    * 
    * If the wall disappears (reading exceeds margin), it indicates a corner.
-   * The robot will increment its turn count and transition to GF_TURNING.
+   * The robot will increment its turn count and transition to NAV_TURNING.
    */
   // The initial position can be part-way along the start section, so its
   // first corner needs only a short lockout. After a known corner a new
   // straight is about one metre long; accepting another corner after only
   // 300 mm caused false turns after obstacle manoeuvres.
   float blind_dist =
-      (gf_obstacle_mode && gf_turn_count > 0) ? 650.0f :
-      ((gf_turn_count == 1) ? 600.0f : 300.0f);
-  float wall_margin = gf_long_range_active ? 1500 : gf_wall_margin;
-  bool beyond_blind_distance = gf_start_distance + blind_dist < get_distance();
-  bool heading_plausible = fabs(gyro_error) < (gf_obstacle_mode ? 12.0f : 180.0f);
+      (nav_obstacle_mode && nav_turn_count > 0) ? 650.0f :
+      ((nav_turn_count == 1) ? 600.0f : 300.0f);
+  float wall_margin = nav_long_range_active ? 1500 : nav_wall_margin;
+  bool beyond_blind_distance = nav_start_distance + blind_dist < get_distance();
+  bool heading_plausible = fabs(gyro_error) < (nav_obstacle_mode ? 12.0f : 180.0f);
   bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
   if (beyond_blind_distance && heading_plausible && gap_seen) {
-    if (gf_corner_gap_samples < 255) gf_corner_gap_samples++;
+    if (nav_corner_gap_samples < 255) nav_corner_gap_samples++;
   } else {
-    gf_corner_gap_samples = 0;
+    nav_corner_gap_samples = 0;
   }
 
-  uint8_t required_gap_samples = gf_obstacle_mode ? 4 : 1;
-  if (gf_corner_gap_samples >= required_gap_samples)
+  uint8_t required_gap_samples = nav_obstacle_mode ? 4 : 1;
+  if (nav_corner_gap_samples >= required_gap_samples)
   {
-    gf_corner_gap_samples = 0;
-    if (gf_following_wall == SIDE_UNKNOWN)
+    nav_corner_gap_samples = 0;
+    if (nav_following_wall == SIDE_UNKNOWN)
     {
       // Searching for initial direction
       float dist_left = get_tof_distance(TOF_LEFT);
       float dist_right = get_tof_distance(TOF_RIGHT);
       if (dist_left > wall_margin && dist_left > 0)
       {
-        gf_following_wall = SIDE_LEFT;
-        gf_turn_angle = 90;
+        nav_following_wall = SIDE_LEFT;
+        nav_turn_angle = 90;
         Serial.print("Dist Left: ");
         Serial.println(dist_left);
       }
       else if (dist_right > wall_margin && dist_right > 0)
       {
-        gf_following_wall = SIDE_RIGHT;
-        gf_turn_angle = -90;
+        nav_following_wall = SIDE_RIGHT;
+        nav_turn_angle = -90;
         Serial.print("Dist Right: ");
         Serial.println(dist_right);
       }
@@ -259,19 +259,19 @@ void state_following()
 
       // Side determined. Restore budget immediately.
       sensors_set_tof_timing_budget(sensors_initial_tof_timing_budget);
-      gf_long_range_active = false;
+      nav_long_range_active = false;
     }
     else
     {
-      gf_turn_angle = (gf_following_wall == SIDE_LEFT) ? 90 : -90;
+      nav_turn_angle = (nav_following_wall == SIDE_LEFT) ? 90 : -90;
     }
 
-    gf_turn_count++;
-    gf_completed_rounds = (int)(gf_turn_count / 4);
+    nav_turn_count++;
+    nav_completed_rounds = (int)(nav_turn_count / 4);
 
     log_tof_diagnostics("Corner detected -> TURNING");
-    gf_state = GF_TURNING;
-    gf_turn_start_angle = get_angle();
+    nav_state = NAV_TURNING;
+    nav_turn_start_angle = get_angle();
     return;
   }
 
@@ -282,39 +282,39 @@ void state_following()
    * This term is added to the gyro steering to gently nudge the robot 
    * away from or toward the wall while maintaining heading.
    */
-  if (current_wall_distance > 0 && current_wall_distance < gf_wall_margin)
+  if (current_wall_distance > 0 && current_wall_distance < nav_wall_margin)
   {
-    if (gf_searching_for_wall) {
-      if (current_wall_distance < (gf_target_distance + 100.0)) gf_searching_for_wall = false;
+    if (nav_searching_for_wall) {
+      if (current_wall_distance < (nav_target_distance + 100.0)) nav_searching_for_wall = false;
     }
 
     const bool post_turn_gyro_only =
-        gf_obstacle_mode &&
-        get_distance() < gf_wall_correction_resume_distance;
+        nav_obstacle_mode &&
+        get_distance() < nav_wall_correction_resume_distance;
 
-    if (!gf_searching_for_wall && !post_turn_gyro_only) {
-      float dist_error = current_wall_distance - gf_target_distance;
-      float dist_derivative = (dist_error - gf_last_distance_error) / safe_loop_time;
-      dist_pd = gf_pd_kp * dist_error + gf_pd_kd * dist_derivative;
-      if (gf_obstacle_mode) {
+    if (!nav_searching_for_wall && !post_turn_gyro_only) {
+      float dist_error = current_wall_distance - nav_target_distance;
+      float dist_derivative = (dist_error - nav_last_distance_error) / safe_loop_time;
+      dist_pd = nav_pd_kp * dist_error + nav_pd_kd * dist_derivative;
+      if (nav_obstacle_mode) {
         dist_pd = 0.18f * dist_error + 0.003f * dist_derivative;
         if (dist_pd > 14.0f) dist_pd = 14.0f;
         if (dist_pd < -14.0f) dist_pd = -14.0f;
       }
-      gf_last_distance_error = dist_error;
+      nav_last_distance_error = dist_error;
     }
-    if (gf_completed_rounds >= 3 && gf_start_distance + 500 < get_distance())
+    if (nav_completed_rounds >= 3 && nav_start_distance + 500 < get_distance())
     {
       log_tof_diagnostics("Rounds finished -> STOPPED");
-      gf_state = GF_STOPPED;
+      nav_state = NAV_STOPPED;
     }
 
   }
 
   // Combine Steering: Gyro + Distance Correction
   float total_steering = gyro_pd;
-  if (gf_following_wall == SIDE_LEFT) total_steering -= dist_pd;
-  else if (gf_following_wall == SIDE_RIGHT) total_steering += dist_pd;
+  if (nav_following_wall == SIDE_LEFT) total_steering -= dist_pd;
+  else if (nav_following_wall == SIDE_RIGHT) total_steering += dist_pd;
 
   // Clamp to physical servo limits
   if (total_steering > 60) total_steering = 60;
@@ -327,9 +327,9 @@ void state_following()
   // using the close return from the old wall here pulled the car across the
   // corridor in clockwise runs.
   const bool post_turn_gyro_only =
-      gf_obstacle_mode &&
-      get_distance() < gf_wall_correction_resume_distance;
-  set_speed(post_turn_gyro_only ? 160.0f : gf_normal_speed);
+      nav_obstacle_mode &&
+      get_distance() < nav_wall_correction_resume_distance;
+  set_speed(post_turn_gyro_only ? 160.0f : nav_normal_speed);
 }
 
 /**
@@ -342,41 +342,41 @@ void state_following()
 void state_turning()
 {
   const float cornerSteering =
-      gf_obstacle_mode ? OBSTACLE_CORNER_STEERING : 25.0f;
+      nav_obstacle_mode ? OBSTACLE_CORNER_STEERING : 25.0f;
   set_steering(
-      gf_turn_angle > 0
+      nav_turn_angle > 0
           ? -cornerSteering
           : cornerSteering);
-  if (gf_obstacle_mode)
+  if (nav_obstacle_mode)
   {
     set_speed(
-        gf_turn_count <= 4
+        nav_turn_count <= 4
             ? OBSTACLE_FIRST_LAP_CORNER_SPEED
             : OBSTACLE_LATER_LAP_CORNER_SPEED);
   }
   else
   {
-    set_speed(gf_normal_speed);
+    set_speed(nav_normal_speed);
   }
 
-  if ((get_angle() - gf_turn_start_angle - gf_turn_angle) * gf_turn_angle/fabs(gf_turn_angle) > 0)
+  if ((get_angle() - nav_turn_start_angle - nav_turn_angle) * nav_turn_angle/fabs(nav_turn_angle) > 0)
   {
-    gf_gyro_target += gf_turn_angle;
-    gf_last_gyro_error = 0;
-    gf_searching_for_wall = true;
-    gf_start_distance = get_distance();
-    gf_wall_correction_resume_distance =
-        gf_start_distance + (gf_obstacle_mode ? 300.0f : 0.0f);
-    if (gf_obstacle_mode && gf_turn_count <= 4)
+    nav_gyro_target += nav_turn_angle;
+    nav_last_gyro_error = 0;
+    nav_searching_for_wall = true;
+    nav_start_distance = get_distance();
+    nav_wall_correction_resume_distance =
+        nav_start_distance + (nav_obstacle_mode ? 300.0f : 0.0f);
+    if (nav_obstacle_mode && nav_turn_count <= 4)
     {
-      gf_corner_phase_start_distance = get_distance();
+      nav_corner_phase_start_distance = get_distance();
       log_tof_diagnostics("Turn arc finished -> FIRST-LAP REVERSING");
-      gf_state = GF_CORNER_REVERSING;
+      nav_state = NAV_CORNER_REVERSING;
     }
     else
     {
       log_tof_diagnostics("Turn finished -> FOLLOWING");
-      gf_state = GF_FOLLOWING;
+      nav_state = NAV_FOLLOWING;
     }
     set_steering(0);
   }
@@ -384,14 +384,14 @@ void state_turning()
 
 void state_corner_reversing()
 {
-  const float direction = (gf_turn_angle > 0) ? 1.0f : -1.0f;
+  const float direction = (nav_turn_angle > 0) ? 1.0f : -1.0f;
   const float signed_overshoot =
-      (get_angle() - gf_gyro_target) * direction;
+      (get_angle() - nav_gyro_target) * direction;
   const float reverse_distance =
-      fabsf(get_distance() - gf_corner_phase_start_distance);
+      fabsf(get_distance() - nav_corner_phase_start_distance);
 
   set_steering(
-      gf_turn_angle > 0
+      nav_turn_angle > 0
           ? -OBSTACLE_FIRST_LAP_REVERSE_STEERING
           : OBSTACLE_FIRST_LAP_REVERSE_STEERING);
   set_speed(-OBSTACLE_FIRST_LAP_REVERSE_SPEED);
@@ -403,22 +403,22 @@ void state_corner_reversing()
       reverse_distance >=
           OBSTACLE_FIRST_LAP_REVERSE_MAX_MM)
   {
-    gf_corner_phase_start_distance = get_distance();
-    gf_last_gyro_error = 0;
-    gf_state = GF_CORNER_ALIGNING;
+    nav_corner_phase_start_distance = get_distance();
+    nav_last_gyro_error = 0;
+    nav_state = NAV_CORNER_ALIGNING;
     set_steering(0);
-    Serial.print("[GF] Reverse alignment complete distance=");
+    Serial.print("[NAV] Reverse alignment complete distance=");
     Serial.print(reverse_distance, 0);
     Serial.print(" heading_error=");
-    Serial.println(get_angle() - gf_gyro_target, 1);
+    Serial.println(get_angle() - nav_gyro_target, 1);
   }
 }
 
 void state_corner_aligning()
 {
-  const float heading_error = get_angle() - gf_gyro_target;
+  const float heading_error = get_angle() - nav_gyro_target;
   const float align_distance =
-      fabsf(get_distance() - gf_corner_phase_start_distance);
+      fabsf(get_distance() - nav_corner_phase_start_distance);
 
   float steering = 0.85f * heading_error;
   if (steering > 18.0f) steering = 18.0f;
@@ -436,12 +436,12 @@ void state_corner_aligning()
 
   if (aligned || distance_limit)
   {
-    gf_start_distance = get_distance();
-    gf_wall_correction_resume_distance = gf_start_distance + 200.0f;
-    gf_searching_for_wall = true;
-    gf_last_gyro_error = 0;
-    gf_last_distance_error = 0;
-    gf_state = GF_FOLLOWING;
+    nav_start_distance = get_distance();
+    nav_wall_correction_resume_distance = nav_start_distance + 200.0f;
+    nav_searching_for_wall = true;
+    nav_last_gyro_error = 0;
+    nav_last_distance_error = 0;
+    nav_state = NAV_FOLLOWING;
     set_steering(0);
     log_tof_diagnostics(
         aligned
@@ -462,11 +462,11 @@ void state_stopped()
   stop();
   
   Serial.println("===== GYRO TASK COMPLETE =====");
-  Serial.print("Total turns: "); Serial.print(gf_turn_count);
-  Serial.print(" | Complete rounds: "); Serial.println(gf_completed_rounds);
+  Serial.print("Total turns: "); Serial.print(nav_turn_count);
+  Serial.print(" | Complete rounds: "); Serial.println(nav_completed_rounds);
   
   log_tof_diagnostics("Mission complete -> IDLE");
-  gf_state = GF_IDLE;
+  nav_state = NAV_IDLE;
   robot_logger.write_to_usb();
 }
 
@@ -475,107 +475,107 @@ void state_stopped()
 // PUBLIC INTERFACE
 // ==========================================
 
-void gyro_follower_setup()
+void navigation_setup()
 {
-  gf_state = GF_IDLE;
+  nav_state = NAV_IDLE;
   Serial.println("===== GYRO FOLLOWER INITIALIZED =====");
 }
 
-void gyro_follower_update(bool enabled)
+void navigation_update(bool enabled)
 {
   if (enabled)
   {
-    if (gf_state != gf_last_state) {
-      gf_last_state = gf_state;
-      Serial.print("State: "); Serial.println(gyro_follower_state_string(gf_state));
+    if (nav_state != nav_last_state) {
+      nav_last_state = nav_state;
+      Serial.print("State: "); Serial.println(navigation_state_string(nav_state));
     }
 
-    switch (gf_state)
+    switch (nav_state)
     {
-    case GF_IDLE: state_idle(); break;
-    case GF_FOLLOWING: state_following(); break;
-    case GF_TURNING: state_turning(); break;
-    case GF_CORNER_REVERSING: state_corner_reversing(); break;
-    case GF_CORNER_ALIGNING: state_corner_aligning(); break;
-    case GF_STOPPED: state_stopped(); break;
+    case NAV_IDLE: state_idle(); break;
+    case NAV_FOLLOWING: state_following(); break;
+    case NAV_TURNING: state_turning(); break;
+    case NAV_CORNER_REVERSING: state_corner_reversing(); break;
+    case NAV_CORNER_ALIGNING: state_corner_aligning(); break;
+    case NAV_STOPPED: state_stopped(); break;
     }
   }
 
-  if (gf_debug_enabled) gyro_follower_print_debug();
+  if (nav_debug_enabled) navigation_print_debug();
 }
 
-void gyro_follower_enable()
+void navigation_enable()
 {
   static bool grid_captured = false;
   if (!grid_captured) {
     grid_captured = true;
   }
 
-  gf_start_angle = get_angle();
-  gf_start_distance = current_distance;
-  gf_gyro_target = gf_start_angle;
-  gf_wall_correction_resume_distance = gf_start_distance;
+  nav_start_angle = get_angle();
+  nav_start_distance = current_distance;
+  nav_gyro_target = nav_start_angle;
+  nav_wall_correction_resume_distance = nav_start_distance;
   
   log_tof_diagnostics("Manual enable -> FOLLOWING");
-  gf_state = GF_FOLLOWING;
-  gf_following_wall = SIDE_UNKNOWN;
-  gf_turn_count = 0;
-  gf_completed_rounds = 0;
-  gf_last_distance_error = 0;
-  gf_last_gyro_error = 0;
-  gf_searching_for_wall = false;
-  gf_long_range_active = false;
+  nav_state = NAV_FOLLOWING;
+  nav_following_wall = SIDE_UNKNOWN;
+  nav_turn_count = 0;
+  nav_completed_rounds = 0;
+  nav_last_distance_error = 0;
+  nav_last_gyro_error = 0;
+  nav_searching_for_wall = false;
+  nav_long_range_active = false;
 
   dc_state = DC_ENABLED;
   servo_disabled = false;
-  set_speed(gf_normal_speed);
+  set_speed(nav_normal_speed);
   
-  Serial.print("Initial Task Grid Locked: "); Serial.println(gf_start_angle);
+  Serial.print("Initial Task Grid Locked: "); Serial.println(nav_start_angle);
   Serial.println("Following GYRO heading primary, looking for walls...");
   Serial.println("\n===== GYRO FOLLOWING STARTED =====");
 }
 
-void gyro_follower_disable()
+void navigation_disable()
 {
   log_tof_diagnostics("Manual disable -> IDLE");
-  gf_state = GF_IDLE;
+  nav_state = NAV_IDLE;
   stop();
   set_steering(0);
-  Serial.println("Gyro follower disabled");
+  Serial.println("Navigation controller disabled");
 }
 
-GyroFollowerState gyro_follower_get_state()
+NavigationState navigation_get_state()
 {
-  return gf_state;
+  return nav_state;
 }
 
-const char* gyro_follower_state_string(GyroFollowerState _state)
+const char* navigation_state_string(NavigationState _state)
 {
   switch (_state)
   {
-    case GF_IDLE: return "IDLE";
-    case GF_FOLLOWING: return "FOLLOWING";
-    case GF_TURNING: return "TURNING";
-    case GF_CORNER_REVERSING: return "CORNER_REVERSING";
-    case GF_CORNER_ALIGNING: return "CORNER_ALIGNING";
-    case GF_STOPPED: return "STOPPED";
+    case NAV_IDLE: return "IDLE";
+    case NAV_FOLLOWING: return "FOLLOWING";
+    case NAV_TURNING: return "TURNING";
+    case NAV_CORNER_REVERSING: return "CORNER_REVERSING";
+    case NAV_CORNER_ALIGNING: return "CORNER_ALIGNING";
+    case NAV_STOPPED: return "STOPPED";
     default: return "UNKNOWN";
   }
 }
 
-void gyro_follower_set_debug(bool enable)
+void navigation_set_debug(bool enable)
 {
-  gf_debug_enabled = enable;
-  Serial.println(enable ? "Gyro follower debug ON" : "Gyro follower debug OFF");
+  nav_debug_enabled = enable;
+  Serial.println(enable ? "Navigation controller debug ON" : "Navigation controller debug OFF");
 }
 
-void gyro_follower_reset_filter()
+void navigation_reset_filter()
 {
-  gf_steering_filter = 0.0f;
-  gf_last_gyro_error = 0.0f;
+  nav_steering_filter = 0.0f;
+  nav_last_gyro_error = 0.0f;
 }
 
-float gyro_follower_compute_steering(
+float navigation_compute_steering(
     float heading_error_deg,
     float last_error_deg,
     float dt_s)
@@ -586,138 +586,138 @@ float gyro_follower_compute_steering(
   float gyro_derivative =
       (heading_error_deg - last_error_deg) / dt_s;
   float raw_output =
-      gf_gyro_kp * heading_error_deg +
-      gf_gyro_kd * gyro_derivative;
+      nav_gyro_kp * heading_error_deg +
+      nav_gyro_kd * gyro_derivative;
 
   if (fabsf(raw_output) < 0.25f)
     raw_output = 0.0f;
 
   float alpha = constrain(dt_s / 0.06f, 0.1f, 0.6f);
   float filtered_output =
-      gf_steering_filter +
-      alpha * (raw_output - gf_steering_filter);
+      nav_steering_filter +
+      alpha * (raw_output - nav_steering_filter);
 
   float max_step = 90.0f * dt_s;
-  if (filtered_output - gf_steering_filter > max_step)
-    filtered_output = gf_steering_filter + max_step;
-  else if (filtered_output - gf_steering_filter < -max_step)
-    filtered_output = gf_steering_filter - max_step;
+  if (filtered_output - nav_steering_filter > max_step)
+    filtered_output = nav_steering_filter + max_step;
+  else if (filtered_output - nav_steering_filter < -max_step)
+    filtered_output = nav_steering_filter - max_step;
 
-  gf_steering_filter = filtered_output;
-  return gf_steering_filter;
+  nav_steering_filter = filtered_output;
+  return nav_steering_filter;
 }
 
-float gyro_follower_get_gyro_kp()
+float navigation_get_gyro_kp()
 {
-  return gf_gyro_kp;
+  return nav_gyro_kp;
 }
 
-float gyro_follower_get_gyro_kd()
+float navigation_get_gyro_kd()
 {
-  return gf_gyro_kd;
+  return nav_gyro_kd;
 }
 
-void gyro_follower_print_debug()
+void navigation_print_debug()
 {
-  if (current_time - gf_last_debug_time < 200000)
+  if (current_time - nav_last_debug_time < 200000)
     return;
-  gf_last_debug_time = current_time;
+  nav_last_debug_time = current_time;
 
-  Serial.print("[GF] State: ");
-  Serial.print(gyro_follower_state_string(gf_state));
+  Serial.print("[NAV] State: ");
+  Serial.print(navigation_state_string(nav_state));
   Serial.print(" | Wall: ");
-  Serial.print(gf_following_wall == SIDE_LEFT ? "LEFT" : (gf_following_wall == SIDE_RIGHT ? "RIGHT" : "SEARCH"));
+  Serial.print(nav_following_wall == SIDE_LEFT ? "LEFT" : (nav_following_wall == SIDE_RIGHT ? "RIGHT" : "SEARCH"));
   Serial.print(" | Target: ");
-  Serial.print(gf_gyro_target, 1);
+  Serial.print(nav_gyro_target, 1);
   Serial.print(" | Angle: ");
   Serial.print(get_angle(), 1);
-  if (gf_following_wall != SIDE_UNKNOWN)
+  if (nav_following_wall != SIDE_UNKNOWN)
   {
     Serial.print(" | Dist: ");
     Serial.print(get_followed_wall_distance(), 0);
   }
   Serial.print(" | Round: ");
-  Serial.print(gf_completed_rounds);
+  Serial.print(nav_completed_rounds);
   Serial.print(" | Tof Left: ");
   Serial.print(get_tof_distance(TOF_LEFT), 0);
   Serial.print(" | Tof Right: ");
   Serial.print(get_tof_distance(TOF_RIGHT), 0);
   Serial.print(" | long range active: ");
-  Serial.print(gf_long_range_active);
+  Serial.print(nav_long_range_active);
   Serial.print(" | Distance: ");
   Serial.print(get_distance(), 0);
   Serial.println();
 }
 
-void gyro_follower_set_target_distance(float distance_mm)
+void navigation_set_target_distance(float distance_mm)
 {
-  gf_target_distance = distance_mm;
+  nav_target_distance = distance_mm;
   Serial.print("Wall target distance set to: "); Serial.print(distance_mm); Serial.println(" mm");
 }
 
-void gyro_follower_set_wall_margin(float distance_m)
+void navigation_set_wall_margin(float distance_m)
 {
-  gf_wall_margin = distance_m * 1000.0;
+  nav_wall_margin = distance_m * 1000.0;
   Serial.print("Wall margin set to: "); Serial.print(distance_m); Serial.println(" m");
 }
 
-void gyro_follower_set_pd_gains(float kp, float kd)
+void navigation_set_pd_gains(float kp, float kd)
 {
-  gf_pd_kp = kp;
-  gf_pd_kd = kd;
+  nav_pd_kp = kp;
+  nav_pd_kd = kd;
   Serial.print("Distance PD gains: Kp="); Serial.print(kp); Serial.print(", Kd="); Serial.println(kd);
 }
 
-void gyro_follower_rearm_after_obstacle()
+void navigation_rearm_after_obstacle()
 {
     // Wait until the normal wall has been found again
     // before applying wall-distance correction.
-    gf_searching_for_wall = true;
+    nav_searching_for_wall = true;
 
     // Prevent old controller errors from affecting
     // the first control cycle after avoidance.
-    gf_last_distance_error = 0;
-    gf_last_gyro_error = 0;
+    nav_last_distance_error = 0;
+    nav_last_gyro_error = 0;
 }
 
-float gyro_follower_get_target_heading()
+float navigation_get_target_heading()
 {
-    return gf_gyro_target;
+    return nav_gyro_target;
 }
 
-int gyro_follower_get_turn_count()
+int navigation_get_turn_count()
 {
-    return gf_turn_count;
+    return nav_turn_count;
 }
 
-int gyro_follower_get_turn_angle()
+int navigation_get_turn_angle()
 {
-    return gf_turn_angle;
+    return nav_turn_angle;
 }
 
-WallSide gyro_follower_get_following_wall()
+WallSide navigation_get_following_wall()
 {
-  return gf_following_wall;
+  return nav_following_wall;
 }
 
-void gyro_follower_set_speed(float speed_mm_s)
+void navigation_set_speed(float speed_mm_s)
 {
   if (speed_mm_s < 0)
     speed_mm_s = 0;
 
-  gf_normal_speed = speed_mm_s;
-  Serial.print("Gyro follower speed set to: ");
-  Serial.print(gf_normal_speed, 0);
+  nav_normal_speed = speed_mm_s;
+  Serial.print("Navigation controller speed set to: ");
+  Serial.print(nav_normal_speed, 0);
   Serial.println(" mm/s");
 }
 
-void gyro_follower_set_obstacle_mode(bool enable)
+void navigation_set_obstacle_mode(bool enable)
 {
-  gf_obstacle_mode = enable;
-  gf_corner_gap_samples = 0;
+  nav_obstacle_mode = enable;
+  nav_corner_gap_samples = 0;
 }
 
-void gyro_follower_select_wall(
+void navigation_select_wall(
     WallSide side,
     float target_distance_mm)
 {
@@ -729,15 +729,15 @@ void gyro_follower_select_wall(
   if (target_distance_mm > 350.0f)
     target_distance_mm = 350.0f;
 
-  if (gf_following_wall != side ||
-      fabsf(gf_target_distance - target_distance_mm) > 1.0f)
+  if (nav_following_wall != side ||
+      fabsf(nav_target_distance - target_distance_mm) > 1.0f)
   {
-    gf_following_wall = side;
-    gf_target_distance = target_distance_mm;
-    gf_searching_for_wall = true;
-    gf_last_distance_error = 0;
+    nav_following_wall = side;
+    nav_target_distance = target_distance_mm;
+    nav_searching_for_wall = true;
+    nav_last_distance_error = 0;
 
-    Serial.print("[GF] Planned lane ");
+    Serial.print("[NAV] Planned lane ");
     Serial.print(side == SIDE_LEFT ? "LEFT" : "RIGHT");
     Serial.print(" wall_mm=");
     Serial.println(target_distance_mm, 0);

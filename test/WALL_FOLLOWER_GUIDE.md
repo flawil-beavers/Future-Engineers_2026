@@ -119,7 +119,7 @@ Explanation:
 
 ## Configuration Constants
 
-Edit these in `src/wall_follower.cpp` or use runtime commands:
+Edit these in `src/navigation_controller.cpp` or use runtime commands:
 
 ```cpp
 float wf_target_distance = 300.0;     // Target distance from wall (mm)
@@ -135,7 +135,7 @@ unsigned long wf_turn_duration_ms = 1500;  // 90° turn time (ms)
 **Problem:** Controller is too responsive
 **Solution:** Decrease `Kp` (reduce gain)
 ```cpp
-// In wall_follower.cpp:
+// In navigation_controller.cpp:
 float wf_pd_kp = 0.3;  // was 0.5, reduce responsiveness
 ```
 
@@ -196,7 +196,7 @@ Same logic applies:
 - **During turn:** 150 mm/s (slower for accuracy)
 - **After stop:** 0 mm/s (stationary)
 
-These are set in `wall_follower.cpp` and can be customized.
+These are set in `navigation_controller.cpp` and can be customized.
 
 ## Safety Features
 
@@ -243,5 +243,5 @@ Possible improvements:
 
 ---
 
-**For implementation details:** See [wall_follower.cpp](../src/wall_follower.cpp)
+**For implementation details:** See [navigation_controller.cpp](../src/navigation_controller.cpp)
 **For architecture:** See [ARCHITECTURE.md](ARCHITECTURE.md)

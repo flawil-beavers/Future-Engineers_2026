@@ -6,11 +6,11 @@
 A complete wall-following subsystem that allows the robot to autonomously navigate around obstacles:
 
 **Files Created:**
-- `include/wall_follower.h` - Module interface (state definitions, function declarations)
-- `src/wall_follower.cpp` - Complete implementation (~450 lines)
+- `include/navigation_controller.h` - Module interface (state definitions, function declarations)
+- `src/navigation_controller.cpp` - Complete implementation (~450 lines)
 
 **Files Modified:**
-- `src/main.cpp` - Added wall_follower initialization and update call
+- `src/main.cpp` - Added navigation_controller initialization and update call
 - `src/serial_handler.cpp` - Added 5 new serial commands
 - `include/serial_handler.h` - Updated command documentation
 
@@ -167,13 +167,13 @@ check_serial_available() // Check for commands
 check_stalling()         // Safety check
 update_lasers()          // Read distance sensors ← used by wall follower
 update_gyro()            // Read heading ← used by wall follower
-wall_follower_update()   // Execute wall following logic ← NEW
-drive_loop()             // Motor control (overridden by wall_follower)
+navigation_update()   // Execute wall following logic ← NEW
+drive_loop()             // Motor control (overridden by navigation_controller)
 ```
 
 ### State Management
 - **IDLE State** → No movement, waiting for enable
-- **FOLLOWING/TURNING States** → wall_follower controls motors
+- **FOLLOWING/TURNING States** → navigation_controller controls motors
 - **STOPPED State** → Motors disabled, mission complete
 - **Manual Mode** → When not in FOLLOWING/TURNING/STOPPED
 
@@ -182,7 +182,7 @@ drive_loop()             // Motor control (overridden by wall_follower)
 ### Problem: Robot oscillates left-right
 
 **Cause:** PD gains too high
-**Solution:** Reduce Kp in `wall_follower.cpp`:
+**Solution:** Reduce Kp in `navigation_controller.cpp`:
 ```cpp
 float wf_pd_kp = 0.3;  // was 0.5
 ```
@@ -207,7 +207,7 @@ u350  // 350mm (farther)
 ### Problem: Turns are erratic
 
 **Cause:** Turn duration too short
-**Solution:** Increase turn time in `wall_follower.cpp`:
+**Solution:** Increase turn time in `navigation_controller.cpp`:
 ```cpp
 unsigned long wf_turn_duration_ms = 2000;  // was 1500
 ```
@@ -251,8 +251,8 @@ Expected behavior when running:
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| include/wall_follower.h | 120 | Interface & state definitions |
-| src/wall_follower.cpp | 450 | Full implementation |
+| include/navigation_controller.h | 120 | Interface & state definitions |
+| src/navigation_controller.cpp | 450 | Full implementation |
 | src/main.cpp | 67 | Orchestration (1 line added) |
 | src/serial_handler.cpp | 225 | Serial commands (5 new cases) |
 

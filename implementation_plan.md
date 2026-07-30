@@ -15,7 +15,7 @@ To satisfy the requirements and ensure the robot's control loop speed is not hal
    - The RAM buffer will be flushed to the USB flash drive when:
      - The robot is paused (switch flicked to `LOW`), which triggers `system_disable()`.
      - An error is raised (such as stall detection), which also triggers `system_disable()`.
-     - The robot completes the course (state transitions to `GF_STOPPED`), triggering `state_stopped()`.
+     - The robot completes the course (state transitions to `NAV_STOPPED`), triggering `state_stopped()`.
    - Halting the CPU for a second to perform USB file operations is safe here since the robot has already stopped or is being disabled.
    - **Visual Shutdown/Removal Indicator**: The GIGA R1's onboard RGB LED will light up solid **RED** during the active USB connection/mount/write/unmount sequence (takes < 2 seconds). It will turn off (or turn **GREEN**) when done, signaling that it is safe to power off the robot or unplug the USB stick.
 
@@ -67,7 +67,7 @@ None at this time. The requirements are clear, and the proposed design covers al
 - Call `robot_logger.clear()` in `system_enable()`.
 - Call `robot_logger.write_to_usb()` in `system_disable()`.
 
-#### [MODIFY] [wall_follower.cpp](file:///c:/Users/philk/Documents/GitHub/Future-Engineers_2026/src/wall_follower.cpp)
+#### [MODIFY] [navigation_controller.cpp](file:///c:/Users/philk/Documents/GitHub/Future-Engineers_2026/src/navigation_controller.cpp)
 - Call `robot_logger.write_to_usb()` in `state_stopped()`.
 
 ---

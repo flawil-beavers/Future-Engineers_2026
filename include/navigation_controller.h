@@ -1,5 +1,5 @@
 /**
- * @file wall_follower.h
+ * @file navigation_controller.h
  * @brief Header for the Gyro-Stabilized Wall Follower subsystem.
  * 
  * This module handles autonomous navigation by combining inertial 
@@ -17,16 +17,16 @@
 // ==========================================
 
 /**
- * @enum GyroFollowerState
+ * @enum NavigationState
  * @brief Operational states for the navigation state machine.
  */
-enum GyroFollowerState {
-    GF_IDLE,        ///< System is inactive, waiting for enable command
-    GF_FOLLOWING,   ///< Straight-line navigation using Gyro and ToF correction
-    GF_TURNING,     ///< Executing a 90-degree pivot turn
-    GF_CORNER_REVERSING, ///< First-lap reverse heading correction
-    GF_CORNER_ALIGNING,  ///< First-lap forward alignment
-    GF_STOPPED      ///< Mission complete, final halt state
+enum NavigationState {
+    NAV_IDLE,        ///< System is inactive, waiting for enable command
+    NAV_FOLLOWING,   ///< Straight-line navigation using Gyro and ToF correction
+    NAV_TURNING,     ///< Executing a 90-degree pivot turn
+    NAV_CORNER_REVERSING, ///< First-lap reverse heading correction
+    NAV_CORNER_ALIGNING,  ///< First-lap forward alignment
+    NAV_STOPPED      ///< Mission complete, final halt state
 };
 
 /**
@@ -43,9 +43,9 @@ enum WallSide {
 // EXTERNAL STATE VARIABLES
 // ==========================================
 
-extern GyroFollowerState gf_state;
-extern float gf_target_distance;
-extern float gf_normal_speed;
+extern NavigationState nav_state;
+extern float nav_target_distance;
+extern float nav_normal_speed;
 
 // ==========================================
 // PUBLIC INTERFACE
@@ -54,13 +54,13 @@ extern float gf_normal_speed;
 /**
  * @brief Initializes the gyro follower subsystem variables.
  */
-void gyro_follower_setup();
+void navigation_setup();
 
 /**
  * @brief Main update loop for the navigation logic.
  * @param enabled Whether the autonomous system should be active.
  */
-void gyro_follower_update(bool enabled);
+void navigation_update(bool enabled);
 
 /**
  * @brief Activates the autonomous navigation mode.
@@ -68,36 +68,36 @@ void gyro_follower_update(bool enabled);
  * Sets the initial gyro target to the current heading and transitions 
  * to the following state.
  */
-void gyro_follower_enable();
+void navigation_enable();
 
 /**
  * @brief Deactivates navigation and halts the robot.
  */
-void gyro_follower_disable();
+void navigation_disable();
 
 // Configuration and Telemetry
-void gyro_follower_set_target_distance(float distance_mm);
-void gyro_follower_set_wall_margin(float distance_m);
-void gyro_follower_set_pd_gains(float kp, float kd);
-void gyro_follower_set_debug(bool enable);
-void gyro_follower_set_speed(float speed_mm_s);
-void gyro_follower_set_obstacle_mode(bool enable);
-void gyro_follower_select_wall(
+void navigation_set_target_distance(float distance_mm);
+void navigation_set_wall_margin(float distance_m);
+void navigation_set_pd_gains(float kp, float kd);
+void navigation_set_debug(bool enable);
+void navigation_set_speed(float speed_mm_s);
+void navigation_set_obstacle_mode(bool enable);
+void navigation_select_wall(
     WallSide side,
     float target_distance_mm);
-void gyro_follower_print_debug();
-void gyro_follower_rearm_after_obstacle();
-void gyro_follower_reset_filter();
-float gyro_follower_compute_steering(float heading_error_deg, float last_error_deg, float dt_s);
-float gyro_follower_get_gyro_kp();
-float gyro_follower_get_gyro_kd();
-const char* gyro_follower_state_string(GyroFollowerState _state);
-GyroFollowerState gyro_follower_get_state();
+void navigation_print_debug();
+void navigation_rearm_after_obstacle();
+void navigation_reset_filter();
+float navigation_compute_steering(float heading_error_deg, float last_error_deg, float dt_s);
+float navigation_get_gyro_kp();
+float navigation_get_gyro_kd();
+const char* navigation_state_string(NavigationState _state);
+NavigationState navigation_get_state();
 
-float gyro_follower_get_target_heading();
-int gyro_follower_get_turn_count();
-int gyro_follower_get_turn_angle();
-WallSide gyro_follower_get_following_wall();
+float navigation_get_target_heading();
+int navigation_get_turn_count();
+int navigation_get_turn_angle();
+WallSide navigation_get_following_wall();
 #endif // WALL_FOLLOWER_H
 
 

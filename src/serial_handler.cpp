@@ -34,7 +34,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "obstacle.h"
 #include "course_map.h"
 #include "calibration.h"
@@ -220,17 +220,17 @@ void parseMessage(char *msg)
 
   case 'u':
     // Set wall target distance
-    gyro_follower_set_target_distance(value);
+    navigation_set_target_distance(value);
     break;
 
   case 'i':
     // Toggle wall follower debug output
-    gyro_follower_set_debug(true);
+    navigation_set_debug(true);
     break;
 
   case 'o':
     // Disable wall follower debug output
-    gyro_follower_set_debug(false);
+    navigation_set_debug(false);
     break;
 
   case 'b':

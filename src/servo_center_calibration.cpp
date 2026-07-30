@@ -16,7 +16,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -93,7 +93,7 @@ static void start_center_drive()
 {
     sc_center_target_heading = get_angle();
     sc_center_last_heading_error = 0.0f;
-    gyro_follower_reset_filter();
+    navigation_reset_filter();
     sc_center_weighted_mean = 0.0f;
     sc_center_weight_sum = 0.0f;
     sc_center_weighted_m2 = 0.0f;
@@ -126,9 +126,9 @@ void servo_center_cal_start()
     Serial.println("STRAIGHT SERVO-CENTER CALIBRATION");
     Serial.println("========================================");
     Serial.print("Using gyro-follow steering gains Kp=");
-    Serial.print(gyro_follower_get_gyro_kp(), 3);
+    Serial.print(navigation_get_gyro_kp(), 3);
     Serial.print(", Kd=");
-    Serial.println(gyro_follower_get_gyro_kd(), 3);
+    Serial.println(navigation_get_gyro_kd(), 3);
 
     start_center_drive();
 }
@@ -140,7 +140,7 @@ void servo_center_cal_update()
     }
 
     float heading_error = get_angle() - sc_center_target_heading;
-    float steering_cmd = gyro_follower_compute_steering(heading_error, sc_center_last_heading_error, last_loop_time);
+    float steering_cmd = navigation_compute_steering(heading_error, sc_center_last_heading_error, last_loop_time);
     sc_center_last_heading_error = heading_error;
 
     if (steering_cmd > 60.0f) steering_cmd = 60.0f;

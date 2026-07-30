@@ -8,7 +8,7 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "serial_handler.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "obstacle.h"
 #include "calibration.h"
 #include "position_estimator.h"
@@ -27,7 +27,7 @@ void setup()
     system_interface_setup();
     sensors_setup();
     motor_control_setup();
-    gyro_follower_setup();
+    navigation_setup();
 
     // Load the measured turn-radius model used by dead reckoning.
     float left_coeffs[4] = {

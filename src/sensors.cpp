@@ -14,7 +14,7 @@
 // SENSOR STATE VARIABLES
 // ==========================================
 
-extern bool gf_long_range_active;
+extern bool nav_long_range_active;
 
 // Gyro
 static Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
@@ -131,12 +131,12 @@ void update_gyro()
 static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
   float min_accept_signal = 0.3f;
-  float max_accept_sigma = gf_long_range_active ? 30.0f : 20.0f;
+  float max_accept_sigma = nav_long_range_active ? 30.0f : 20.0f;
   float raw_measured_dist = -1.0f;
   float current_signal_rate = -1.0f;
   float current_sigma = -1.0f;
-  // float min_accept_signal = gf_long_range_active ? 0.23f : 0.3f;
-  // float max_accept_sigma = gf_long_range_active ? 50.0f : 10.0f;
+  // float min_accept_signal = nav_long_range_active ? 0.23f : 0.3f;
+  // float max_accept_sigma = nav_long_range_active ? 50.0f : 10.0f;
 
   uint8_t data_ready = 0;
   if (sensor.VL53L4CX_GetMeasurementDataReady(&data_ready) != VL53L4CX_ERROR_NONE || !data_ready)
@@ -208,7 +208,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // Enforce the 600mm limit: If the detected distance is beyond our reliable range
   // or the sensor hardware reported an out-of-bounds value, treat it as an edge (gap).
   // This forces the value to 9999.0 (TOF_OUT_OF_RANGE_MM) as requested.
-  float detection_limit = gf_long_range_active ? TOF_MAX_LONG_DISTANCE_MM : TOF_MAX_RELIABLE_DISTANCE_MM;
+  float detection_limit = nav_long_range_active ? TOF_MAX_LONG_DISTANCE_MM : TOF_MAX_RELIABLE_DISTANCE_MM;
   if (measured_distance > detection_limit)
   {
     measured_distance = TOF_OUT_OF_RANGE_MM;
@@ -229,7 +229,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
   
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
-  // The wall_follower logic will still treat distances > 600mm as an edge/gap.
+  // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
   out_distance = measured_distance;
 
   // Update signal rate and sigma only if a valid measurement was found
@@ -279,9 +279,9 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
   uint32_t timing_budget_us = 0;
   sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
   sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
-  Serial.print("gf_long_range_active: ");
-  Serial.println(gf_long_range_active);
-  if (gf_long_range_active)
+  Serial.print("nav_long_range_active: ");
+  Serial.println(nav_long_range_active);
+  if (nav_long_range_active)
   {
     timing_budget_us = 300000;
     sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(timing_budget_us);

@@ -8,13 +8,13 @@ Successfully implemented complete autonomous wall-following control system for t
 
 ### Core Implementation
 
-**`include/wall_follower.h`** (120 lines)
+**`include/navigation_controller.h`** (120 lines)
 - State machine definitions (IDLE, FOLLOWING, TURNING, STOPPED)
 - Public interface and function declarations
 - State variable declarations with `extern`
 - Configuration function declarations
 
-**`src/wall_follower.cpp`** (450 lines)
+**`src/navigation_controller.cpp`** (450 lines)
 - State machine implementation
 - PD distance controller logic
 - Turn detection and execution
@@ -49,13 +49,13 @@ Successfully implemented complete autonomous wall-following control system for t
 ### Integration
 
 **`src/main.cpp`**
-- Added `#include "wall_follower.h"`
-- Added `wall_follower_setup()` in `setup()`
-- Added `wall_follower_update()` in main `loop()`
+- Added `#include "navigation_controller.h"`
+- Added `navigation_setup()` in `setup()`
+- Added `navigation_update()` in main `loop()`
 - Reordered loop to update sensors before wall follower
 
 **`src/serial_handler.cpp`**
-- Added `#include "wall_follower.h"`
+- Added `#include "navigation_controller.h"`
 - Added 5 new serial command cases:
   - `w` - Start wall following
   - `z` - Stop wall following
@@ -148,12 +148,12 @@ int turn_speed = 150;                 // During turn: 150 mm/s
 - Reads `current_degree` - gyro heading
 
 ### Serial Handler
-- Routes commands to wall_follower functions
+- Routes commands to navigation_controller functions
 - Provides debug telemetry
 
 ### Main Loop
-- Calls `wall_follower_update()` each iteration
-- Receives motor commands from wall_follower state machine
+- Calls `navigation_update()` each iteration
+- Receives motor commands from navigation_controller state machine
 - Provides sensor data via globals
 
 ## State Transitions
@@ -222,8 +222,8 @@ Possible improvements:
 
 | Category | Count |
 |----------|-------|
-| New .h files | 1 (wall_follower.h) |
-| New .cpp files | 1 (wall_follower.cpp) |
+| New .h files | 1 (navigation_controller.h) |
+| New .cpp files | 1 (navigation_controller.cpp) |
 | Modified files | 2 (main.cpp, serial_handler.cpp, serial_handler.h) |
 | Total lines added | ~450 (implementation) |
 | Documentation pages | 4 |
@@ -239,8 +239,8 @@ Possible improvements:
 
 ## Integration Verification
 
-✅ wall_follower_setup() called in setup()
-✅ wall_follower_update() called in main loop
+✅ navigation_setup() called in setup()
+✅ navigation_update() called in main loop
 ✅ Serial commands routed correctly
 ✅ Motor control functions available
 ✅ Sensor data accessible

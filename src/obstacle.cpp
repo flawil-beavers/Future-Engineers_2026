@@ -3,7 +3,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "course_map.h"
 #include "logger.h"
 
@@ -62,7 +62,7 @@ static uint32_t oc_parking_exit_brake_start_ms = 0;
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
 static float oc_section_start_distance = 0.0f;
-static GyroFollowerState oc_last_navigation_state = GF_IDLE;
+static NavigationState oc_last_navigation_state = NAV_IDLE;
 static bool oc_corner_settling = false;
 static int oc_last_completed_turn = 0;
 static bool oc_known_obstacle_used[
@@ -202,10 +202,10 @@ static bool updateParkingExit()
         }
 
         oc_parking_exit_state = PARKING_EXIT_DONE;
-        gyro_follower_enable();
+        navigation_enable();
         oc_section_start_distance = get_distance();
-        oc_last_navigation_state = gyro_follower_get_state();
-        oc_last_completed_turn = gyro_follower_get_turn_count();
+        oc_last_navigation_state = navigation_get_state();
+        oc_last_completed_turn = navigation_get_turn_count();
 
         Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
         return false;
@@ -403,12 +403,12 @@ static bool updateLearnedLanePlan()
         else
         {
             guessedWall =
-                gyro_follower_get_following_wall();
+                navigation_get_following_wall();
             if (guessedWall == SIDE_UNKNOWN)
                 guessedWall = SIDE_LEFT;
         }
 
-        gyro_follower_select_wall(
+        navigation_select_wall(
             guessedWall,
             OBSTACLE_PLANNED_LANE_WALL_MM);
 
@@ -467,7 +467,7 @@ static bool updateLearnedLanePlan()
 
     if (desiredColor != ColorType::NONE)
     {
-        gyro_follower_select_wall(
+        navigation_select_wall(
             wallForColor(desiredColor),
             OBSTACLE_PLANNED_LANE_WALL_MM);
     }
@@ -477,15 +477,15 @@ static bool updateLearnedLanePlan()
 
 static void updateCourseProgress()
 {
-    const GyroFollowerState navigationState =
-        gyro_follower_get_state();
+    const NavigationState navigationState =
+        navigation_get_state();
 
     if (oc_current_lap == 0 &&
-        oc_last_navigation_state == GF_FOLLOWING &&
-        navigationState == GF_TURNING)
+        oc_last_navigation_state == NAV_FOLLOWING &&
+        navigationState == NAV_TURNING)
     {
         const WallSide wall =
-            gyro_follower_get_following_wall();
+            navigation_get_following_wall();
         if (wall == SIDE_LEFT || wall == SIDE_RIGHT)
         {
             course_map_record_successful_lane(
@@ -497,10 +497,10 @@ static void updateCourseProgress()
     // A new straight section starts only after the gyro-controlled 90 degree
     // turn has completed. This makes the section reference repeatable.
     const int completedTurns =
-        gyro_follower_get_turn_count();
+        navigation_get_turn_count();
 
     if (
-        navigationState == GF_FOLLOWING &&
+        navigationState == NAV_FOLLOWING &&
         completedTurns > oc_last_completed_turn)
     {
         oc_last_completed_turn = completedTurns;
@@ -508,7 +508,7 @@ static void updateCourseProgress()
             (oc_current_section + 1) % COURSE_SECTION_COUNT;
         oc_current_lap =
             static_cast<uint8_t>(
-                gyro_follower_get_turn_count() /
+                navigation_get_turn_count() /
                 COURSE_SECTION_COUNT);
         oc_section_start_distance = get_distance();
         oc_corner_settling = true;
@@ -699,13 +699,13 @@ void printVisionDebug()
         "Open/Obstacle turns: ");
 
     Serial.println(
-        gyro_follower_get_turn_count());
+        navigation_get_turn_count());
 
     Serial.print(
         "Target heading: ");
 
     Serial.println(
-        gyro_follower_get_target_heading());
+        navigation_get_target_heading());
 }
 
 // ============================================================
@@ -1194,8 +1194,8 @@ bool obstacle_avoidance_update(
 
         if (
             !oc_bench_test &&
-            gyro_follower_get_state() !=
-            GF_FOLLOWING)
+            navigation_get_state() !=
+            NAV_FOLLOWING)
         {
             oa_confirm_frames = 0;
 
@@ -1291,7 +1291,7 @@ bool obstacle_avoidance_update(
         // wall follower before taking over steering.
 
         oa_base_heading =
-            gyro_follower_get_target_heading();
+            navigation_get_target_heading();
 
         oa_last_camera_error =
             obstacle->centerX -
@@ -1526,7 +1526,7 @@ bool obstacle_avoidance_update(
 
             // Give the normal wall follower a fresh starting
             // point after the avoidance maneuver.
-            gyro_follower_rearm_after_obstacle();
+            navigation_rearm_after_obstacle();
 
             return false;
         }
@@ -1543,8 +1543,8 @@ bool obstacle_avoidance_update(
 
 void obstacle_challenge_setup()
 {
-    gyro_follower_set_obstacle_mode(true);
-    gyro_follower_set_speed(
+    navigation_set_obstacle_mode(true);
+    navigation_set_speed(
         OBSTACLE_CRUISE_SPEED);
 
     oc_was_enabled =
@@ -1577,7 +1577,7 @@ void obstacle_bench_test_set(bool enable)
 {
     oc_bench_test = enable;
     obstacle_avoidance_reset();
-    gyro_follower_set_speed(
+    navigation_set_speed(
         OBSTACLE_CRUISE_SPEED);
 
     // This is deliberately independent of the physical enable switch.
@@ -1662,9 +1662,9 @@ void obstacle_challenge_update(
         oc_current_lap = 0;
         oc_section_start_distance = get_distance();
         oc_last_navigation_state =
-            gyro_follower_get_state();
+            navigation_get_state();
         oc_last_completed_turn =
-            gyro_follower_get_turn_count();
+            navigation_get_turn_count();
         oc_corner_settling = false;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
@@ -1701,13 +1701,13 @@ void obstacle_challenge_update(
     // distance has elapsed.
     if (
         oc_corner_settling &&
-        gyro_follower_get_state() == GF_FOLLOWING)
+        navigation_get_state() == NAV_FOLLOWING)
     {
         const float settleDistance = obstacleSectionDistance();
         const float headingError =
             fabsf(
                 get_angle() -
-                gyro_follower_get_target_heading());
+                navigation_get_target_heading());
 
         // Vision may already see the next sign, but an Ackermann car must
         // first be nearly parallel to the new section. Otherwise a sign seen
@@ -1731,7 +1731,7 @@ void obstacle_challenge_update(
             return;
         }
 
-        gyro_follower_update(enabled);
+        navigation_update(enabled);
 
         if (
             (settleDistance >=
@@ -1742,7 +1742,7 @@ void obstacle_challenge_update(
                 OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM)
         {
             oc_corner_settling = false;
-            gyro_follower_rearm_after_obstacle();
+            navigation_rearm_after_obstacle();
 
             Serial.print("[OC] Section aligned distance=");
             Serial.print(settleDistance, 0);
@@ -1768,10 +1768,10 @@ void obstacle_challenge_update(
     // --------------------------------------------------------
 
     if (
-        gyro_follower_get_state() !=
-        GF_FOLLOWING)
+        navigation_get_state() !=
+        NAV_FOLLOWING)
     {
-        gyro_follower_update(
+        navigation_update(
             enabled);
 
         return;
@@ -1796,7 +1796,7 @@ void obstacle_challenge_update(
 
     if (!avoiding)
     {
-        gyro_follower_update(
+        navigation_update(
             enabled);
     }
 }

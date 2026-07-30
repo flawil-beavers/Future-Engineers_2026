@@ -8,7 +8,7 @@
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
 #include "pid_autotune.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "obstacle.h"
 #include "logger.h"
 #define Serial robot_logger
@@ -42,18 +42,18 @@ static void stop_mode(RobotMode mode)
         break;
 
     case MODE_OPEN_CHALLENGE:
-        gyro_follower_disable();
+        navigation_disable();
         break;
 
     case MODE_OBSTACLE_CHALLENGE:
         obstacle_challenge_update(false, false);
-        gyro_follower_disable();
-        gyro_follower_set_obstacle_mode(false);
+        navigation_disable();
+        navigation_set_obstacle_mode(false);
         break;
 
     case MODE_OBSTACLE_BENCH:
         obstacle_bench_test_set(false);
-        gyro_follower_set_obstacle_mode(false);
+        navigation_set_obstacle_mode(false);
         break;
 
     case MODE_CAMERA_CALIBRATION:
@@ -90,8 +90,8 @@ static bool start_mode(RobotMode mode)
         break;
 
     case MODE_OPEN_CHALLENGE:
-        gyro_follower_set_obstacle_mode(false);
-        gyro_follower_enable();
+        navigation_set_obstacle_mode(false);
+        navigation_enable();
         break;
 
     case MODE_OBSTACLE_CHALLENGE:
@@ -99,13 +99,13 @@ static bool start_mode(RobotMode mode)
             return false;
         obstacle_bench_test_set(false);
         obstacle_challenge_setup();
-        gyro_follower_enable();
+        navigation_enable();
         break;
 
     case MODE_OBSTACLE_BENCH:
         if (!obstacle_camera_setup())
             return false;
-        gyro_follower_set_obstacle_mode(true);
+        navigation_set_obstacle_mode(true);
         obstacle_bench_test_set(true);
         break;
 
@@ -182,7 +182,7 @@ void mode_update()
         break;
 
     case MODE_OPEN_CHALLENGE:
-        gyro_follower_update(system_enabled);
+        navigation_update(system_enabled);
         drive_loop();
         break;
 

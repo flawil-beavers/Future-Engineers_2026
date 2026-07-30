@@ -5,7 +5,7 @@
 
 #include "motor_control.h"
 #include "config.h"
-#include "wall_follower.h"
+#include "navigation_controller.h"
 #include "mode_manager.h"
 #include "logger.h"
 #define Serial robot_logger
@@ -317,7 +317,7 @@ void system_disable()
   system_enabled = false;
 
   stop(false); 
-  // wall_follower_disable();
+  // navigation_disable();
 
   Serial.println("SYSTEM DISABLED");
   robot_logger.write_to_usb();

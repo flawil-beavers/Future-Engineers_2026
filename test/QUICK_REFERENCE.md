@@ -134,7 +134,7 @@ Edit `include/config.h`:
 | Commands not working | Check serial baud rate (115200 default) |
 | Motor overshoots target | Increase `PID_Kd` to add damping |
 | Motor hunts around target | Decrease `PID_Ki` integral gain || Wall follower not starting | Check sensors working with `v` command first |
-| Robot oscillates | Decrease Kp gain in wall_follower |
+| Robot oscillates | Decrease Kp gain in navigation_controller |
 | Robot doesn't detect gaps | May need to reduce `wf_wall_margin` |
 
 ## Wall Follower Quick Start

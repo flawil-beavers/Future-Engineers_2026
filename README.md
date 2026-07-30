@@ -499,20 +499,20 @@ The steering output is the sum of two PD (Proportional-Derivative) controllers:
 
 # State Machine
 
-Our navigation logic is managed by a robust state machine (`GyroFollowerState`):
+Our navigation logic is managed by a robust state machine (`NavigationState`):
 
 ```text
-GF_IDLE      -> System waiting for start switch or serial command.
-GF_FOLLOWING -> Combined Gyro + ToF PD control. Tracks turns and laps.
-GF_TURNING   -> Executes 90° pivot turns based on gyro integration.
-GF_STOPPED   -> Triggered after 12 turns (3 laps) are completed.
+NAV_IDLE      -> System waiting for start switch or serial command.
+NAV_FOLLOWING -> Combined Gyro + ToF PD control. Tracks turns and laps.
+NAV_TURNING   -> Executes 90° pivot turns based on gyro integration.
+NAV_STOPPED   -> Triggered after 12 turns (3 laps) are completed.
 ```
 
 ### Corner Detection Logic
 
-The robot detects a corner when the followed wall's distance suddenly exceeds the `gf_wall_margin`. It then increments the `gf_turn_count` and transitions to `GF_TURNING`.
+The robot detects a corner when the followed wall's distance suddenly exceeds the `nav_wall_margin`. It then increments the `nav_turn_count` and transitions to `NAV_TURNING`.
 
-After 12 successful turns, the mission is automatically flagged as complete, and the robot enters `GF_STOPPED`.
+After 12 successful turns, the mission is automatically flagged as complete, and the robot enters `NAV_STOPPED`.
 
 ---
 

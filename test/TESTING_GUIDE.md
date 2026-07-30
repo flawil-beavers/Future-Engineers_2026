@@ -252,7 +252,7 @@ i              → Enable debug to see distance error
 3. Servo has dead band
 
 **Solution:**
-Edit `wall_follower.cpp`:
+Edit `navigation_controller.cpp`:
 ```cpp
 float wf_pd_kp = 0.3;  // Reduce from 0.5
 float wf_pd_kd = 0.2;  // Increase from 0.1
@@ -266,7 +266,7 @@ float wf_pd_kd = 0.2;  // Increase from 0.1
 3. Robot moving too fast to detect gap
 
 **Solution:**
-Edit `wall_follower.cpp`:
+Edit `navigation_controller.cpp`:
 ```cpp
 float wf_wall_margin = 0.8;        // Reduce threshold
 unsigned long wf_turn_duration_ms = 2000;  // Increase turn time
