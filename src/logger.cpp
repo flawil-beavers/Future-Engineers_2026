@@ -151,11 +151,24 @@ void USBLogger::write_to_usb() {
         return;
     }
 
-    // 4. Mount FAT filesystem
-    int err = usb_fs.mount(&msd);
+    // 4. Mount FAT filesystem with retry
+    int err = 0;
+    for (int mount_attempt = 0; mount_attempt < 3; mount_attempt++) {
+        err = usb_fs.mount(&msd);
+        if (err == 0) {
+            break;
+        }
+        if (SERIAL_HW) {
+            SERIAL_HW.print("[LOGGER] USB mount attempt ");
+            SERIAL_HW.print(mount_attempt + 1);
+            SERIAL_HW.print(" failed. Error: ");
+            SERIAL_HW.println(err);
+        }
+        delay(100);
+    }
     if (err) {
         if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] USB mount failed. Error: ");
+            SERIAL_HW.print("[LOGGER] USB mount failed after retries. Error: ");
             SERIAL_HW.println(err);
         }
         digitalWrite(LEDR, HIGH);
@@ -178,23 +191,63 @@ void USBLogger::write_to_usb() {
         }
     }
 
-    // 6. Write log buffer to file
-    FILE *f = fopen(session_filepath, "w");
+    // 6. Write log buffer to file in small chunks with error checking
+    // Use append mode so repeated writes in the same run extend the same log file.
+    FILE *f = fopen(session_filepath, "a");
     if (f == NULL) {
         if (SERIAL_HW) {
-            SERIAL_HW.print("[LOGGER] Could not create file: ");
+            SERIAL_HW.print("[LOGGER] Could not open file for append: ");
             SERIAL_HW.println(session_filepath);
         }
     } else {
-        fwrite(log_buffer, 1, buffer_head, f);
+        // Write in small chunks to avoid filesystem buffer overflows
+        static const size_t CHUNK_SIZE = 512;
+        size_t total_written = 0;
+        size_t remaining = buffer_head;
+        const char *src = log_buffer;
+
+        while (remaining > 0) {
+            size_t to_write = (remaining < CHUNK_SIZE) ? remaining : CHUNK_SIZE;
+            size_t written = fwrite(src, 1, to_write, f);
+            total_written += written;
+            
+            if (written < to_write) {
+                // Write failed or truncated — report and stop
+                if (SERIAL_HW) {
+                    SERIAL_HW.print("[LOGGER] WARNING: fwrite truncated at byte ");
+                    SERIAL_HW.print(total_written);
+                    SERIAL_HW.print(" / ");
+                    SERIAL_HW.println(buffer_head);
+                }
+                break;
+            }
+            
+            src += written;
+            remaining -= written;
+        }
+        
         if (buffer_overflow) {
             fprintf(f, "\n*** WARNING: LOG BUFFER OVERFLOW - SOME EARLY LOGS WERE LOST ***\n");
         }
+        
+        // Flush to ensure data is written before unmount
+        fflush(f);
         fclose(f);
+        
         if (SERIAL_HW) {
             SERIAL_HW.print("[LOGGER] Log saved to ");
-            SERIAL_HW.println(session_filepath);
+            SERIAL_HW.print(session_filepath);
+            SERIAL_HW.print(" (");
+            SERIAL_HW.print(total_written);
+            SERIAL_HW.print(" / ");
+            SERIAL_HW.print(buffer_head);
+            SERIAL_HW.println(" bytes written)");
         }
+        
+        // Clear buffer after successful write to avoid re-writing stale data
+        buffer_head = 0;
+        buffer_overflow = false;
+        log_buffer[0] = '\0';
     }
 
     // 7. Safely unmount and power down USB port

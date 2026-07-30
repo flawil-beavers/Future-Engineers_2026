@@ -22,6 +22,9 @@
  *   m         : Master enable (motors + steering)
  *   w         : Wall follower START
  *   z         : Wall follower STOP
+ *   b1/b0     : Stationary obstacle bench test ON/OFF
+ *   c         : Print camera-center HSV for colour calibration
+ *   j         : Print learned obstacle course map
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Enable wall follower debug output
  *   o         : Disable wall follower debug output

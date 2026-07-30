@@ -104,3 +104,144 @@
 #define EN_STATE_TRUE_MSG "enable start"
 #define EN_STATE_FALSE_MSG "enable stop"
 
+// ==========================================
+// OBSTACLE AVOIDANCE
+// ==========================================
+
+// Optional start manoeuvre for an Obstacle Challenge run that begins inside
+// the parking lot. Set to false when starting in the middle zone above it.
+// This flag has no effect on the Open Challenge.
+constexpr bool OBSTACLE_PARKING_EXIT_ENABLED = true;
+
+// Development mode: execute only the parking exit and stop afterwards.
+// Set to false once the isolated manoeuvre has been tuned successfully.
+constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = false;
+
+// The parking lot is 200 mm wide and the Obstacle track is 1000 mm wide.
+// With the inner edge of the 120 mm wide car placed at the parking lot's open
+// edge, its centre starts about 140 mm from the outer wall. The first three
+// tests ended 60-80 mm beyond the track centre, so the outward arc is reduced.
+// The counter-arc is gyro-terminated because the left/right steering radii and
+// servo transition distances are not identical in practice.
+#define OBSTACLE_PARKING_EXIT_STEERING 40
+#define OBSTACLE_PARKING_EXIT_SPEED 120
+#define OBSTACLE_PARKING_EXIT_COUNTER_SPEED 80
+// Separate calibration is intentional: the measured Ackermann radii and the
+// servo linkage are not perfectly symmetric.
+#define OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM 239.0f
+#define OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM 250.0f
+#define OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM 180.0f
+#define OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM 400.0f
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG 30.0f
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED 50
+#define OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING 8.0f
+#define OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG 2.0f
+#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS 450
+#define OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS 250
+#define OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM 80.0f
+
+// Camera processing
+#define OBSTACLE_CAMERA_INTERVAL_MS 50
+
+// Detection validation
+#define OBSTACLE_RED_MIN_AREA 300
+#define OBSTACLE_RED_MIN_HEIGHT 21
+#define OBSTACLE_GREEN_MIN_AREA 400
+#define OBSTACLE_GREEN_MIN_HEIGHT 21
+#define OBSTACLE_CONFIRM_FRAMES 2
+#define OBSTACLE_LOST_FRAMES 3
+
+// Desired obstacle positions inside the 320 px image
+// Red must stay on the LEFT -> robot passes on the right
+#define OBSTACLE_RED_TARGET_X 120
+
+// Green must stay on the RIGHT -> robot passes on the left
+#define OBSTACLE_GREEN_TARGET_X 200
+
+// Camera steering
+#define OBSTACLE_CAMERA_KP 0.10f
+#define OBSTACLE_HEADING_KP 0.30f
+#define OBSTACLE_MAX_STEERING 20.0f
+
+// Start slowly while tuning
+#define OBSTACLE_AVOID_SPEED 160
+#define OBSTACLE_CRUISE_SPEED 220
+
+// Continue around obstacle after camera loses it
+#define OBSTACLE_PASS_STEERING 8.0f
+#define OBSTACLE_PASS_DISTANCE_MM 60.0f
+
+// Return to original course heading
+#define OBSTACLE_RECOVER_KP 1.0f
+#define OBSTACLE_RECOVER_MAX_STEERING 18.0f
+#define OBSTACLE_RECOVER_SPEED 160
+#define OBSTACLE_RECOVER_TOLERANCE_DEG 3.0f
+
+// Prevent detecting the same obstacle immediately again
+#define OBSTACLE_REARM_DISTANCE_MM 150.0f
+
+// Side-barrier protection while camera avoidance owns the steering.
+#define OBSTACLE_WALL_GUARD_DISTANCE_MM 170.0f
+#define OBSTACLE_WALL_GUARD_KP 0.12f
+#define OBSTACLE_WALL_GUARD_MAX_STEERING 18.0f
+
+// A block must extend this far down in the logical 320x240 image.
+#define OBSTACLE_MIN_BOTTOM_Y 100
+
+// Upright WRO obstacle blocks are taller than they are wide. This rejects
+// broad greenish background regions and blobs merged with the horizon.
+#define OBSTACLE_MAX_WIDTH_HEIGHT_RATIO 1.25f
+
+// A new manoeuvre may only start from a reasonably complete pillar. Once a
+// pillar is confirmed, the separate tracking rules remain tolerant at edges.
+#define OBSTACLE_START_MIN_X 30
+#define OBSTACLE_START_MAX_X 290
+#define OBSTACLE_MAX_START_WIDTH 80
+#define OBSTACLE_MAX_START_HEIGHT 120
+
+// After every 90 degree corner, let the normal gyro controller remove turn
+// overshoot before camera avoidance can take steering priority.
+#define OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM 100.0f
+#define OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM 300.0f
+#define OBSTACLE_CORNER_SETTLE_HEADING_DEG 4.0f
+#define OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG 6.0f
+
+// Measured Ackermann geometry:
+// servo -40 -> R ~= 154.6 mm -> 90 degree arc ~= 242.8 mm
+// servo +40 -> R ~= 158.8 mm -> 90 degree arc ~= 249.4 mm
+#define OBSTACLE_CORNER_STEERING 40.0f
+#define OBSTACLE_FIRST_LAP_CORNER_SPEED 140.0f
+#define OBSTACLE_LATER_LAP_CORNER_SPEED 180.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_SPEED 80.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_STEERING 40.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_MIN_MM 25.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_MAX_MM 55.0f
+#define OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG 2.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_SPEED 120.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_MIN_MM 120.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_MAX_MM 260.0f
+#define OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG 3.0f
+
+// Learned-lap lane planner. Official signs sit roughly 400 mm from a wall;
+// a 190 mm vehicle-centre offset leaves useful clearance on both sides.
+#define OBSTACLE_PLANNED_LANE_WALL_MM 190.0f
+#define OBSTACLE_PLANNED_SWITCH_AFTER_MM 200.0f
+#define OBSTACLE_PLANNED_NEXT_SECTION_MM 180.0f
+#define OBSTACLE_START_SECTION_SWITCH_MM 500.0f
+#define OBSTACLE_START_SECTION_NEXT_PLAN_MM 750.0f
+
+
+
+// ==========================================
+// CHALLENGE MODE
+// ==========================================
+
+enum ChallengeMode : uint8_t
+{
+    CHALLENGE_OPEN,
+    CHALLENGE_OBSTACLE
+};
+
+// Change only this line before a run:
+constexpr ChallengeMode CHALLENGE_MODE =
+    CHALLENGE_OBSTACLE;

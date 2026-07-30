@@ -1,13 +1,13 @@
 /**
  * @file main.cpp
  * @brief Main application entry point
- * 
+ *
  * Organizes robot control subsystems:
  *   - Motor control (DC motor, steering servo, PID)
  *   - Sensor management (Gyro, ToF distance sensors)
  *   - Serial communication and command parsing
  *   - Autonomous wall-following behavior
- * 
+ *
  * The main loop coordinates all subsystems in a clean, modular architecture.
  */
 
@@ -17,6 +17,10 @@
 #include "sensors.h"
 #include "serial_handler.h"
 #include "wall_follower.h"
+#include "obstacle.h"
+
+CameraSystem camera;
+Vision vision;
 #include "logger.h"
 // Redirect all Serial output in this file through the USB logger
 #define Serial robot_logger
@@ -26,59 +30,156 @@
 // ==========================================
 
 /**
- * @brief System entry point. Initializes hardware and starts the 
+ * @brief System entry point. Initializes hardware and starts the
  * control loop interface.
  */
+
 void setup()
 {
-  Serial.println("\n===== ROBOT INITIALIZATION START =====\n");
+    Serial.println(
+        "\n===== ROBOT INITIALIZATION START =====\n"
+    );
 
-  // Initialize each subsystem in order
-  system_interface_setup(); // Sets up Enable Switch and Serial
-  sensors_setup();
-  motor_control_setup();
-  gyro_follower_setup();
-  
-  Serial.println("\n===== INITIALIZATION COMPLETE =====\n");
-  // Fully enable system if switch is already HIGH at startup
-  if (system_enabled)
-  {
-    system_enable();
-  }
+
+    // Common hardware
+    system_interface_setup();
+
+    sensors_setup();
+
+    motor_control_setup();
+
+    gyro_follower_setup();
+
+
+    // ======================================
+    // OBSTACLE CHALLENGE ONLY
+    // ======================================
+
+    if (
+        CHALLENGE_MODE ==
+        CHALLENGE_OBSTACLE
+    )
+    {
+        if (!camera.begin())
+        {
+            Serial.println(
+                "Camera failed!"
+            );
+
+            while (true)
+                ;
+        }
+
+
+        Serial.println(
+            "Camera initialized."
+        );
+
+
+        vision.begin();
+
+
+        Serial.println(
+            "Vision initialized."
+        );
+
+
+        obstacle_challenge_setup();
+    }
+
+
+    Serial.println(
+        "\n===== INITIALIZATION COMPLETE =====\n"
+    );
+
+
+    if (system_enabled)
+    {
+        system_enable();
+    }
 }
+
 
 // ==========================================
 // MAIN LOOP - Coordinate all subsystems
 // ==========================================
 
 /**
- * @brief Continuous execution loop. Manages sensor updates, 
+ * @brief Continuous execution loop. Manages sensor updates,
  * state machines, and low-level motor control.
  */
 void loop()
 {
-  // Update timing and distances
-  loop_updater();
+    // ======================================
+    // COMMON
+    // ======================================
 
-  // Handle enable switch state
-  handle_enable_switch();
+    loop_updater();
 
-  // Check for and process serial commands
-  check_serial_available();
 
-  // Monitor motor health
-  check_stalling();
+    handle_enable_switch();
 
-  // Update distance sensors (needed for all subsystems)
-  update_lasers();
-  update_gyro();
 
-  // Update wall follower (internal logic handles suppression but allows telemetry)
-  gyro_follower_update(system_enabled);
-  
-  // Execute motor control logic (may be overridden by wall_follower)
-  drive_loop();
+    check_serial_available();
 
-  // Optional: Print debug info (uncomment to enable)
-  // pid_config_print();
+
+    check_stalling();
+
+
+    update_lasers();
+
+
+    update_gyro();
+
+
+    // ======================================
+    // OPEN CHALLENGE
+    // ======================================
+
+    if (
+        CHALLENGE_MODE ==
+        CHALLENGE_OPEN
+    )
+    {
+        // Exactly the existing Open controller.
+
+        gyro_follower_update(
+            system_enabled
+        );
+    }
+
+
+    // ======================================
+    // OBSTACLE CHALLENGE
+    // ======================================
+
+    else
+    {
+        const bool newCameraFrame =
+            updateCameraVision();
+
+
+        obstacle_challenge_update(
+            system_enabled,
+            newCameraFrame
+        );
+
+
+        // Large camera log writes can delay the gyro-controlled parking exit.
+        if (!obstacle_parking_exit_active())
+        {
+            // Only during development.
+            printVisionDebug();
+        }
+    }
+
+
+    // ======================================
+    // MOTOR OUTPUT
+    // ======================================
+
+    drive_loop();
 }
+
+
+
