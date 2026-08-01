@@ -19,9 +19,12 @@ PIDAtuneResult pid_atune_result;
 static float start_distance = 0.0f;
 static float last_distance_sample = 0.0f;
 static unsigned long start_time_us = 0;
+static unsigned long accel_start_us = 0;
 static unsigned long target_stable_since_us = 0;
 static unsigned long last_zero_cross_us = 0;
+static unsigned long last_accel_debug_us = 0;
 static float baseline_dc = 0.0f;
+static float relay_reference_speed = 0.0f;
 static int warmup_crossings = 0;
 static int measured_crossings = 0;
 static float current_half_cycle_peak = 0.0f;
@@ -176,6 +179,8 @@ void pid_autotune_start()
     start_distance = current_distance;
     last_distance_sample = current_distance;
     start_time_us = micros();
+    accel_start_us = start_time_us;
+    last_accel_debug_us = start_time_us;
     target_stable_since_us = 0;
     last_zero_cross_us = 0;
     warmup_crossings = 0;
@@ -190,11 +195,15 @@ void pid_autotune_start()
         MOTOR_MIN_DC +
         ((float)PID_AT_TARGET_SPEED / 500.0f) *
         ((float)MOTOR_MAX_DC - MOTOR_MIN_DC);
+    // The baseline must be able to reach the target speed. Capping it any
+    // lower would prevent the relay from ever starting if the motor needs
+    // more than MAX_DC-RELAY_AMPLITUDE PWM to hold the target.
     baseline_dc = constrain(
         baseline_dc,
         MOTOR_MIN_DC + PID_AT_RELAY_AMPLITUDE,
-        MOTOR_MAX_DC - PID_AT_RELAY_AMPLITUDE);
+        MOTOR_MAX_DC);
 
+    relay_reference_speed = 0.0f;
     pid_integral = 0.0f;
     last_error = 0.0f;
     dc_state = DC_ENABLED;
@@ -240,33 +249,78 @@ void pid_autotune_update()
     }
 
     if (pid_atune_state == AT_ACCELERATING) {
-        // Slowly identify the PWM needed to hold the requested speed.
+        // Ramp the baseline toward the PWM needed to hold the target speed.
+        // The gain and step clamp are chosen to reach the target within a
+        // couple of seconds even with a large initial error.
         baseline_dc +=
-            constrain(error * 0.30f * last_loop_time, -1.0f, 1.0f);
+            constrain(error * 1.2f * last_loop_time, -2.5f, 2.5f);
         baseline_dc = constrain(
             baseline_dc,
             MOTOR_MIN_DC + PID_AT_RELAY_AMPLITUDE,
-            MOTOR_MAX_DC - PID_AT_RELAY_AMPLITUDE);
+            MOTOR_MAX_DC);
         set_dc(baseline_dc, false);
 
         if (fabsf(error) <= PID_AT_HYSTERESIS_MMS) {
             if (target_stable_since_us == 0)
                 target_stable_since_us = now;
-            if (now - target_stable_since_us >= 400000) {
-                pid_atune_state = AT_RELAY_POS;
-                last_zero_cross_us = now;
-                current_half_cycle_peak = 0.0f;
-                Serial.print("Baseline learned: ");
-                Serial.println(baseline_dc, 1);
-                Serial.println("Relay oscillation started.");
-            }
         } else {
             target_stable_since_us = 0;
+        }
+
+        // Periodic debug output so the acceleration behaviour is visible on
+        // the serial monitor while tuning on real hardware.
+        if (now - last_accel_debug_us >= 1000000) {
+            last_accel_debug_us = now;
+            Serial.print("Accel: speed=");
+            Serial.print(actual_speed, 1);
+            Serial.print(" mm/s, error=");
+            Serial.print(error, 1);
+            Serial.print(" mm/s, baseline=");
+            Serial.println(baseline_dc, 1);
+        }
+
+        // Fast path: start the relay once the speed has been settled at the
+        // target for a short while.
+        if (target_stable_since_us != 0 &&
+            now - target_stable_since_us >= 400000) {
+            pid_atune_state = AT_RELAY_POS;
+            relay_reference_speed = actual_speed;
+            last_zero_cross_us = now;
+            current_half_cycle_peak = 0.0f;
+            Serial.print("Baseline learned: ");
+            Serial.println(baseline_dc, 1);
+            Serial.print("Relay reference speed: ");
+            Serial.println(relay_reference_speed, 1);
+            Serial.println("Relay oscillation started.");
+            return;
+        }
+
+        // Fallback: if the target speed cannot be reached (motor/battery/load
+        // limits), force the relay to start after the acceleration timeout so
+        // tuning still completes at whatever speed the motor can sustain.
+        if (now - accel_start_us >= PID_AT_ACCEL_TIMEOUT_US) {
+            if (actual_speed < PID_AT_MIN_RELAY_SPEED_MMS) {
+                abort_tune("speed too low to tune");
+                return;
+            }
+            pid_atune_state = AT_RELAY_POS;
+            relay_reference_speed = actual_speed;
+            last_zero_cross_us = now;
+            current_half_cycle_peak = 0.0f;
+            Serial.print("Acceleration timeout; forcing relay start at ");
+            Serial.print(relay_reference_speed, 1);
+            Serial.println(" mm/s.");
+            Serial.print("Baseline learned: ");
+            Serial.println(baseline_dc, 1);
+            Serial.println("Relay oscillation started.");
         }
         return;
     }
 
-    const float absolute_error = fabsf(error);
+    // Measure the oscillation amplitude relative to where the relay
+    // actually oscillates, not the nominal target speed.
+    const float absolute_error =
+        fabsf(relay_reference_speed - actual_speed);
     if (absolute_error > current_half_cycle_peak)
         current_half_cycle_peak = absolute_error;
 
@@ -275,7 +329,7 @@ void pid_autotune_update()
             baseline_dc + PID_AT_RELAY_AMPLITUDE,
             false);
         if (actual_speed >=
-            PID_AT_TARGET_SPEED + PID_AT_HYSTERESIS_MMS) {
+            relay_reference_speed + PID_AT_HYSTERESIS_MMS) {
             record_zero_crossing();
             pid_atune_state = AT_RELAY_NEG;
         }
@@ -284,7 +338,7 @@ void pid_autotune_update()
             baseline_dc - PID_AT_RELAY_AMPLITUDE,
             false);
         if (actual_speed <=
-            PID_AT_TARGET_SPEED - PID_AT_HYSTERESIS_MMS) {
+            relay_reference_speed - PID_AT_HYSTERESIS_MMS) {
             record_zero_crossing();
             pid_atune_state = AT_RELAY_POS;
         }

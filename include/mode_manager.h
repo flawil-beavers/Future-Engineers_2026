@@ -39,6 +39,7 @@ enum RobotMode {
     MODE_TURN_RADIUS_CAL,       ///< Turn-radius calibration
     MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
+    MODE_MOTOR_MIN_CAL,         ///< Motor minimum DC calibration
 };
 
 enum ModeResult {

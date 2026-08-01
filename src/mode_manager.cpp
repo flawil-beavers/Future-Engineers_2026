@@ -8,6 +8,7 @@
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
 #include "pid_autotune.h"
+#include "motor_min_calibration.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
 #include "logger.h"
@@ -81,6 +82,11 @@ static void stop_mode(RobotMode mode)
         pid_autotune_stop();
         break;
 
+    case MODE_MOTOR_MIN_CAL:
+        stop(false);
+        motor_min_cal_stop();
+        break;
+
     case MODE_NONE:
         break;
     }
@@ -136,6 +142,10 @@ static bool start_mode(RobotMode mode)
 
     case MODE_PID_AUTOTUNE:
         pid_autotune_start();
+        break;
+
+    case MODE_MOTOR_MIN_CAL:
+        motor_min_cal_start();
         break;
 
     case MODE_NONE:
@@ -250,6 +260,13 @@ static ModeResult update_active_mode()
             ? MODE_RESULT_FAILED
             : MODE_RESULT_COMPLETED;
 
+    case MODE_MOTOR_MIN_CAL:
+        motor_min_cal_update();
+        drive_loop();
+        return motor_min_cal_state == MC_DONE
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
+
     case MODE_NONE:
         // Service steering output while stopped without energizing the motor.
         drive_loop();
@@ -352,6 +369,7 @@ const char* mode_name(RobotMode mode)
     case MODE_TURN_RADIUS_CAL:    return "TURN_RADIUS_CAL";
     case MODE_SERVO_CENTER_CAL:   return "SERVO_CENTER_CAL";
     case MODE_PID_AUTOTUNE:       return "PID_AUTOTUNE";
+    case MODE_MOTOR_MIN_CAL:      return "MOTOR_MIN_CAL";
     default:                      return "UNKNOWN";
     }
 }

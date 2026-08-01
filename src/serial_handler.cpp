@@ -25,6 +25,7 @@
  *   C      : TURN RADIUS CALIBRATION mode
  *   B      : SERVO CENTER CALIBRATION mode
  *   y      : PID AUTOTUNE mode
+ *   M      : MOTOR MIN DC CALIBRATION mode
  *   z      : STOP active mode
  *   u<val> : Set wall distance (mm)
  *   i      : Print serial command information
@@ -65,6 +66,7 @@ static void print_serial_command_info()
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
   Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
   Serial.println("y          : Start PID AUTOTUNE mode");
+  Serial.println("M          : Start MOTOR MIN DC CALIBRATION mode");
   Serial.println("p / r      : Pause / resume current mode");
   Serial.println("z          : Stop active and pending mode");
   Serial.println("d<speed>   : Manual drive speed in mm/s");
@@ -302,6 +304,11 @@ void parseMessage(char *msg)
   case 'y':
     // Start PID autotune.
     mode_switch(MODE_PID_AUTOTUNE);
+    break;
+
+  case 'M':
+    // Start motor minimum DC calibration (uppercase avoids manual mode).
+    mode_switch(MODE_MOTOR_MIN_CAL);
     break;
 
   case 't':

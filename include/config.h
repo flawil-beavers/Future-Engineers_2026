@@ -46,7 +46,7 @@ constexpr auto ENCODER_COUNTS_PER_WHEEL_REV = (28.0 / 20.0 * ENCODER_COUNTS_PER_
 constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
 
 constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
-constexpr auto MOTOR_MIN_DC = (0.34 * 255); // Min duty cycle to overcome static friction
+constexpr auto MOTOR_MIN_DC = 70; // Min duty cycle to overcome static friction
 constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 
 // ==========================================
@@ -78,15 +78,22 @@ constexpr auto DEFAULT_ACCELERATION = 700; // mm/s^2
 // ==========================================
 // PID AUTOTUNE PARAMETERS
 // ==========================================
-constexpr auto PID_AT_RELAY_AMPLITUDE = 40;
+constexpr auto PID_AT_RELAY_AMPLITUDE = 20;
 constexpr auto PID_AT_TARGET_SPEED = 250;
 constexpr auto PID_AT_MIN_CYCLES = 3;
-constexpr auto PID_AT_MAX_DISTANCE_MM = 1000;
+constexpr auto PID_AT_MAX_DISTANCE_MM = 2000;
 constexpr auto PID_AT_MAX_TIME_US = 30000000;
 constexpr float PID_AT_HYSTERESIS_MMS = 8.0f;
 constexpr int PID_AT_WARMUP_CROSSINGS = 4;
-constexpr float PID_AT_MAX_PERIOD_VARIATION = 0.35f;
+constexpr float PID_AT_MAX_PERIOD_VARIATION = 0.50f;
 constexpr float PID_AT_MIN_SPEED_AMPLITUDE = 8.0f;
+// If the target speed cannot be reached (motor/battery/load limits), force
+// the relay to start after this time so tuning still completes at whatever
+// speed the motor can actually sustain.
+constexpr unsigned long PID_AT_ACCEL_TIMEOUT_US = 4000000;
+// Safety net: abort if a forced relay start happens at a near-zero speed,
+// because tuning a stalled robot would produce meaningless gains.
+constexpr float PID_AT_MIN_RELAY_SPEED_MMS = 40.0f;
 
 // ==========================================
 // SENSOR UPDATE RATES
@@ -128,6 +135,42 @@ constexpr auto CAL_STARTUP_DELAY_MS = 5000;
 constexpr auto CAL_CENTER_DISTANCE_MM = 2000.0f;
 constexpr auto CAL_CENTER_MAX_TIME_MS = 15000;
 constexpr auto CAL_CENTER_DEBUG_INTERVAL_MS = 500;
+
+// ==========================================
+// MOTOR MIN DC CALIBRATION
+// ==========================================
+// Three-phase drive-verified calibration for the minimum PWM duty cycle.
+// Phase 1 locates the stall threshold (encoder twitch). Phase 2 finds a
+// DC that actually drives the robot (coarse steps of 5). Phase 3 fine-tunes
+// the drive-verified DC (steps of 1). The final result is Phase 3's value.
+
+// Phase 1 (stall locator): fast ramp from a base value
+constexpr auto MC_P1_BASE_DC = 50;              // Starting DC (skips the definitely-stalled range)
+constexpr auto MC_P1_STEP_DC = 2;               // DC increment per ramp step
+constexpr auto MC_P1_STEP_MS = 50;              // Time per ramp step (ms)
+constexpr auto MC_P1_TIMEOUT_MS = 2000;         // Max stall time per phase (ms)
+
+// Phase 2 (coarse drive-find): starts at P1 threshold, steps by 5 until the
+// robot actually drives (>= MC_DRIVE_MIN_MM in one window).
+constexpr auto MC_P2_OFFSET_DC = 0;             // Start at P1 threshold
+constexpr auto MC_P2_STEP_DC = 5;               // Coarse step per failed window
+constexpr auto MC_P2_DRIVE_WINDOW_MS = 1000;    // Window to measure drive distance (ms)
+constexpr auto MC_P2_TIMEOUT_MS = 10000;        // Total phase 2 time (ms)
+
+// Phase 3 (fine drive-verify): starts a few DC below P2 result, steps by 1
+// to find the exact drive-verified DC.
+constexpr auto MC_P3_OFFSET_DC = 5;             // Start this many DC below P2 result
+constexpr auto MC_P3_STEP_DC = 1;               // Fine step per failed window
+constexpr auto MC_P3_DRIVE_WINDOW_MS = 1500;    // Window to measure drive distance (ms)
+constexpr auto MC_P3_TIMEOUT_MS = 15000;        // Total phase 3 time (ms)
+
+// Shared drive criteria and safety limits
+constexpr auto MC_DRIVE_MIN_MM = 50.0f;         // Min distance per window = "really driving" (mm)
+constexpr auto MC_MAX_DC = 150;                 // Hard cap on DC during calibration (below MOTOR_MAX_DC)
+constexpr auto MC_MOVEMENT_THRESHOLD_MM = 1.0f; // Encoder distance that confirms movement (mm)
+constexpr auto MC_SETTLE_MS = 1000;             // Settle/cooling time between phases (ms)
+constexpr auto MC_MAX_PHASE_DISTANCE_MM = 100.0f;  // Per-phase distance limit (mm)
+constexpr auto MC_MAX_TOTAL_DISTANCE_MM = 2000.0f; // Total distance limit across all phases (mm)
 
 // Turn-radius polynomial: R(delta) = a0 + a1|delta| + a2|delta|^2 + a3|delta|^3
 constexpr auto CAL_LEFT_A0 = 1481.4659f;
