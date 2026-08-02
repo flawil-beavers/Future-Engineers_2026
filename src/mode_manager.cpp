@@ -26,7 +26,6 @@ static unsigned long debug_last_print_time = 0;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
-static bool resume_after_logging = false;
 
 static bool obstacle_camera_setup()
 {
@@ -290,11 +289,6 @@ static ModeResult update_active_mode()
 
 void mode_update()
 {
-    if (resume_after_logging && !robot_logger.is_busy()) {
-        resume_after_logging = false;
-        mode_resume();
-    }
-
     const RobotMode updated_mode = current_mode;
     const ModeResult result = update_active_mode();
     if (updated_mode == MODE_NONE || result == MODE_RESULT_RUNNING)
@@ -317,7 +311,6 @@ void mode_update()
 
 void mode_pause()
 {
-    resume_after_logging = false;
     if (current_mode != MODE_NONE) {
         pending_mode = current_mode;
         stop_mode(current_mode);
@@ -332,12 +325,6 @@ void mode_pause()
 
 void mode_resume()
 {
-    if (robot_logger.is_busy()) {
-        resume_after_logging = true;
-        Serial.println("Resume deferred until USB logging is complete.");
-        return;
-    }
-
     system_enable();
 
     if (pending_mode == MODE_NONE) {
@@ -362,7 +349,6 @@ void mode_resume()
 
 void mode_stop_all()
 {
-    resume_after_logging = false;
     stop_mode(current_mode);
     current_mode = MODE_NONE;
     pending_mode = MODE_NONE;

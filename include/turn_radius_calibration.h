@@ -25,8 +25,10 @@
 enum TurnRadiusState {
     TR_IDLE,           ///< Not running
     TR_SETTLING,       ///< Waiting for the steering servo before measuring
-    TR_DRIVING,        ///< Driving in a circle, waiting for 360°
-    TR_STOPPING,       ///< Reached 360°, stopping motors
+    TR_DRIVING,        ///< Driving in a circle, waiting for target angle
+    TR_STOPPING,       ///< Reached target angle, stopping motors
+    TR_RETURNING,      ///< Reversing back along the arc to the start position (partial arcs only)
+    TR_RETURN_STOP,    ///< Brief settle pause after the return arc before advancing
     TR_NEXT_ANGLE,     ///< Transitioning to next angle
     TR_DONE,           ///< All angles measured
     TR_FAILED          ///< Aborted after repeated invalid measurements

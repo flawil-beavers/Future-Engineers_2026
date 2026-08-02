@@ -63,21 +63,24 @@ static float tr_cal_drive_start_time = 0;    // Time when we started driving (ms
 static bool tr_cal_printed_angle_header = false;
 static int tr_cal_retry_count = 0;
 static bool tr_cal_retry_current_angle = false;
+static bool tr_cal_needs_return = false;     // True if partial arc measured; robot must reverse to start
 
-// Return the required rotation angle (deg) for a given servo angle to fit within a 2x2m box.
-// Diameter = 2 * R = 2 * (L / sin(steering_deg)).
-// To stay within 2000mm box, for small angles we measure a partial arc (e.g. 90°-180°),
-// while for larger angles we can do up to 360°.
+// Return the required rotation angle (deg) for a given servo angle.
+//
+// Bounding-box analysis (Ackermann R from config.h polynomial):
+//   5°  → R ≈ 1044 mm, diameter ≈ 2088 mm — does NOT fit 360° in 2×2 m.
+//           Use a 90° arc; the robot then reverses along the same arc to
+//           return to the start position, keeping total footprint ≈ 1×1 m.
+//   10° → R ≈  726 mm, diameter ≈ 1452 mm — fits 360° within 2×2 m. ✓
+//   15° → R ≈  504 mm, diameter ≈ 1008 mm — fits 360°. ✓
+//   20° → R ≈  360 mm, diameter ≈  720 mm — fits 360°. ✓
+//   25°–50°: even smaller — all fit 360°. ✓
 static float get_required_turn_angle_deg(int abs_servo_angle)
 {
     if (abs_servo_angle <= 5) {
-        return 90.0f;  // 90° turn for 5° angle (~1.8m arc) to stay comfortably inside 2x2m box
-    } else if (abs_servo_angle <= 10) {
-        return 120.0f; // 120° turn for 10° angle
-    } else if (abs_servo_angle <= 15) {
-        return 180.0f; // 180° turn for 15° angle
+        return 90.0f;   // Partial arc; robot reverses to start after measurement
     }
-    return 360.0f;     // Full 360° turn for 20° and above
+    return 360.0f;      // Full circle for all angles ≥ 10° (all fit within 2×2 m)
 }
 
 // ==========================================
@@ -185,6 +188,7 @@ void turn_radius_cal_start()
         tr_cal_printed_angle_header = false;
         tr_cal_retry_count = 0;
         tr_cal_retry_current_angle = false;
+        tr_cal_needs_return = false;
         
         // Clear only right-side calibration results (preserve left data)
         tr_cal_right.num_points = 0;
@@ -220,6 +224,7 @@ void turn_radius_cal_start()
     tr_cal_printed_angle_header = false;
     tr_cal_retry_count = 0;
     tr_cal_retry_current_angle = false;
+    tr_cal_needs_return = false;
     
     // Clear calibration results
     for (int i = 0; i < 4; i++) {
@@ -244,7 +249,9 @@ void turn_radius_cal_start()
     Serial.print("Calibration speed: ");
     Serial.print(CAL_SPEED_MMS);
     Serial.println(" mm/s");
-    Serial.println("Testing angles: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 (both directions)");
+    Serial.println("Angles: 5,10,15,20,25,30,35,40,45,50 deg (both directions)");
+    Serial.println("  5 deg: 90-degree arc then reverse to start (diameter ~2.1m, partial arc keeps footprint ~1x1m)");
+    Serial.println("  10-50 deg: full 360-degree circles (all fit within 2x2m area)");
     Serial.println();
     
     // Set steering and speed for first angle
@@ -278,10 +285,10 @@ void turn_radius_cal_update()
         // Check if we've completed the required rotation angle
         float angle_delta = fabs(get_angle() - tr_cal_start_angle);
         float req_angle = get_required_turn_angle_deg(abs(tr_cal_current_angle));
+        const bool is_partial_arc = (req_angle < 360.0f);
         
-        // Need at least the required target angle to finalize measurement
         if (angle_delta >= req_angle) {
-            // Reached 360°! Record measurement
+            // Target angle reached — record measurement
             if (!finalize_measurement()) {
                 tr_cal_retry_current_angle = true;
             } else {
@@ -289,16 +296,19 @@ void turn_radius_cal_update()
                 tr_cal_retry_current_angle = false;
             }
             
-            // Stop motors
+            // For partial arcs (5°) we will reverse back to the start position.
+            tr_cal_needs_return = is_partial_arc;
+            
             stop(false);
             turn_radius_state = TR_STOPPING;
             tr_cal_drive_start_time = millis();
             
-            Serial.println("Circle complete, stopping...");
+            Serial.println(is_partial_arc ? "Arc complete, stopping before return..." : "Circle complete, stopping...");
         } else {
             // Safety timeout: if we've been driving too long without reaching the required angle
             if ((millis() - tr_cal_drive_start_time) > CAL_TURN_TIMEOUT_MS) {
                 tr_cal_retry_current_angle = true;
+                tr_cal_needs_return = is_partial_arc;
                 Serial.println("TIMEOUT: Required turn angle not reached");
                 stop(false);
                 turn_radius_state = TR_STOPPING;
@@ -307,10 +317,48 @@ void turn_radius_cal_update()
         }
     }
     else if (turn_radius_state == TR_STOPPING) {
-        // Wait 1 second for robot to settle
+        // Wait for robot to fully stop before deciding next action
         if ((millis() - tr_cal_drive_start_time) > CAL_TURN_STOP_SETTLE_MS) {
-            // Re-enable servo before advancing to next angle
-            // (stop() in finalize_measurement disables it)
+            // Re-enable servo (stop() may have disabled it)
+            servo_disabled = false;
+
+            if (tr_cal_needs_return) {
+                // Partial arc (5°): reverse along the same arc back to the start.
+                // Reversing with the same servo angle retraces the forward arc because
+                // the turning centre is fixed by the servo geometry — the robot circles
+                // back in the opposite direction, returning to its original heading.
+                tr_cal_needs_return = false;
+                set_steering(tr_cal_current_angle);
+                set_speed(-(int)CAL_SPEED_MMS);  // reverse
+                turn_radius_state = TR_RETURNING;
+                tr_cal_drive_start_time = millis();
+                Serial.println("Returning to start position (reversing along arc)...");
+            } else {
+                turn_radius_state = TR_NEXT_ANGLE;
+                tr_cal_drive_start_time = millis();
+            }
+        }
+    }
+    else if (turn_radius_state == TR_RETURNING) {
+        // Drive backward until gyro heading returns to within 8° of the start heading.
+        // 8° threshold accounts for gyro noise and minor Ackermann forward/reverse asymmetry.
+        float angle_delta = fabs(get_angle() - tr_cal_start_angle);
+
+        if (angle_delta <= 8.0f) {
+            stop(false);
+            Serial.println("Return complete.");
+            turn_radius_state = TR_RETURN_STOP;
+            tr_cal_drive_start_time = millis();
+        } else if ((millis() - tr_cal_drive_start_time) > CAL_TURN_TIMEOUT_MS) {
+            Serial.println("WARNING: Return timeout; continuing from current position.");
+            stop(false);
+            turn_radius_state = TR_RETURN_STOP;
+            tr_cal_drive_start_time = millis();
+        }
+    }
+    else if (turn_radius_state == TR_RETURN_STOP) {
+        // Brief settle time after the return arc before advancing to the next angle
+        if ((millis() - tr_cal_drive_start_time) > CAL_TURN_STOP_SETTLE_MS) {
             servo_disabled = false;
             turn_radius_state = TR_NEXT_ANGLE;
             tr_cal_drive_start_time = millis();
