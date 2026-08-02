@@ -46,7 +46,7 @@ constexpr auto ENCODER_COUNTS_PER_WHEEL_REV = (28.0 / 20.0 * ENCODER_COUNTS_PER_
 constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
 
 constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
-constexpr auto MOTOR_MIN_DC = 70; // Min duty cycle to overcome static friction
+constexpr auto MOTOR_MIN_DC = 80; // Min duty cycle to overcome static friction
 constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 
 // ==========================================

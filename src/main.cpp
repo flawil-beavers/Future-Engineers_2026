@@ -57,5 +57,6 @@ void loop()
     check_stalling();
 
     mode_update();
+    general_debug_print();
     robot_logger.update();
 }

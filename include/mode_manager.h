@@ -76,6 +76,11 @@ void mode_switch(RobotMode new_mode);
 void mode_update();
 
 /**
+ * @brief Print general debug information across all modes.
+ */
+void general_debug_print();
+
+/**
  * @brief Pause the current mode. Stops motors but remembers the mode.
  * Called automatically when the enable switch is toggled OFF.
  */

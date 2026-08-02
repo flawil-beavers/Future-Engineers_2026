@@ -324,21 +324,39 @@ void calibration_print_results()
     Serial.print(tr_cal_left.ackermann_rmse_mm, 2);
     Serial.print(" mm | ");
     Serial.print(tr_cal_right.ackermann_rmse_mm, 2);
-    Serial.println(" mm");
+    Serial.println(" mm\n");
+
+    // Evaluate error quality
+    float max_poly_rmse = max(tr_cal_left.rmse_mm, tr_cal_right.rmse_mm);
+    Serial.println("--- CALIBRATION ACCURACY EVALUATION ---");
+    Serial.print("Overall Status: ");
+    if (max_poly_rmse < 15.0f) {
+        Serial.println("EXCELLENT (RMSE < 15 mm)");
+        Serial.println("Description: High precision fit across all steering angles (5° to 50°). Vehicle dynamics match modeled trajectory closely.");
+    } else if (max_poly_rmse < 35.0f) {
+        Serial.println("GOOD / ACCEPTABLE (RMSE 15 - 35 mm)");
+        Serial.println("Description: Minor mechanical slop or surface slippage detected, but well within tolerances for accurate navigation.");
+    } else if (max_poly_rmse < 60.0f) {
+        Serial.println("MODERATE ERROR (RMSE 35 - 60 mm)");
+        Serial.println("Description: Noticeable deviation. Check tire traction, battery voltage, or steering linkage friction.");
+    } else {
+        Serial.println("POOR / CALIBRATION BAD (RMSE > 60 mm)");
+        Serial.println("Description: Significant error detected. Verify SERVO_CENTER zeroing, wheel alignment, or recalibrate on a non-slip surface.");
+    }
     Serial.println();
     
     // Print config.h-ready constants
-    Serial.println("--- COPY THESE INTO config.h ---");
-    Serial.print("#define CAL_LEFT_A0 "); Serial.println(tr_cal_left.coeffs[0], 4);
-    Serial.print("#define CAL_LEFT_A1 "); Serial.println(tr_cal_left.coeffs[1], 6);
-    Serial.print("#define CAL_LEFT_A2 "); Serial.println(tr_cal_left.coeffs[2], 8);
-    Serial.print("#define CAL_LEFT_A3 "); Serial.println(tr_cal_left.coeffs[3], 8);
-    Serial.print("#define CAL_RIGHT_A0 "); Serial.println(tr_cal_right.coeffs[0], 4);
-    Serial.print("#define CAL_RIGHT_A1 "); Serial.println(tr_cal_right.coeffs[1], 6);
-    Serial.print("#define CAL_RIGHT_A2 "); Serial.println(tr_cal_right.coeffs[2], 8);
-    Serial.print("#define CAL_RIGHT_A3 "); Serial.println(tr_cal_right.coeffs[3], 8);
-    Serial.print("#define CAL_LEFT_K "); Serial.println(tr_cal_left.correction_factor_K, 4);
-    Serial.print("#define CAL_RIGHT_K "); Serial.println(tr_cal_right.correction_factor_K, 4);
+    Serial.println("--- COPY AND PASTE DIRECTLY INTO config.h ---");
+    Serial.print("constexpr auto CAL_LEFT_A0 = "); Serial.print(tr_cal_left.coeffs[0], 4); Serial.println("f;");
+    Serial.print("constexpr auto CAL_LEFT_A1 = "); Serial.println(tr_cal_left.coeffs[1], 6); Serial.println("f;");
+    Serial.print("constexpr auto CAL_LEFT_A2 = "); Serial.print(tr_cal_left.coeffs[2], 8); Serial.println("f;");
+    Serial.print("constexpr auto CAL_LEFT_A3 = "); Serial.print(tr_cal_left.coeffs[3], 8); Serial.println("f;");
+    Serial.print("constexpr auto CAL_RIGHT_A0 = "); Serial.print(tr_cal_right.coeffs[0], 4); Serial.println("f;");
+    Serial.print("constexpr auto CAL_RIGHT_A1 = "); Serial.print(tr_cal_right.coeffs[1], 6); Serial.println("f;");
+    Serial.print("constexpr auto CAL_RIGHT_A2 = "); Serial.print(tr_cal_right.coeffs[2], 8); Serial.println("f;");
+    Serial.print("constexpr auto CAL_RIGHT_A3 = "); Serial.print(tr_cal_right.coeffs[3], 8); Serial.println("f;");
+    Serial.print("constexpr auto CAL_LEFT_K = "); Serial.print(tr_cal_left.correction_factor_K, 4); Serial.println("f;");
+    Serial.print("constexpr auto CAL_RIGHT_K = "); Serial.print(tr_cal_right.correction_factor_K, 4); Serial.println("f;");
     Serial.println();
     Serial.println("========================================\n");
     
