@@ -74,9 +74,9 @@ header_content = f"""#ifndef ACKERMANN_LUT_H
 namespace Ackermann {{
 
     // Range metadata from Fusion 360 sweep
-    constexpr float MIN_SERVO_DEG = {min(servo_deg)}f;
-    constexpr float MAX_SERVO_DEG = {max(servo_deg)}f;
-    constexpr float SERVO_STEP_DEG = {abs(servo_deg[1] - servo_deg[0])}f;
+    constexpr float MIN_SERVO_DEG = {float(min(servo_deg)):.1f}f;
+    constexpr float MAX_SERVO_DEG = {float(max(servo_deg)):.1f}f;
+    constexpr float SERVO_STEP_DEG = {float(abs(servo_deg[1] - servo_deg[0])):.1f}f;
     constexpr size_t TABLE_SIZE = {len(servo_deg)};
 
     // Fitted Polynomial Coefficients: f(x) = A*x^3 + B*x^2 + C*x + D

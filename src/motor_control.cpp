@@ -4,6 +4,7 @@
  */
 
 #include "motor_control.h"
+#include "ackermann_kinematics.h"
 #include "config.h"
 #include "navigation_controller.h"
 #include "mode_manager.h"
@@ -126,6 +127,12 @@ void steer(int angle)
 void set_steering(int angle)
 {
   set_degree = angle;
+}
+
+void set_steering_radius(float radius_mm)
+{
+  float angle = Ackermann::getServoAngleForRadius(radius_mm);
+  set_steering((int)roundf(angle));
 }
 
 void set_dc(float dc, bool rate_limit)

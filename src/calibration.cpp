@@ -13,6 +13,7 @@
  */
 
 #include "calibration.h"
+#include "ackermann_kinematics.h"
 #include "config.h"
 #include "motor_control.h"
 #include "logger.h"
@@ -228,8 +229,8 @@ void compute_fits(TRCalResult* result, bool is_left)
     fit_polynomial_3rd(x, y, result->num_points, result->coeffs);
     result->rmse_mm = compute_rmse(x, y, result->num_points, result->coeffs);
     
-    // Ackermann fit
-    float L = 100.0f; // Wheelbase = 100 mm
+    // Ackermann fit — use kinematic wheelbase (127 mm), not physical axle gap (100 mm)
+    float L = Ackermann::WHEELBASE_MM;
     result->correction_factor_K = fit_ackermann_k(x, y, result->num_points, L);
     result->ackermann_rmse_mm = compute_ackermann_rmse(x, y, result->num_points, L, result->correction_factor_K);
 }
@@ -238,27 +239,24 @@ void compute_fits(TRCalResult* result, bool is_left)
 // PUBLIC FUNCTIONS
 // ==========================================
 
+/**
+ * @brief Get the calibrated turn radius for a given servo angle.
+ *
+ * Uses the CAD-derived Ackermann kinematic model (ackermann_kinematics.h),
+ * which achieves ~2.35% mean error across the steering range 15°–40°.
+ *
+ * This replaces the old empirical polynomial fit (CAL_LEFT_A0..CAL_RIGHT_A3)
+ * which had RMSE ~16 mm and low-angle divergence.
+ *
+ * @param servo_angle Servo offset from centre (e.g. 25, -30)
+ * @return Turn radius in mm (always positive — magnitude of turning radius),
+ *         or -1 if angle is zero (straight line).
+ */
 float get_calibrated_radius(int servo_angle)
 {
     if (servo_angle == 0) return -1;
-    
-    bool is_right = (servo_angle < 0);
-    float abs_angle = fabs((float)servo_angle);
-    const float* coeffs = is_right ? tr_cal_right.coeffs : tr_cal_left.coeffs;
-    
-    // Check if coefficients are valid (non-zero)
-    bool has_data = false;
-    for (int i = 0; i < 4; i++) {
-        if (fabs(coeffs[i]) > 1e-6f) {
-            has_data = true;
-            break;
-        }
-    }
-    
-    if (!has_data) return -1;
-    
-    float radius = coeffs[0] + coeffs[1]*abs_angle + coeffs[2]*abs_angle*abs_angle + coeffs[3]*abs_angle*abs_angle*abs_angle;
-    return max(radius, 50.0f); // Clamp to prevent unrealistic values
+    // getTurnRadius() returns signed radius; position estimator wants magnitude.
+    return fabsf(Ackermann::getTurnRadius((float)servo_angle));
 }
 
 void calibration_print_results()
@@ -400,10 +398,8 @@ void calibration_set_coefficients(const float left_coeffs[4], const float right_
 
 bool calibration_has_data()
 {
-    for (int i = 0; i < 4; i++) {
-        if (fabs(tr_cal_left.coeffs[i]) > 1e-6f && fabs(tr_cal_right.coeffs[i]) > 1e-6f) {
-            return true;
-        }
-    }
-    return false;
+    // The CAD-derived Ackermann model (ackermann_kinematics.h) is always
+    // available at compile time, so radius data is always valid.
+    // (The old empirical polynomial check is no longer needed.)
+    return true;
 }

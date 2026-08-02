@@ -211,7 +211,7 @@ void turn_radius_cal_start()
     Serial.println("\n\n========================================");
     Serial.println("TURN RADIUS CALIBRATION STARTED");
     Serial.println("========================================");
-    Serial.print("Wheelbase: 100 mm\n");
+    Serial.print("Physical wheelbase: 100 mm  |  Kinematic wheelbase: 127 mm\n");
     Serial.print("Calibration speed: ");
     Serial.print(CAL_SPEED_MMS);
     Serial.println(" mm/s");

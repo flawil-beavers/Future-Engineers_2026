@@ -6,9 +6,9 @@
 namespace Ackermann {
 
     // Range metadata from Fusion 360 sweep
-    constexpr float MIN_SERVO_DEG = -50f;
-    constexpr float MAX_SERVO_DEG = 50f;
-    constexpr float SERVO_STEP_DEG = 1f;
+    constexpr float MIN_SERVO_DEG = -50.0f;
+    constexpr float MAX_SERVO_DEG = 50.0f;
+    constexpr float SERVO_STEP_DEG = 1.0f;
     constexpr size_t TABLE_SIZE = 101;
 
     // Fitted Polynomial Coefficients: f(x) = A*x^3 + B*x^2 + C*x + D

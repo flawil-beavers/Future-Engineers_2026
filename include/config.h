@@ -160,6 +160,13 @@ constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecut
 // ==========================================
 // CALIBRATION AND POSITION ESTIMATION
 // ==========================================
+
+// Physical axle-to-axle wheelbase (mm).
+// Used for printing/documentation only.  The Ackermann kinematic model
+// uses WHEELBASE_MM = 127 mm (Ackermann::WHEELBASE_MM in ackermann_kinematics.h)
+// because the pin-slot joint geometry shifts the effective turning centre.
+constexpr float PHYSICAL_WHEELBASE_MM = 100.0f;
+
 constexpr auto CAL_SPEED_MMS = 250.0f;
 constexpr auto CAL_STARTUP_DELAY_MS = 5000;
 constexpr auto CAL_CENTER_DISTANCE_MM = 2000.0f;

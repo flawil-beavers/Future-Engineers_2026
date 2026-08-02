@@ -109,6 +109,21 @@ void steer(int angle);
 void set_steering(int angle);
 
 /**
+ * @brief Queue a steering command by turning radius.
+ *
+ * Converts the desired radius to a servo angle via the CAD Ackermann model
+ * (include/ackermann_kinematics.h) and calls set_steering() internally.
+ *
+ * Sign convention:
+ *   radius_mm > 0  → right turn   (same as positive servo angle)
+ *   radius_mm < 0  → left  turn
+ *   |radius_mm| > 2000 → straight (set_steering(0))
+ *
+ * @param radius_mm Desired turning radius in mm.
+ */
+void set_steering_radius(float radius_mm);
+
+/**
  * @brief Set the duty cycle of the DC motor
  * @param dc Duty cycle value (-255 to +255)
  */
