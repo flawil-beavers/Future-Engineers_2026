@@ -55,6 +55,10 @@ extern bool servo_disabled;
  */
 void fit_polynomial_3rd(const float* x, const float* y, int n, float* coeffs)
 {
+    if (n < 4) {
+        for (int i = 0; i < 4; i++) coeffs[i] = 0.0f;
+        return;
+    }
     // Build the Vandermonde-like matrix: X = [1, x, x², x³]
     // Normal equations: (X^T * X) * coeffs = X^T * y
     // We solve a 4x4 system using Gaussian elimination.
@@ -106,6 +110,10 @@ void fit_polynomial_3rd(const float* x, const float* y, int n, float* coeffs)
         
         // Eliminate below
         for (int row = col + 1; row < 4; row++) {
+            if (fabs(A[col][col]) < 1e-10f) {
+                for (int i = 0; i < 4; i++) coeffs[i] = 0.0f;
+                return;
+            }
             float factor = A[row][col] / A[col][col];
             for (int c = col; c < 4; c++) {
                 A[row][c] -= factor * A[col][c];
@@ -211,6 +219,7 @@ float compute_ackermann_rmse(const float* x, const float* y, int n, float L, flo
  */
 void compute_fits(TRCalResult* result, bool is_left)
 {
+    (void)is_left; // Direction is represented by result; x always uses magnitude.
     if (result->num_points < 4) {
         Serial.print("WARNING: Too few points (");
         Serial.print(result->num_points);
@@ -220,8 +229,7 @@ void compute_fits(TRCalResult* result, bool is_left)
     
     float x[12], y[12];
     for (int i = 0; i < result->num_points; i++) {
-        x[i] = (float)result->points[i].servo_angle;
-        if (!is_left) x[i] = fabs(x[i]); // Use absolute value for right turns
+        x[i] = fabs((float)result->points[i].servo_angle);
         y[i] = result->points[i].radius_mm;
     }
     
@@ -346,7 +354,7 @@ void calibration_print_results()
     // Print config.h-ready constants
     Serial.println("--- COPY AND PASTE DIRECTLY INTO config.h ---");
     Serial.print("constexpr auto CAL_LEFT_A0 = "); Serial.print(tr_cal_left.coeffs[0], 4); Serial.println("f;");
-    Serial.print("constexpr auto CAL_LEFT_A1 = "); Serial.println(tr_cal_left.coeffs[1], 6); Serial.println("f;");
+    Serial.print("constexpr auto CAL_LEFT_A1 = "); Serial.print(tr_cal_left.coeffs[1], 6); Serial.println("f;");
     Serial.print("constexpr auto CAL_LEFT_A2 = "); Serial.print(tr_cal_left.coeffs[2], 8); Serial.println("f;");
     Serial.print("constexpr auto CAL_LEFT_A3 = "); Serial.print(tr_cal_left.coeffs[3], 8); Serial.println("f;");
     Serial.print("constexpr auto CAL_RIGHT_A0 = "); Serial.print(tr_cal_right.coeffs[0], 4); Serial.println("f;");

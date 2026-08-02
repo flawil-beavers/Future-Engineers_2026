@@ -60,8 +60,9 @@ static float tr_cal_start_angle = 0;         // Gyro angle at start of current c
 static bool tr_cal_is_right_turn = false;    // Currently measuring right (positive) angles?
 static int tr_cal_phase = 0;                 // 0=left turns, 1=right turns
 static float tr_cal_drive_start_time = 0;    // Time when we started driving (ms)
-static const unsigned long tr_cal_circle_timeout_ms = 30000UL; // Max time allowed for one measurement
 static bool tr_cal_printed_angle_header = false;
+static int tr_cal_retry_count = 0;
+static bool tr_cal_retry_current_angle = false;
 
 // Return the required rotation angle (deg) for a given servo angle to fit within a 2x2m box.
 // Diameter = 2 * R = 2 * (L / sin(steering_deg)).
@@ -96,6 +97,21 @@ static bool tr_cal_should_resume_right()
     return (tr_cal_left.num_points == tr_cal_num_angles && tr_cal_right.num_points == 0);
 }
 
+bool turn_radius_cal_waiting_for_right()
+{
+    return tr_cal_should_resume_right();
+}
+
+/** Stop propulsion, command steering, and let the MG90S settle before measuring. */
+static void begin_servo_settle()
+{
+    stop(false);
+    servo_disabled = false;
+    set_steering(tr_cal_current_angle);
+    tr_cal_drive_start_time = millis();
+    turn_radius_state = TR_SETTLING;
+}
+
 // ==========================================
 // HELPER: Process a complete measurement
 // ==========================================
@@ -103,19 +119,29 @@ static bool tr_cal_should_resume_right()
 /**
  * @brief Finalize the current measurement and store it
  */
-static void finalize_measurement()
+static bool finalize_measurement()
 {
-    float distance_delta = current_distance - tr_cal_start_distance;
+    float distance_delta = fabs(current_distance - tr_cal_start_distance);
     float angle_delta = fabs(get_angle() - tr_cal_start_angle);
     
-    if (angle_delta < 1.0f) {
-        Serial.println("ERROR: No significant rotation detected, skipping");
-        return;
+    if (!isfinite(distance_delta) || !isfinite(angle_delta) ||
+        distance_delta < CAL_TURN_MIN_DISTANCE_MM || angle_delta < 1.0f) {
+        Serial.println("ERROR: Invalid encoder or gyro measurement");
+        return false;
     }
     
     // Radius = arc_length / angle (in radians)
     float angle_rad = angle_delta * PI / 180.0f;
     float radius_mm = distance_delta / angle_rad;
+
+    if (!isfinite(radius_mm) ||
+        radius_mm < CAL_TURN_MIN_RADIUS_MM ||
+        radius_mm > CAL_TURN_MAX_RADIUS_MM) {
+        Serial.print("ERROR: Implausible radius: ");
+        Serial.print(radius_mm, 1);
+        Serial.println(" mm");
+        return false;
+    }
     
     TRCalResult* result = tr_cal_is_right_turn ? &tr_cal_right : &tr_cal_left;
     int idx = result->num_points;
@@ -135,7 +161,11 @@ static void finalize_measurement()
         Serial.print("°, radius=");
         Serial.print(radius_mm, 1);
         Serial.println(" mm");
+        return true;
     }
+
+    Serial.println("ERROR: Calibration result buffer full");
+    return false;
 }
 
 // ==========================================
@@ -148,11 +178,13 @@ void turn_radius_cal_start()
     // This handles the case where the user toggles the enable switch OFF then ON
     // after left turns complete, or sends 'c' via serial.
     if (tr_cal_should_resume_right()) {
-        turn_radius_state = TR_DRIVING;
+        turn_radius_state = TR_SETTLING;
         tr_cal_current_angle_index = 0;
         tr_cal_phase = 1;
         tr_cal_is_right_turn = true;
         tr_cal_printed_angle_header = false;
+        tr_cal_retry_count = 0;
+        tr_cal_retry_current_angle = false;
         
         // Clear only right-side calibration results (preserve left data)
         tr_cal_right.num_points = 0;
@@ -170,12 +202,7 @@ void turn_radius_cal_start()
         Serial.println("RIGHT TURN CALIBRATION RESUMED");
         Serial.println("========================================\n");
         
-        set_steering(tr_cal_current_angle);
-        set_speed(CAL_SPEED_MMS);
-        
-        tr_cal_start_distance = current_distance;
-        tr_cal_start_angle = get_angle();
-        tr_cal_drive_start_time = millis();
+        begin_servo_settle();
         
         Serial.print("Starting turn: angle=");
         Serial.print(tr_cal_current_angle);
@@ -184,13 +211,15 @@ void turn_radius_cal_start()
     }
     
     // Reset state for a fresh full calibration (both sides)
-    turn_radius_state = TR_DRIVING;
+    turn_radius_state = TR_SETTLING;
     tr_cal_current_angle_index = 0;
     tr_cal_phase = 0;
     tr_cal_left.num_points = 0;
     tr_cal_right.num_points = 0;
     tr_cal_is_right_turn = false;
     tr_cal_printed_angle_header = false;
+    tr_cal_retry_count = 0;
+    tr_cal_retry_current_angle = false;
     
     // Clear calibration results
     for (int i = 0; i < 4; i++) {
@@ -215,18 +244,12 @@ void turn_radius_cal_start()
     Serial.print("Calibration speed: ");
     Serial.print(CAL_SPEED_MMS);
     Serial.println(" mm/s");
-    Serial.println("Testing angles: 10, 15, 20, 25, 30, 35, 40 (both directions)");
+    Serial.println("Testing angles: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 (both directions)");
     Serial.println();
     
     // Set steering and speed for first angle
     // Note: system_enable() is called by the mode manager before this
-    set_steering(tr_cal_current_angle);
-    set_speed(CAL_SPEED_MMS);
-    
-    // Record initial state
-    tr_cal_start_distance = current_distance;
-    tr_cal_start_angle = get_angle();
-    tr_cal_drive_start_time = millis();
+    begin_servo_settle();
     
     Serial.print("Starting turn: angle=");
     Serial.print(tr_cal_current_angle);
@@ -235,11 +258,23 @@ void turn_radius_cal_start()
 
 void turn_radius_cal_update()
 {
-    if (turn_radius_state == TR_IDLE || turn_radius_state == TR_DONE) {
+    if (turn_radius_state == TR_IDLE || turn_radius_state == TR_DONE ||
+        turn_radius_state == TR_FAILED) {
         return;
     }
-    
-    if (turn_radius_state == TR_DRIVING) {
+
+    if (turn_radius_state == TR_SETTLING) {
+        if ((millis() - tr_cal_drive_start_time) >= CAL_TURN_SERVO_SETTLE_MS) {
+            // Capture baselines only after the steering transition is complete.
+            tr_cal_start_distance = current_distance;
+            tr_cal_start_angle = get_angle();
+            tr_cal_drive_start_time = millis();
+            set_speed(CAL_SPEED_MMS);
+            turn_radius_state = TR_DRIVING;
+            Serial.println("Servo settled; measurement started.");
+        }
+    }
+    else if (turn_radius_state == TR_DRIVING) {
         // Check if we've completed the required rotation angle
         float angle_delta = fabs(get_angle() - tr_cal_start_angle);
         float req_angle = get_required_turn_angle_deg(abs(tr_cal_current_angle));
@@ -247,7 +282,12 @@ void turn_radius_cal_update()
         // Need at least the required target angle to finalize measurement
         if (angle_delta >= req_angle) {
             // Reached 360°! Record measurement
-            finalize_measurement();
+            if (!finalize_measurement()) {
+                tr_cal_retry_current_angle = true;
+            } else {
+                tr_cal_retry_count = 0;
+                tr_cal_retry_current_angle = false;
+            }
             
             // Stop motors
             stop(false);
@@ -257,8 +297,9 @@ void turn_radius_cal_update()
             Serial.println("Circle complete, stopping...");
         } else {
             // Safety timeout: if we've been driving too long without reaching the required angle
-            if ((millis() - tr_cal_drive_start_time) > tr_cal_circle_timeout_ms) {
-                Serial.println("TIMEOUT: Required turn angle not reached, aborting this angle");
+            if ((millis() - tr_cal_drive_start_time) > CAL_TURN_TIMEOUT_MS) {
+                tr_cal_retry_current_angle = true;
+                Serial.println("TIMEOUT: Required turn angle not reached");
                 stop(false);
                 turn_radius_state = TR_STOPPING;
                 tr_cal_drive_start_time = millis();
@@ -267,7 +308,7 @@ void turn_radius_cal_update()
     }
     else if (turn_radius_state == TR_STOPPING) {
         // Wait 1 second for robot to settle
-        if ((millis() - tr_cal_drive_start_time) > 1000) {
+        if ((millis() - tr_cal_drive_start_time) > CAL_TURN_STOP_SETTLE_MS) {
             // Re-enable servo before advancing to next angle
             // (stop() in finalize_measurement disables it)
             servo_disabled = false;
@@ -276,7 +317,27 @@ void turn_radius_cal_update()
         }
     }
     else if (turn_radius_state == TR_NEXT_ANGLE) {
-        // Advance to next angle
+        if (tr_cal_retry_current_angle) {
+            tr_cal_retry_current_angle = false;
+            tr_cal_retry_count++;
+            if (tr_cal_retry_count > CAL_TURN_MAX_RETRIES) {
+                Serial.println("ERROR: Measurement failed three times; calibration aborted.");
+                stop(false);
+                turn_radius_state = TR_FAILED;
+                return;
+            }
+            Serial.print("Retrying angle ");
+            Serial.print(tr_cal_current_angle);
+            Serial.print(" (retry ");
+            Serial.print(tr_cal_retry_count);
+            Serial.print("/");
+            Serial.print(CAL_TURN_MAX_RETRIES);
+            Serial.println(")");
+            begin_servo_settle();
+            return;
+        }
+
+        // Advance only after a valid measurement.
         tr_cal_current_angle_index++;
         
         // Check if we finished all angles in current phase
@@ -314,14 +375,7 @@ void turn_radius_cal_update()
         Serial.print(tr_cal_current_angle);
         Serial.println("°");
         
-        // Start driving
-        set_steering(tr_cal_current_angle);
-        set_speed(CAL_SPEED_MMS);
-        
-        tr_cal_start_distance = current_distance;
-        tr_cal_start_angle = get_angle();
-        tr_cal_drive_start_time = millis();
-        turn_radius_state = TR_DRIVING;
+        begin_servo_settle();
     }
 }
 
@@ -334,5 +388,7 @@ void turn_radius_cal_stop()
 
 bool turn_radius_cal_is_active()
 {
-    return turn_radius_state != TR_IDLE && turn_radius_state != TR_DONE;
+    return turn_radius_state != TR_IDLE &&
+           turn_radius_state != TR_DONE &&
+           turn_radius_state != TR_FAILED;
 }

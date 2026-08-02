@@ -168,6 +168,13 @@ constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecut
 constexpr float PHYSICAL_WHEELBASE_MM = 100.0f;
 
 constexpr auto CAL_SPEED_MMS = 250.0f;
+constexpr unsigned long CAL_TURN_SERVO_SETTLE_MS = 600;
+constexpr unsigned long CAL_TURN_STOP_SETTLE_MS = 1000;
+constexpr unsigned long CAL_TURN_TIMEOUT_MS = 30000;
+constexpr int CAL_TURN_MAX_RETRIES = 2;
+constexpr float CAL_TURN_MIN_DISTANCE_MM = 50.0f;
+constexpr float CAL_TURN_MIN_RADIUS_MM = 50.0f;
+constexpr float CAL_TURN_MAX_RADIUS_MM = 5000.0f;
 constexpr auto CAL_STARTUP_DELAY_MS = 5000;
 constexpr auto CAL_CENTER_DISTANCE_MM = 2000.0f;
 constexpr auto CAL_CENTER_MAX_TIME_MS = 15000;
@@ -211,9 +218,9 @@ constexpr auto MC_MAX_TOTAL_DISTANCE_MM = 2000.0f; // Total distance limit acros
 
 // Turn-radius polynomial: R(delta) = a0 + a1|delta| + a2|delta|^2 + a3|delta|^3
 constexpr auto CAL_LEFT_A0 = 1481.4659f;
-constexpr auto CAL_LEFT_A1 = 100.413338f;
+constexpr auto CAL_LEFT_A1 = -100.413338f;
 constexpr auto CAL_LEFT_A2 = 2.75952291f;
-constexpr auto CAL_LEFT_A3 = 0.02698299f;
+constexpr auto CAL_LEFT_A3 = -0.02698299f;
 constexpr auto CAL_RIGHT_A0 = 1422.9576f;
 constexpr auto CAL_RIGHT_A1 = -100.615837f;
 constexpr auto CAL_RIGHT_A2 = 2.91633201f;

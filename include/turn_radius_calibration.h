@@ -24,10 +24,12 @@
 
 enum TurnRadiusState {
     TR_IDLE,           ///< Not running
+    TR_SETTLING,       ///< Waiting for the steering servo before measuring
     TR_DRIVING,        ///< Driving in a circle, waiting for 360°
     TR_STOPPING,       ///< Reached 360°, stopping motors
     TR_NEXT_ANGLE,     ///< Transitioning to next angle
-    TR_DONE            ///< All angles measured
+    TR_DONE,           ///< All angles measured
+    TR_FAILED          ///< Aborted after repeated invalid measurements
 };
 
 // ==========================================
@@ -67,3 +69,6 @@ void turn_radius_cal_stop();
  * @return true if state machine is active
  */
 bool turn_radius_cal_is_active();
+
+/** Return true after the complete left phase while the right phase is pending. */
+bool turn_radius_cal_waiting_for_right();

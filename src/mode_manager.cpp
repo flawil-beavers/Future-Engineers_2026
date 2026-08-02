@@ -249,9 +249,11 @@ static ModeResult update_active_mode()
     case MODE_TURN_RADIUS_CAL:
         turn_radius_cal_update();
         drive_loop();
-        return turn_radius_state == TR_DONE
-            ? MODE_RESULT_COMPLETED
-            : MODE_RESULT_RUNNING;
+        if (turn_radius_state == TR_DONE)
+            return MODE_RESULT_COMPLETED;
+        if (turn_radius_state == TR_FAILED)
+            return MODE_RESULT_FAILED;
+        return MODE_RESULT_RUNNING;
 
     case MODE_SERVO_CENTER_CAL:
         servo_center_cal_update();
@@ -305,9 +307,12 @@ void mode_update()
             ? " completed."
             : " failed.");
 
+    const bool wait_for_right_turn_cal =
+        updated_mode == MODE_TURN_RADIUS_CAL &&
+        turn_radius_cal_waiting_for_right();
     stop_mode(updated_mode);
     current_mode = MODE_NONE;
-    pending_mode = MODE_NONE;
+    pending_mode = wait_for_right_turn_cal ? MODE_TURN_RADIUS_CAL : MODE_NONE;
 }
 
 void mode_pause()
