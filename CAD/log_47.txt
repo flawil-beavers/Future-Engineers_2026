@@ -1,0 +1,149 @@
+
+===== ROBOT INITIALIZATION START =====
+
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+gf_long_range_active: 0
+Initializing ToF: Right_ToF
+gf_long_range_active: 0
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+
+===== INITIALIZATION COMPLETE =====
+
+Calibration mode active. Waiting 5 seconds before starting...
+Unplug USB now if running on battery.
+SYSTEM ENABLED
+System enabled (no pending mode).
+Position initialized: (0.00, 0.00), heading=0.00°
+SYSTEM ENABLED
+
+
+========================================
+CALIBRATION STARTED
+========================================
+Wheelbase: 100 mm
+Calibration speed: 150.00 mm/s
+Testing angles: 10, 15, 20, 25, 30, 35, 40 (both directions)
+
+Starting turn: angle=-10 (left / negative = left turn)
+Mode switched to: CALIBRATION
+Auto-calibration started.
+TIMEOUT: No 360° rotation detected, aborting this angle
+
+Next angle: -15°
+MEASURED: angle=-15, distance=3183.9 mm, rotation=360.1°, radius=506.5 mm
+Circle complete, stopping...
+
+Next angle: -20°
+MEASURED: angle=-20, distance=2242.0 mm, rotation=360.1°, radius=356.8 mm
+Circle complete, stopping...
+
+Next angle: -25°
+MEASURED: angle=-25, distance=1743.5 mm, rotation=360.1°, radius=277.4 mm
+Circle complete, stopping...
+
+Next angle: -30°
+MEASURED: angle=-30, distance=1423.0 mm, rotation=360.1°, radius=226.4 mm
+Circle complete, stopping...
+
+Next angle: -35°
+MEASURED: angle=-35, distance=1173.7 mm, rotation=360.2°, radius=186.7 mm
+Circle complete, stopping...
+
+Next angle: -40°
+MEASURED: angle=-40, distance=971.8 mm, rotation=360.2°, radius=154.6 mm
+Circle complete, stopping...
+
+--- Switching to RIGHT turns ---
+
+
+Next angle: 10°
+MEASURED: angle=10, distance=4280.3 mm, rotation=360.0°, radius=681.2 mm
+Circle complete, stopping...
+
+Next angle: 15°
+MEASURED: angle=15, distance=2915.1 mm, rotation=360.1°, radius=463.8 mm
+Circle complete, stopping...
+
+Next angle: 20°
+MEASURED: angle=20, distance=2118.8 mm, rotation=360.0°, radius=337.2 mm
+Circle complete, stopping...
+
+Next angle: 25°
+MEASURED: angle=25, distance=1704.9 mm, rotation=360.2°, radius=271.2 mm
+Circle complete, stopping...
+
+Next angle: 30°
+MEASURED: angle=30, distance=1419.3 mm, rotation=360.2°, radius=225.8 mm
+Circle complete, stopping...
+
+Next angle: 35°
+MEASURED: angle=35, distance=1176.0 mm, rotation=360.3°, radius=187.0 mm
+Circle complete, stopping...
+
+Next angle: 40°
+MEASURED: angle=40, distance=999.2 mm, rotation=360.4°, radius=158.8 mm
+Circle complete, stopping...
+
+All angles measured!
+
+
+========================================
+       CALIBRATION COMPLETE
+========================================
+
+--- LEFT TURNS ---
+ServoCmd, Radius_mm, Distance_mm
+-15, 506.5, 3183.9
+-20, 356.8, 2242.0
+-25, 277.4, 1743.5
+-30, 226.4, 1423.0
+-35, 186.7, 1173.7
+-40, 154.6, 971.8
+
+Polynomial Fit: R(δ) = 1481.4659 + 100.4133*δ + 2.759523*δ² + 0.02698299*δ³
+  RMSE: 2.97 mm
+
+Ackermann Correction Factor K: 1.3101
+  Ackermann RMSE: 7.49 mm
+  Theoretical: R = K * L / tan(δ)  where L=100mm, δ=servo_angle
+
+--- RIGHT TURNS ---
+ServoCmd, Radius_mm, Distance_mm
+10, 681.2, 4280.3
+15, 463.8, 2915.1
+20, 337.2, 2118.8
+25, 271.2, 1704.9
+30, 225.8, 1419.3
+35, 187.0, 1176.0
+40, 158.8, 999.2
+
+Polynomial Fit: R(δ) = 1422.9576 + -100.6158*δ + 2.916332*δ² + -0.02982690*δ³
+  RMSE: 4.88 mm
+
+Ackermann Correction Factor K: 1.2688
+  Ackermann RMSE: 16.15 mm
+  Theoretical: R = K * L / tan(δ)  where L=100mm, δ=servo_angle
+
+--- METHOD COMPARISON ---
+Method | Left RMSE | Right RMSE
+Polynomial (3rd deg) | 2.97 mm | 4.88 mm
+Ackermann (K*L/tan(δ)) | 7.49 mm | 16.15 mm
+
+--- COPY THESE INTO config.h ---
+#define CAL_LEFT_A0 1481.4659
+#define CAL_LEFT_A1 100.413338
+#define CAL_LEFT_A2 2.75952291
+#define CAL_LEFT_A3 0.02698299
+#define CAL_RIGHT_A0 1422.9576
+#define CAL_RIGHT_A1 -100.615837
+#define CAL_RIGHT_A2 2.91633201
+#define CAL_RIGHT_A3 -0.02982690
+#define CAL_LEFT_K 1.3101
+#define CAL_RIGHT_K 1.2688
+
+========================================
