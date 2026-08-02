@@ -16,6 +16,8 @@
  */
 
 #include "navigation_controller.h"
+#include "mode_manager.h"
+#include "position_estimator.h"
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
@@ -80,7 +82,6 @@ float nav_last_distance_error = 0;
 
 // Telemetry and Debug
 bool nav_debug_enabled = false;
-unsigned long nav_last_debug_time = 0;
 
 // Time tracking
 extern unsigned long current_time;
@@ -515,7 +516,7 @@ void navigation_update(bool enabled)
     }
   }
 
-  if (nav_debug_enabled) navigation_print_debug();
+
 }
 
 void navigation_enable()
@@ -581,11 +582,7 @@ const char* navigation_state_string(NavigationState _state)
   }
 }
 
-void navigation_set_debug(bool enable)
-{
-  nav_debug_enabled = enable;
-  Serial.println(enable ? "Navigation controller debug ON" : "Navigation controller debug OFF");
-}
+
 
 bool navigation_is_complete()
 {
@@ -640,37 +637,30 @@ float navigation_get_gyro_kd()
   return nav_gyro_kd;
 }
 
+void general_debug_set(bool enable)
+{
+  nav_debug_enabled = enable;
+  Serial.println(enable ? "General debug ON" : "General debug OFF");
+}
+
 void navigation_print_debug()
 {
-  if (current_time - nav_last_debug_time < 200000)
-    return;
-  nav_last_debug_time = current_time;
-
-  Serial.print("[NAV] State: ");
+  Serial.print(" | NavState: ");
   Serial.print(navigation_state_string(nav_state));
   Serial.print(" | Wall: ");
   Serial.print(nav_following_wall == SIDE_LEFT ? "LEFT" : (nav_following_wall == SIDE_RIGHT ? "RIGHT" : "SEARCH"));
   Serial.print(" | Target: ");
   Serial.print(nav_gyro_target, 1);
-  Serial.print(" | Angle: ");
-  Serial.print(get_angle(), 1);
   if (nav_following_wall != SIDE_UNKNOWN)
   {
-    Serial.print(" | Dist: ");
+    Serial.print(" | WallDist: ");
     Serial.print(get_followed_wall_distance(), 0);
   }
   Serial.print(" | Round: ");
   Serial.print(nav_completed_rounds);
-  Serial.print(" | Tof Left: ");
-  Serial.print(get_tof_distance(TOF_LEFT), 0);
-  Serial.print(" | Tof Right: ");
-  Serial.print(get_tof_distance(TOF_RIGHT), 0);
-  Serial.print(" | long range active: ");
-  Serial.print(nav_long_range_active);
-  Serial.print(" | Distance: ");
-  Serial.print(get_distance(), 0);
-  Serial.println();
 }
+
+
 
 void navigation_set_target_distance(float distance_mm)
 {

@@ -11,8 +11,18 @@
 #include "motor_min_calibration.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "sensors.h"
+#include "position_estimator.h"
 #include "logger.h"
 #define Serial robot_logger
+
+extern bool nav_debug_enabled;
+extern float last_loop_time;
+extern unsigned long current_time;
+static unsigned long debug_loop_count = 0;
+static float debug_loop_time_sum_us = 0.0f;
+static float debug_loop_time_max_us = 0.0f;
+static unsigned long debug_last_print_time = 0;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
@@ -372,4 +382,72 @@ const char* mode_name(RobotMode mode)
     case MODE_MOTOR_MIN_CAL:      return "MOTOR_MIN_CAL";
     default:                      return "UNKNOWN";
     }
+}
+
+void general_debug_print()
+{
+    if (!nav_debug_enabled)
+        return;
+
+    const float current_loop_us = last_loop_time * 1000000.0f;
+    debug_loop_count++;
+    debug_loop_time_sum_us += current_loop_us;
+    if (current_loop_us > debug_loop_time_max_us) {
+        debug_loop_time_max_us = current_loop_us;
+    }
+
+    if (current_time - debug_last_print_time < 200000)
+        return;
+
+    const float avg_loop_ms = (debug_loop_count > 0)
+        ? (debug_loop_time_sum_us / debug_loop_count) / 1000.0f
+        : 0.0f;
+    const float max_loop_ms = debug_loop_time_max_us / 1000.0f;
+    const float last_loop_ms = last_loop_time * 1000.0f;
+
+    debug_last_print_time = current_time;
+
+    Serial.print("[DEBUG] Mode: ");
+    Serial.print(mode_name(current_mode));
+
+    // Base telemetry (Speed, Steer, Heading, Position, ToF, Distance)
+    Serial.print(" | Speed: ");
+    Serial.print(current_speed, 1);
+    Serial.print(" | Steer: ");
+    Serial.print(set_degree);
+    Serial.print(" | Angle: ");
+    Serial.print(get_angle(), 1);
+
+    float px = 0, py = 0, pheading = 0;
+    get_position(px, py, pheading);
+    Serial.print(" | Pos: (");
+    Serial.print(px, 0);
+    Serial.print(", ");
+    Serial.print(py, 0);
+    Serial.print(")");
+
+    Serial.print(" | Tof L/R: ");
+    Serial.print(get_tof_distance(TOF_LEFT), 0);
+    Serial.print("/");
+    Serial.print(get_tof_distance(TOF_RIGHT), 0);
+    Serial.print(" | Dist: ");
+    Serial.print(get_distance(), 0);
+
+    // Call mode-specific debug printing routines if available
+    if (current_mode == MODE_OPEN_CHALLENGE || current_mode == MODE_OBSTACLE_CHALLENGE || current_mode == MODE_OBSTACLE_BENCH) {
+        navigation_print_debug();
+    }
+
+    // Loop timing metrics
+    Serial.print(" | Loop Last: ");
+    Serial.print(last_loop_ms, 3);
+    Serial.print("ms | Avg: ");
+    Serial.print(avg_loop_ms, 3);
+    Serial.print("ms | Max: ");
+    Serial.print(max_loop_ms, 3);
+    Serial.println("ms");
+
+    debug_loop_count = 0;
+    debug_loop_time_sum_us = 0.0f;
+    debug_loop_time_max_us = 0.0f;
 }

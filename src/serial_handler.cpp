@@ -213,7 +213,7 @@ static void print_serial_command_info()
   Serial.println("s<angle>   : Manual steering angle in degrees");
   Serial.println("a<value>   : Set acceleration in mm/s^2");
   Serial.println("u<distance>: Set navigation wall distance in mm");
-  Serial.println("f / o      : Navigation debug ON / OFF");
+  Serial.println("f / o      : General debug ON / OFF");
   Serial.println("n / g / v  : Print encoder / gyro / ToF data");
   Serial.println("t          : Print estimated position");
   Serial.println("j          : Print learned obstacle course map");
@@ -425,13 +425,13 @@ void parseMessage(char *msg)
     break;
 
   case 'f':
-    // Enable navigation-controller debug output
-    navigation_set_debug(true);
+    // Enable general debug output
+    general_debug_set(true);
     break;
 
   case 'o':
-    // Disable wall follower debug output
-    navigation_set_debug(false);
+    // Disable general debug output
+    general_debug_set(false);
     break;
 
   case 'b':

@@ -50,19 +50,34 @@ int tr_cal_current_angle = 0;
 // INTERNAL STATE
 // ==========================================
 
-// The sequence of servo angles to test (absolute values, both directions)
-static const int tr_cal_angle_sequence[] = {10, 15, 20, 25, 30, 35, 40, 55, 50};
+// The sequence of servo angles to test (5° to MAX_STEERING=50°)
+static const int tr_cal_angle_sequence[] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
 static const int tr_cal_num_angles = sizeof(tr_cal_angle_sequence) / sizeof(tr_cal_angle_sequence[0]);
 
 // Per-measurement tracking
 static float tr_cal_start_distance = 0;      // Encoder distance at start of current circle
 static float tr_cal_start_angle = 0;         // Gyro angle at start of current circle
-static bool tr_cal_is_right_turn = false;    // Currently measuring right (negative) angles?
+static bool tr_cal_is_right_turn = false;    // Currently measuring right (positive) angles?
 static int tr_cal_phase = 0;                 // 0=left turns, 1=right turns
 static float tr_cal_drive_start_time = 0;    // Time when we started driving (ms)
-static const unsigned long tr_cal_circle_timeout_ms = 30000UL; // Max time allowed for one circle measurement
-static const float tr_cal_required_turn_angle_deg = 360.0f; // Degrees of rotation needed before finishing a turn
+static const unsigned long tr_cal_circle_timeout_ms = 30000UL; // Max time allowed for one measurement
 static bool tr_cal_printed_angle_header = false;
+
+// Return the required rotation angle (deg) for a given servo angle to fit within a 2x2m box.
+// Diameter = 2 * R = 2 * (L / sin(steering_deg)).
+// To stay within 2000mm box, for small angles we measure a partial arc (e.g. 90°-180°),
+// while for larger angles we can do up to 360°.
+static float get_required_turn_angle_deg(int abs_servo_angle)
+{
+    if (abs_servo_angle <= 5) {
+        return 90.0f;  // 90° turn for 5° angle (~1.8m arc) to stay comfortably inside 2x2m box
+    } else if (abs_servo_angle <= 10) {
+        return 120.0f; // 120° turn for 10° angle
+    } else if (abs_servo_angle <= 15) {
+        return 180.0f; // 180° turn for 15° angle
+    }
+    return 360.0f;     // Full 360° turn for 20° and above
+}
 
 // ==========================================
 // HELPER: Check if left turns are complete
@@ -225,11 +240,12 @@ void turn_radius_cal_update()
     }
     
     if (turn_radius_state == TR_DRIVING) {
-        // Check if we've completed 360° of rotation
+        // Check if we've completed the required rotation angle
         float angle_delta = fabs(get_angle() - tr_cal_start_angle);
+        float req_angle = get_required_turn_angle_deg(abs(tr_cal_current_angle));
         
-        // Need at least the configured angle to account for gyro noise
-        if (angle_delta >= tr_cal_required_turn_angle_deg) {
+        // Need at least the required target angle to finalize measurement
+        if (angle_delta >= req_angle) {
             // Reached 360°! Record measurement
             finalize_measurement();
             

@@ -80,7 +80,7 @@ void navigation_disable();
 void navigation_set_target_distance(float distance_mm);
 void navigation_set_wall_margin(float distance_m);
 void navigation_set_pd_gains(float kp, float kd);
-void navigation_set_debug(bool enable);
+void general_debug_set(bool enable);
 void navigation_set_speed(float speed_mm_s);
 void navigation_set_obstacle_mode(bool enable);
 void navigation_select_wall(
