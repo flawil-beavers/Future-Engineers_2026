@@ -21,6 +21,13 @@ enum DCState {
   DC_HOLDING    /**< Motor is active and holding current position */
 };
 
+enum DriveControlPhase {
+  DRIVE_ACCELERATING,
+  DRIVE_CRUISING,
+  DRIVE_DECELERATING,
+  DRIVE_POSITION_HOLD
+};
+
 extern Servo servo;
 
 // Encoder position tracking
@@ -33,6 +40,12 @@ extern float dc_current_dc;
 extern int target_speed;
 extern float current_speed;
 extern float measured_speed;
+extern unsigned long speed_measurement_count;
+extern float current_acceleration;
+extern float commanded_acceleration;
+extern float measured_acceleration;
+extern float active_acceleration_limit;
+extern DriveControlPhase drive_control_phase;
 
 // Steering state
 extern int set_degree;
@@ -48,8 +61,23 @@ extern float last_distance;
 extern float Kp;
 extern float Ki;
 extern float Kd;
+extern float accel_Kp;
+extern float accel_Ki;
+extern float motor_static_ff;
+extern float motor_speed_ff;
+extern float motor_accel_ff;
+extern float active_cruise_kp;
+extern float active_cruise_ki;
+extern float low_speed_cruise_kp;
+extern float low_speed_cruise_ki;
+extern float mid_speed_cruise_kp;
+extern float mid_speed_cruise_ki;
+extern float low_speed_gain_end;
+extern float mid_speed_gain_end;
+extern float high_speed_gain_start;
 extern float i_max;
 extern float pid_integral;
+extern float accel_pid_integral;
 extern float last_error;
 
 // Timing variables
@@ -101,8 +129,9 @@ float get_distance(long encoder_pos = encoder_pos);
 int estimate_dc(float speed);
 
 /**
- * @brief PID-controlled speed loop
- * Calculates DC value based on error between target and current distance
+ * @brief Two-phase PI speed loop with velocity/acceleration feedforward
+ * Uses acceleration gains while following the motion profile and cruise
+ * gains once the requested speed is stable.
  */
 void pid_speed();
 

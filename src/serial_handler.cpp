@@ -14,7 +14,8 @@
  *   v      : Print ToF sensor readings
  *   q<val> : Set motor Kp (val/10)
  *   w<val> : Set motor Ki (val/100)
- *   e<val> : Set motor Kd (val/10)
+ *   Q/W    : Set acceleration-phase Kp / Ki
+ *   E      : Set acceleration feedforward Ka
  *   a<val> : Set default acceleration
  *   x      : Debug steering timing
  *   m      : MANUAL mode
@@ -54,6 +55,145 @@ static char ringBuffer[BUFFER_SIZE];
 static int head = 0;
 static int tail = 0;
 
+static void print_pid_help()
+{
+  Serial.println("\n===== PID SETUP =====");
+  Serial.println("pid show                         : show every active motor value");
+  Serial.println("pid test <mm/s>                  : drive at a test speed; 'z' stops");
+  Serial.println("pid tune <mm/s> <PWM> <step>     : relay autotune for LOW/MID/HIGH band");
+  Serial.println("pid set low|mid|high kp|ki <v>   : set cruise PI for one speed band");
+  Serial.println("pid set bound low|mid|high <mm/s>: set interpolation boundaries");
+  Serial.println("pid set accel kp|ki <v>          : acceleration PI");
+  Serial.println("pid set ff static|kv|ka <v>      : static/speed/acceleration feedforward");
+  Serial.println("pid export                       : print config.h lines to save values");
+  Serial.println("LOW is used through the low boundary. Values blend smoothly LOW->MID");
+  Serial.println("and MID->HIGH between the three boundaries.");
+  Serial.println("Kp reacts immediately to speed error; too high causes oscillation.");
+  Serial.println("Ki removes lasting load error; too high causes slow pulsing/windup.");
+  Serial.println("FF static overcomes motor friction. Kv supplies PWM per mm/s.");
+  Serial.println("Ka supplies extra PWM while accelerating. Accel Kp/Ki correct Ka errors.");
+  Serial.println("Autotune: mm/s chooses the band, PWM is steady motor power, step is +/-PWM.");
+  Serial.println("Tune one band at a time with enough straight driving space.");
+  Serial.println("Settings are RAM-only until copied from 'pid export' into config.h.");
+  Serial.println("=====================\n");
+}
+
+static void print_pid_settings(bool export_format)
+{
+  if (export_format) {
+    Serial.println("// Copy these tested values into include/config.h:");
+    Serial.print("constexpr float LOW_SPEED_CRUISE_KP = "); Serial.print(low_speed_cruise_kp, 5); Serial.println("f;");
+    Serial.print("constexpr float LOW_SPEED_CRUISE_KI = "); Serial.print(low_speed_cruise_ki, 5); Serial.println("f;");
+    Serial.print("constexpr float MID_SPEED_CRUISE_KP = "); Serial.print(mid_speed_cruise_kp, 5); Serial.println("f;");
+    Serial.print("constexpr float MID_SPEED_CRUISE_KI = "); Serial.print(mid_speed_cruise_ki, 5); Serial.println("f;");
+    Serial.print("constexpr float CRUISE_KP = "); Serial.print(Kp, 5); Serial.println("f;");
+    Serial.print("constexpr float CRUISE_KI = "); Serial.print(Ki, 5); Serial.println("f;");
+    Serial.print("constexpr float LOW_SPEED_GAIN_END_MMS = "); Serial.print(low_speed_gain_end, 1); Serial.println("f;");
+    Serial.print("constexpr float MID_SPEED_GAIN_END_MMS = "); Serial.print(mid_speed_gain_end, 1); Serial.println("f;");
+    Serial.print("constexpr float HIGH_SPEED_GAIN_START_MMS = "); Serial.print(high_speed_gain_start, 1); Serial.println("f;");
+    Serial.print("constexpr float ACCEL_KP = "); Serial.print(accel_Kp, 5); Serial.println("f;");
+    Serial.print("constexpr float ACCEL_KI = "); Serial.print(accel_Ki, 5); Serial.println("f;");
+    Serial.print("constexpr float MOTOR_STATIC_FF_DC = "); Serial.print(motor_static_ff, 3); Serial.println("f;");
+    Serial.print("constexpr float MOTOR_SPEED_FF_DC_PER_MMS = "); Serial.print(motor_speed_ff, 6); Serial.println("f;");
+    Serial.print("constexpr float MOTOR_ACCEL_FF_DC_PER_MMSS = "); Serial.print(motor_accel_ff, 6); Serial.println("f;");
+    return;
+  }
+  Serial.println("\n=== ACTIVE PID SETTINGS (RAM) ===");
+  Serial.print("LOW  Kp/Ki: "); Serial.print(low_speed_cruise_kp, 5); Serial.print(" / "); Serial.println(low_speed_cruise_ki, 5);
+  Serial.print("MID  Kp/Ki: "); Serial.print(mid_speed_cruise_kp, 5); Serial.print(" / "); Serial.println(mid_speed_cruise_ki, 5);
+  Serial.print("HIGH Kp/Ki: "); Serial.print(Kp, 5); Serial.print(" / "); Serial.println(Ki, 5);
+  Serial.print("Boundaries LOW/MID/HIGH: "); Serial.print(low_speed_gain_end, 1); Serial.print(" / "); Serial.print(mid_speed_gain_end, 1); Serial.print(" / "); Serial.println(high_speed_gain_start, 1);
+  Serial.print("Acceleration Kp/Ki: "); Serial.print(accel_Kp, 5); Serial.print(" / "); Serial.println(accel_Ki, 5);
+  Serial.print("Feedforward static/Kv/Ka: "); Serial.print(motor_static_ff, 3); Serial.print(" / "); Serial.print(motor_speed_ff, 6); Serial.print(" / "); Serial.println(motor_accel_ff, 6);
+  pid_autotune_print_config();
+  Serial.println("=================================\n");
+}
+
+static bool handle_pid_command(const char *message)
+{
+  if (strncmp(message, "pid", 3) != 0 ||
+      (message[3] != '\0' && message[3] != ' '))
+    return false;
+
+  char action[12] = {};
+  char group[12] = {};
+  char parameter[12] = {};
+  float value = 0.0f;
+  const int fields = sscanf(message, "pid %11s %11s %11s %f", action, group, parameter, &value);
+  if (fields < 1 || strcmp(action, "help") == 0) {
+    print_pid_help();
+    return true;
+  }
+  if (strcmp(action, "show") == 0) {
+    print_pid_settings(false);
+    return true;
+  }
+  if (strcmp(action, "export") == 0) {
+    print_pid_settings(true);
+    return true;
+  }
+  if (strcmp(action, "test") == 0) {
+    float speed = 0.0f;
+    if (sscanf(message, "pid test %f", &speed) != 1 || fabsf(speed) > 1000.0f) {
+      Serial.println("Usage: pid test <speed_mm_s>");
+      return true;
+    }
+    mode_switch(MODE_MANUAL);
+    set_speed((int)roundf(speed));
+    Serial.print("PID test running at "); Serial.print(speed, 1);
+    Serial.println(" mm/s. Send 'z' to stop.");
+    return true;
+  }
+  if (strcmp(action, "tune") == 0) {
+    float speed = 0.0f, baseline = 0.0f, relay = 0.0f;
+    if (sscanf(message, "pid tune %f %f %f", &speed, &baseline, &relay) != 3 ||
+        !pid_autotune_configure(speed, baseline, relay)) {
+      Serial.println("Invalid tune values. Use: pid tune <speed> <baseline_PWM> <relay_step>");
+      Serial.println("Requirements: speed >= 40, PWM within motor range, step >= 2.");
+      return true;
+    }
+    pid_autotune_print_config();
+    mode_switch(MODE_PID_AUTOTUNE);
+    return true;
+  }
+  if (strcmp(action, "set") != 0 || fields != 4 || !isfinite(value)) {
+    Serial.println("Invalid PID command. Send 'pid help'.");
+    return true;
+  }
+
+  float *destination = nullptr;
+  if (strcmp(group, "low") == 0)
+    destination = strcmp(parameter, "kp") == 0 ? &low_speed_cruise_kp : strcmp(parameter, "ki") == 0 ? &low_speed_cruise_ki : nullptr;
+  else if (strcmp(group, "mid") == 0)
+    destination = strcmp(parameter, "kp") == 0 ? &mid_speed_cruise_kp : strcmp(parameter, "ki") == 0 ? &mid_speed_cruise_ki : nullptr;
+  else if (strcmp(group, "high") == 0)
+    destination = strcmp(parameter, "kp") == 0 ? &Kp : strcmp(parameter, "ki") == 0 ? &Ki : nullptr;
+  else if (strcmp(group, "accel") == 0)
+    destination = strcmp(parameter, "kp") == 0 ? &accel_Kp : strcmp(parameter, "ki") == 0 ? &accel_Ki : nullptr;
+  else if (strcmp(group, "ff") == 0)
+    destination = strcmp(parameter, "static") == 0 ? &motor_static_ff : strcmp(parameter, "kv") == 0 ? &motor_speed_ff : strcmp(parameter, "ka") == 0 ? &motor_accel_ff : nullptr;
+  else if (strcmp(group, "bound") == 0)
+    destination = strcmp(parameter, "low") == 0 ? &low_speed_gain_end : strcmp(parameter, "mid") == 0 ? &mid_speed_gain_end : strcmp(parameter, "high") == 0 ? &high_speed_gain_start : nullptr;
+
+  if (!destination || value < 0.0f || value > 1000.0f) {
+    Serial.println("Unknown setting or unsafe value. Send 'pid help'.");
+    return true;
+  }
+  const float old_value = *destination;
+  *destination = value;
+  if (!(low_speed_gain_end < mid_speed_gain_end &&
+        mid_speed_gain_end < high_speed_gain_start)) {
+    *destination = old_value;
+    Serial.println("Rejected: boundaries must satisfy LOW < MID < HIGH.");
+    return true;
+  }
+  pid_integral = 0.0f;
+  accel_pid_integral = 0.0f;
+  Serial.print("Set "); Serial.print(group); Serial.print(" ");
+  Serial.print(parameter); Serial.print(" = "); Serial.println(value, 6);
+  return true;
+}
+
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
@@ -78,7 +218,11 @@ static void print_serial_command_info()
   Serial.println("t          : Print estimated position");
   Serial.println("j          : Print learned obstacle course map");
   Serial.println("k          : Print calibration data");
-  Serial.println("q/w/e<val> : Set motor Kp / Ki / Kd");
+  Serial.println("q/w<val>   : Set cruise Kp / Ki");
+  Serial.println("Q/W<val>   : Set acceleration Kp / Ki");
+  Serial.println("E<val>     : Set acceleration feedforward Ka (val/1000)");
+  Serial.println("P          : Print motor-controller status");
+  Serial.println("pid help   : Guided PID setup, test and autotune commands");
   Serial.println("x          : Print steering timing");
   Serial.println("h          : Hold position");
   Serial.println("===========================\n");
@@ -141,6 +285,9 @@ void processMessage()
 
 void parseMessage(char *msg)
 {
+  if (handle_pid_command(msg))
+    return;
+
   char cmd[3]; // Command character
   int value = 0;
 
@@ -200,10 +347,29 @@ void parseMessage(char *msg)
     break;
 
   case 'e':
-    // Tune Kd
-    Kd = value / 10.0;
-    Serial.print("Kd: ");
-    Serial.println(Kd);
+    Serial.println("Motor D term is disabled; use q/w for cruise PI.");
+    break;
+
+  case 'Q':
+    accel_Kp = value / 10.0f;
+    Serial.print("Acceleration Kp: ");
+    Serial.println(accel_Kp);
+    break;
+
+  case 'W':
+    accel_Ki = value / 100.0f;
+    Serial.print("Acceleration Ki: ");
+    Serial.println(accel_Ki);
+    break;
+
+  case 'E':
+    motor_accel_ff = value / 1000.0f;
+    Serial.print("Acceleration feedforward Ka: ");
+    Serial.println(motor_accel_ff, 4);
+    break;
+
+  case 'P':
+    pid_config_print();
     break;
 
   case 'g':
@@ -345,16 +511,36 @@ void pid_config_print()
     Serial.print(measured_speed);
     Serial.print(" dc_current_dc: ");
     Serial.print(dc_current_dc);
-    Serial.print(" Kp: ");
+    Serial.print(" phase: ");
+    Serial.print((int)drive_control_phase);
+    Serial.print(" accel: ");
+    Serial.print(current_acceleration);
+    Serial.print(" measured_accel: ");
+    Serial.print(measured_acceleration);
+    Serial.print(" accel_command: ");
+    Serial.print(commanded_acceleration);
+    Serial.print(" accel_limit: ");
+    Serial.print(active_acceleration_limit);
+    Serial.print(" cruise_Kp: ");
     Serial.print(Kp);
-    Serial.print(" Ki: ");
+    Serial.print(" cruise_Ki: ");
     Serial.print(Ki);
-    Serial.print(" Kd: ");
-    Serial.print(Kd);
-    Serial.print(" error: ");
-    Serial.print(target_distance - current_distance);
+    Serial.print(" active_cruise_Kp: ");
+    Serial.print(active_cruise_kp);
+    Serial.print(" active_cruise_Ki: ");
+    Serial.print(active_cruise_ki);
+    Serial.print(" accel_Kp: ");
+    Serial.print(accel_Kp);
+    Serial.print(" accel_Ki: ");
+    Serial.print(accel_Ki);
+    Serial.print(" ff_Kv: ");
+    Serial.print(motor_speed_ff);
+    Serial.print(" speed_error: ");
+    Serial.print(current_speed - measured_speed);
     Serial.print(" pid_integral: ");
     Serial.print(pid_integral);
+    Serial.print(" accel_integral: ");
+    Serial.print(accel_pid_integral);
     Serial.print(" dc_out: ");
     Serial.print(dc_out);
     Serial.print(" pid_before_checking: ");

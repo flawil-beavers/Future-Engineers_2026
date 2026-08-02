@@ -68,6 +68,8 @@ float nav_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the
 bool nav_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
 bool nav_long_range_active = false;    // Tracks if ToF is in discovery (slow) mode
 bool nav_obstacle_mode = false;
+bool nav_soft_stop_started = false;
+bool nav_soft_stop_complete = false;
 uint8_t nav_corner_gap_samples = 0;
 float nav_wall_correction_resume_distance = 0;
 
@@ -458,16 +460,28 @@ void state_corner_aligning()
  */
 void state_stopped()
 {
-  set_speed(0);
   set_steering(0);
-  stop();
-  
-  Serial.println("===== GYRO TASK COMPLETE =====");
-  Serial.print("Total turns: "); Serial.print(nav_turn_count);
-  Serial.print(" | Complete rounds: "); Serial.println(nav_completed_rounds);
-  
-  log_tof_diagnostics("Mission complete");
-  robot_logger.write_to_usb();
+  if (!nav_soft_stop_started)
+  {
+    nav_soft_stop_started = true;
+    set_speed(0);
+    Serial.println("Mission complete: controlled deceleration started.");
+  }
+
+  if (fabsf(current_speed) > SOFT_STOP_SPEED_THRESHOLD_MMS ||
+      fabsf(measured_speed) > SOFT_STOP_SPEED_THRESHOLD_MMS)
+    return;
+
+  if (!nav_soft_stop_complete)
+  {
+    stop(false);
+    nav_soft_stop_complete = true;
+    Serial.println("===== GYRO TASK COMPLETE =====");
+    Serial.print("Total turns: "); Serial.print(nav_turn_count);
+    Serial.print(" | Complete rounds: "); Serial.println(nav_completed_rounds);
+    log_tof_diagnostics("Mission complete");
+    robot_logger.write_to_usb();
+  }
 }
 
 
@@ -518,6 +532,8 @@ void navigation_enable()
   
   log_tof_diagnostics("Manual enable -> FOLLOWING");
   nav_state = NAV_FOLLOWING;
+  nav_soft_stop_started = false;
+  nav_soft_stop_complete = false;
   nav_following_wall = SIDE_UNKNOWN;
   nav_turn_count = 0;
   nav_completed_rounds = 0;
@@ -573,7 +589,7 @@ void navigation_set_debug(bool enable)
 
 bool navigation_is_complete()
 {
-  return nav_state == NAV_STOPPED;
+  return nav_state == NAV_STOPPED && nav_soft_stop_complete;
 }
 
 void navigation_reset_filter()

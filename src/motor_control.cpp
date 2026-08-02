@@ -28,6 +28,12 @@ float dc_current_dc = 0;
 int target_speed = 0;
 float current_speed = 0;
 float measured_speed = 0;
+unsigned long speed_measurement_count = 0;
+float current_acceleration = 0;
+float commanded_acceleration = 0;
+float measured_acceleration = 0;
+float active_acceleration_limit = DEFAULT_ACCELERATION;
+DriveControlPhase drive_control_phase = DRIVE_CRUISING;
 static bool speed_measurement_ready = false;
 static float speed_measurement_dt = 0.05f;
 float last_speed = 0; // Used to store speed before stopping, for resuming
@@ -42,12 +48,30 @@ float current_distance = 0;
 float last_distance = 0;
 
 // PID tuning parameters
-float Kp = PID_KP;
-float Ki = PID_KI;
-float Kd = PID_KD;
-float i_max = PID_I_MAX;
+float Kp = CRUISE_KP;
+float Ki = CRUISE_KI;
+float Kd = 0.0f;
+float accel_Kp = ACCEL_KP;
+float accel_Ki = ACCEL_KI;
+float motor_static_ff = MOTOR_STATIC_FF_DC;
+float motor_speed_ff = MOTOR_SPEED_FF_DC_PER_MMS;
+float motor_accel_ff = MOTOR_ACCEL_FF_DC_PER_MMSS;
+float active_cruise_kp = LOW_SPEED_CRUISE_KP;
+float active_cruise_ki = LOW_SPEED_CRUISE_KI;
+float low_speed_cruise_kp = LOW_SPEED_CRUISE_KP;
+float low_speed_cruise_ki = LOW_SPEED_CRUISE_KI;
+float mid_speed_cruise_kp = MID_SPEED_CRUISE_KP;
+float mid_speed_cruise_ki = MID_SPEED_CRUISE_KI;
+float low_speed_gain_end = LOW_SPEED_GAIN_END_MMS;
+float mid_speed_gain_end = MID_SPEED_GAIN_END_MMS;
+float high_speed_gain_start = HIGH_SPEED_GAIN_START_MMS;
+float i_max = SPEED_INTEGRAL_PWM_MAX;
 float pid_integral = 0.0;
+float accel_pid_integral = 0.0f;
 float last_error = 0.0;
+static float hold_pid_integral = 0.0f;
+static DriveControlPhase last_applied_drive_phase = DRIVE_CRUISING;
+static unsigned long cruise_candidate_start_us = 0;
 
 // Debug variables
 int dc_out = 0;
@@ -108,9 +132,11 @@ void set_dc(float dc, bool rate_limit)
 {
   if (dc_state == DC_DISABLED || fabs(dc) < MOTOR_MIN_DC)
   {
+    analogWrite(MOTOR_PWM_PIN, 0);
     digitalWrite(MOTOR_IN1_PIN, LOW);
     digitalWrite(MOTOR_IN2_PIN, LOW);
-    dc_current_dc = dc;
+    dc_out = 0;
+    dc_current_dc = 0;
     return;
   }
 
@@ -176,41 +202,164 @@ void pid_speed()
     return;
   }
 
-  const bool holding = dc_state == DC_HOLDING;
-  float controller_dt = last_loop_time;
-  if (!holding)
+  if (dc_state == DC_HOLDING)
   {
-    if (!speed_measurement_ready)
-      return;
-    speed_measurement_ready = false;
-    controller_dt = speed_measurement_dt;
+    const float error = target_distance - current_distance;
+    hold_pid_integral = constrain(
+        hold_pid_integral + error * last_loop_time,
+        -SPEED_INTEGRAL_PWM_MAX,
+        SPEED_INTEGRAL_PWM_MAX);
+    const float output = constrain(
+        HOLD_POSITION_KP * error +
+        HOLD_POSITION_KI * hold_pid_integral +
+        HOLD_POSITION_KD * (error - last_error) / last_loop_time,
+        -HOLD_MAX_DC,
+        HOLD_MAX_DC);
+    drive_control_phase = DRIVE_POSITION_HOLD;
+    set_dc(output);
+    last_error = error;
+    return;
   }
 
-  const float error = holding
-      ? target_distance - current_distance
-      : current_speed - measured_speed;
-  pid_integral += error * controller_dt;
-  pid_before_checking = pid_integral;
+  if (!speed_measurement_ready)
+    return;
+  speed_measurement_ready = false;
 
-  // Clamp integral term
-  if (pid_integral != 0 && fabs(pid_integral) > i_max)
+  if (target_speed == 0 && fabsf(current_speed) < 1.0f &&
+      fabsf(measured_speed) < 3.0f)
   {
-    pid_integral = i_max * (pid_integral / fabs(pid_integral));
+    pid_integral = 0.0f;
+    last_error = 0.0f;
+    drive_control_phase = DRIVE_CRUISING;
+    set_dc(0, false);
+    return;
   }
 
-  const float controller_kp = holding ? HOLD_POSITION_KP : Kp;
-  const float controller_ki = holding ? HOLD_POSITION_KI : Ki;
-  const float controller_kd = holding ? HOLD_POSITION_KD : Kd;
-  float speed =
-      controller_kp * error +
-      controller_ki * pid_integral +
-      controller_kd * (error - last_error) / controller_dt;
-  if (holding)
+  const float speed_error = current_speed - measured_speed;
+  const bool profile_settled =
+      fabsf(current_acceleration) <= CRUISE_ACCEL_THRESHOLD_MMSS &&
+      fabsf(target_speed - current_speed) < 1.0f;
+  // Cruise is latched, but entry requires a sustained settled interval so one
+  // noisy encoder sample cannot switch away from acceleration control early.
+  const bool cruise_candidate =
+      profile_settled && fabsf(speed_error) <= CRUISE_SPEED_ERROR_MMS;
+  if (drive_control_phase != DRIVE_CRUISING)
   {
-    speed = constrain(speed, -HOLD_MAX_DC, HOLD_MAX_DC);
+    if (!cruise_candidate)
+      cruise_candidate_start_us = 0;
+    else if (cruise_candidate_start_us == 0)
+      cruise_candidate_start_us = current_time;
   }
-  set_dc(speed);
-  last_error = error;
+  const bool cruise = drive_control_phase == DRIVE_CRUISING ||
+      (cruise_candidate_start_us != 0 &&
+       current_time - cruise_candidate_start_us >= CRUISE_ENTRY_DWELL_US);
+  const DriveControlPhase new_phase = cruise
+      ? DRIVE_CRUISING
+      : (current_acceleration * current_speed < 0.0f
+            ? DRIVE_DECELERATING
+            : DRIVE_ACCELERATING);
+
+  drive_control_phase = new_phase;
+
+  commanded_acceleration = cruise
+      ? 0.0f
+      : constrain(
+            current_acceleration +
+                ACCEL_SPEED_TRACKING_KP * speed_error,
+            -active_acceleration_limit,
+            active_acceleration_limit);
+
+  const float direction = current_speed > 0.5f
+      ? 1.0f
+      : (current_speed < -0.5f ? -1.0f : 0.0f);
+  const float feedforward = direction * motor_static_ff +
+      motor_speed_ff * current_speed +
+      motor_accel_ff * commanded_acceleration;
+  float output = 0.0f;
+
+  if (cruise)
+  {
+    const float abs_profile_speed = fabsf(current_speed);
+    if (abs_profile_speed <= mid_speed_gain_end)
+    {
+      const float mid_blend = constrain(
+          (abs_profile_speed - low_speed_gain_end) /
+              (mid_speed_gain_end - low_speed_gain_end),
+          0.0f,
+          1.0f);
+      active_cruise_kp = low_speed_cruise_kp +
+          mid_blend * (mid_speed_cruise_kp - low_speed_cruise_kp);
+      active_cruise_ki = low_speed_cruise_ki +
+          mid_blend * (mid_speed_cruise_ki - low_speed_cruise_ki);
+    }
+    else
+    {
+      const float high_blend = constrain(
+          (abs_profile_speed - mid_speed_gain_end) /
+              (high_speed_gain_start - mid_speed_gain_end),
+          0.0f,
+          1.0f);
+      active_cruise_kp = mid_speed_cruise_kp +
+          high_blend * (Kp - mid_speed_cruise_kp);
+      active_cruise_ki = mid_speed_cruise_ki +
+          high_blend * (Ki - mid_speed_cruise_ki);
+    }
+    if (last_applied_drive_phase != DRIVE_CRUISING)
+    {
+      // Initialize the cruise integrator so changing controllers does not
+      // create a PWM step.
+      pid_integral = constrain(
+          dc_current_dc - feedforward - active_cruise_kp * speed_error,
+          CRUISE_ENTRY_INTEGRAL_MIN,
+          CRUISE_ENTRY_INTEGRAL_MAX);
+    }
+    const float integral_candidate = constrain(
+        pid_integral +
+            active_cruise_ki * speed_error * speed_measurement_dt,
+        -i_max,
+        i_max);
+    const float candidate_output =
+        feedforward + active_cruise_kp * speed_error + integral_candidate;
+    if (!((candidate_output > MOTOR_MAX_DC && speed_error > 0.0f) ||
+          (candidate_output < -MOTOR_MAX_DC && speed_error < 0.0f)))
+      pid_integral = integral_candidate;
+    output = feedforward + active_cruise_kp * speed_error + pid_integral;
+    pid_before_checking = pid_integral;
+    last_error = speed_error;
+  }
+  else
+  {
+    const float acceleration_error =
+        commanded_acceleration - measured_acceleration;
+    const float integral_candidate = constrain(
+        accel_pid_integral +
+            accel_Ki * acceleration_error * speed_measurement_dt,
+        -ACCEL_INTEGRAL_PWM_MAX,
+        ACCEL_INTEGRAL_PWM_MAX);
+    const float candidate_output =
+        feedforward + accel_Kp * acceleration_error + integral_candidate;
+    if (!((candidate_output > MOTOR_MAX_DC && acceleration_error > 0.0f) ||
+          (candidate_output < -MOTOR_MAX_DC && acceleration_error < 0.0f)))
+      accel_pid_integral = integral_candidate;
+    output = feedforward +
+        accel_Kp * acceleration_error + accel_pid_integral;
+    pid_before_checking = accel_pid_integral;
+    last_error = acceleration_error;
+  }
+
+  // A planned stop may reduce forward drive down to coasting, but must never
+  // apply reverse torque against a still-rolling wheel. Emergency stop paths
+  // bypass this controller and de-energize the motor immediately.
+  if (target_speed == 0)
+  {
+    if (measured_speed > SOFT_STOP_SPEED_THRESHOLD_MMS && output < 0.0f)
+      output = 0.0f;
+    else if (measured_speed < -SOFT_STOP_SPEED_THRESHOLD_MMS && output > 0.0f)
+      output = 0.0f;
+  }
+
+  set_dc(output, false);
+  last_applied_drive_phase = new_phase;
 }
 
 void drive_loop()
@@ -226,14 +375,46 @@ void drive_loop()
 
   if (dc_state == DC_ENABLED)
   {
-    // Smooth acceleration
-    if (fabs(target_speed - current_speed) > 1)
+    active_acceleration_limit = target_speed == 0
+        ? fminf(SOFT_STOP_DECELERATION_MMSS, acc)
+        : constrain(
+              fabsf((float)target_speed) * PROFILE_ACCEL_PER_TARGET_SPEED,
+              MIN_PROFILE_ACCELERATION_MMSS,
+              acc);
+    const float speed_error = target_speed - current_speed;
+    // Reduce acceleration early enough that it can reach zero at the target
+    // under the gentler release jerk: delta_v = a^2 / (2 * jerk).
+    const float allowed_acceleration = sqrtf(
+        2.0f * DRIVE_ACCEL_RELEASE_JERK_MMSSS * fabsf(speed_error));
+    const float desired_acceleration = fabsf(speed_error) > 0.5f
+        ? copysignf(
+              fminf(active_acceleration_limit, allowed_acceleration),
+              speed_error)
+        : 0.0f;
+    const bool releasing_acceleration =
+        current_acceleration * desired_acceleration < 0.0f ||
+        fabsf(desired_acceleration) < fabsf(current_acceleration);
+    const float active_jerk_limit = releasing_acceleration
+        ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
+        : DRIVE_JERK_LIMIT_MMSSS;
+    const float max_acceleration_change = active_jerk_limit * last_loop_time;
+    current_acceleration += constrain(
+        desired_acceleration - current_acceleration,
+        -max_acceleration_change,
+        max_acceleration_change);
+
+    const float next_speed =
+        current_speed + current_acceleration * last_loop_time;
+    if ((speed_error > 0.0f && next_speed >= target_speed) ||
+        (speed_error < 0.0f && next_speed <= target_speed) ||
+        fabsf(speed_error) <= 0.5f)
     {
-      current_speed += (target_speed - current_speed) / fabs(target_speed - current_speed) * acc * last_loop_time;
+      current_speed = target_speed;
+      current_acceleration = 0.0f;
     }
     else
     {
-      current_speed = target_speed;
+      current_speed = next_speed;
     }
 
     target_distance += current_speed * last_loop_time;
@@ -258,7 +439,16 @@ void stop(bool hold)
   {
     dc_state = DC_DISABLED;
     pid_integral = 0;
+    accel_pid_integral = 0;
+    hold_pid_integral = 0;
     last_error = 0;
+    current_acceleration = 0;
+    commanded_acceleration = 0;
+    current_speed = 0;
+    target_speed = 0;
+    drive_control_phase = DRIVE_CRUISING;
+    last_applied_drive_phase = DRIVE_CRUISING;
+    cruise_candidate_start_us = 0;
     target_distance = current_distance;
     set_dc(0);
   }
@@ -268,7 +458,11 @@ void stop(bool hold)
     // Lock to current distance to hold position
     target_distance = current_distance;
     pid_integral = 0;
+    accel_pid_integral = 0;
+    hold_pid_integral = 0;
     last_error = 0;
+    current_acceleration = 0;
+    commanded_acceleration = 0;
   }
   servo_disabled = true;
 }
@@ -278,6 +472,14 @@ void set_speed(int speed)
   if (speed == -1)
   {
     speed = last_speed;
+  }
+  if (speed != target_speed)
+  {
+    drive_control_phase = speed < current_speed
+        ? DRIVE_DECELERATING
+        : DRIVE_ACCELERATING;
+    accel_pid_integral = 0.0f;
+    cruise_candidate_start_us = 0;
   }
   dc_state = DC_ENABLED;
   target_speed = speed;
@@ -289,6 +491,7 @@ void loop_updater()
   static unsigned long last_loop_time_us = 0;
   static unsigned long speed_sample_start_us = 0;
   static float speed_sample_start_distance = 0;
+  static float previous_measured_speed = 0;
 
   last_time = current_time;
   last_distance = current_distance;
@@ -308,15 +511,28 @@ void loop_updater()
   {
     const unsigned long speed_elapsed_us =
         current_time - speed_sample_start_us;
+    const bool low_speed_cruise_filter =
+        drive_control_phase == DRIVE_CRUISING &&
+        fabsf((float)target_speed) <= low_speed_gain_end;
     if (speed_elapsed_us >= SPEED_MEASUREMENT_WINDOW_US)
     {
       const float raw_speed =
           (current_distance - speed_sample_start_distance) /
           (speed_elapsed_us / 1000000.0f);
+      const float speed_filter_alpha = low_speed_cruise_filter
+          ? LOW_SPEED_FILTER_ALPHA
+          : SPEED_FILTER_ALPHA;
       measured_speed +=
-          SPEED_FILTER_ALPHA * (raw_speed - measured_speed);
+          speed_filter_alpha * (raw_speed - measured_speed);
       speed_measurement_dt = speed_elapsed_us / 1000000.0f;
+      const float raw_acceleration =
+          (measured_speed - previous_measured_speed) /
+          speed_measurement_dt;
+      measured_acceleration += ACCELERATION_FILTER_ALPHA *
+          (raw_acceleration - measured_acceleration);
+      previous_measured_speed = measured_speed;
       speed_measurement_ready = true;
+      ++speed_measurement_count;
       speed_sample_start_us = current_time;
       speed_sample_start_distance = current_distance;
     }

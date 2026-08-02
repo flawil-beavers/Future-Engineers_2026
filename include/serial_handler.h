@@ -13,7 +13,9 @@
  *   h         : Select HOLD mode
  *   q<value>  : Set Kp tuning parameter (value/10)
  *   w<value>  : Set Ki tuning parameter (value/100)
- *   e<value>  : Set Kd tuning parameter (value/10)
+ *   Q/W       : Set acceleration-phase Kp/Ki
+ *   E         : Set acceleration feedforward Ka
+ *   P         : Print one motor-controller status snapshot
  *   g         : Print current gyro angle
  *   v         : Print ToF distances
  *   a<value>  : Set acceleration (mm/s^2)

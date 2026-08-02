@@ -60,12 +60,38 @@ constexpr auto SERVO_MIN_ANGLE = (SERVO_CENTER - MAX_STEERING); // Max left turn
 // ==========================================
 // PID CONTROLLER TUNING
 // ==========================================
-constexpr auto PID_KP = 0.8; // Proportional gain
-constexpr auto PID_KI = 0.2; // Integral gain
-constexpr auto PID_KD = 0.1; // Derivative gain
-constexpr auto PID_I_MAX = 150.0; // Max integral term clamping
+constexpr float CRUISE_KP = 0.12f;
+constexpr float CRUISE_KI = 0.04f;
+constexpr float LOW_SPEED_CRUISE_KP = 0.035f;
+constexpr float LOW_SPEED_CRUISE_KI = 0.020f;
+constexpr float MID_SPEED_CRUISE_KP = 0.08f;
+constexpr float MID_SPEED_CRUISE_KI = 0.03f;
+constexpr float CRUISE_ENTRY_INTEGRAL_MIN = -2.0f;
+constexpr float CRUISE_ENTRY_INTEGRAL_MAX = 2.0f;
+constexpr float LOW_SPEED_GAIN_END_MMS = 120.0f;
+constexpr float MID_SPEED_GAIN_END_MMS = 220.0f;
+constexpr float HIGH_SPEED_GAIN_START_MMS = 250.0f;
+constexpr float ACCEL_KP = 0.050f;
+constexpr float ACCEL_KI = 0.080f;
+constexpr float SPEED_INTEGRAL_PWM_MAX = 45.0f;
+constexpr float ACCEL_INTEGRAL_PWM_MAX = 35.0f;
+constexpr float ACCEL_SPEED_TRACKING_KP = 4.0f;
+constexpr float MIN_PROFILE_ACCELERATION_MMSS = 120.0f;
+constexpr float PROFILE_ACCEL_PER_TARGET_SPEED = 1.3f;
+constexpr float MOTOR_STATIC_FF_DC = 86.0f;
+constexpr float MOTOR_SPEED_FF_DC_PER_MMS = 0.113f;
+constexpr float MOTOR_ACCEL_FF_DC_PER_MMSS = 0.015f;
+constexpr float DRIVE_JERK_LIMIT_MMSSS = 2000.0f;
+constexpr float DRIVE_ACCEL_RELEASE_JERK_MMSSS = 500.0f;
+constexpr float CRUISE_ACCEL_THRESHOLD_MMSS = 20.0f;
+constexpr float CRUISE_SPEED_ERROR_MMS = 30.0f;
+constexpr unsigned long CRUISE_ENTRY_DWELL_US = 300000;
 constexpr unsigned long SPEED_MEASUREMENT_WINDOW_US = 50000;
-constexpr float SPEED_FILTER_ALPHA = 0.35f;
+constexpr float SPEED_FILTER_ALPHA = 0.60f;
+constexpr float LOW_SPEED_FILTER_ALPHA = 0.60f;
+constexpr float ACCELERATION_FILTER_ALPHA = 0.30f;
+constexpr float SOFT_STOP_SPEED_THRESHOLD_MMS = 5.0f;
+constexpr float SOFT_STOP_DECELERATION_MMSS = 200.0f;
 constexpr float HOLD_POSITION_KP = 0.8f;
 constexpr float HOLD_POSITION_KI = 0.2f;
 constexpr float HOLD_POSITION_KD = 0.1f;
@@ -73,24 +99,28 @@ constexpr float HOLD_POSITION_KD = 0.1f;
 // ==========================================
 // ACCELERATION SETTINGS
 // ==========================================
-constexpr auto DEFAULT_ACCELERATION = 700; // mm/s^2
+constexpr auto DEFAULT_ACCELERATION = 500; // mm/s^2
 
 // ==========================================
 // PID AUTOTUNE PARAMETERS
 // ==========================================
 constexpr auto PID_AT_RELAY_AMPLITUDE = 20;
 constexpr auto PID_AT_TARGET_SPEED = 250;
-constexpr auto PID_AT_MIN_CYCLES = 3;
-constexpr auto PID_AT_MAX_DISTANCE_MM = 2000;
+constexpr float PID_AT_INITIAL_BASELINE_DC = 116.0f;
+constexpr auto PID_AT_MIN_CYCLES = 6;
+constexpr auto PID_AT_MAX_DISTANCE_MM = 4000;
 constexpr auto PID_AT_MAX_TIME_US = 30000000;
 constexpr float PID_AT_HYSTERESIS_MMS = 8.0f;
 constexpr int PID_AT_WARMUP_CROSSINGS = 4;
-constexpr float PID_AT_MAX_PERIOD_VARIATION = 0.50f;
-constexpr float PID_AT_MIN_SPEED_AMPLITUDE = 8.0f;
-// If the target speed cannot be reached (motor/battery/load limits), force
-// the relay to start after this time so tuning still completes at whatever
-// speed the motor can actually sustain.
-constexpr unsigned long PID_AT_ACCEL_TIMEOUT_US = 4000000;
+constexpr float PID_AT_MAX_PERIOD_VARIATION = 0.25f;
+constexpr float PID_AT_MIN_SPEED_AMPLITUDE = 12.0f;
+constexpr float PID_AT_MAX_CENTER_ERROR_MMS = 12.0f;
+constexpr float PID_AT_MAX_AMPLITUDE_ASYMMETRY = 0.35f;
+// Abort after this time if a symmetric, unsaturated relay test cannot start.
+constexpr unsigned long PID_AT_ACCEL_TIMEOUT_US = 8000000;
+constexpr unsigned long PID_AT_BASELINE_SETTLE_US = 3000000;
+constexpr unsigned long PID_AT_BASELINE_SAMPLE_START_US = 1500000;
+constexpr float PID_AT_MAX_BASELINE_SPEED_VARIATION = 0.15f;
 // Safety net: abort if a forced relay start happens at a near-zero speed,
 // because tuning a stalled robot would produce meaningless gains.
 constexpr float PID_AT_MIN_RELAY_SPEED_MMS = 40.0f;
