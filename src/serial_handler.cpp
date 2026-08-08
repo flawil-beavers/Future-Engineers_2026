@@ -69,6 +69,12 @@ static void select_temporary_mode(RobotMode mode)
     Serial.print("Temporary mode selection failed: ");
     Serial.println(mode_name(mode));
   }
+
+  // Every selected mode must keep running if the laptop cable is unplugged.
+  if (current_mode == mode || pending_mode == mode) {
+    Serial.println("Safe USB handoff active; terminal remains available.");
+    robot_logger.protect_from_terminal_disconnect();
+  }
 }
 
 static void print_pid_help()
@@ -296,8 +302,12 @@ void processMessage()
 
   message[index] = '\0'; // Null-terminate
 
-  // Parse the extracted message
+  // A complete command proves that a laptop terminal is connected. Allow its
+  // response to be printed in full, then restore safe unplugging for any mode.
+  robot_logger.allow_blocking_terminal_output();
   parseMessage(message);
+  if (current_mode != MODE_NONE || pending_mode != MODE_NONE)
+    robot_logger.protect_from_terminal_disconnect();
 }
 
 void parseMessage(char *msg)

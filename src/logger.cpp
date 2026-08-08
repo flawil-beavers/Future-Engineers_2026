@@ -7,6 +7,7 @@
 
 #include <Arduino_USBHostMbed5.h>
 #include <FATFileSystem.h>
+#include <USB/PluggableUSBSerial.h>
 #include <string.h>
 
 #define SERIAL_HW _UART_USB_
@@ -27,7 +28,11 @@ USBLogger::USBLogger()
       consecutive_write_failures(0),
       flush_remaining(0),
       active_file(nullptr),
-      filesystem_mounted(false)
+      filesystem_mounted(false),
+      terminal_disconnect_protection(false),
+      terminal_tx_head(0),
+      terminal_tx_tail(0),
+      terminal_tx_count(0)
 {
     log_buffer[0] = '\0';
     session_filepath[0] = '\0';
@@ -41,16 +46,66 @@ void USBLogger::begin(unsigned long baud)
 }
 
 int USBLogger::available() { return SERIAL_HW.available(); }
-int USBLogger::read() { return SERIAL_HW.read(); }
+int USBLogger::read()
+{
+    return SERIAL_HW.read();
+}
 int USBLogger::peek() { return SERIAL_HW.peek(); }
-void USBLogger::flush() { SERIAL_HW.flush(); }
+void USBLogger::flush()
+{
+    if (!terminal_disconnect_protection)
+        SERIAL_HW.flush();
+}
 USBLogger::operator bool() { return (bool)SERIAL_HW; }
+
+void USBLogger::protect_from_terminal_disconnect()
+{
+    terminal_disconnect_protection = true;
+}
+
+void USBLogger::allow_blocking_terminal_output()
+{
+    terminal_disconnect_protection = false;
+    terminal_tx_head = 0;
+    terminal_tx_tail = 0;
+    terminal_tx_count = 0;
+}
+
+void USBLogger::buffer_terminal(const uint8_t *data, size_t size)
+{
+    for (size_t i = 0; i < size; ++i) {
+        if (terminal_tx_count >= TERMINAL_TX_BUFFER_SIZE)
+            return;
+        terminal_tx_buffer[terminal_tx_head] = data[i];
+        terminal_tx_head = (terminal_tx_head + 1) % TERMINAL_TX_BUFFER_SIZE;
+        ++terminal_tx_count;
+    }
+}
+
+void USBLogger::update_terminal()
+{
+    if (!terminal_disconnect_protection || terminal_tx_count == 0 ||
+        !_SerialUSB.connected())
+        return;
+
+    size_t chunk = TERMINAL_TX_BUFFER_SIZE - terminal_tx_tail;
+    if (chunk > terminal_tx_count)
+        chunk = terminal_tx_count;
+
+    uint32_t sent = 0;
+    _SerialUSB.send_nb(&terminal_tx_buffer[terminal_tx_tail], chunk, &sent);
+    terminal_tx_tail = (terminal_tx_tail + sent) % TERMINAL_TX_BUFFER_SIZE;
+    terminal_tx_count -= sent;
+}
 
 size_t USBLogger::write(uint8_t c)
 {
     buffer_char((char)c);
-    if (SERIAL_HW)
+    if (terminal_disconnect_protection) {
+        buffer_terminal(&c, 1);
+    } else if (SERIAL_HW) {
         SERIAL_HW.write(c);
+    }
     return 1;
 }
 
@@ -58,8 +113,11 @@ size_t USBLogger::write(const uint8_t *buffer, size_t size)
 {
     for (size_t i = 0; i < size; ++i)
         buffer_char((char)buffer[i]);
-    if (SERIAL_HW)
+    if (terminal_disconnect_protection) {
+        buffer_terminal(buffer, size);
+    } else if (SERIAL_HW) {
         SERIAL_HW.write(buffer, size);
+    }
     return size;
 }
 
@@ -119,7 +177,7 @@ void USBLogger::begin_attempt()
     pinMode(PA_15, OUTPUT);
     digitalWrite(PA_15, HIGH);
 
-    if (SERIAL_HW)
+    if (!terminal_disconnect_protection && SERIAL_HW)
         SERIAL_HW.println("[LOGGER] Asynchronous USB save started.");
 }
 
@@ -137,7 +195,7 @@ void USBLogger::remove_written_prefix(size_t count)
 
 void USBLogger::retry_or_fail(const char *reason)
 {
-    if (SERIAL_HW) {
+    if (!terminal_disconnect_protection && SERIAL_HW) {
         SERIAL_HW.print("[LOGGER] ");
         SERIAL_HW.println(reason);
     }
@@ -179,19 +237,20 @@ void USBLogger::finish_attempt(bool success)
         digitalWrite(LEDR, HIGH);
         digitalWrite(LEDG, LOW);
         logger_state = LOGGER_SUCCESS_FEEDBACK;
-        if (SERIAL_HW)
+        if (!terminal_disconnect_protection && SERIAL_HW)
             SERIAL_HW.println("[LOGGER] Requested log data saved.");
     } else {
         digitalWrite(LEDR, LOW);
         digitalWrite(LEDG, LOW);
         logger_state = LOGGER_ERROR_FEEDBACK;
-        if (SERIAL_HW)
+        if (!terminal_disconnect_protection && SERIAL_HW)
             SERIAL_HW.println("[LOGGER] Save incomplete; unwritten bytes remain buffered.");
     }
 }
 
 void USBLogger::update()
 {
+    update_terminal();
     const unsigned long now = millis();
 
     switch (logger_state) {

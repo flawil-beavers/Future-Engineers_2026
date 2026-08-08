@@ -175,7 +175,6 @@ constexpr int CAL_TURN_MAX_RETRIES = 2;
 constexpr float CAL_TURN_MIN_DISTANCE_MM = 50.0f;
 constexpr float CAL_TURN_MIN_RADIUS_MM = 50.0f;
 constexpr float CAL_TURN_MAX_RADIUS_MM = 5000.0f;
-constexpr auto CAL_STARTUP_DELAY_MS = 5000;
 constexpr auto CAL_CENTER_DISTANCE_MM = 2000.0f;
 constexpr auto CAL_CENTER_MAX_TIME_MS = 15000;
 constexpr auto CAL_CENTER_DEBUG_INTERVAL_MS = 500;

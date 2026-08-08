@@ -209,10 +209,7 @@ void turn_radius_cal_start()
         Serial.println("RIGHT TURN CALIBRATION RESUMED");
         Serial.println("========================================\n");
         
-        Serial.print("Standalone start delay: ");
-        Serial.print(CAL_STARTUP_DELAY_MS / 1000.0f, 1);
-        Serial.println(" s");
-        begin_servo_settle(CAL_STARTUP_DELAY_MS);
+        begin_servo_settle();
         
         Serial.print("Starting turn: angle=");
         Serial.print(tr_cal_current_angle);
@@ -262,10 +259,7 @@ void turn_radius_cal_start()
     
     // Set steering and speed for first angle
     // Note: system_enable() is called by the mode manager before this
-    Serial.print("Standalone start delay: ");
-    Serial.print(CAL_STARTUP_DELAY_MS / 1000.0f, 1);
-    Serial.println(" s");
-    begin_servo_settle(CAL_STARTUP_DELAY_MS);
+    begin_servo_settle();
     
     Serial.print("Starting turn: angle=");
     Serial.print(tr_cal_current_angle);

@@ -43,6 +43,7 @@ void setup()
     // This starts immediately when enabled, otherwise mode_switch() stores it
     // as the pending mode for the physical enable switch.
     mode_switch(STARTUP_ROBOT_MODE);
+    robot_logger.protect_from_terminal_disconnect();
 }
 
 void loop()

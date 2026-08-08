@@ -29,6 +29,10 @@ public:
     // Needed for Serial.begin() call in serial_setup()
     void begin(unsigned long baud);
 
+    /** Keep terminal I/O active, but make writes non-blocking while unplugging. */
+    void protect_from_terminal_disconnect();
+    void allow_blocking_terminal_output();
+
     // --- Logger control ---
     /**
      * @brief Flush the RAM log buffer to a sequentially-numbered file on the USB drive.
@@ -45,6 +49,8 @@ public:
     void clear();
 
 private:
+    static constexpr size_t TERMINAL_TX_BUFFER_SIZE = 4096;
+
     enum LoggerState {
         LOGGER_IDLE,
         LOGGER_POWER_SETTLE,
@@ -73,8 +79,15 @@ private:
     size_t flush_remaining;
     FILE *active_file;
     bool filesystem_mounted;
+    bool terminal_disconnect_protection;
+    uint8_t terminal_tx_buffer[TERMINAL_TX_BUFFER_SIZE];
+    size_t terminal_tx_head;
+    size_t terminal_tx_tail;
+    size_t terminal_tx_count;
 
     void buffer_char(char c);
+    void buffer_terminal(const uint8_t *data, size_t size);
+    void update_terminal();
     void begin_attempt();
     void retry_or_fail(const char *reason);
     void finish_attempt(bool success);
