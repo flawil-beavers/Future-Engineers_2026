@@ -11,6 +11,7 @@
 #include "motor_min_calibration.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path_test.h"
 #include "sensors.h"
 #include "position_estimator.h"
 #include "logger.h"
@@ -64,6 +65,10 @@ static void stop_mode(RobotMode mode)
         obstacle_challenge_update(false, false);
         navigation_disable();
         navigation_set_obstacle_mode(false);
+        break;
+
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_stop();
         break;
 
     case MODE_OBSTACLE_BENCH:
@@ -125,6 +130,10 @@ static bool start_mode(RobotMode mode)
         obstacle_bench_test_set(false);
         obstacle_challenge_setup();
         navigation_enable();
+        break;
+
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_start();
         break;
 
     case MODE_OBSTACLE_BENCH:
@@ -231,6 +240,15 @@ static ModeResult update_active_mode()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
     }
+
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_update();
+        drive_loop();
+        if (!obstacle_path_test_finished())
+            return MODE_RESULT_RUNNING;
+        return obstacle_path_test_passed()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_FAILED;
 
     case MODE_OBSTACLE_BENCH:
         obstacle_challenge_update(
@@ -365,6 +383,7 @@ const char* mode_name(RobotMode mode)
     case MODE_HOLD:               return "HOLD";
     case MODE_OPEN_CHALLENGE:     return "OPEN_CHALLENGE";
     case MODE_OBSTACLE_CHALLENGE: return "OBSTACLE_CHALLENGE";
+    case MODE_OBSTACLE_PATH_TEST: return "OBSTACLE_PATH_TEST";
     case MODE_OBSTACLE_BENCH:     return "OBSTACLE_BENCH";
     case MODE_CAMERA_CALIBRATION:  return "CAMERA_CALIBRATION";
     case MODE_TURN_RADIUS_CAL:    return "TURN_RADIUS_CAL";

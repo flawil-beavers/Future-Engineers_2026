@@ -24,6 +24,7 @@
  *   m         : Select manual mode
  *   l         : Start Open Challenge mode
  *   O         : Start Obstacle Challenge mode
+ *   X1/X-1    : Empty-track path test, left/right turns
  *   z         : Stop the active mode
  *   b1/b0     : Start/stop Obstacle Bench mode
  *   c         : Start Camera Calibration mode

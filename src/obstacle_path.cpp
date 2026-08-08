@@ -59,6 +59,7 @@ int8_t routeTurnSign = 1;
 bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
+bool runtimeTestMode = false;
 float loopLengthMm = 0.0f;
 CornerGeometry corners[4];
 
@@ -500,7 +501,9 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
         Serial.print("[PATH] Completed lap ");
         Serial.println(completedLaps);
 
-        if (completedLaps == 1)
+        if (runtimeTestMode)
+            finished = true;
+        else if (completedLaps == 1)
             buildOptimizedPath();
         else if (completedLaps >= 3)
             finished = true;
@@ -697,13 +700,15 @@ void obstacle_path_reset()
     running = false;
     finished = false;
     optimizedBuilt = false;
+    runtimeTestMode = false;
     loopLengthMm = 0.0f;
     memset(seats, 0, sizeof(seats));
 }
 
-void obstacle_path_start(int8_t turn_sign)
+void obstacle_path_start(int8_t turn_sign, bool test_mode)
 {
     obstacle_path_reset();
+    runtimeTestMode = test_mode;
     routeTurnSign = turn_sign < 0 ? -1 : 1;
     const PositionEstimate anchor = get_position_struct();
 
@@ -753,13 +758,14 @@ void obstacle_path_update(bool new_camera_frame)
     if (finished)
         return;
 
-    if (new_camera_frame)
+    if (!runtimeTestMode && new_camera_frame)
     {
         if (completedLaps == 0)
             registerDetection(getLargestObstacle());
     }
 
-    applyTofCorrection(pose);
+    if (!runtimeTestMode)
+        applyTofCorrection(pose);
     pose = get_position_struct();
 
     const PathPoint &progress = path[progressIndex];
@@ -786,8 +792,9 @@ void obstacle_path_update(bool new_camera_frame)
     // Positive geometric curvature is left; positive servo command is right.
     float steering =
         -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
-    steering += computeLookSteering(pose);
-    if (new_camera_frame)
+    if (!runtimeTestMode)
+        steering += computeLookSteering(pose);
+    if (!runtimeTestMode && new_camera_frame)
         steering += residualVisionSteering();
     steering = clampFloat(
         steering,
@@ -795,7 +802,10 @@ void obstacle_path_update(bool new_camera_frame)
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
 
     set_steering(static_cast<int>(steering));
-    set_speed(static_cast<int>(progress.speedMmS));
+    const float commandedSpeed = runtimeTestMode
+        ? fminf(progress.speedMmS, OBSTACLE_PATH_TEST_MAX_SPEED_MM_S)
+        : progress.speedMmS;
+    set_speed(static_cast<int>(commandedSpeed));
 }
 
 bool obstacle_path_started()
@@ -816,4 +826,50 @@ uint8_t obstacle_path_lap()
 uint16_t obstacle_path_progress_index()
 {
     return progressIndex;
+}
+
+uint16_t obstacle_path_waypoint_count()
+{
+    return pathLength;
+}
+
+float obstacle_path_loop_length_mm()
+{
+    return loopLengthMm;
+}
+
+float obstacle_path_cross_track_error_mm()
+{
+    if (!running || pathLength == 0)
+        return -1.0f;
+    const PositionEstimate pose = get_position_struct();
+    const PathPoint *path = optimizedBuilt ? optimizedPath : livePath;
+    return hypotf(
+        pose.x_mm - path[progressIndex].x,
+        pose.y_mm - path[progressIndex].y);
+}
+
+float obstacle_path_heading_error_deg()
+{
+    if (!running || pathLength == 0)
+        return 0.0f;
+    const PositionEstimate pose = get_position_struct();
+    return wrap180(
+        pose.heading_deg - baselinePath[progressIndex].headingDeg);
+}
+
+bool obstacle_path_geometry_valid()
+{
+    if (!running || pathLength < 3 ||
+        pathLength > OBSTACLE_MAX_PATH_WAYPOINTS)
+        return false;
+
+    const float expectedLength =
+        4.0f * OBSTACLE_STRAIGHT_LENGTH_MM +
+        2.0f * PI * OBSTACLE_CORNER_RADIUS_MM;
+    const float closureError = hypotf(
+        baselinePath[pathLength - 1].x - baselinePath[0].x,
+        baselinePath[pathLength - 1].y - baselinePath[0].y);
+    return fabsf(loopLengthMm - expectedLength) <= 1.0f &&
+           closureError <= 1.0f;
 }

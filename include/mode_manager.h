@@ -34,6 +34,7 @@ enum RobotMode {
     MODE_HOLD,                  ///< Actively hold the current encoder position
     MODE_OPEN_CHALLENGE,        ///< Gyro-stabilized Open Challenge
     MODE_OBSTACLE_CHALLENGE,    ///< Camera-based Obstacle Challenge
+    MODE_OBSTACLE_PATH_TEST,    ///< One-lap empty-track Pure Pursuit test
     MODE_OBSTACLE_BENCH,        ///< Stationary camera/steering obstacle test
     MODE_CAMERA_CALIBRATION,     ///< Stationary live camera HSV calibration
     MODE_TURN_RADIUS_CAL,       ///< Turn-radius calibration

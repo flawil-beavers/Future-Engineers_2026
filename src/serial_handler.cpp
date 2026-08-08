@@ -21,6 +21,7 @@
  *   m      : MANUAL mode
  *   l      : OPEN CHALLENGE mode
  *   O      : OBSTACLE CHALLENGE mode
+ *   X1/-1  : EMPTY-TRACK PATH TEST left/right
  *   b1/b0  : OBSTACLE BENCH mode on/off
  *   c      : CAMERA CALIBRATION mode
  *   C      : TURN RADIUS CALIBRATION mode
@@ -39,6 +40,7 @@
 #include "sensors.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path_test.h"
 #include "course_map.h"
 #include "calibration.h"
 #include "position_estimator.h"
@@ -224,6 +226,8 @@ static void print_serial_command_info()
   Serial.println("m          : Select MANUAL mode");
   Serial.println("l          : Start OPEN CHALLENGE mode");
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
+  Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
+  Serial.println("X0         : Stop EMPTY-TRACK path test");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
   Serial.println("c          : Start CAMERA CALIBRATION mode");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
@@ -477,6 +481,28 @@ void parseMessage(char *msg)
   case 'O':
     // Start Obstacle Challenge.
     select_temporary_mode(MODE_OBSTACLE_CHALLENGE);
+    break;
+
+  case 'X':
+    // Isolated one-lap Pure Pursuit test. Camera steering and ToF pose
+    // correction are disabled; ToF remains active only as a safety stop.
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_PATH_TEST ||
+          pending_mode == MODE_OBSTACLE_PATH_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No empty-track path test is active.");
+    }
+    else if (value == 1 || value == -1)
+    {
+      obstacle_path_test_set_turn_sign(value);
+      select_temporary_mode(MODE_OBSTACLE_PATH_TEST);
+    }
+    else
+    {
+      Serial.println("Usage: X1 (left/CCW), X-1 (right/CW), X0 (stop)");
+    }
     break;
 
   case 'j':

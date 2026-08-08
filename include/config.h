@@ -414,15 +414,27 @@ constexpr auto OBSTACLE_RESIDUAL_VISION_MAX_DEG = 4.0f;
 // ToF locations in the robot frame: +X forward, +Y left. The documented
 // 120 mm body width places the side-facing sensor apertures about 60 mm from
 // the pose origin; update DX after measuring the final printed mounts.
-constexpr auto OBSTACLE_TOF_LEFT_LOCAL_X_MM = 0.0f;
-constexpr auto OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 60.0f;
-constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 0.0f;
-constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -60.0f;
+constexpr auto OBSTACLE_TOF_LEFT_LOCAL_X_MM = 40.0f;
+constexpr auto OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 35.0f;
+constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 40.0f;
+constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
 constexpr auto OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM = 500.0f;
 constexpr auto OBSTACLE_TOF_CORRECTION_GAIN = 0.18f;
 constexpr auto OBSTACLE_TOF_CORRECTION_MAX_STEP_MM = 12.0f;
 constexpr auto OBSTACLE_CORNER_GATE_BEFORE_MM = 120.0f;
 constexpr auto OBSTACLE_CORNER_GATE_AFTER_MM = 280.0f;
+
+// Empty-track Pure Pursuit test mode (serial: X1 left/CCW, X-1 right/CW).
+// Vision steering and ToF pose correction are disabled during this test so
+// it measures only path anchoring, direction, odometry and path tracking.
+constexpr auto OBSTACLE_PATH_TEST_MAX_SPEED_MM_S = 150.0f;
+constexpr auto OBSTACLE_PATH_TEST_TIMEOUT_MS = 75000UL;
+constexpr auto OBSTACLE_PATH_TEST_WALL_STOP_MM = 120.0f;
+constexpr auto OBSTACLE_PATH_TEST_ABORT_CROSS_TRACK_MM = 300.0f;
+constexpr auto OBSTACLE_PATH_TEST_PASS_CROSS_TRACK_MM = 180.0f;
+constexpr auto OBSTACLE_PATH_TEST_PASS_POSITION_MM = 200.0f;
+constexpr auto OBSTACLE_PATH_TEST_PASS_HEADING_DEG = 12.0f;
+constexpr auto OBSTACLE_PATH_TEST_TELEMETRY_MS = 500UL;
 
 
 
