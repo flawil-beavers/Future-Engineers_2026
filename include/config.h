@@ -52,7 +52,7 @@ constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 // ==========================================
 // STEERING CONFIGURATION
 // ==========================================
-constexpr auto SERVO_CENTER = 81; // Center neutral position
+constexpr auto SERVO_CENTER = 80; // Center neutral position
 constexpr auto MAX_STEERING = 50;
 constexpr auto SERVO_MAX_ANGLE = (SERVO_CENTER + MAX_STEERING); // Max right turn
 constexpr auto SERVO_MIN_ANGLE = (SERVO_CENTER - MAX_STEERING); // Max left turn
