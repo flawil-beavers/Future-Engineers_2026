@@ -369,11 +369,11 @@ constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 // CHALLENGE MODE
 // ==========================================
 
-// Default mode selected during setup. If the physical enable switch is LOW,
-// it remains pending until the switch is enabled.
-#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
-
-// Standalone workshop mode: start the turn-radius calibration from the
-// physical enable switch without requiring the serial command 'C'. Set this
-// back to false before a normal Open/Obstacle Challenge run.
-constexpr bool STANDALONE_TURN_RADIUS_CALIBRATION = true;
+// Standalone mode selected during setup. If the physical enable switch is
+// LOW, this mode remains pending until the switch is enabled. Change only
+// this line to select any autonomous challenge or calibration mode.
+// Common choices:
+//   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
+//   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
+//   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
+#define STARTUP_ROBOT_MODE MODE_TURN_RADIUS_CAL
