@@ -40,7 +40,10 @@ constexpr auto ENABLE_SWITCH_PIN = A2; // Enable switch - HIGH to enable, LOW to
 // ==========================================
 // MOTOR CONTROL CONSTANTS
 // ==========================================
-constexpr auto GEAR_RATIO = 30; // Motor gear ratio
+// Current motor: 530 RPM, 30:1 gearbox.
+constexpr auto GEAR_RATIO = 30;
+// Old motor rollback: comment the line above and uncomment the line below.
+// constexpr auto GEAR_RATIO = 50;
 constexpr auto ENCODER_COUNTS_PER_REV = (GEAR_RATIO * 7 * 4); // CPR of the motor
 constexpr auto ENCODER_COUNTS_PER_WHEEL_REV = (28.0 / 20.0 * ENCODER_COUNTS_PER_REV); // CPR of the wheel
 constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
@@ -48,6 +51,37 @@ constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm
 constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
 constexpr auto MOTOR_MIN_DC = 80; // Min duty cycle to overcome static friction
 constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
+
+// Current 30:1 motor: slow discovery, fast straight, controlled inner corner.
+constexpr float OPEN_CHALLENGE_STRAIGHT_SPEED_MMS = 800.0f;
+constexpr float OPEN_CHALLENGE_DISCOVERY_SPEED_MMS = 400.0f;
+constexpr float OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS = 300.0f;
+constexpr float OPEN_CHALLENGE_CORNER_SPEED_MMS = 500.0f;
+constexpr float OPEN_FIRST_LAP_ASSUMED_LENGTH_MM = 1000.0f;
+constexpr float OPEN_CORNER_PREDICT_DECEL_MMSS = 300.0f;
+// Extra distance after the calculated braking distance. This compensates the
+// jerk-limited ramp and aims to reach 300 mm/s at least 200 mm before the wall.
+constexpr float OPEN_CORNER_PREDICT_MARGIN_MM = 450.0f;
+constexpr float OPEN_CORNER_MIN_LEARNED_LENGTH_MM = 600.0f;
+constexpr float OPEN_CORNER_MAX_LEARNED_LENGTH_MM = 2400.0f;
+constexpr float OPEN_FINAL_APPROACH_SPEED_MMS = 800.0f;
+constexpr float OPEN_FINAL_TARGET_FRACTION = 0.50f;
+constexpr float OPEN_FINAL_TARGET_BEFORE_CENTER_MM = 100.0f;
+constexpr float OPEN_FINAL_BRAKE_MARGIN_MM = 50.0f;
+constexpr float OPEN_FINAL_DECELERATION_MMSS = 500.0f;
+constexpr float OPEN_FINAL_JERK_MMSSS = 2000.0f;
+constexpr float OPEN_FINAL_HIGH_TO_LOW_DECEL_MMSS = 500.0f;
+constexpr float OPEN_FINAL_HIGH_TO_LOW_MARGIN_MM = 100.0f;
+constexpr float OPEN_WALL_PD_FULL_GAIN_SPEED_MMS = 500.0f;
+constexpr float OPEN_WALL_PD_MIN_GAIN_SCALE = 0.60f;
+constexpr float OPEN_WALL_CORRECTION_MAX_DEG = 12.0f;
+constexpr float OPEN_WALL_TARGET_DISTANCE_MM = 150.0f;
+// Old 50:1 motor rollback: comment the speed lines above and uncomment below.
+// constexpr float OPEN_CHALLENGE_STRAIGHT_SPEED_MMS = 300.0f;
+// constexpr float OPEN_CHALLENGE_DISCOVERY_SPEED_MMS = 300.0f;
+// constexpr float OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS = 300.0f;
+// constexpr float OPEN_CHALLENGE_CORNER_SPEED_MMS = 300.0f;
+// After changing motors, verify or retune PID and feedforward values below.
 
 // ==========================================
 // STEERING CONFIGURATION
@@ -133,12 +167,11 @@ constexpr auto STATUS_PRINT_INTERVAL_US = 200000; // Print status every 200ms
 // ==========================================
 // STALL DETECTION
 // ==========================================
-constexpr auto STALL_SPEED_THRESHOLD_MMS = 1.0f; // Trigger stall if speed < 1.0 mm/s while demanding high torque
-constexpr auto STALL_DC_THRESHOLD = 0.99; // Trigger at 99% of max DC
-constexpr unsigned long STALL_DETECTION_WINDOW_US = 100000;
+// While the motor is commanded to drive, it must move at least this distance
+// within the window. This works at low speed too; no near-maximum PWM is needed.
+constexpr float STALL_MIN_MOVEMENT_MM = 1.0f;
+constexpr unsigned long STALL_DETECTION_WINDOW_US = 300000;
 constexpr float HOLD_MAX_DC = 110.0f;
-constexpr float HOLD_OVERLOAD_THRESHOLD = 0.95f;
-constexpr unsigned long HOLD_OVERLOAD_WINDOW_US = 2000000;
 
 // ==========================================
 // ENABLE INTERRUPT DEBOUNCE
@@ -151,7 +184,8 @@ constexpr auto ENABLE_DEBOUNCE_TIME_US = 100000; // 100ms debounce
 // ==========================================
 #define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_SHORT
 constexpr auto TOF_I2C_CLOCK = 400000; // 400kHz I2C clock (standard for VL53L4CX)
-constexpr auto TOF_TIMING_BUDGET_US = 30000; // 200ms budget to capture weak signals from black targets at 4m
+// Stable short-range updates: at 800 mm/s the robot travels 24 mm per 30 ms.
+constexpr uint32_t TOF_TIMING_BUDGET_US = 30000;
 constexpr auto TOF_MAX_RELIABLE_DISTANCE_MM = 600.0f; // Max distance for reliable wall detection (mm)
 constexpr auto TOF_MAX_LONG_DISTANCE_MM = 4000.0f; // Max distance for long-range discovery (mm)
 constexpr auto TOF_OUT_OF_RANGE_MM = 9999.0f; // Value returned when no object is detected or beyond reliable range (mm)
@@ -282,6 +316,7 @@ constexpr auto OBSTACLE_GREEN_MIN_HEIGHT = 21;
 constexpr auto OBSTACLE_CONFIRM_FRAMES = 2;
 constexpr auto OBSTACLE_LOST_FRAMES = 3;
 constexpr uint8_t OPEN_CORNER_CONFIRM_SAMPLES = 3;
+constexpr uint8_t OPEN_PREDICTED_CORNER_CONFIRM_SAMPLES = 2;
 
 // Desired obstacle positions inside the 320 px image
 // Red must stay on the LEFT -> robot passes on the right
@@ -375,4 +410,4 @@ constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
+#define STARTUP_ROBOT_MODE MODE_OPEN_CHALLENGE

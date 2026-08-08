@@ -39,6 +39,9 @@ void update_gyro();
  */
 void update_lasers();
 
+/** Number of completed hardware measurements for one sensor. */
+uint32_t get_tof_measurement_count(TofSensor sensor);
+
 /**
  * @brief Reset VL53L4CX sensor via I2C protocol
  * Helper function to reset sensors without extra wires

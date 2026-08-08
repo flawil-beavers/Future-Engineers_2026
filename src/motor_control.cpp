@@ -34,6 +34,8 @@ float current_acceleration = 0;
 float commanded_acceleration = 0;
 float measured_acceleration = 0;
 float active_acceleration_limit = DEFAULT_ACCELERATION;
+static float soft_stop_deceleration = SOFT_STOP_DECELERATION_MMSS;
+static float soft_stop_jerk = DRIVE_ACCEL_RELEASE_JERK_MMSSS;
 DriveControlPhase drive_control_phase = DRIVE_CRUISING;
 static bool speed_measurement_ready = false;
 static float speed_measurement_dt = 0.05f;
@@ -383,7 +385,7 @@ void drive_loop()
   if (dc_state == DC_ENABLED)
   {
     active_acceleration_limit = target_speed == 0
-        ? fminf(SOFT_STOP_DECELERATION_MMSS, acc)
+        ? fminf(soft_stop_deceleration, acc)
         : constrain(
               fabsf((float)target_speed) * PROFILE_ACCEL_PER_TARGET_SPEED,
               MIN_PROFILE_ACCELERATION_MMSS,
@@ -391,8 +393,11 @@ void drive_loop()
     const float speed_error = target_speed - current_speed;
     // Reduce acceleration early enough that it can reach zero at the target
     // under the gentler release jerk: delta_v = a^2 / (2 * jerk).
+    const float profile_jerk = target_speed == 0
+        ? soft_stop_jerk
+        : DRIVE_ACCEL_RELEASE_JERK_MMSSS;
     const float allowed_acceleration = sqrtf(
-        2.0f * DRIVE_ACCEL_RELEASE_JERK_MMSSS * fabsf(speed_error));
+        2.0f * profile_jerk * fabsf(speed_error));
     const float desired_acceleration = fabsf(speed_error) > 0.5f
         ? copysignf(
               fminf(active_acceleration_limit, allowed_acceleration),
@@ -401,9 +406,11 @@ void drive_loop()
     const bool releasing_acceleration =
         current_acceleration * desired_acceleration < 0.0f ||
         fabsf(desired_acceleration) < fabsf(current_acceleration);
-    const float active_jerk_limit = releasing_acceleration
-        ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
-        : DRIVE_JERK_LIMIT_MMSSS;
+    const float active_jerk_limit = target_speed == 0
+        ? soft_stop_jerk
+        : (releasing_acceleration
+              ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
+              : DRIVE_JERK_LIMIT_MMSSS);
     const float max_acceleration_change = active_jerk_limit * last_loop_time;
     current_acceleration += constrain(
         desired_acceleration - current_acceleration,
@@ -439,6 +446,12 @@ void set_acceleration(int acceleration)
   acc = acceleration;
 }
 
+void set_soft_stop_profile(float deceleration_mmss, float jerk_mmsss)
+{
+  soft_stop_deceleration = fmaxf(1.0f, deceleration_mmss);
+  soft_stop_jerk = fmaxf(1.0f, jerk_mmsss);
+}
+
 void stop(bool hold)
 {
   last_speed = current_speed;
@@ -456,6 +469,8 @@ void stop(bool hold)
     drive_control_phase = DRIVE_CRUISING;
     last_applied_drive_phase = DRIVE_CRUISING;
     cruise_candidate_start_us = 0;
+    soft_stop_deceleration = SOFT_STOP_DECELERATION_MMSS;
+    soft_stop_jerk = DRIVE_ACCEL_RELEASE_JERK_MMSSS;
     target_distance = current_distance;
     set_dc(0);
   }
@@ -550,49 +565,18 @@ void check_stalling()
 {
   static unsigned long window_start_us = 0;
   static float window_start_distance = 0;
-  static unsigned long hold_overload_start_us = 0;
 
-  if (dc_state == DC_HOLDING)
-  {
-    const bool holding_at_limit =
-        fabsf(dc_current_dc) >=
-        HOLD_MAX_DC * HOLD_OVERLOAD_THRESHOLD;
-
-    if (!holding_at_limit)
-    {
-      hold_overload_start_us = 0;
-      return;
-    }
-
-    if (hold_overload_start_us == 0)
-    {
-      hold_overload_start_us = current_time;
-      return;
-    }
-
-    if (current_time - hold_overload_start_us >=
-        HOLD_OVERLOAD_WINDOW_US)
-    {
-      Serial.println(
-          "Holding overload: maximum holding effort exceeded for 2 seconds.");
-      hold_overload_start_us = 0;
-      mode_pause();
-    }
-    return;
-  }
-
-  hold_overload_start_us = 0;
-
-  // DC_HOLDING intentionally produces torque at almost zero speed. It needs a
-  // separate overload policy and must not be interpreted as a driving stall.
-  const bool high_drive_load =
+  // Holding is intentionally stationary. A target of zero is a planned stop.
+  // Otherwise any real motor command must produce encoder movement, even when
+  // the requested driving speed is low.
+  const bool motor_should_move =
       dc_state == DC_ENABLED &&
-      fabs(dc_current_dc) >
-          MOTOR_MAX_DC * STALL_DC_THRESHOLD;
+      target_speed != 0 &&
+      fabsf(dc_current_dc) >= MOTOR_MIN_DC;
 
-  if (!high_drive_load)
+  if (!motor_should_move)
   {
-    window_start_us = current_time;
+    window_start_us = 0;
     window_start_distance = current_distance;
     return;
   }
@@ -609,24 +593,23 @@ void check_stalling()
   if (elapsed_us < STALL_DETECTION_WINDOW_US)
     return;
 
-  const float elapsed_s = elapsed_us / 1000000.0f;
-  const float speed_mms =
-      fabsf(current_distance - window_start_distance) /
-      elapsed_s;
-
-  window_start_us = current_time;
-  window_start_distance = current_distance;
-
-  if (speed_mms >= STALL_SPEED_THRESHOLD_MMS)
+  const float movement_mm =
+      fabsf(current_distance - window_start_distance);
+  if (movement_mm >= STALL_MIN_MOVEMENT_MM)
+  {
+    window_start_us = current_time;
+    window_start_distance = current_distance;
     return;
+  }
 
-  Serial.print("Stall detected over ");
-  Serial.print(elapsed_us / 1000);
-  Serial.print(" ms. Speed: ");
-  Serial.print(speed_mms, 2);
-  Serial.print(" mm/s, DC: ");
+  Serial.print("STALL: less than ");
+  Serial.print(STALL_MIN_MOVEMENT_MM, 1);
+  Serial.print(" mm movement in ");
+  Serial.print(STALL_DETECTION_WINDOW_US / 1000);
+  Serial.print(" ms, PWM=");
   Serial.println(dc_current_dc);
 
+  window_start_us = 0;
   mode_pause();
 }
 

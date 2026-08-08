@@ -41,7 +41,7 @@ NavigationState nav_state = NAV_IDLE;
 NavigationState nav_last_state = NAV_IDLE;
 
 // Wall following parameters
-float nav_target_distance = 300.0;     // 300mm target distance from wall
+float nav_target_distance = OPEN_WALL_TARGET_DISTANCE_MM;
 float nav_wall_margin = TOF_MAX_RELIABLE_DISTANCE_MM; // Threshold to detect gap/open space (mm)
 int nav_turn_angle = 0;                // +90 or -90 degrees
 WallSide nav_following_wall = SIDE_UNKNOWN; // Which wall are we following
@@ -64,7 +64,7 @@ float nav_start_distance = 0;
 int nav_completed_rounds = 0;
 
 // Speed parameters
-float nav_normal_speed = 300.0;        // Default normal speed (mm/s) 400 is the maximal speed without stalling on the 50:1 motor
+float nav_normal_speed = OPEN_CHALLENGE_STRAIGHT_SPEED_MMS;
 
 // Internal logic flags
 bool nav_searching_for_wall = false;   // True when waiting to "re-acquire" a wall after a turn
@@ -74,11 +74,17 @@ bool nav_soft_stop_started = false;
 bool nav_soft_stop_complete = false;
 uint8_t nav_corner_gap_samples = 0;
 float nav_wall_correction_resume_distance = 0;
+uint32_t nav_last_corner_tof_sample = 0;
+float nav_learned_straight_mm[4] = {0, 0, 0, 0};
+bool nav_final_slowing = false;
 
 // PD Controller
 float nav_pd_kp = 0.5;                 // Proportional gain
 float nav_pd_kd = 0.01;                // Derivative gain
 float nav_last_distance_error = 0;
+float nav_distance_pd = 0;
+uint32_t nav_last_distance_tof_sample = 0;
+unsigned long nav_last_distance_update_us = 0;
 
 // Telemetry and Debug
 bool nav_debug_enabled = false;
@@ -86,6 +92,32 @@ bool nav_debug_enabled = false;
 // Time tracking
 extern unsigned long current_time;
 extern float last_loop_time;
+
+static bool all_open_straights_learned()
+{
+  for (int i = 0; i < 4; ++i)
+    if (nav_learned_straight_mm[i] <= 0.0f)
+      return false;
+  return true;
+}
+
+static float controlled_stop_distance(float speed, float deceleration,
+                                      float jerk)
+{
+  speed = fmaxf(0.0f, speed);
+  const float ramp_time = deceleration / jerk;
+  const float ramp_speed_loss = 0.5f * jerk * ramp_time * ramp_time;
+  if (ramp_speed_loss >= speed)
+  {
+    const float stop_time = sqrtf(2.0f * speed / jerk);
+    return speed * stop_time - jerk * stop_time * stop_time * stop_time / 6.0f;
+  }
+  const float ramp_distance = speed * ramp_time -
+      jerk * ramp_time * ramp_time * ramp_time / 6.0f;
+  const float remaining_speed = speed - ramp_speed_loss;
+  return ramp_distance +
+      remaining_speed * remaining_speed / (2.0f * deceleration);
+}
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -207,9 +239,59 @@ void state_following()
   }
   nav_last_gyro_error = gyro_error;
 
+  // After the twelfth corner, stop near the middle of the learned final
+  // straight. Start braking before the midpoint by the controlled stopping
+  // distance, instead of using one fixed distance for every field size.
+  if (nav_completed_rounds >= 3)
+  {
+    const int final_section = nav_turn_count % 4;
+    const float final_straight_length =
+        nav_learned_straight_mm[final_section];
+    if (final_straight_length > 0.0f)
+    {
+      const float final_target_distance = fmaxf(
+          0.0f,
+          final_straight_length * OPEN_FINAL_TARGET_FRACTION -
+              OPEN_FINAL_TARGET_BEFORE_CENTER_MM);
+      const float final_braking_distance =
+          controlled_stop_distance(
+              OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS,
+              OPEN_FINAL_DECELERATION_MMSS,
+              OPEN_FINAL_JERK_MMSSS) +
+              OPEN_FINAL_BRAKE_MARGIN_MM;
+      const float final_high_to_low_distance =
+          (OPEN_FINAL_APPROACH_SPEED_MMS * OPEN_FINAL_APPROACH_SPEED_MMS -
+              OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS *
+                  OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS) /
+              (2.0f * OPEN_FINAL_HIGH_TO_LOW_DECEL_MMSS) +
+          OPEN_FINAL_HIGH_TO_LOW_MARGIN_MM;
+      const float final_stop_trigger =
+          fmaxf(0.0f, final_target_distance - final_braking_distance);
+      const float final_distance =
+          fabsf(get_distance() - nav_start_distance);
+      if (final_distance >=
+          fmaxf(0.0f, final_target_distance - final_high_to_low_distance))
+        nav_final_slowing = true;
+      if (final_distance >= final_stop_trigger)
+      {
+        Serial.print("[NAV] Final braking point: ");
+        Serial.print(final_distance, 0);
+        Serial.print(" mm, target 100 mm before midpoint: ");
+        Serial.print(final_target_distance, 0);
+        Serial.println(" mm -> controlled stop");
+        nav_state = NAV_STOPPED;
+        set_soft_stop_profile(
+            OPEN_FINAL_DECELERATION_MMSS,
+            OPEN_FINAL_JERK_MMSSS);
+        set_speed(0);
+        return;
+      }
+    }
+  }
+
   // 2. Secondary: Wall Distance Correction
   float current_wall_distance = get_followed_wall_distance();
-  float dist_pd = 0;
+  float dist_pd = nav_distance_pd;
 
   /**
    * DETECTION LOGIC: Trigger Turn
@@ -228,17 +310,61 @@ void state_following()
   bool beyond_blind_distance = nav_start_distance + blind_dist < get_distance();
   bool heading_plausible = fabs(gyro_error) < (nav_obstacle_mode ? 12.0f : 180.0f);
   bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
-  if (beyond_blind_distance && heading_plausible && gap_seen) {
-    if (nav_corner_gap_samples < 255) nav_corner_gap_samples++;
-  } else {
-    nav_corner_gap_samples = 0;
+  const bool corner_warning =
+      beyond_blind_distance && heading_plausible && gap_seen;
+  const TofSensor corner_sensor = nav_following_wall == SIDE_RIGHT
+      ? TOF_RIGHT
+      : TOF_LEFT;
+  const uint32_t corner_tof_sample =
+      get_tof_measurement_count(corner_sensor);
+  if (corner_tof_sample != nav_last_corner_tof_sample)
+  {
+    nav_last_corner_tof_sample = corner_tof_sample;
+    if (corner_warning) {
+      if (nav_corner_gap_samples < 255) nav_corner_gap_samples++;
+    } else {
+      nav_corner_gap_samples = 0;
+    }
   }
 
-  uint8_t required_gap_samples =
-      nav_obstacle_mode ? 4 : OPEN_CORNER_CONFIRM_SAMPLES;
+  const int detection_section = nav_turn_count % 4;
+  const float detection_straight_distance =
+      fabsf(get_distance() - nav_start_distance);
+  const bool predicted_detection_zone =
+      !nav_obstacle_mode && all_open_straights_learned() &&
+      nav_learned_straight_mm[detection_section] > 0.0f &&
+      detection_straight_distance >= fmaxf(
+          0.0f,
+          nav_learned_straight_mm[detection_section] -
+              OPEN_CORNER_PREDICT_MARGIN_MM);
+  const uint8_t required_gap_samples = nav_obstacle_mode
+      ? 4
+      : (predicted_detection_zone
+            ? OPEN_PREDICTED_CORNER_CONFIRM_SAMPLES
+            : OPEN_CORNER_CONFIRM_SAMPLES);
   if (nav_corner_gap_samples >= required_gap_samples)
   {
     nav_corner_gap_samples = 0;
+    if (!nav_obstacle_mode && nav_turn_count > 0)
+    {
+      const float learned_length =
+          fabsf(get_distance() - nav_start_distance);
+      if (learned_length >= OPEN_CORNER_MIN_LEARNED_LENGTH_MM &&
+          learned_length <= OPEN_CORNER_MAX_LEARNED_LENGTH_MM)
+      {
+        const int section = nav_turn_count % 4;
+        nav_learned_straight_mm[section] = learned_length;
+        const int opposite_section = (section + 2) % 4;
+        nav_learned_straight_mm[opposite_section] = learned_length;
+        Serial.print("[NAV] Learned straight S");
+        Serial.print(section);
+        Serial.print(" and opposite S");
+        Serial.print(opposite_section);
+        Serial.print(": ");
+        Serial.print(learned_length, 0);
+        Serial.println(" mm");
+      }
+    }
     if (nav_following_wall == SIDE_UNKNOWN)
     {
       // Searching for initial direction
@@ -273,16 +399,28 @@ void state_following()
     nav_turn_count++;
     nav_completed_rounds = (int)(nav_turn_count / 4);
 
-    log_tof_diagnostics("Corner detected -> TURNING");
-    nav_state = NAV_TURNING;
-    nav_turn_start_angle = get_angle();
+    if (nav_obstacle_mode)
+    {
+      log_tof_diagnostics("Corner detected -> TURNING");
+      nav_state = NAV_TURNING;
+      nav_turn_start_angle = get_angle();
+    }
+    else
+    {
+      // The disappearing side wall is the inner boundary. Start turning at
+      // its confirmed end so the car does not make a wide path to the outside.
+      log_tof_diagnostics("Inner corner confirmed -> TURNING");
+      nav_state = NAV_TURNING;
+      nav_turn_start_angle = get_angle();
+      set_speed(OPEN_CHALLENGE_CORNER_SPEED_MMS);
+    }
     return;
   }
 
   /**
    * DISTANCE PD CONTROL
    * 
-   * If a wall is within range, calculate the error from target (300mm).
+   * If a wall is within range, calculate the error from the active target.
    * This term is added to the gyro steering to gently nudge the robot 
    * away from or toward the wall while maintaining heading.
    */
@@ -296,23 +434,65 @@ void state_following()
         nav_obstacle_mode &&
         get_distance() < nav_wall_correction_resume_distance;
 
-    if (!nav_searching_for_wall && !post_turn_gyro_only) {
+    const TofSensor distance_sensor = nav_following_wall == SIDE_RIGHT
+        ? TOF_RIGHT
+        : TOF_LEFT;
+    const uint32_t distance_sample =
+        get_tof_measurement_count(distance_sensor);
+    const bool new_distance_sample =
+        distance_sample != nav_last_distance_tof_sample;
+
+    if (!nav_searching_for_wall && !post_turn_gyro_only &&
+        new_distance_sample) {
+      nav_last_distance_tof_sample = distance_sample;
       float dist_error = current_wall_distance - nav_target_distance;
-      float dist_derivative = (dist_error - nav_last_distance_error) / safe_loop_time;
+      const float distance_dt = nav_last_distance_update_us == 0
+          ? TOF_TIMING_BUDGET_US / 1000000.0f
+          : fmaxf(
+                (current_time - nav_last_distance_update_us) / 1000000.0f,
+                0.001f);
+      nav_last_distance_update_us = current_time;
+      float dist_derivative =
+          (dist_error - nav_last_distance_error) / distance_dt;
       dist_pd = nav_pd_kp * dist_error + nav_pd_kd * dist_derivative;
       if (nav_obstacle_mode) {
         dist_pd = 0.18f * dist_error + 0.003f * dist_derivative;
         if (dist_pd > 14.0f) dist_pd = 14.0f;
         if (dist_pd < -14.0f) dist_pd = -14.0f;
       }
+      else
+      {
+        // At high speed, large lateral steering corrections cause a violent
+        // lane change. Scale them down smoothly and keep gyro heading primary.
+        const float gain_scale = constrain(
+            OPEN_WALL_PD_FULL_GAIN_SPEED_MMS /
+                fmaxf(fabsf(measured_speed),
+                      OPEN_WALL_PD_FULL_GAIN_SPEED_MMS),
+            OPEN_WALL_PD_MIN_GAIN_SCALE,
+            1.0f);
+        dist_pd *= gain_scale;
+        dist_pd = constrain(
+            dist_pd,
+            -OPEN_WALL_CORRECTION_MAX_DEG,
+            OPEN_WALL_CORRECTION_MAX_DEG);
+      }
       nav_last_distance_error = dist_error;
+      nav_distance_pd = dist_pd;
     }
-    if (nav_completed_rounds >= 3 && nav_start_distance + 500 < get_distance())
+  }
+  else if (nav_following_wall != SIDE_UNKNOWN)
+  {
+    const TofSensor distance_sensor = nav_following_wall == SIDE_RIGHT
+        ? TOF_RIGHT
+        : TOF_LEFT;
+    const uint32_t distance_sample =
+        get_tof_measurement_count(distance_sensor);
+    if (distance_sample != nav_last_distance_tof_sample)
     {
-      log_tof_diagnostics("Rounds finished -> STOPPED");
-      nav_state = NAV_STOPPED;
+      nav_last_distance_tof_sample = distance_sample;
+      nav_distance_pd = 0.0f;
+      dist_pd = 0.0f;
     }
-
   }
 
   // Combine Steering: Gyro + Distance Correction
@@ -333,7 +513,45 @@ void state_following()
   const bool post_turn_gyro_only =
       nav_obstacle_mode &&
       get_distance() < nav_wall_correction_resume_distance;
-  set_speed(post_turn_gyro_only ? 160.0f : nav_normal_speed);
+  const int current_section = nav_turn_count % 4;
+  const bool actual_map_ready = all_open_straights_learned();
+  const float predicted_length = actual_map_ready
+      ? nav_learned_straight_mm[current_section]
+      : 0.0f;
+  const float straight_distance =
+      fabsf(get_distance() - nav_start_distance);
+  const float speed_for_braking = fmaxf(
+      fabsf(measured_speed),
+      OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS);
+  const float prediction_braking_distance =
+      (speed_for_braking * speed_for_braking -
+          OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS *
+              OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS) /
+          (2.0f * OPEN_CORNER_PREDICT_DECEL_MMSS) +
+      OPEN_CORNER_PREDICT_MARGIN_MM;
+  const bool predicted_corner_near =
+      !nav_obstacle_mode && predicted_length > 0.0f &&
+      straight_distance >=
+          fmaxf(0.0f, predicted_length - prediction_braking_distance);
+  set_speed(
+      post_turn_gyro_only
+          ? 160.0f
+          : (nav_completed_rounds >= 3
+                ? (nav_final_slowing
+                      ? OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS
+                      : OPEN_FINAL_APPROACH_SPEED_MMS)
+                : (nav_following_wall == SIDE_UNKNOWN
+                ? OPEN_CHALLENGE_DISCOVERY_SPEED_MMS
+                : (actual_map_ready && predicted_corner_near
+                      ? OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS
+                      : (actual_map_ready
+                            ? nav_normal_speed
+                            : (straight_distance < fmaxf(
+                                      0.0f,
+                                      OPEN_FIRST_LAP_ASSUMED_LENGTH_MM -
+                                          OPEN_CORNER_PREDICT_MARGIN_MM)
+                                  ? nav_normal_speed
+                                  : OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS))))));
 }
 
 /**
@@ -360,7 +578,7 @@ void state_turning()
   }
   else
   {
-    set_speed(nav_normal_speed);
+    set_speed(OPEN_CHALLENGE_CORNER_SPEED_MMS);
   }
 
   if ((get_angle() - nav_turn_start_angle - nav_turn_angle) * nav_turn_angle/fabs(nav_turn_angle) > 0)
@@ -543,10 +761,13 @@ void navigation_enable()
   navigation_reset_filter();
   nav_searching_for_wall = false;
   nav_long_range_active = false;
+  nav_final_slowing = false;
+  for (int i = 0; i < 4; ++i)
+    nav_learned_straight_mm[i] = 0.0f;
 
   dc_state = DC_ENABLED;
   servo_disabled = false;
-  set_speed(nav_normal_speed);
+  set_speed(OPEN_CHALLENGE_DISCOVERY_SPEED_MMS);
   
   Serial.print("Initial Task Grid Locked: "); Serial.println(nav_start_angle);
   Serial.println("Following GYRO heading primary, looking for walls...");
@@ -593,6 +814,10 @@ void navigation_reset_filter()
 {
   nav_steering_filter = 0.0f;
   nav_last_gyro_error = 0.0f;
+  nav_distance_pd = 0.0f;
+  nav_last_distance_error = 0.0f;
+  nav_last_distance_tof_sample = 0;
+  nav_last_distance_update_us = 0;
 }
 
 float navigation_compute_steering(
@@ -727,7 +952,10 @@ void navigation_set_speed(float speed_mm_s)
 void navigation_set_obstacle_mode(bool enable)
 {
   nav_obstacle_mode = enable;
+  if (!enable)
+    nav_target_distance = OPEN_WALL_TARGET_DISTANCE_MM;
   nav_corner_gap_samples = 0;
+  nav_last_corner_tof_sample = get_tof_measurement_count(TOF_LEFT);
 }
 
 void navigation_select_wall(
@@ -749,6 +977,9 @@ void navigation_select_wall(
     nav_target_distance = target_distance_mm;
     nav_searching_for_wall = true;
     nav_last_distance_error = 0;
+    nav_distance_pd = 0;
+    nav_last_distance_tof_sample = 0;
+    nav_last_distance_update_us = 0;
 
     Serial.print("[NAV] Planned lane ");
     Serial.print(side == SIDE_LEFT ? "LEFT" : "RIGHT");

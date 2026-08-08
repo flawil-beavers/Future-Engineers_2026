@@ -162,6 +162,9 @@ void drive_loop();
  */
 void set_acceleration(int acceleration);
 
+/** Set a controlled stop profile. Defaults are restored after stop(false). */
+void set_soft_stop_profile(float deceleration_mmss, float jerk_mmsss);
+
 /**
  * @brief Stop motors and optionally hold position
  * @param hold If true, transition to DC_HOLDING; if false, transition to DC_DISABLED

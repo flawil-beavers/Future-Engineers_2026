@@ -31,6 +31,7 @@ uint32_t sensors_initial_tof_timing_budget = 0;
 // ToF sensors (on separate I2C buses)
 static VL53L4CX sensor_left(&Wire, -1);
 static VL53L4CX sensor_right(&Wire2, -1);
+static uint32_t tof_measurement_counts[TOF_COUNT] = {0, 0};
 
 // Distance readings in millimeters
 static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
@@ -130,6 +131,8 @@ void update_gyro()
  */
 static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
+  const TofSensor sensor_index =
+      (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
   float min_accept_signal = 0.3f;
   float max_accept_sigma = nav_long_range_active ? 30.0f : 20.0f;
   float raw_measured_dist = -1.0f;
@@ -227,6 +230,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   }
 
   sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+  ++tof_measurement_counts[sensor_index];
   
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
@@ -258,6 +262,11 @@ void sensors_set_tof_timing_budget(uint32_t budget_us)
   sensor_right.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
 }
 
+uint32_t get_tof_measurement_count(TofSensor sensor)
+{
+  return sensor < TOF_COUNT ? tof_measurement_counts[sensor] : 0;
+}
+
 /**
  * @brief Professional initialization helper for a single ToF sensor
  * Handles the full hardware handshake and configuration sequence.
@@ -276,9 +285,13 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
     while (1) delay(10);
   }
   
-  uint32_t timing_budget_us = 0;
+  uint32_t timing_budget_us = TOF_TIMING_BUDGET_US;
   sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
-  sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
+  if (sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(
+          timing_budget_us) != VL53L4CX_ERROR_NONE)
+  {
+    Serial.println("WARNING: ToF timing budget was rejected.");
+  }
   Serial.print("nav_long_range_active: ");
   Serial.println(nav_long_range_active);
   if (nav_long_range_active)
