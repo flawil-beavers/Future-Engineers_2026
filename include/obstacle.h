@@ -43,12 +43,36 @@ void printVisionDebug();
 
 void printCameraCalibration();
 
+/**
+ * @brief Set the measured camera-to-pillar distance used by calibration.
+ *        A value of zero keeps blob diagnostics active without calculating
+ *        focal-length samples.
+ */
+void camera_calibration_set_reference_distance(float distance_mm);
+
 
 // ==========================================
 // OBSTACLE DETECTION
 // ==========================================
 
 const Blob* getLargestObstacle();
+
+/**
+ * @brief Apply the production acquisition filters used before a new pillar
+ *        can affect steering or the known-geometry path.
+ */
+bool obstacle_blob_valid_for_acquisition(const Blob *obstacle);
+
+/**
+ * @brief Return the best red/green blob after production validation.
+ *        Invalid edge lines and background regions cannot mask a valid pillar.
+ */
+const Blob* getLargestValidObstacle();
+
+/**
+ * @brief Estimate horizontal camera-to-block-foot range in millimetres.
+ */
+float obstacle_estimate_camera_range_mm(const Blob *obstacle);
 
 void handleObstacleDetection();
 

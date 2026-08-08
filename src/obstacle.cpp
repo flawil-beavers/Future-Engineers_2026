@@ -727,7 +727,7 @@ void handleObstacleDetection()
 // VALIDATE OBSTACLE
 // ============================================================
 
-static bool validObstacle(
+bool obstacle_blob_valid_for_acquisition(
     const Blob *obstacle)
 {
     if (obstacle == nullptr)
@@ -797,7 +797,7 @@ static bool validObstacle(
 static bool validTrackedObstacle(
     const Blob *obstacle)
 {
-    if (validObstacle(obstacle))
+    if (obstacle_blob_valid_for_acquisition(obstacle))
     {
         return true;
     }
@@ -1113,7 +1113,7 @@ bool obstacle_avoidance_update(
 
         if (
             !memoryConfirmed &&
-            !validObstacle(obstacle))
+            !obstacle_blob_valid_for_acquisition(obstacle))
         {
             oa_confirm_frames = 0;
             oa_candidate_color = ColorType::NONE;

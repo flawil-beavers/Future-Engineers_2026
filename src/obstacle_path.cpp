@@ -418,10 +418,7 @@ void buildOptimizedPath()
 
 void registerDetection(const Blob *blob)
 {
-    if (blob == nullptr || !blob->found ||
-        (blob->color != ColorType::RED &&
-         blob->color != ColorType::GREEN) ||
-        blob->height() <= 0)
+    if (!obstacle_blob_valid_for_acquisition(blob))
     {
         return;
     }
@@ -430,16 +427,23 @@ void registerDetection(const Blob *blob)
     const float bearing =
         (static_cast<float>(blob->centerX) - 160.0f) *
         (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
-    const bool edgeClipped = blob->minX <= 2 || blob->maxX >= 317;
-    const float range = edgeClipped
-                            ? OBSTACLE_EDGE_CLIPPED_RANGE_MM
-                            : OBSTACLE_CAMERA_FOCAL_LENGTH_PX *
-                                  OBSTACLE_PILLAR_HEIGHT_MM /
-                                  blob->height();
+    const float range = obstacle_estimate_camera_range_mm(blob);
+    if (range <= 0.0f)
+        return;
+
+    const float robotHeading = pose.heading_deg * PI / 180.0f;
+    const float cameraX =
+        pose.x_mm +
+        OBSTACLE_CAMERA_LOCAL_X_MM * cosf(robotHeading) -
+        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(robotHeading);
+    const float cameraY =
+        pose.y_mm +
+        OBSTACLE_CAMERA_LOCAL_X_MM * sinf(robotHeading) +
+        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(robotHeading);
     const float globalBearing =
         (pose.heading_deg + bearing) * PI / 180.0f;
-    const float sightingX = pose.x_mm + range * cosf(globalBearing);
-    const float sightingY = pose.y_mm + range * sinf(globalBearing);
+    const float sightingX = cameraX + range * cosf(globalBearing);
+    const float sightingY = cameraY + range * sinf(globalBearing);
 
     int bestSeat = -1;
     float bestDistance =
@@ -565,7 +569,7 @@ float residualVisionSteering()
     if (completedLaps == 0)
         return 0.0f;
 
-    const Blob *blob = getLargestObstacle();
+    const Blob *blob = getLargestValidObstacle();
     if (blob == nullptr || !blob->found)
         return 0.0f;
 
@@ -761,7 +765,7 @@ void obstacle_path_update(bool new_camera_frame)
     if (!runtimeTestMode && new_camera_frame)
     {
         if (completedLaps == 0)
-            registerDetection(getLargestObstacle());
+            registerDetection(getLargestValidObstacle());
     }
 
     if (!runtimeTestMode)

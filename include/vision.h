@@ -146,9 +146,9 @@ private:
 // Regions of Interest
 // ============================================================
 
-// Red / green obstacle detection. The upper image contains greenish
-// background reflections under the track lighting; starting at Y=80 keeps
-// those regions disconnected from real blocks approaching from below.
+// Red / green obstacle detection. Keep the upper greenish competition-mat
+// reflections out of the connected-component map. Range is derived from the
+// block's foot (maxY), so clipping the top at this boundary is intentional.
 static constexpr uint16_t OBSTACLE_Y_MIN = 80;
 static constexpr uint16_t OBSTACLE_Y_MAX = 239;
 

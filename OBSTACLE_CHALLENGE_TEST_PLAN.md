@@ -3,6 +3,11 @@
 Run the tests in order. Do not continue to the next phase until every required
 check in the current phase passes repeatedly.
 
+Keep this file current after every firmware change and analyzed robot log.
+Check an item only when the implementation or recorded evidence demonstrates
+it; leave visual and repetition requirements open until they are explicitly
+confirmed.
+
 ## Safety before every driving test
 
 - [ ] Battery is secured and sufficiently charged.
@@ -12,7 +17,7 @@ check in the current phase passes repeatedly.
 - [ ] Begin with the lowest practical speed.
 - [ ] Save the serial log and note the exact configuration used.
 
-## 1. Physical geometry - completed
+## 1. Physical geometry - in progress
 
 - [x] Measure the ToF apertures relative to the robot pose origin.
 - [x] Update the sensor offsets in `include/config.h`.
@@ -26,11 +31,15 @@ OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 40.0f;
 OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
 ```
 
-- [ ] Confirm that the pose origin used for these measurements is the same
+- [x] Confirm that the pose origin used for these measurements is the same
       origin used by odometry, normally the midpoint of the rear axle.
+- [x] Measure the camera origin: 125 mm forward and 0 mm lateral from the
+      rear-axle pose origin.
+- [x] Apply the rotated camera mounting offset before projecting a detected
+      block into global field coordinates.
 - [ ] Confirm `OBSTACLE_WHEELBASE_MM` against the finished robot.
 
-## 2. Empty-track path and direction
+## 2. Empty-track path and direction - in progress
 
 Use the dedicated on-robot test mode. It automatically disables camera
 steering, look nudges, and ToF pose correction while retaining ToF emergency
@@ -67,14 +76,23 @@ closer than the configured safety distance, excessive cross-track error, or a
 timeout. Test limits are the `OBSTACLE_PATH_TEST_*` constants in
 `include/config.h`.
 
-- [ ] Confirm the on-board geometry preflight reports `PASS` before motion.
-- [ ] Confirm the generated path turns in the required direction.
+- [x] Confirm the on-board geometry preflight reports `PASS` before motion.
+- [x] Confirm the generated path turns in the required direction.
 - [ ] Confirm the first corner begins at the correct place.
-- [ ] Confirm the robot remains approximately on the corridor centerline.
-- [ ] Confirm it returns close to its starting pose after one lap.
-- [ ] Confirm `[PATH] Completed lap 1` appears exactly once per physical lap.
+- [x] Confirm the robot remains approximately on the corridor centerline.
+- [x] Confirm it returns close to its starting pose after one lap.
+- [x] Confirm `[PATH] Completed lap 1` appears exactly once per physical lap.
 - [ ] Repeat successfully at least three times clockwise.
 - [ ] Repeat successfully at least three times counterclockwise.
+
+Recorded evidence from `log_72`, `log_73`, `log_75`, and `log_76`:
+
+- [x] Two successful left/CCW one-lap runs.
+- [x] Two successful right/CW one-lap runs.
+- [x] All four valid runs passed the automated limits.
+- [x] Worst maximum cross-track error was 36.6 mm.
+- [x] Average final-position error was 49.8 mm.
+- [x] Average final-heading error was 2.1 degrees.
 
 Pass criteria:
 
@@ -87,7 +105,7 @@ If starting without the parking exit, set and verify
 `OBSTACLE_DEFAULT_TURN_SIGN`: `+1` means left/CCW corners and `-1` means
 right/CW corners.
 
-## 3. Pure Pursuit tuning on an empty track
+## 3. Pure Pursuit tuning on an empty track - in progress
 
 Tune in this order:
 
@@ -112,24 +130,84 @@ Adjustment guide:
 - Running wide: reduce corner speed or lookahead.
 - Jerky steering: increase lookahead or reduce maximum steering/speed.
 
-## 4. Camera bearing and range calibration
+## 4. Camera bearing and range calibration - in progress
 
 Use one official 100 mm pillar. Test both colors at measured distances of
 approximately 150, 250, 400, 600, and 800 mm.
 
-- [ ] Record blob height, center X, estimated bearing, and estimated range.
-- [ ] Calculate focal length for each measurement:
+The camera test is stationary and keeps the drive motor stopped. Place the
+front of the camera at the measured distance from the pillar, then send the
+matching command:
+
+```text
+c150
+c250
+c400
+c600
+c800
+```
+
+Changing the distance resets the per-color sample average. Allow at least ten
+samples at each distance and save the serial log. Each `[CAM CAL]` record
+contains blob position and size, bearing, the firmware's current range
+estimate, whether the image edge clipped the blob, the focal-length sample,
+the average for that color, the exact bounding limits, and
+`production_valid=yes|no`. The faint green competition-mat edge may still be
+reported for diagnostics, but it must always report `production_valid=no` and
+cannot enter live seat snapping. Use `c0` for diagnostics without a known
+distance and `z` to stop the mode.
+
+Normal range estimation uses the calibrated image position of the block's foot
+(`max_y`), because the top of a distant block is intentionally clipped by the
+obstacle ROI. `range_error_mm` and `range_error_avg_mm` compare that production
+estimate with the distance supplied in the `c<mm>` command. Measure that
+distance horizontally from the camera to the foot of the block. Blob-height
+focal samples remain diagnostic only.
+
+- [x] Record blob height, bounds, center X, estimated bearing, and estimated
+      range in `log_81`, `log_83`, and `log_85`.
+- [x] Calculate diagnostic focal length samples:
 
   `focal_length_px = range_mm * blob_height_px / 100`
 
-- [ ] Replace `OBSTACLE_CAMERA_FOCAL_LENGTH_PX` with the measured average.
+- [x] Confirm that height-based focal range is unsuitable when the obstacle ROI
+      clips the top of the block; retain 277 px as a fallback only.
+- [x] Calibrate production foot range from ruler measurements. Final restored-
+      ROI values from `log_88` are 400 mm at `max_y=136` and 600 mm at
+      `max_y=108`.
+- [x] Implement the ground-plane range model and serial range-error reporting.
+- [x] Verify the ground-plane model with a post-update `c400` and `c600`
+      run for both colors.
+- [ ] Confirm the final two-pixel horizon refinement (`52 px`) in the next
+      camera or stationary seat-snapping log.
 - [ ] Verify `OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG` at both frame edges.
 - [ ] Tune `OBSTACLE_EDGE_CLIPPED_RANGE_MM` using close, clipped pillars.
-- [ ] Red classification is stable under expected lighting.
-- [ ] Green classification is stable under expected lighting.
-- [ ] Background objects do not produce confirmed pillars.
-- [ ] Two consecutive observations are normally available before the pillar
+- [x] Red classification is stable under expected lighting at 400 and 600 mm
+      (`log_85`, at least 25 accepted samples at each distance).
+- [x] Green classification is stable under expected lighting at 400 and
+      600 mm (`log_88`, repeated accepted stationary samples).
+- [x] Faint green competition-mat/background components report
+      `production_valid=no` and are excluded from calibration and live
+      Pure Pursuit seat input.
+- [x] A valid green pillar remains independently detectable when the mat line
+      is visible under competition lighting.
+- [ ] Background objects do not produce confirmed seats during the stationary
+      seat-snapping test.
+- [x] Two consecutive observations are normally available before the pillar
       reaches the minimum safe reaction distance.
+
+Recorded camera evidence from `log_88`:
+
+- [x] Red pillar repeatedly accepted at 400 and 600 mm.
+- [x] Green pillar repeatedly accepted at 400 and 600 mm.
+- [x] The faint left-edge green mat component remained
+      `production_valid=no sample_accepted=no`.
+- [x] Dominant 400 mm samples were within approximately 10-20 mm before the
+      final two-pixel horizon adjustment.
+- [x] Dominant 600 mm samples were within approximately 0-46 mm before the
+      final adjustment; the stable clusters support the final horizon value.
+- [x] Camera-to-block range is transformed from the camera origin 125 mm ahead
+      of the rear axle before seat snapping.
 
 ## 5. Seat snapping while stationary or pushed by hand
 

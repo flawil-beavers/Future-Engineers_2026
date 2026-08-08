@@ -229,7 +229,7 @@ static void print_serial_command_info()
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
-  Serial.println("c          : Start CAMERA CALIBRATION mode");
+  Serial.println("c<mm>      : CAMERA CALIBRATION at measured pillar distance");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
   Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
   Serial.println("y          : Start PID AUTOTUNE mode");
@@ -474,8 +474,17 @@ void parseMessage(char *msg)
     break;
 
   case 'c':
-    // Start stationary live camera-colour calibration mode.
-    select_temporary_mode(MODE_CAMERA_CALIBRATION);
+    // Stationary live camera calibration. Supplying the measured
+    // camera-to-pillar distance enables focal-length samples and averages.
+    if (value < 0 || value > 2000)
+    {
+      Serial.println("Usage: c<distance_mm>, for example c250 (c0 = diagnostics only)");
+    }
+    else
+    {
+      camera_calibration_set_reference_distance(static_cast<float>(value));
+      select_temporary_mode(MODE_CAMERA_CALIBRATION);
+    }
     break;
 
   case 'O':

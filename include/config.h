@@ -397,10 +397,23 @@ constexpr auto OBSTACLE_PATH_SMOOTH_RADIUS = 1;
 constexpr auto OBSTACLE_SEAT_SNAP_RADIUS_MM = 140.0f;
 constexpr auto OBSTACLE_SEAT_CONFIRM_VOTES = 2;
 
-// BO462 calibration values. Bearing uses the measured horizontal FOV. Range
-// uses the known 100 mm pillar height and a pinhole estimate; bench-calibrate
-// the focal length before a field run.
+// BO462 calibration values. Camera coordinates use the same robot frame as the
+// ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
 constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 60.0f;
+constexpr auto OBSTACLE_CAMERA_LOCAL_X_MM = 125.0f;
+constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
+
+// The official pillar distances are measured horizontally from the camera to
+// the foot of the block. Its top is clipped by the obstacle ROI at longer
+// ranges, so height is not a reliable range input. Ground-plane calibration
+// Final post-ROI calibration from log_88: the dominant stationary boxes have
+// maxY=136 at 400 mm and maxY=108 at 600 mm, giving
+// distance = scale / (maxY - horizonY).
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 52.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 33600.0f;
+
+// Retained as a diagnostic/fallback for a blob whose foot is above the
+// calibrated horizon. Normal obstacle range uses the ground-plane model.
 constexpr auto OBSTACLE_CAMERA_FOCAL_LENGTH_PX = 277.0f;
 constexpr auto OBSTACLE_PILLAR_HEIGHT_MM = 100.0f;
 constexpr auto OBSTACLE_EDGE_CLIPPED_RANGE_MM = 170.0f;
