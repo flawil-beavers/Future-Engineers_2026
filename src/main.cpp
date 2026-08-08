@@ -42,7 +42,10 @@ void setup()
 
     // This starts immediately when enabled, otherwise mode_switch() stores it
     // as the pending mode for the physical enable switch.
-    mode_switch(STARTUP_ROBOT_MODE);
+    const RobotMode startup_mode = STANDALONE_TURN_RADIUS_CALIBRATION
+        ? MODE_TURN_RADIUS_CAL
+        : STARTUP_ROBOT_MODE;
+    mode_switch(startup_mode);
 }
 
 void loop()

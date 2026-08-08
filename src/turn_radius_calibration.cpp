@@ -64,6 +64,7 @@ static bool tr_cal_printed_angle_header = false;
 static int tr_cal_retry_count = 0;
 static bool tr_cal_retry_current_angle = false;
 static bool tr_cal_needs_return = false;     // True if partial arc measured; robot must reverse to start
+static unsigned long tr_cal_settle_duration_ms = CAL_TURN_SERVO_SETTLE_MS;
 
 // Return the required rotation angle (deg) for a given servo angle.
 //
@@ -106,11 +107,13 @@ bool turn_radius_cal_waiting_for_right()
 }
 
 /** Stop propulsion, command steering, and let the MG90S settle before measuring. */
-static void begin_servo_settle()
+static void begin_servo_settle(
+    unsigned long settle_duration_ms = CAL_TURN_SERVO_SETTLE_MS)
 {
     stop(false);
     servo_disabled = false;
     set_steering(tr_cal_current_angle);
+    tr_cal_settle_duration_ms = settle_duration_ms;
     tr_cal_drive_start_time = millis();
     turn_radius_state = TR_SETTLING;
 }
@@ -206,7 +209,10 @@ void turn_radius_cal_start()
         Serial.println("RIGHT TURN CALIBRATION RESUMED");
         Serial.println("========================================\n");
         
-        begin_servo_settle();
+        Serial.print("Standalone start delay: ");
+        Serial.print(CAL_STARTUP_DELAY_MS / 1000.0f, 1);
+        Serial.println(" s");
+        begin_servo_settle(CAL_STARTUP_DELAY_MS);
         
         Serial.print("Starting turn: angle=");
         Serial.print(tr_cal_current_angle);
@@ -256,7 +262,10 @@ void turn_radius_cal_start()
     
     // Set steering and speed for first angle
     // Note: system_enable() is called by the mode manager before this
-    begin_servo_settle();
+    Serial.print("Standalone start delay: ");
+    Serial.print(CAL_STARTUP_DELAY_MS / 1000.0f, 1);
+    Serial.println(" s");
+    begin_servo_settle(CAL_STARTUP_DELAY_MS);
     
     Serial.print("Starting turn: angle=");
     Serial.print(tr_cal_current_angle);
@@ -271,7 +280,7 @@ void turn_radius_cal_update()
     }
 
     if (turn_radius_state == TR_SETTLING) {
-        if ((millis() - tr_cal_drive_start_time) >= CAL_TURN_SERVO_SETTLE_MS) {
+        if ((millis() - tr_cal_drive_start_time) >= tr_cal_settle_duration_ms) {
             // Capture baselines only after the steering transition is complete.
             tr_cal_start_distance = current_distance;
             tr_cal_start_angle = get_angle();
