@@ -55,6 +55,22 @@ static char ringBuffer[BUFFER_SIZE];
 static int head = 0;
 static int tail = 0;
 
+/**
+ * Select a mode for the current power cycle only. A reset always returns to
+ * STARTUP_ROBOT_MODE from config.h; nothing is written to persistent memory.
+ */
+static void select_temporary_mode(RobotMode mode)
+{
+  mode_switch(mode);
+  if (current_mode == mode || pending_mode == mode) {
+    Serial.print("Temporary mode until restart: ");
+    Serial.println(mode_name(mode));
+  } else {
+    Serial.print("Temporary mode selection failed: ");
+    Serial.println(mode_name(mode));
+  }
+}
+
 static void print_pid_help()
 {
   Serial.println("\n===== PID SETUP =====");
@@ -197,6 +213,7 @@ static bool handle_pid_command(const char *message)
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
+  Serial.println("Mode letters are temporary until reset; reset defaults to OBSTACLE.");
   Serial.println("i          : Show this command list");
   Serial.println("m          : Select MANUAL mode");
   Serial.println("l          : Start OPEN CHALLENGE mode");
@@ -403,12 +420,12 @@ void parseMessage(char *msg)
 
   case 'm':
     // Enter direct manual control.
-    mode_switch(MODE_MANUAL);
+    select_temporary_mode(MODE_MANUAL);
     break;
 
   case 'l':
     // Start Open Challenge.
-    mode_switch(MODE_OPEN_CHALLENGE);
+    select_temporary_mode(MODE_OPEN_CHALLENGE);
     break;
 
   case 'z':
@@ -437,19 +454,19 @@ void parseMessage(char *msg)
   case 'b':
     // Stationary obstacle test: b1 = mode on, b0 = stop.
     if (value != 0)
-      mode_switch(MODE_OBSTACLE_BENCH);
+      select_temporary_mode(MODE_OBSTACLE_BENCH);
     else if (current_mode == MODE_OBSTACLE_BENCH)
       mode_stop_all();
     break;
 
   case 'c':
     // Start stationary live camera-colour calibration mode.
-    mode_switch(MODE_CAMERA_CALIBRATION);
+    select_temporary_mode(MODE_CAMERA_CALIBRATION);
     break;
 
   case 'O':
     // Start Obstacle Challenge.
-    mode_switch(MODE_OBSTACLE_CHALLENGE);
+    select_temporary_mode(MODE_OBSTACLE_CHALLENGE);
     break;
 
   case 'j':
@@ -459,22 +476,22 @@ void parseMessage(char *msg)
 
   case 'C':
     // Start turn-radius calibration (uppercase avoids the camera command).
-    mode_switch(MODE_TURN_RADIUS_CAL);
+    select_temporary_mode(MODE_TURN_RADIUS_CAL);
     break;
 
   case 'B':
     // Start straight servo-center calibration (uppercase avoids bench test).
-    mode_switch(MODE_SERVO_CENTER_CAL);
+    select_temporary_mode(MODE_SERVO_CENTER_CAL);
     break;
 
   case 'y':
     // Start PID autotune.
-    mode_switch(MODE_PID_AUTOTUNE);
+    select_temporary_mode(MODE_PID_AUTOTUNE);
     break;
 
   case 'M':
     // Start motor minimum DC calibration (uppercase avoids manual mode).
-    mode_switch(MODE_MOTOR_MIN_CAL);
+    select_temporary_mode(MODE_MOTOR_MIN_CAL);
     break;
 
   case 't':

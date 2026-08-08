@@ -369,11 +369,11 @@ constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 // CHALLENGE MODE
 // ==========================================
 
-// Standalone mode selected during setup. If the physical enable switch is
-// LOW, this mode remains pending until the switch is enabled. Change only
-// this line to select any autonomous challenge or calibration mode.
+// Default after power-on/reset. Serial mode letters override this only in
+// RAM for the current power cycle. If the physical enable switch is LOW,
+// the selected mode remains pending until the switch is enabled.
 // Common choices:
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-#define STARTUP_ROBOT_MODE MODE_TURN_RADIUS_CAL
+#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
