@@ -34,6 +34,10 @@ static uint8_t oa_lost_frames = 0;
 static ColorType oa_candidate_color = ColorType::NONE;
 
 static float oa_last_camera_error = 0.0f;
+static bool oa_pending_map_record = false;
+static float oa_pending_detection_distance = 0.0f;
+static int16_t oa_pending_image_x = 0;
+static int16_t oa_pending_bottom_y = 0;
 
 // ============================================================
 // OBSTACLE CHALLENGE STATE
@@ -48,6 +52,8 @@ enum ParkingExitState : uint8_t
     PARKING_EXIT_FIRST_ARC,
     PARKING_EXIT_COUNTER_ARC,
     PARKING_EXIT_STRAIGHTENING,
+    PARKING_EXIT_BLOCK_BACKUP,
+    PARKING_EXIT_BLOCK_BACKUP_BRAKING,
     PARKING_EXIT_TEST_HOLD,
     PARKING_EXIT_DONE
 };
@@ -65,6 +71,7 @@ static float oc_section_start_distance = 0.0f;
 static NavigationState oc_last_navigation_state = NAV_IDLE;
 static bool oc_corner_settling = false;
 static int oc_last_completed_turn = 0;
+static bool oc_start_section_complete = false;
 static bool oc_known_obstacle_used[
     COURSE_MAX_OBSTACLES_PER_SECTION] = {false, false};
 
@@ -164,6 +171,44 @@ static bool updateParkingExit()
         return true;
     }
 
+
+    if (oc_parking_exit_state == PARKING_EXIT_BLOCK_BACKUP)
+    {
+        servo_disabled = false;
+        set_steering(0);
+        set_speed(-OBSTACLE_START_BLOCK_BACKUP_SPEED);
+
+        if (distanceSince(oc_parking_exit_state_distance) >=
+            OBSTACLE_START_BLOCK_BACKUP_MM)
+        {
+            set_speed(0);
+            oc_parking_exit_brake_start_ms = millis();
+            oc_parking_exit_state =
+                PARKING_EXIT_BLOCK_BACKUP_BRAKING;
+            Serial.println("[PARK EXIT] Start block backup complete");
+        }
+        return true;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_BLOCK_BACKUP_BRAKING)
+    {
+        set_steering(0);
+        set_speed(0);
+        if (millis() - oc_parking_exit_brake_start_ms <
+            OBSTACLE_START_BLOCK_BACKUP_BRAKE_MS)
+            return true;
+
+        stop(false);
+        oc_parking_exit_state = PARKING_EXIT_DONE;
+        navigation_enable();
+        oc_section_start_distance = get_distance();
+        oc_last_navigation_state = navigation_get_state();
+        oc_last_completed_turn = navigation_get_turn_count();
+        Serial.println(
+            "[PARK EXIT] Backup complete - normal Obstacle navigation");
+        return false;
+    }
+
     if (oc_parking_exit_state == PARKING_EXIT_STRAIGHTENING)
     {
         // Do not cut motor power at full speed. Centre the wheels immediately
@@ -201,14 +246,17 @@ static bool updateParkingExit()
             return true;
         }
 
-        oc_parking_exit_state = PARKING_EXIT_DONE;
-        navigation_enable();
-        oc_section_start_distance = get_distance();
-        oc_last_navigation_state = navigation_get_state();
-        oc_last_completed_turn = navigation_get_turn_count();
 
-        Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
-        return false;
+        // Always move 100 mm backwards after the S-shaped parking exit. The
+        // car is now in the middle of the corridor, away from the two parking
+        // boundaries at the outer wall. This creates a repeatable start pose
+        // and enough forward camera distance for a sign at the first seat.
+        oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_state = PARKING_EXIT_BLOCK_BACKUP;
+        servo_disabled = false;
+        Serial.println(
+            "[PARK EXIT] Reverse 100 mm for start-section visibility");
+        return true;
     }
 
     if (oc_parking_exit_state == PARKING_EXIT_IDLE)
@@ -383,6 +431,10 @@ static bool updateLearnedLanePlan()
     if (oc_current_lap == 0)
         return false;
 
+    if (oc_current_section == 0 &&
+        !oc_start_section_complete)
+        return false;
+
     const CourseObstacle *current[
         COURSE_MAX_OBSTACLES_PER_SECTION] = {nullptr, nullptr};
     const uint8_t currentCount =
@@ -436,10 +488,8 @@ static bool updateLearnedLanePlan()
 
         if (currentCount == 2 &&
             sectionDistance >=
-                (oc_current_section == 0
-                     ? OBSTACLE_START_SECTION_SWITCH_MM
-                     : current[0]->firstDetectionDistanceMm +
-                           OBSTACLE_PLANNED_SWITCH_AFTER_MM))
+                current[0]->firstDetectionDistanceMm +
+                    OBSTACLE_PLANNED_SWITCH_AFTER_MM)
         {
             desiredColor = current[1]->color;
         }
@@ -447,10 +497,8 @@ static bool updateLearnedLanePlan()
         const CourseObstacle *last =
             current[currentCount - 1];
         if (sectionDistance >=
-                (oc_current_section == 0
-                     ? OBSTACLE_START_SECTION_NEXT_PLAN_MM
-                     : last->firstDetectionDistanceMm +
-                           OBSTACLE_PLANNED_NEXT_SECTION_MM))
+                last->firstDetectionDistanceMm +
+                    OBSTACLE_PLANNED_NEXT_SECTION_MM)
         {
             const CourseObstacle *next[
                 COURSE_MAX_OBSTACLES_PER_SECTION] =
@@ -494,6 +542,17 @@ static void updateCourseProgress()
         }
     }
 
+    if (oc_current_section == 0 &&
+        !oc_start_section_complete &&
+        oc_last_navigation_state == NAV_FOLLOWING &&
+        navigationState == NAV_TURNING &&
+        navigation_get_turn_count() >= 5)
+    {
+        oc_start_section_complete = true;
+        Serial.println(
+            "[MAP] Start section fully learned on second pass");
+    }
+
     // A new straight section starts only after the gyro-controlled 90 degree
     // turn has completed. This makes the section reference repeatable.
     const int completedTurns =
@@ -510,13 +569,24 @@ static void updateCourseProgress()
             static_cast<uint8_t>(
                 navigation_get_turn_count() /
                 COURSE_SECTION_COUNT);
-        oc_section_start_distance = get_distance();
+        // The learning lap backs up 400 mm after the corner. Store pillar
+        // positions relative to the geometric 90-degree corner exit so the
+        // same positions remain valid on the faster later laps.
+        oc_section_start_distance =
+            navigation_get_section_origin_distance();
         oc_corner_settling = true;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
              ++i)
         {
             oc_known_obstacle_used[i] = false;
+        }
+
+        if (oc_current_section == 0 && completedTurns == 4)
+        {
+            course_map_clear_obstacles(0);
+            Serial.println(
+                "[MAP] Start section second-pass learning begins");
         }
 
         course_map_enter_section(
@@ -1039,6 +1109,10 @@ void obstacle_avoidance_reset()
     oa_candidate_color = ColorType::NONE;
 
     oa_last_camera_error = 0;
+    oa_pending_map_record = false;
+    oa_pending_detection_distance = 0.0f;
+    oa_pending_image_x = 0;
+    oa_pending_bottom_y = 0;
 }
 
 // ============================================================
@@ -1154,13 +1228,12 @@ bool obstacle_avoidance_update(
             obstacle->color;
         oa_candidate_color = ColorType::NONE;
 
-        course_map_record_obstacle(
-            oc_current_section,
-            oc_current_lap,
-            oa_color,
-            obstacleSectionDistance(),
-            obstacle->centerX,
-            obstacle->maxY);
+        // Keep the observation pending. It becomes part of the learned map
+        // only after PASSING and RECOVERING have both completed.
+        oa_pending_map_record = true;
+        oa_pending_detection_distance = obstacleSectionDistance();
+        oa_pending_image_x = obstacle->centerX;
+        oa_pending_bottom_y = obstacle->maxY;
 
         // Save the exact heading target of the normal
         // wall follower before taking over steering.
@@ -1379,6 +1452,19 @@ bool obstacle_avoidance_update(
             fabsf(headingError) <=
             OBSTACLE_RECOVER_TOLERANCE_DEG)
         {
+            if (oa_pending_map_record)
+            {
+                course_map_record_obstacle(
+                    oc_current_section,
+                    oc_current_lap,
+                    oa_color,
+                    oa_pending_detection_distance,
+                    oa_pending_image_x,
+                    oa_pending_bottom_y);
+                oa_pending_map_record = false;
+                Serial.println("[MAP] Successful avoidance stored");
+            }
+
             oa_last_finish_distance =
                 get_distance();
 
@@ -1541,6 +1627,7 @@ void obstacle_challenge_update(
         oc_last_completed_turn =
             navigation_get_turn_count();
         oc_corner_settling = false;
+        oc_start_section_complete = false;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
              ++i)
@@ -1657,8 +1744,11 @@ void obstacle_challenge_update(
     // obstacle avoidance gets first priority.
     // --------------------------------------------------------
 
+    const bool startSectionLearning =
+        oc_current_section == 0 &&
+        !oc_start_section_complete;
     const bool avoiding =
-        oc_current_lap == 0
+        (oc_current_lap == 0 || startSectionLearning)
             ? obstacle_avoidance_update(
                   enabled,
                   newCameraFrame)

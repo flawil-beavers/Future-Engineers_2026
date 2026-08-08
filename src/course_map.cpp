@@ -43,6 +43,22 @@ void course_map_enter_section(
     Serial.println(originKnown ? "KNOWN" : "START_OFFSET");
 }
 
+void course_map_clear_obstacles(uint8_t section)
+{
+    if (section >= COURSE_SECTION_COUNT)
+        return;
+
+    for (uint8_t i = 0;
+         i < COURSE_MAX_OBSTACLES_PER_SECTION;
+         ++i)
+    {
+        courseSections[section].obstacles[i] = CourseObstacle();
+    }
+
+    Serial.print("[MAP] Cleared provisional obstacles in S");
+    Serial.println(section);
+}
+
 void course_map_record_obstacle(
     uint8_t section,
     uint8_t lap,

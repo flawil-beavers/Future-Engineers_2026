@@ -24,8 +24,13 @@ enum NavigationState {
     NAV_IDLE,        ///< System is inactive, waiting for enable command
     NAV_FOLLOWING,   ///< Straight-line navigation using Gyro and ToF correction
     NAV_TURNING,     ///< Executing a 90-degree pivot turn
+    NAV_CORNER_BRAKING_FOR_REVERSE, ///< Stop forward motion before reversing
     NAV_CORNER_REVERSING, ///< First-lap reverse heading correction
+    NAV_CORNER_BRAKING_FOR_ALIGN, ///< Stop reverse motion before driving forward
     NAV_CORNER_ALIGNING,  ///< First-lap forward alignment
+    NAV_CORNER_BRAKING_FOR_SECTION_BACKUP,
+    NAV_CORNER_SECTION_BACKING,
+    NAV_CORNER_BRAKING_AFTER_SECTION_BACKUP,
     NAV_STOPPED      ///< Mission complete, final halt state
 };
 
@@ -96,6 +101,7 @@ const char* navigation_state_string(NavigationState _state);
 NavigationState navigation_get_state();
 
 float navigation_get_target_heading();
+float navigation_get_section_origin_distance();
 int navigation_get_turn_count();
 int navigation_get_turn_angle();
 WallSide navigation_get_following_wall();

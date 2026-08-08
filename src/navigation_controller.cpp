@@ -56,6 +56,7 @@ float nav_steering_filter = 0.0f;
 // Timing and control
 float nav_turn_start_angle = 0;
 float nav_corner_phase_start_distance = 0;
+uint32_t nav_corner_brake_start_ms = 0;
 
 // Round counting
 int nav_turn_count = 0;
@@ -307,7 +308,11 @@ void state_following()
       (nav_obstacle_mode && nav_turn_count > 0) ? 650.0f :
       ((nav_turn_count == 1) ? 600.0f : 300.0f);
   float wall_margin = nav_long_range_active ? 1500 : nav_wall_margin;
-  bool beyond_blind_distance = nav_start_distance + blind_dist < get_distance();
+  // Encoder distance can decrease during the first-lap reverse alignment.
+  // Always compare travelled displacement from the corner origin; a signed
+  // comparison could permanently suppress every corner after the first one.
+  bool beyond_blind_distance =
+      fabsf(get_distance() - nav_start_distance) > blind_dist;
   bool heading_plausible = fabs(gyro_error) < (nav_obstacle_mode ? 12.0f : 180.0f);
   bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
   const bool corner_warning =
@@ -535,7 +540,7 @@ void state_following()
           fmaxf(0.0f, predicted_length - prediction_braking_distance);
   set_speed(
       post_turn_gyro_only
-          ? 160.0f
+          ? OBSTACLE_POST_TURN_SPEED
           : (nav_completed_rounds >= 3
                 ? (nav_final_slowing
                       ? OPEN_CHALLENGE_PRE_CORNER_SPEED_MMS
@@ -591,9 +596,10 @@ void state_turning()
         nav_start_distance + (nav_obstacle_mode ? 300.0f : 0.0f);
     if (nav_obstacle_mode && nav_turn_count <= 4)
     {
-      nav_corner_phase_start_distance = get_distance();
-      log_tof_diagnostics("Turn arc finished -> FIRST-LAP REVERSING");
-      nav_state = NAV_CORNER_REVERSING;
+      nav_corner_brake_start_ms = millis();
+      set_speed(0);
+      log_tof_diagnostics("Turn arc finished -> BRAKING FOR REVERSE");
+      nav_state = NAV_CORNER_BRAKING_FOR_REVERSE;
     }
     else
     {
@@ -604,11 +610,29 @@ void state_turning()
   }
 }
 
+static bool corner_direction_change_ready()
+{
+  const uint32_t elapsed = millis() - nav_corner_brake_start_ms;
+  return (elapsed >= OBSTACLE_CORNER_DIRECTION_CHANGE_MIN_MS &&
+          fabsf(measured_speed) <= OBSTACLE_CORNER_STOPPED_SPEED_MM_S) ||
+         elapsed >= OBSTACLE_CORNER_DIRECTION_CHANGE_MAX_MS;
+}
+
+void state_corner_braking_for_reverse()
+{
+  set_steering(0);
+  set_speed(0);
+
+  if (!corner_direction_change_ready())
+    return;
+
+  nav_corner_phase_start_distance = get_distance();
+  nav_state = NAV_CORNER_REVERSING;
+  Serial.println("[NAV] Standstill -> FIRST-LAP REVERSING");
+}
+
 void state_corner_reversing()
 {
-  const float direction = (nav_turn_angle > 0) ? 1.0f : -1.0f;
-  const float signed_overshoot =
-      (get_angle() - nav_gyro_target) * direction;
   const float reverse_distance =
       fabsf(get_distance() - nav_corner_phase_start_distance);
 
@@ -618,22 +642,31 @@ void state_corner_reversing()
           : OBSTACLE_FIRST_LAP_REVERSE_STEERING);
   set_speed(-OBSTACLE_FIRST_LAP_REVERSE_SPEED);
 
-  if ((reverse_distance >=
-           OBSTACLE_FIRST_LAP_REVERSE_MIN_MM &&
-       signed_overshoot <=
-           OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG) ||
-      reverse_distance >=
-          OBSTACLE_FIRST_LAP_REVERSE_MAX_MM)
+  if (reverse_distance >= OBSTACLE_FIRST_LAP_REVERSE_TARGET_MM)
   {
-    nav_corner_phase_start_distance = get_distance();
-    nav_last_gyro_error = 0;
-    nav_state = NAV_CORNER_ALIGNING;
+    set_speed(0);
     set_steering(0);
-    Serial.print("[NAV] Reverse alignment complete distance=");
+    nav_corner_brake_start_ms = millis();
+    nav_state = NAV_CORNER_BRAKING_FOR_ALIGN;
+    Serial.print("[NAV] Reverse arc complete distance=");
     Serial.print(reverse_distance, 0);
     Serial.print(" heading_error=");
     Serial.println(get_angle() - nav_gyro_target, 1);
   }
+}
+
+void state_corner_braking_for_align()
+{
+  set_steering(0);
+  set_speed(0);
+
+  if (!corner_direction_change_ready())
+    return;
+
+  nav_corner_phase_start_distance = get_distance();
+  nav_last_gyro_error = 0;
+  nav_state = NAV_CORNER_ALIGNING;
+  Serial.println("[NAV] Standstill -> FIRST-LAP FORWARD ALIGNING");
 }
 
 void state_corner_aligning()
@@ -658,18 +691,72 @@ void state_corner_aligning()
 
   if (aligned || distance_limit)
   {
-    nav_start_distance = get_distance();
-    nav_wall_correction_resume_distance = nav_start_distance + 200.0f;
-    nav_searching_for_wall = true;
+    // Keep nav_start_distance at the geometrical corner origin established
+    // when the 90-degree arc finished. Resetting it here discarded the whole
+    // reverse/forward alignment distance and moved the next corner detection
+    // window up to 260 mm too far into the following section.
     nav_last_gyro_error = 0;
     nav_last_distance_error = 0;
-    nav_state = NAV_FOLLOWING;
+    set_speed(0);
     set_steering(0);
+    nav_corner_brake_start_ms = millis();
+    nav_state = NAV_CORNER_BRAKING_FOR_SECTION_BACKUP;
     log_tof_diagnostics(
         aligned
-            ? "First-lap corner aligned -> FOLLOWING"
-            : "First-lap alignment distance limit -> FOLLOWING");
+            ? "First-lap corner aligned -> BRAKING FOR 400 MM BACKUP"
+            : "First-lap alignment limit -> BRAKING FOR 400 MM BACKUP");
   }
+}
+
+void state_corner_braking_for_section_backup()
+{
+  set_steering(0);
+  set_speed(0);
+  if (!corner_direction_change_ready()) return;
+
+  nav_corner_phase_start_distance = get_distance();
+  nav_state = NAV_CORNER_SECTION_BACKING;
+  Serial.println("[NAV] Standstill -> BACKING 400 MM FOR VISIBILITY");
+}
+
+void state_corner_section_backing()
+{
+  const float heading_error = get_angle() - nav_gyro_target;
+  const float backup_distance =
+      fabsf(get_distance() - nav_corner_phase_start_distance);
+
+  // Steering effect reverses when the car drives backwards.
+  float steering = -0.85f * heading_error;
+  steering = constrain(
+      steering,
+      -OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_STEERING,
+      OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_STEERING);
+  set_steering(static_cast<int>(steering));
+  set_speed(-OBSTACLE_FIRST_LAP_SECTION_BACKUP_SPEED);
+
+  if (backup_distance >= OBSTACLE_FIRST_LAP_SECTION_BACKUP_MM)
+  {
+    set_speed(0);
+    set_steering(0);
+    nav_corner_brake_start_ms = millis();
+    nav_state = NAV_CORNER_BRAKING_AFTER_SECTION_BACKUP;
+    Serial.print("[NAV] Section visibility backup complete distance=");
+    Serial.println(backup_distance, 0);
+  }
+}
+
+void state_corner_braking_after_section_backup()
+{
+  set_steering(0);
+  set_speed(0);
+  if (!corner_direction_change_ready()) return;
+
+  nav_wall_correction_resume_distance = get_distance() + 200.0f;
+  nav_searching_for_wall = true;
+  nav_last_gyro_error = 0;
+  nav_last_distance_error = 0;
+  nav_state = NAV_FOLLOWING;
+  Serial.println("[NAV] Visibility backup stopped -> FOLLOWING");
 }
 
 /**
@@ -728,8 +815,13 @@ void navigation_update(bool enabled)
     case NAV_IDLE: state_idle(); break;
     case NAV_FOLLOWING: state_following(); break;
     case NAV_TURNING: state_turning(); break;
+    case NAV_CORNER_BRAKING_FOR_REVERSE: state_corner_braking_for_reverse(); break;
     case NAV_CORNER_REVERSING: state_corner_reversing(); break;
+    case NAV_CORNER_BRAKING_FOR_ALIGN: state_corner_braking_for_align(); break;
     case NAV_CORNER_ALIGNING: state_corner_aligning(); break;
+    case NAV_CORNER_BRAKING_FOR_SECTION_BACKUP: state_corner_braking_for_section_backup(); break;
+    case NAV_CORNER_SECTION_BACKING: state_corner_section_backing(); break;
+    case NAV_CORNER_BRAKING_AFTER_SECTION_BACKUP: state_corner_braking_after_section_backup(); break;
     case NAV_STOPPED: state_stopped(); break;
     }
   }
@@ -796,8 +888,13 @@ const char* navigation_state_string(NavigationState _state)
     case NAV_IDLE: return "IDLE";
     case NAV_FOLLOWING: return "FOLLOWING";
     case NAV_TURNING: return "TURNING";
+    case NAV_CORNER_BRAKING_FOR_REVERSE: return "BRAKING_FOR_REVERSE";
     case NAV_CORNER_REVERSING: return "CORNER_REVERSING";
+    case NAV_CORNER_BRAKING_FOR_ALIGN: return "BRAKING_FOR_ALIGN";
     case NAV_CORNER_ALIGNING: return "CORNER_ALIGNING";
+    case NAV_CORNER_BRAKING_FOR_SECTION_BACKUP: return "BRAKING_FOR_SECTION_BACKUP";
+    case NAV_CORNER_SECTION_BACKING: return "SECTION_BACKING";
+    case NAV_CORNER_BRAKING_AFTER_SECTION_BACKUP: return "BRAKING_AFTER_SECTION_BACKUP";
     case NAV_STOPPED: return "STOPPED";
     default: return "UNKNOWN";
   }
@@ -921,6 +1018,11 @@ void navigation_rearm_after_obstacle()
 float navigation_get_target_heading()
 {
     return nav_gyro_target;
+}
+
+float navigation_get_section_origin_distance()
+{
+    return nav_start_distance;
 }
 
 int navigation_get_turn_count()

@@ -31,6 +31,8 @@ void course_map_enter_section(
     uint8_t section,
     bool originKnown);
 
+void course_map_clear_obstacles(uint8_t section);
+
 void course_map_record_obstacle(
     uint8_t section,
     uint8_t lap,

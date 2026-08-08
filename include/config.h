@@ -199,7 +199,7 @@ constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecut
 // Used for printing/documentation only.  The Ackermann kinematic model
 // uses WHEELBASE_MM = 127 mm (Ackermann::WHEELBASE_MM in ackermann_kinematics.h)
 // because the pin-slot joint geometry shifts the effective turning centre.
-constexpr float PHYSICAL_WHEELBASE_MM = 100.0f;
+constexpr float PHYSICAL_WHEELBASE_MM = 95.0f;
 
 constexpr auto CAL_SPEED_MMS = 250.0f;
 constexpr unsigned long CAL_TURN_SERVO_SETTLE_MS = 600;
@@ -304,6 +304,9 @@ constexpr auto OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG = 2.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS = 450;
 constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS = 250;
 constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
+constexpr auto OBSTACLE_START_BLOCK_BACKUP_SPEED = 100;
+constexpr auto OBSTACLE_START_BLOCK_BACKUP_MM = 200.0f;
+constexpr auto OBSTACLE_START_BLOCK_BACKUP_BRAKE_MS = 350;
 
 // Camera processing
 constexpr auto OBSTACLE_CAMERA_INTERVAL_MS = 50;
@@ -320,13 +323,13 @@ constexpr uint8_t OPEN_PREDICTED_CORNER_CONFIRM_SAMPLES = 2;
 
 // Desired obstacle positions inside the 320 px image
 // Red must stay on the LEFT -> robot passes on the right
-constexpr auto OBSTACLE_RED_TARGET_X = 120;
+constexpr auto OBSTACLE_RED_TARGET_X = 100;
 
 // Green must stay on the RIGHT -> robot passes on the left
-constexpr auto OBSTACLE_GREEN_TARGET_X = 200;
+constexpr auto OBSTACLE_GREEN_TARGET_X = 220;
 
 // Camera steering
-constexpr auto OBSTACLE_CAMERA_KP = 0.10f;
+constexpr auto OBSTACLE_CAMERA_KP = 0.16f;
 constexpr auto OBSTACLE_HEADING_KP = 0.30f;
 constexpr auto OBSTACLE_MAX_STEERING = 20.0f;
 
@@ -381,21 +384,26 @@ constexpr auto OBSTACLE_FIRST_LAP_CORNER_SPEED = 140.0f;
 constexpr auto OBSTACLE_LATER_LAP_CORNER_SPEED = 180.0f;
 constexpr auto OBSTACLE_FIRST_LAP_REVERSE_SPEED = 80.0f;
 constexpr auto OBSTACLE_FIRST_LAP_REVERSE_STEERING = 40.0f;
-constexpr auto OBSTACLE_FIRST_LAP_REVERSE_MIN_MM = 25.0f;
-constexpr auto OBSTACLE_FIRST_LAP_REVERSE_MAX_MM = 55.0f;
-constexpr auto OBSTACLE_FIRST_LAP_REVERSE_TOLERANCE_DEG = 2.0f;
+// At R ~= 156.7 mm this 50 mm reverse arc changes the body angle by about
+// 18.3 degrees and shifts the car outward before the final forward alignment.
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_TARGET_MM = 50.0f;
+constexpr auto OBSTACLE_CORNER_DIRECTION_CHANGE_MIN_MS = 150UL;
+constexpr auto OBSTACLE_CORNER_DIRECTION_CHANGE_MAX_MS = 1000UL;
+constexpr auto OBSTACLE_CORNER_STOPPED_SPEED_MM_S = 20.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_SPEED = 120.0f;
+constexpr auto OBSTACLE_POST_TURN_SPEED = 160.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MIN_MM = 120.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MAX_MM = 260.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG = 3.0f;
+constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_MM = 400.0f;
+constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_SPEED = 80.0f;
+constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_STEERING = 10.0f;
 
 // Learned-lap lane planner. Official signs sit roughly 400 mm from a wall;
 // a 190 mm vehicle-centre offset leaves useful clearance on both sides.
 constexpr auto OBSTACLE_PLANNED_LANE_WALL_MM = 190.0f;
 constexpr auto OBSTACLE_PLANNED_SWITCH_AFTER_MM = 200.0f;
 constexpr auto OBSTACLE_PLANNED_NEXT_SECTION_MM = 180.0f;
-constexpr auto OBSTACLE_START_SECTION_SWITCH_MM = 500.0f;
-constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 
 
 
@@ -410,4 +418,4 @@ constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-#define STARTUP_ROBOT_MODE MODE_OPEN_CHALLENGE
+#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
