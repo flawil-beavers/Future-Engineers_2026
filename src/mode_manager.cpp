@@ -227,7 +227,7 @@ static ModeResult update_active_mode()
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
-        return navigation_is_complete()
+        return obstacle_challenge_complete()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
     }

@@ -5,6 +5,7 @@
 #include "sensors.h"
 #include "navigation_controller.h"
 #include "course_map.h"
+#include "obstacle_path.h"
 #include "logger.h"
 
 #define Serial robot_logger
@@ -41,6 +42,8 @@ static float oa_last_camera_error = 0.0f;
 
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
+static bool oc_finish_requested = false;
+static bool oc_complete = false;
 
 enum ParkingExitState : uint8_t
 {
@@ -1427,6 +1430,9 @@ void obstacle_challenge_setup()
 
     resetParkingExit();
     obstacle_avoidance_reset();
+    obstacle_path_reset();
+    oc_finish_requested = false;
+    oc_complete = false;
 
     Serial.println(
         "===== OBSTACLE CHALLENGE READY =====");
@@ -1439,6 +1445,11 @@ void obstacle_challenge_setup()
 bool obstacle_challenge_active()
 {
     return oc_was_enabled;
+}
+
+bool obstacle_challenge_complete()
+{
+    return oc_complete;
 }
 
 bool obstacle_parking_exit_active()
@@ -1509,6 +1520,9 @@ void obstacle_challenge_update(
         oc_was_enabled =
             false;
         resetParkingExit();
+        obstacle_path_reset();
+        oc_finish_requested = false;
+        oc_complete = false;
 
         return;
     }
@@ -1531,7 +1545,10 @@ void obstacle_challenge_update(
         }
 
         obstacle_avoidance_reset();
+        obstacle_path_reset();
         course_map_reset();
+        oc_finish_requested = false;
+        oc_complete = false;
 
         oc_current_section = 0;
         oc_current_lap = 0;
@@ -1566,112 +1583,43 @@ void obstacle_challenge_update(
         return;
     }
 
-    updateCourseProgress();
-    const bool learnedLaneActive =
-        updateLearnedLanePlan();
-
-    // Let the gyro follower align the car just after a corner, while vision
-    // already looks ahead. A confirmed sign at the beginning of the new
-    // section must be allowed to take control before the normal settle
-    // distance has elapsed.
-    if (
-        oc_corner_settling &&
-        navigation_get_state() == NAV_FOLLOWING)
+    // The parking lot is mounted against the outer wall. The existing exit
+    // turns away from that wall, which also reveals the required direction
+    // around the inner field. Without a parking exit, use the explicit
+    // pre-round fallback in config.h.
+    if (!obstacle_path_started())
     {
-        const float settleDistance = obstacleSectionDistance();
-        const float headingError =
-            fabsf(
-                get_angle() -
-                navigation_get_target_heading());
+        const int8_t turnSign =
+            OBSTACLE_PARKING_EXIT_ENABLED
+                ? (oc_parking_exit_steering > 0 ? -1 : 1)
+                : OBSTACLE_DEFAULT_TURN_SIGN;
+        obstacle_path_start(turnSign);
+    }
 
-        // Vision may already see the next sign, but an Ackermann car must
-        // first be nearly parallel to the new section. Otherwise a sign seen
-        // far to one side during the turn commands a large, wrong arc.
-        const bool alignedForEarlyTakeover =
-            headingError <=
-            OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG;
-
-        const bool obstacleNeedsControl =
-            !learnedLaneActive &&
-            alignedForEarlyTakeover &&
-            obstacle_avoidance_update(
-                enabled,
-                newCameraFrame);
-
-        if (obstacleNeedsControl)
-        {
-            oc_corner_settling = false;
-            Serial.println(
-                "[OC] Early obstacle during corner exit");
-            return;
-        }
-
-        navigation_update(enabled);
-
-        if (
-            (settleDistance >=
-                 OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM &&
-             headingError <=
-                 OBSTACLE_CORNER_SETTLE_HEADING_DEG) ||
-            settleDistance >=
-                OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM)
-        {
-            oc_corner_settling = false;
-            navigation_rearm_after_obstacle();
-
-            Serial.print("[OC] Section aligned distance=");
-            Serial.print(settleDistance, 0);
-            Serial.print(" heading_error=");
-            Serial.println(headingError, 1);
-        }
-
+    if (!obstacle_path_complete())
+    {
+        obstacle_path_update(newCameraFrame);
         return;
     }
 
-    // ========================================================
-    // ALL STRAIGHT SECTIONS
-    //
-    // Detection is active immediately because the official starting zone is
-    // random and a relevant sign can appear before the first corner.
-    // ========================================================
-
-    // --------------------------------------------------------
-    // The Wall Follower is currently executing a corner,
-    // stopping, or in another non-straight state.
-    //
-    // Camera obstacle avoidance must NOT interfere.
-    // --------------------------------------------------------
-
-    if (
-        navigation_get_state() !=
-        NAV_FOLLOWING)
+    // End-of-run parking is intentionally not guessed here: the repository
+    // only contains the start parking exit. Stop safely in the start section
+    // until a separately calibrated parking state machine is supplied.
+    set_steering(0);
+    set_speed(0);
+    if (!oc_finish_requested)
     {
-        navigation_update(
-            enabled);
-
-        return;
+        oc_finish_requested = true;
+        Serial.println(
+            "[OC] Three laps complete; final parking is not implemented");
     }
-
-    // --------------------------------------------------------
-    // Straight section:
-    // obstacle avoidance gets first priority.
-    // --------------------------------------------------------
-
-    const bool avoiding =
-        oc_current_lap == 0
-            ? obstacle_avoidance_update(
-                  enabled,
-                  newCameraFrame)
-            : false;
-
-    // --------------------------------------------------------
-    // No obstacle:
-    // run the unchanged Open Challenge navigation.
-    // --------------------------------------------------------
-
-    if (!avoiding)
+    if (!oc_complete &&
+        fabsf(current_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS &&
+        fabsf(measured_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS)
     {
-        navigation_update(
-            enabled);
+        stop(false);
+        oc_complete = true;
+        robot_logger.write_to_usb();
+        Serial.println("[OC] Controlled stop complete");
     }
 }

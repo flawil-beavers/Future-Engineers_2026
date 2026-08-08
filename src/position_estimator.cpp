@@ -217,6 +217,18 @@ void position_reset(float x, float y, float heading)
     position_init(x, y, heading);
 }
 
+void position_apply_xy_correction(float dx_mm, float dy_mm)
+{
+    if (!pos_initialized || !isfinite(dx_mm) || !isfinite(dy_mm))
+        return;
+
+    pos.x_mm += dx_mm;
+    pos.y_mm += dy_mm;
+
+    const float correction = hypotf(dx_mm, dy_mm);
+    pos.confidence_mm = fmaxf(0.0f, pos.confidence_mm - correction);
+}
+
 void position_print()
 {
     Serial.print("POS: x=");

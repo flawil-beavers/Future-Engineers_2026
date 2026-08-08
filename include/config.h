@@ -362,6 +362,68 @@ constexpr auto OBSTACLE_PLANNED_NEXT_SECTION_MM = 180.0f;
 constexpr auto OBSTACLE_START_SECTION_SWITCH_MM = 500.0f;
 constexpr auto OBSTACLE_START_SECTION_NEXT_PLAN_MM = 750.0f;
 
+// Known-geometry Pure Pursuit planner. The official obstacle field has a
+// 3000 mm inner track square, 1000 mm corridors, 1000 mm straight sections,
+// and 500 mm-radius centreline corners. Candidate seats lie at the three
+// section stations and 100 mm to either side of the corridor centreline.
+constexpr auto OBSTACLE_PATH_SAMPLE_MM = 50.0f;
+constexpr auto OBSTACLE_STRAIGHT_LENGTH_MM = 1000.0f;
+constexpr auto OBSTACLE_CORNER_RADIUS_MM = 500.0f;
+constexpr auto OBSTACLE_SEAT_LATERAL_MM = 100.0f;
+constexpr auto OBSTACLE_CORRIDOR_HALF_WIDTH_MM = 500.0f;
+constexpr auto OBSTACLE_WHEELBASE_MM = 100.0f;
+constexpr auto OBSTACLE_MAX_PATH_WAYPOINTS = 192;
+constexpr auto OBSTACLE_SEAT_COUNT = 24;
+
+// If the parking exit is disabled, the code cannot infer which way around
+// the field the car was placed. Set +1 for left/CCW corners or -1 for
+// right/CW corners before that test. A parking-lot start infers this from the
+// measured outer-wall side and does not use the fallback.
+constexpr int8_t OBSTACLE_DEFAULT_TURN_SIGN = 1;
+
+constexpr auto OBSTACLE_LOOKAHEAD_MIN_MM = 150.0f;
+constexpr auto OBSTACLE_LOOKAHEAD_MAX_MM = 330.0f;
+constexpr auto OBSTACLE_LOOKAHEAD_CORNER_SCALE = 0.65f;
+constexpr auto OBSTACLE_PATH_PROGRESS_WINDOW = 12;
+constexpr auto OBSTACLE_MAX_PURSUIT_STEERING_DEG = 42.0f;
+constexpr auto OBSTACLE_PATH_MIN_SPEED = 135.0f;
+constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
+constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
+
+constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 200.0f;
+constexpr auto OBSTACLE_OPTIMIZED_CLEARANCE_MM = 160.0f;
+constexpr auto OBSTACLE_PATH_TAPER_WAYPOINTS = 6;
+constexpr auto OBSTACLE_PATH_SMOOTH_RADIUS = 1;
+constexpr auto OBSTACLE_SEAT_SNAP_RADIUS_MM = 140.0f;
+constexpr auto OBSTACLE_SEAT_CONFIRM_VOTES = 2;
+
+// BO462 calibration values. Bearing uses the measured horizontal FOV. Range
+// uses the known 100 mm pillar height and a pinhole estimate; bench-calibrate
+// the focal length before a field run.
+constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 60.0f;
+constexpr auto OBSTACLE_CAMERA_FOCAL_LENGTH_PX = 277.0f;
+constexpr auto OBSTACLE_PILLAR_HEIGHT_MM = 100.0f;
+constexpr auto OBSTACLE_EDGE_CLIPPED_RANGE_MM = 170.0f;
+constexpr auto OBSTACLE_LOOK_START_MM = 420.0f;
+constexpr auto OBSTACLE_LOOK_END_MM = 80.0f;
+constexpr auto OBSTACLE_LOOK_HEADING_KP = 0.22f;
+constexpr auto OBSTACLE_LOOK_MAX_STEERING_DEG = 9.0f;
+constexpr auto OBSTACLE_RESIDUAL_VISION_KP = 0.025f;
+constexpr auto OBSTACLE_RESIDUAL_VISION_MAX_DEG = 4.0f;
+
+// ToF locations in the robot frame: +X forward, +Y left. The documented
+// 120 mm body width places the side-facing sensor apertures about 60 mm from
+// the pose origin; update DX after measuring the final printed mounts.
+constexpr auto OBSTACLE_TOF_LEFT_LOCAL_X_MM = 0.0f;
+constexpr auto OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 60.0f;
+constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 0.0f;
+constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -60.0f;
+constexpr auto OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM = 500.0f;
+constexpr auto OBSTACLE_TOF_CORRECTION_GAIN = 0.18f;
+constexpr auto OBSTACLE_TOF_CORRECTION_MAX_STEP_MM = 12.0f;
+constexpr auto OBSTACLE_CORNER_GATE_BEFORE_MM = 120.0f;
+constexpr auto OBSTACLE_CORNER_GATE_AFTER_MM = 280.0f;
+
 
 
 // ==========================================
