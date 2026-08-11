@@ -312,16 +312,24 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
     while (1) delay(10);
   }
   
-  uint32_t timing_budget_us = 0;
   sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
-  sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
   Serial.print("nav_long_range_active: ");
   Serial.println(nav_long_range_active);
-  if (nav_long_range_active)
+  const uint32_t requested_timing_budget_us =
+      nav_long_range_active ? 300000UL : TOF_TIMING_BUDGET_US;
+  if (sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(
+          requested_timing_budget_us) != VL53L4CX_ERROR_NONE)
   {
-    timing_budget_us = 300000;
-    sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(timing_budget_us);
+    Serial.print("WARNING: ");
+    Serial.print(name);
+    Serial.println(" rejected the requested timing budget");
   }
+
+  uint32_t timing_budget_us = 0;
+  sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
+  Serial.print(name);
+  Serial.print(" timing_budget_us: ");
+  Serial.println(timing_budget_us);
   const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
   tof_diagnostics[sensor_index].timing_budget_us = timing_budget_us;
   
@@ -377,7 +385,7 @@ float get_tof_sigma(TofSensor sensor)
 bool get_tof_diagnostic_snapshot(TofSensor sensor,
                                  TofDiagnosticSnapshot &snapshot)
 {
-  if (sensor < 0 || sensor >= TOF_COUNT ||
+  if (sensor >= TOF_COUNT ||
       tof_diagnostics[sensor].sequence == 0)
     return false;
   snapshot = tof_diagnostics[sensor];
