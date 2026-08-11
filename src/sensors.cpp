@@ -37,6 +37,7 @@ static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_raw_distances[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
+static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
 
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
@@ -130,6 +131,11 @@ void update_gyro()
  */
 static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
+  const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  TofDiagnosticSnapshot &diagnostic = tof_diagnostics[sensor_index];
+  diagnostic.reported_object_count = 0;
+  diagnostic.stored_object_count = 0;
+  diagnostic.selected_object_index = -1;
   float min_accept_signal = 0.3f;
   float max_accept_sigma = nav_long_range_active ? 30.0f : 20.0f;
   float raw_measured_dist = -1.0f;
@@ -149,6 +155,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   int best_idx = -1;
   if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
   {
+    diagnostic.reported_object_count = ranging_data.NumberOfObjectsFound;
     if (ranging_data.NumberOfObjectsFound > 0)
     {
       int16_t largest_valid_dist = -1;
@@ -159,6 +166,23 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
         int16_t dist = ranging_data.RangeData[i].RangeMilliMeter;
         float signal = ranging_data.RangeData[i].SignalRateRtnMegaCps / 65536.0;
         float sigma = ranging_data.RangeData[i].SigmaMilliMeter / 65536.0;
+        const bool hardware_valid =
+            status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
+            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE;
+        const bool filter_accepted =
+            hardware_valid && signal > min_accept_signal && sigma < max_accept_sigma;
+
+        if (diagnostic.stored_object_count < TOF_DIAGNOSTIC_MAX_OBJECTS)
+        {
+          TofObjectDiagnostic &object =
+              diagnostic.objects[diagnostic.stored_object_count++];
+          object.distance_mm = dist;
+          object.signal_mcps = signal;
+          object.sigma_mm = sigma;
+          object.range_status = status;
+          object.hardware_valid = hardware_valid;
+          object.filter_accepted = filter_accepted;
+        }
 
         // Enhanced reliability check:
         // 1. Status must be valid or merged pulse.
@@ -166,8 +190,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
         // 3. Sigma (standard deviation) must be low enough (< 25mm) for a stable reading.
         // This filters out "ghost" readings that occur with black/distant targets
         // which currently cause the sensor to report ~400mm instead of 9999mm (out of range).
-        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
-            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+        if (hardware_valid)
         {
           // if (&sensor == &sensor_right) {
           //   Serial.print("                    ");
@@ -185,7 +208,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
           tof_sigmas[s_idx] = sigma;
           tof_raw_distances[s_idx] = (float)dist;
 
-          if (signal > min_accept_signal && sigma < max_accept_sigma)
+          if (filter_accepted)
           {
             if (dist > largest_valid_dist)
             {
@@ -231,6 +254,15 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
   out_distance = measured_distance;
+  diagnostic.filtered_distance_mm = measured_distance;
+  diagnostic.selected_raw_distance_mm = raw_measured_dist;
+  diagnostic.selected_signal_mcps = current_signal_rate;
+  diagnostic.selected_sigma_mm = current_sigma;
+  diagnostic.selected_object_index =
+      best_idx >= 0 && best_idx < diagnostic.stored_object_count
+          ? static_cast<int8_t>(best_idx)
+          : -1;
+  ++diagnostic.sequence;
 
   // Update signal rate and sigma only if a valid measurement was found
   if (best_idx != -1) {
@@ -256,6 +288,10 @@ void sensors_set_tof_timing_budget(uint32_t budget_us)
 {
   sensor_left.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
   sensor_right.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
+  sensor_left.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+      &tof_diagnostics[TOF_LEFT].timing_budget_us);
+  sensor_right.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+      &tof_diagnostics[TOF_RIGHT].timing_budget_us);
 }
 
 /**
@@ -286,6 +322,8 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
     timing_budget_us = 300000;
     sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(timing_budget_us);
   }
+  const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  tof_diagnostics[sensor_index].timing_budget_us = timing_budget_us;
   
 
   // Capture the initial budget (mode default) to restore to later
@@ -334,6 +372,16 @@ float get_tof_sigma(TofSensor sensor)
     return tof_sigmas[sensor];
   }
   return -1.0f;
+}
+
+bool get_tof_diagnostic_snapshot(TofSensor sensor,
+                                 TofDiagnosticSnapshot &snapshot)
+{
+  if (sensor < 0 || sensor >= TOF_COUNT ||
+      tof_diagnostics[sensor].sequence == 0)
+    return false;
+  snapshot = tof_diagnostics[sensor];
+  return true;
 }
 
 float get_angle()

@@ -45,6 +45,7 @@
 #include "pid_autotune.h"
 #include "mode_manager.h"
 #include "logger.h"
+#include "tof_diagnostic_test.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -238,6 +239,7 @@ static void print_serial_command_info()
   Serial.println("u<distance>: Set navigation wall distance in mm");
   Serial.println("f / o      : General debug ON / OFF");
   Serial.println("n / g / v  : Print encoder / gyro / ToF data");
+  Serial.println("tof help   : Stationary black/white ToF diagnostic test");
   Serial.println("t          : Print estimated position");
   Serial.println("j          : Print learned obstacle course map");
   Serial.println("k          : Print calibration data");
@@ -313,6 +315,8 @@ void processMessage()
 void parseMessage(char *msg)
 {
   if (handle_pid_command(msg))
+    return;
+  if (tof_diagnostic_handle_command(msg))
     return;
 
   char cmd[3]; // Command character
