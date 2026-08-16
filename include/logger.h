@@ -75,9 +75,12 @@ private:
     uint8_t connect_attempts;
     uint8_t mount_attempts;
     uint8_t retry_cycles;
-    uint8_t consecutive_write_failures;
-    size_t flush_remaining;
+    // A save operates on a stable prefix of log_buffer. Bytes are retained in
+    // RAM until the complete prefix has been flushed and the file closed.
+    size_t flush_target_length;
+    size_t flush_offset;
     FILE *active_file;
+    long active_file_start_size;
     bool filesystem_mounted;
     bool terminal_disconnect_protection;
     uint8_t terminal_tx_buffer[TERMINAL_TX_BUFFER_SIZE];
@@ -90,6 +93,7 @@ private:
     void update_terminal();
     void begin_attempt();
     void retry_or_fail(const char *reason);
+    void restart_full_flush(const char *reason);
     void finish_attempt(bool success);
     void remove_written_prefix(size_t count);
 };

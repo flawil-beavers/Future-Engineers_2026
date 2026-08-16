@@ -25,9 +25,10 @@ USBLogger::USBLogger()
       connect_attempts(0),
       mount_attempts(0),
       retry_cycles(0),
-      consecutive_write_failures(0),
-      flush_remaining(0),
+      flush_target_length(0),
+      flush_offset(0),
       active_file(nullptr),
+      active_file_start_size(0),
       filesystem_mounted(false),
       terminal_disconnect_protection(false),
       terminal_tx_head(0),
@@ -154,7 +155,8 @@ void USBLogger::write_to_usb()
     if (buffer_head == 0 || is_busy())
         return;
 
-    flush_remaining = buffer_head;
+    flush_target_length = buffer_head;
+    flush_offset = 0;
     retry_cycles = 0;
     begin_attempt();
 }
@@ -166,7 +168,6 @@ void USBLogger::begin_attempt()
     next_attempt_ms = state_started_ms + 300;
     connect_attempts = 0;
     mount_attempts = 0;
-    consecutive_write_failures = 0;
     active_file = nullptr;
     filesystem_mounted = false;
 
@@ -189,8 +190,6 @@ void USBLogger::remove_written_prefix(size_t count)
     memmove(log_buffer, log_buffer + count, buffer_head - count);
     buffer_head -= count;
     log_buffer[buffer_head] = '\0';
-    flush_remaining =
-        count >= flush_remaining ? 0 : flush_remaining - count;
 }
 
 void USBLogger::retry_or_fail(const char *reason)
@@ -210,12 +209,27 @@ void USBLogger::retry_or_fail(const char *reason)
     }
     digitalWrite(PA_15, LOW);
 
-    if (++retry_cycles < 3 && flush_remaining > 0) {
+    if (++retry_cycles < 3 && flush_offset < flush_target_length) {
         begin_attempt();
         return;
     }
 
     finish_attempt(false);
+}
+
+void USBLogger::restart_full_flush(const char *reason)
+{
+    // A failed stdio write/flush may have reached the medium partially. Never
+    // discard the RAM copy and never append an uncertain suffix to that file.
+    // The retry creates a new sequential file containing the complete snapshot.
+    if (active_file != nullptr) {
+        fclose(active_file);
+        active_file = nullptr;
+    }
+    session_file_num = -1;
+    session_filepath[0] = '\0';
+    flush_offset = 0;
+    retry_or_fail(reason);
 }
 
 void USBLogger::finish_attempt(bool success)
@@ -233,6 +247,9 @@ void USBLogger::finish_attempt(bool success)
 
     state_started_ms = millis();
     if (success) {
+        remove_written_prefix(flush_target_length);
+        flush_target_length = 0;
+        flush_offset = 0;
         buffer_overflow = false;
         digitalWrite(LEDR, HIGH);
         digitalWrite(LEDG, LOW);
@@ -340,40 +357,79 @@ void USBLogger::update()
             retry_or_fail("Could not open log file.");
             return;
         }
+        if (fseek(active_file, 0, SEEK_END) != 0 ||
+            (active_file_start_size = ftell(active_file)) < 0) {
+            restart_full_flush("Could not determine USB log size; retrying full log.");
+            return;
+        }
         logger_state = LOGGER_WRITE;
         return;
 
     case LOGGER_WRITE: {
-        if (flush_remaining == 0) {
-            if (buffer_overflow)
-                fprintf(
-                    active_file,
-                    "\n*** WARNING: LOG BUFFER OVERFLOW ***\n");
+        if (flush_offset >= flush_target_length) {
+            bool finalized = true;
+            if (buffer_overflow &&
+                fprintf(active_file,
+                        "\n*** WARNING: LOG BUFFER OVERFLOW ***\n") < 0)
+                finalized = false;
+            if (finalized && fflush(active_file) != 0)
+                finalized = false;
+            if (ferror(active_file))
+                finalized = false;
+
+            FILE *completed_file = active_file;
+            active_file = nullptr;
+            if (fclose(completed_file) != 0)
+                finalized = false;
+
+            // Reopen the file after close so a USB stack that acknowledged
+            // writes but committed only a prefix cannot report false success.
+            if (finalized) {
+                FILE *verification_file = fopen(session_filepath, "rb");
+                if (verification_file == nullptr ||
+                    fseek(verification_file, 0, SEEK_END) != 0) {
+                    finalized = false;
+                } else {
+                    const long saved_size = ftell(verification_file);
+                    const long expected_minimum =
+                        active_file_start_size +
+                        static_cast<long>(flush_target_length);
+                    if (saved_size < expected_minimum)
+                        finalized = false;
+                }
+                if (verification_file != nullptr &&
+                    fclose(verification_file) != 0)
+                    finalized = false;
+            }
+
+            if (!finalized) {
+                restart_full_flush("USB final verification failed; retrying full log.");
+                return;
+            }
             finish_attempt(true);
             return;
         }
 
         static const size_t CHUNK_SIZE = 512;
-        size_t requested =
-            flush_remaining < CHUNK_SIZE
-                ? flush_remaining
+        const size_t remaining = flush_target_length - flush_offset;
+        const size_t requested =
+            remaining < CHUNK_SIZE
+                ? remaining
                 : CHUNK_SIZE;
-        if (requested > buffer_head)
-            requested = buffer_head;
 
         const size_t written =
-            fwrite(log_buffer, 1, requested, active_file);
-        if (written > 0) {
-            remove_written_prefix(written);
-            consecutive_write_failures = 0;
-            fflush(active_file);
-        }
-
-        if (written < requested) {
-            ++consecutive_write_failures;
+            fwrite(log_buffer + flush_offset, 1, requested, active_file);
+        const bool durable_chunk =
+            written == requested &&
+            fflush(active_file) == 0 &&
+            !ferror(active_file);
+        if (durable_chunk) {
+            flush_offset += requested;
+        } else {
             clearerr(active_file);
-            if (consecutive_write_failures >= 3)
-                retry_or_fail("Repeated partial USB write.");
+            // Do not remove any bytes from RAM. Start a new complete recovery
+            // file immediately because the old file's last chunk is uncertain.
+            restart_full_flush("USB write verification failed; retrying full log.");
         }
         return;
     }

@@ -19,6 +19,31 @@ enum TofSensor {
   TOF_COUNT
 };
 
+constexpr uint8_t TOF_DIAGNOSTIC_MAX_OBJECTS = 4;
+
+struct TofObjectDiagnostic {
+  int16_t distance_mm;
+  float signal_mcps;
+  float sigma_mm;
+  uint8_t range_status;
+  bool hardware_valid;
+  bool filter_accepted;
+};
+
+struct TofDiagnosticSnapshot {
+  uint32_t sequence;
+  float filtered_distance_mm;
+  float selected_raw_distance_mm;
+  float selected_signal_mcps;
+  float selected_sigma_mm;
+  uint32_t timing_budget_us;
+  VL53L4CX_DistanceModes distance_mode;
+  uint8_t reported_object_count;
+  uint8_t stored_object_count;
+  int8_t selected_object_index;
+  TofObjectDiagnostic objects[TOF_DIAGNOSTIC_MAX_OBJECTS];
+};
+
 // ==========================================
 // SENSOR FUNCTIONS
 // ==========================================
@@ -89,6 +114,17 @@ float get_tof_signal_rate(TofSensor sensor);
  * @return Sigma in mm, or -1.0 if invalid
  */
 float get_tof_sigma(TofSensor sensor);
+
+/** Copy the most recent complete ranging frame for stationary diagnostics. */
+bool get_tof_diagnostic_snapshot(TofSensor sensor,
+                                 TofDiagnosticSnapshot &snapshot);
+
+/** Change both sensors' timing budget at runtime. */
+void sensors_set_tof_timing_budget(uint32_t budget_us);
+
+/** Stop, reconfigure, and restart both sensors for a stationary test. */
+bool sensors_configure_tof_for_test(VL53L4CX_DistanceModes distance_mode,
+                                    uint32_t budget_us);
 
 /**
  * @brief Initialize all sensors
