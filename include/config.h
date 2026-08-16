@@ -149,7 +149,7 @@ constexpr auto ENABLE_DEBOUNCE_TIME_US = 100000; // 100ms debounce
 // ==========================================
 // SENSOR READING MODES
 // ==========================================
-#define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_SHORT
+#define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_MEDIUM
 constexpr auto TOF_I2C_CLOCK = 400000; // 400kHz I2C clock (standard for VL53L4CX)
 constexpr auto TOF_TIMING_BUDGET_US = 30000UL; // Normal 30ms budget; explicitly applied during sensor initialization
 constexpr auto TOF_MAX_RELIABLE_DISTANCE_MM = 600.0f; // Max distance for reliable wall detection (mm)

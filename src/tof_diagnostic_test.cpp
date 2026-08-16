@@ -20,7 +20,14 @@ constexpr uint32_t SWEEP_BUDGETS_US[SWEEP_STAGE_COUNT] = {
     30000, 100000, 200000};
 constexpr uint16_t MIN_SAMPLES = 3;
 constexpr uint16_t MAX_SAMPLES = 100;
-constexpr uint8_t SETTLE_FRAMES_AFTER_BUDGET_CHANGE = 2;
+constexpr uint8_t MATRIX_STAGE_COUNT = 6;
+constexpr VL53L4CX_DistanceModes MATRIX_MODES[MATRIX_STAGE_COUNT] = {
+    VL53L4CX_DISTANCEMODE_MEDIUM, VL53L4CX_DISTANCEMODE_MEDIUM,
+    VL53L4CX_DISTANCEMODE_MEDIUM, VL53L4CX_DISTANCEMODE_LONG,
+    VL53L4CX_DISTANCEMODE_LONG, VL53L4CX_DISTANCEMODE_LONG};
+constexpr uint32_t MATRIX_BUDGETS_US[MATRIX_STAGE_COUNT] = {
+    30000, 100000, 200000, 30000, 100000, 200000};
+constexpr uint8_t SETTLE_FRAMES_AFTER_RECONFIGURE = 5;
 
 struct SensorStats {
   uint16_t samples = 0;
@@ -36,12 +43,14 @@ struct SensorStats {
 struct TestState {
   bool active = false;
   bool sweep = false;
+  bool matrix = false;
   char label[16] = {};
   uint16_t target_samples = 0;
   uint16_t captured_samples = 0;
   uint8_t stage = 0;
   uint8_t settle_frames = 0;
   uint32_t restore_budget_us = TOF_TIMING_BUDGET_US;
+  VL53L4CX_DistanceModes restore_mode = TOF_DISTANCE_MODE;
   uint32_t last_sequence[TOF_COUNT] = {};
   SensorStats stats[TOF_COUNT];
 };
@@ -62,12 +71,14 @@ void print_help()
   Serial.println("tof show                 : print the latest detailed sensor frame");
   Serial.println("tof capture <label> <n>  : capture 3-100 paired frames at current budget");
   Serial.println("tof sweep <label> <n>    : capture at 30, 100, and 200 ms");
+  Serial.println("tof matrix <label> <n>   : test MEDIUM/LONG at 30/100/200 ms");
   Serial.println("tof budget <ms>          : set both sensors to 20-500 ms (RAM only)");
   Serial.println("tof stop                 : stop capture and restore the prior budget");
   Serial.println("Recommended sequence at a measured 500 mm:");
   Serial.println("  tof sweep black 10");
   Serial.println("  cover the same target with white paper, without moving the robot");
   Serial.println("  tof sweep white 10");
+  Serial.println("For a deeper follow-up run: tof matrix black 10");
   Serial.println("Object flags: H=hardware-valid, A=accepted by software, S=selected");
   Serial.println("======================================\n");
 }
@@ -78,6 +89,7 @@ void print_snapshot(const char *label, uint16_t sample_number,
   Serial.print("[TOF FRAME] label="); Serial.print(label);
   Serial.print(" sample="); Serial.print(sample_number);
   Serial.print(" side="); Serial.print(side == TOF_LEFT ? "L" : "R");
+  Serial.print(" mode="); Serial.print(static_cast<int>(snapshot.distance_mode));
   Serial.print(" budget_us="); Serial.print(snapshot.timing_budget_us);
   Serial.print(" filtered_mm="); Serial.print(snapshot.filtered_distance_mm, 1);
   Serial.print(" selected_raw_mm="); Serial.print(snapshot.selected_raw_distance_mm, 1);
@@ -141,6 +153,7 @@ void print_summary(const TofDiagnosticSnapshot &left,
                    const TofDiagnosticSnapshot &right)
 {
   Serial.print("[TOF SUMMARY] label="); Serial.print(test.label);
+  Serial.print(" mode="); Serial.print(static_cast<int>(right.distance_mode));
   Serial.print(" budget_us="); Serial.print(right.timing_budget_us);
   print_sensor_summary(TOF_LEFT, test.stats[TOF_LEFT]);
   print_sensor_summary(TOF_RIGHT, test.stats[TOF_RIGHT]);
@@ -160,8 +173,9 @@ void set_last_sequences()
 
 void finish_test(bool cancelled)
 {
-  if (test.sweep)
-    sensors_set_tof_timing_budget(test.restore_budget_us);
+  if (test.sweep || test.matrix)
+    sensors_configure_tof_for_test(test.restore_mode,
+                                   test.restore_budget_us);
   Serial.print("[TOF TEST] ");
   Serial.print(cancelled ? "cancelled" : "complete");
   Serial.print("; restored_budget_us=");
@@ -169,7 +183,20 @@ void finish_test(bool cancelled)
   test.active = false;
 }
 
-bool parse_capture(const char *message, bool sweep)
+bool configure_stage()
+{
+  VL53L4CX_DistanceModes mode = test.restore_mode;
+  uint32_t budget_us = test.restore_budget_us;
+  if (test.matrix) {
+    mode = MATRIX_MODES[test.stage];
+    budget_us = MATRIX_BUDGETS_US[test.stage];
+  } else if (test.sweep) {
+    budget_us = SWEEP_BUDGETS_US[test.stage];
+  }
+  return sensors_configure_tof_for_test(mode, budget_us);
+}
+
+bool parse_capture(const char *message, bool sweep, bool matrix)
 {
   char action[12] = {};
   char label[16] = {};
@@ -178,9 +205,12 @@ bool parse_capture(const char *message, bool sweep)
   const int fields = sscanf(message, "tof %11s %15s %d",
                             action, label, &samples);
   if (fields != 3 || samples < MIN_SAMPLES || samples > MAX_SAMPLES) {
-    Serial.println(sweep
-        ? "Usage: tof sweep <label> <samples 3-100>"
-        : "Usage: tof capture <label> <samples 3-100>");
+    if (matrix)
+      Serial.println("Usage: tof matrix <label> <samples 3-100>");
+    else
+      Serial.println(sweep
+          ? "Usage: tof sweep <label> <samples 3-100>"
+          : "Usage: tof capture <label> <samples 3-100>");
     return true;
   }
   if (system_enabled) {
@@ -194,23 +224,31 @@ bool parse_capture(const char *message, bool sweep)
   test = TestState{};
   test.active = true;
   test.sweep = sweep;
+  test.matrix = matrix;
   strncpy(test.label, label, sizeof(test.label) - 1);
   test.target_samples = static_cast<uint16_t>(samples);
 
   TofDiagnosticSnapshot current;
   if (get_tof_diagnostic_snapshot(TOF_RIGHT, current) &&
-      current.timing_budget_us > 0)
+      current.timing_budget_us > 0) {
     test.restore_budget_us = current.timing_budget_us;
+    test.restore_mode = current.distance_mode;
+  }
 
-  if (sweep) {
-    sensors_set_tof_timing_budget(SWEEP_BUDGETS_US[0]);
-    test.settle_frames = SETTLE_FRAMES_AFTER_BUDGET_CHANGE;
+  if (sweep || matrix) {
+    if (!configure_stage()) {
+      Serial.println("[TOF TEST] sensor reconfiguration failed");
+      finish_test(true);
+      return true;
+    }
+    test.settle_frames = SETTLE_FRAMES_AFTER_RECONFIGURE;
   }
   set_last_sequences();
   reset_stats();
   Serial.print("[TOF TEST] started label="); Serial.print(test.label);
   Serial.print(" samples_per_budget="); Serial.print(test.target_samples);
-  Serial.print(" mode="); Serial.println(sweep ? "sweep" : "capture");
+  Serial.print(" mode=");
+  Serial.println(matrix ? "matrix" : sweep ? "sweep" : "capture");
   return true;
 }
 
@@ -240,9 +278,11 @@ bool tof_diagnostic_handle_command(const char *message)
     return true;
   }
   if (strcmp(action, "capture") == 0)
-    return parse_capture(message, false);
+    return parse_capture(message, false, false);
   if (strcmp(action, "sweep") == 0)
-    return parse_capture(message, true);
+    return parse_capture(message, true, false);
+  if (strcmp(action, "matrix") == 0)
+    return parse_capture(message, false, true);
   if (strcmp(action, "stop") == 0) {
     if (test.active) finish_test(true);
     else Serial.println("No ToF diagnostic capture is active.");
@@ -256,7 +296,16 @@ bool tof_diagnostic_handle_command(const char *message)
       return true;
     }
     if (test.active) finish_test(true);
-    sensors_set_tof_timing_budget(static_cast<uint32_t>(budget_ms) * 1000UL);
+    TofDiagnosticSnapshot current;
+    const VL53L4CX_DistanceModes mode =
+        get_tof_diagnostic_snapshot(TOF_RIGHT, current)
+            ? current.distance_mode
+            : TOF_DISTANCE_MODE;
+    if (!sensors_configure_tof_for_test(
+            mode, static_cast<uint32_t>(budget_ms) * 1000UL)) {
+      Serial.println("[TOF] sensor reconfiguration failed");
+      return true;
+    }
     Serial.print("[TOF] requested_budget_us=");
     Serial.println(static_cast<uint32_t>(budget_ms) * 1000UL);
     return true;
@@ -297,15 +346,24 @@ void tof_diagnostic_update()
     return;
 
   print_summary(snapshots[TOF_LEFT], snapshots[TOF_RIGHT]);
-  if (!test.sweep || ++test.stage >= SWEEP_STAGE_COUNT) {
+  const uint8_t stage_count = test.matrix
+      ? MATRIX_STAGE_COUNT
+      : test.sweep ? SWEEP_STAGE_COUNT : 1;
+  if ((!test.sweep && !test.matrix) || ++test.stage >= stage_count) {
     finish_test(false);
     return;
   }
 
-  sensors_set_tof_timing_budget(SWEEP_BUDGETS_US[test.stage]);
-  test.settle_frames = SETTLE_FRAMES_AFTER_BUDGET_CHANGE;
+  if (!configure_stage()) {
+    Serial.println("[TOF TEST] sensor reconfiguration failed");
+    finish_test(true);
+    return;
+  }
+  test.settle_frames = SETTLE_FRAMES_AFTER_RECONFIGURE;
   reset_stats();
   set_last_sequences();
   Serial.print("[TOF TEST] next_budget_us=");
-  Serial.println(SWEEP_BUDGETS_US[test.stage]);
+  Serial.println(test.matrix
+      ? MATRIX_BUDGETS_US[test.stage]
+      : SWEEP_BUDGETS_US[test.stage]);
 }

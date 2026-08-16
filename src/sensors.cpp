@@ -133,9 +133,12 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
   const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
   TofDiagnosticSnapshot &diagnostic = tof_diagnostics[sensor_index];
-  diagnostic.reported_object_count = 0;
-  diagnostic.stored_object_count = 0;
-  diagnostic.selected_object_index = -1;
+  // Build a complete local frame and publish it atomically at the end. A
+  // not-ready poll must not erase the candidates belonging to the last frame.
+  TofDiagnosticSnapshot frame = diagnostic;
+  frame.reported_object_count = 0;
+  frame.stored_object_count = 0;
+  frame.selected_object_index = -1;
   float min_accept_signal = 0.3f;
   float max_accept_sigma = nav_long_range_active ? 30.0f : 20.0f;
   float raw_measured_dist = -1.0f;
@@ -155,7 +158,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   int best_idx = -1;
   if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
   {
-    diagnostic.reported_object_count = ranging_data.NumberOfObjectsFound;
+    frame.reported_object_count = ranging_data.NumberOfObjectsFound;
     if (ranging_data.NumberOfObjectsFound > 0)
     {
       int16_t largest_valid_dist = -1;
@@ -172,10 +175,10 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
         const bool filter_accepted =
             hardware_valid && signal > min_accept_signal && sigma < max_accept_sigma;
 
-        if (diagnostic.stored_object_count < TOF_DIAGNOSTIC_MAX_OBJECTS)
+        if (frame.stored_object_count < TOF_DIAGNOSTIC_MAX_OBJECTS)
         {
           TofObjectDiagnostic &object =
-              diagnostic.objects[diagnostic.stored_object_count++];
+              frame.objects[frame.stored_object_count++];
           object.distance_mm = dist;
           object.signal_mcps = signal;
           object.sigma_mm = sigma;
@@ -254,15 +257,16 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
   out_distance = measured_distance;
-  diagnostic.filtered_distance_mm = measured_distance;
-  diagnostic.selected_raw_distance_mm = raw_measured_dist;
-  diagnostic.selected_signal_mcps = current_signal_rate;
-  diagnostic.selected_sigma_mm = current_sigma;
-  diagnostic.selected_object_index =
-      best_idx >= 0 && best_idx < diagnostic.stored_object_count
+  frame.filtered_distance_mm = measured_distance;
+  frame.selected_raw_distance_mm = raw_measured_dist;
+  frame.selected_signal_mcps = current_signal_rate;
+  frame.selected_sigma_mm = current_sigma;
+  frame.selected_object_index =
+      best_idx >= 0 && best_idx < frame.stored_object_count
           ? static_cast<int8_t>(best_idx)
           : -1;
-  ++diagnostic.sequence;
+  frame.sequence = diagnostic.sequence + 1;
+  diagnostic = frame;
 
   // Update signal rate and sigma only if a valid measurement was found
   if (best_idx != -1) {
@@ -294,6 +298,44 @@ void sensors_set_tof_timing_budget(uint32_t budget_us)
       &tof_diagnostics[TOF_RIGHT].timing_budget_us);
 }
 
+static bool configure_tof_for_test(VL53L4CX &sensor, TofSensor side,
+                                   VL53L4CX_DistanceModes distance_mode,
+                                   uint32_t budget_us)
+{
+  VL53L4CX_Error status = sensor.VL53L4CX_StopMeasurement();
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_SetDistanceMode(distance_mode);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
+
+  VL53L4CX_DistanceModes actual_mode = distance_mode;
+  uint32_t actual_budget_us = 0;
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_GetDistanceMode(&actual_mode);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+        &actual_budget_us);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_StartMeasurement();
+
+  if (status == VL53L4CX_ERROR_NONE) {
+    tof_diagnostics[side].distance_mode = actual_mode;
+    tof_diagnostics[side].timing_budget_us = actual_budget_us;
+    tof_distances[side] = -1.0f;
+  }
+  return status == VL53L4CX_ERROR_NONE;
+}
+
+bool sensors_configure_tof_for_test(VL53L4CX_DistanceModes distance_mode,
+                                    uint32_t budget_us)
+{
+  const bool left_ok = configure_tof_for_test(
+      sensor_left, TOF_LEFT, distance_mode, budget_us);
+  const bool right_ok = configure_tof_for_test(
+      sensor_right, TOF_RIGHT, distance_mode, budget_us);
+  return left_ok && right_ok;
+}
+
 /**
  * @brief Professional initialization helper for a single ToF sensor
  * Handles the full hardware handshake and configuration sequence.
@@ -312,7 +354,13 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
     while (1) delay(10);
   }
   
-  sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
+  if (sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE) !=
+      VL53L4CX_ERROR_NONE)
+  {
+    Serial.print("WARNING: ");
+    Serial.print(name);
+    Serial.println(" rejected the configured distance mode");
+  }
   Serial.print("nav_long_range_active: ");
   Serial.println(nav_long_range_active);
   const uint32_t requested_timing_budget_us =
@@ -326,11 +374,17 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
   }
 
   uint32_t timing_budget_us = 0;
+  VL53L4CX_DistanceModes distance_mode = VL53L4CX_DISTANCEMODE_MEDIUM;
+  sensor.VL53L4CX_GetDistanceMode(&distance_mode);
   sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
+  Serial.print(name);
+  Serial.print(" distance_mode: ");
+  Serial.println(static_cast<int>(distance_mode));
   Serial.print(name);
   Serial.print(" timing_budget_us: ");
   Serial.println(timing_budget_us);
   const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  tof_diagnostics[sensor_index].distance_mode = distance_mode;
   tof_diagnostics[sensor_index].timing_budget_us = timing_budget_us;
   
 

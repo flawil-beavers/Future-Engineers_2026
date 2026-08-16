@@ -37,6 +37,7 @@ struct TofDiagnosticSnapshot {
   float selected_signal_mcps;
   float selected_sigma_mm;
   uint32_t timing_budget_us;
+  VL53L4CX_DistanceModes distance_mode;
   uint8_t reported_object_count;
   uint8_t stored_object_count;
   int8_t selected_object_index;
@@ -120,6 +121,10 @@ bool get_tof_diagnostic_snapshot(TofSensor sensor,
 
 /** Change both sensors' timing budget at runtime. */
 void sensors_set_tof_timing_budget(uint32_t budget_us);
+
+/** Stop, reconfigure, and restart both sensors for a stationary test. */
+bool sensors_configure_tof_for_test(VL53L4CX_DistanceModes distance_mode,
+                                    uint32_t budget_us);
 
 /**
  * @brief Initialize all sensors
