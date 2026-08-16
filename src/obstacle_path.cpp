@@ -31,8 +31,10 @@ struct CandidateSeat
     float y = 0.0f;
     float pathDistanceMm = 0.0f;
     float lateralMm = 0.0f;
+    float headingDeg = 0.0f;
     uint8_t redVotes = 0;
     uint8_t greenVotes = 0;
+    unsigned long lastVoteMs = 0;
     bool confirmed = false;
     bool red = false;
     bool injected = false;
@@ -61,6 +63,7 @@ bool finished = false;
 bool optimizedBuilt = false;
 bool runtimeTestMode = false;
 float loopLengthMm = 0.0f;
+uint16_t injectionCount = 0;
 CornerGeometry corners[4];
 
 float clampFloat(float value, float minimum, float maximum)
@@ -236,6 +239,7 @@ void initializeSeats()
                 CandidateSeat &seat = seats[seatIndex++];
                 seat = CandidateSeat();
                 seat.pathDistanceMm = pathDistance;
+                seat.headingDeg = center.headingDeg;
                 seat.lateralMm =
                     side == 0
                         ? -OBSTACLE_SEAT_LATERAL_MM
@@ -243,6 +247,112 @@ void initializeSeats()
                 seat.x = center.x + normalX * seat.lateralMm;
                 seat.y = center.y + normalY * seat.lateralMm;
             }
+        }
+    }
+}
+
+int nearestSeatIndex(float x, float y, float *errorMm = nullptr)
+{
+    int bestSeat = -1;
+    float bestDistanceSquared =
+        OBSTACLE_SEAT_SNAP_RADIUS_MM * OBSTACLE_SEAT_SNAP_RADIUS_MM;
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        const float candidateDistance = distanceSquared(
+            x, y, seats[i].x, seats[i].y);
+        if (candidateDistance < bestDistanceSquared)
+        {
+            bestDistanceSquared = candidateDistance;
+            bestSeat = i;
+        }
+    }
+    if (errorMm != nullptr)
+        *errorMm = bestSeat >= 0 ? sqrtf(bestDistanceSquared) : -1.0f;
+    return bestSeat;
+}
+
+bool recordSeatVote(CandidateSeat &seat, ColorType color)
+{
+    if (seat.confirmed || (color != ColorType::RED && color != ColorType::GREEN))
+        return false;
+
+    const unsigned long now = millis();
+    if (seat.lastVoteMs != 0 &&
+        now - seat.lastVoteMs > OBSTACLE_SEAT_VOTE_WINDOW_MS)
+    {
+        seat.redVotes = 0;
+        seat.greenVotes = 0;
+    }
+
+    uint8_t &votes = color == ColorType::RED
+                         ? seat.redVotes
+                         : seat.greenVotes;
+    if (votes < 255)
+        ++votes;
+    seat.lastVoteMs = now;
+
+    const uint8_t winningVotes =
+        seat.redVotes > seat.greenVotes ? seat.redVotes : seat.greenVotes;
+    if (winningVotes < OBSTACLE_SEAT_CONFIRM_VOTES)
+        return false;
+
+    seat.confirmed = true;
+    seat.red = seat.redVotes > seat.greenVotes;
+    return true;
+}
+
+void prepareConsecutiveVote(uint8_t selectedSeat, ColorType color)
+{
+    // Confirmation requires matching accepted observations in sequence. A
+    // stale isolated blob must not remain armed while normal observations of
+    // another seat continue between it and a later false blob.
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        CandidateSeat &seat = seats[i];
+        if (seat.confirmed)
+            continue;
+        if (i != selectedSeat)
+        {
+            seat.redVotes = 0;
+            seat.greenVotes = 0;
+            seat.lastVoteMs = 0;
+        }
+        else if (color == ColorType::RED)
+        {
+            seat.greenVotes = 0;
+        }
+        else if (color == ColorType::GREEN)
+        {
+            seat.redVotes = 0;
+        }
+    }
+}
+
+void clearPendingVotes()
+{
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        if (!seats[i].confirmed)
+        {
+            seats[i].redVotes = 0;
+            seats[i].greenVotes = 0;
+            seats[i].lastVoteMs = 0;
+        }
+    }
+}
+
+void expirePendingVotes()
+{
+    const unsigned long now = millis();
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        CandidateSeat &seat = seats[i];
+        if (!seat.confirmed && seat.lastVoteMs != 0 &&
+            now - seat.lastVoteMs > OBSTACLE_SEAT_VOTE_WINDOW_MS)
+        {
+            seat.redVotes = 0;
+            seat.greenVotes = 0;
+            seat.lastVoteMs = 0;
         }
     }
 }
@@ -362,6 +472,13 @@ uint16_t nearestPathIndex(
     return best;
 }
 
+float targetLateralForSeat(const CandidateSeat &seat, float clearanceMm)
+{
+    // In path-local coordinates positive is left. Red is passed on its right
+    // and green on its left.
+    return seat.lateralMm + (seat.red ? -clearanceMm : clearanceMm);
+}
+
 void displaceForSeat(
     PathPoint *path,
     CandidateSeat &seat,
@@ -373,9 +490,7 @@ void displaceForSeat(
         seat.y,
         0,
         pathLength);
-    const float passSide = seat.red ? -1.0f : 1.0f;
-    const float targetLateral =
-        seat.lateralMm + passSide * clearanceMm;
+    const float targetLateral = targetLateralForSeat(seat, clearanceMm);
     const float heading = baselinePath[center].headingDeg * PI / 180.0f;
     const float normalX = -sinf(heading);
     const float normalY = cosf(heading);
@@ -414,77 +529,6 @@ void buildOptimizedPath()
     recomputeSpeedProfile(optimizedPath);
     optimizedBuilt = true;
     Serial.println("[PATH] Optimized laps 2-3 path built");
-}
-
-void registerDetection(const Blob *blob)
-{
-    if (!obstacle_blob_valid_for_acquisition(blob))
-    {
-        return;
-    }
-
-    const PositionEstimate pose = get_position_struct();
-    const float bearing =
-        (static_cast<float>(blob->centerX) - 160.0f) *
-        (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
-    const float range = obstacle_estimate_camera_range_mm(blob);
-    if (range <= 0.0f)
-        return;
-
-    const float robotHeading = pose.heading_deg * PI / 180.0f;
-    const float cameraX =
-        pose.x_mm +
-        OBSTACLE_CAMERA_LOCAL_X_MM * cosf(robotHeading) -
-        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(robotHeading);
-    const float cameraY =
-        pose.y_mm +
-        OBSTACLE_CAMERA_LOCAL_X_MM * sinf(robotHeading) +
-        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(robotHeading);
-    const float globalBearing =
-        (pose.heading_deg + bearing) * PI / 180.0f;
-    const float sightingX = cameraX + range * cosf(globalBearing);
-    const float sightingY = cameraY + range * sinf(globalBearing);
-
-    int bestSeat = -1;
-    float bestDistance =
-        OBSTACLE_SEAT_SNAP_RADIUS_MM * OBSTACLE_SEAT_SNAP_RADIUS_MM;
-    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
-    {
-        const float candidateDistance = distanceSquared(
-            sightingX,
-            sightingY,
-            seats[i].x,
-            seats[i].y);
-        if (candidateDistance < bestDistance)
-        {
-            bestDistance = candidateDistance;
-            bestSeat = i;
-        }
-    }
-
-    if (bestSeat < 0)
-        return;
-
-    CandidateSeat &seat = seats[bestSeat];
-    uint8_t &votes =
-        blob->color == ColorType::RED ? seat.redVotes : seat.greenVotes;
-    if (votes < 255)
-        ++votes;
-
-    const uint8_t winningVotes =
-        seat.redVotes > seat.greenVotes ? seat.redVotes : seat.greenVotes;
-    if (!seat.confirmed && winningVotes >= OBSTACLE_SEAT_CONFIRM_VOTES)
-    {
-        seat.confirmed = true;
-        seat.red = seat.redVotes > seat.greenVotes;
-        displaceForSeat(livePath, seat, OBSTACLE_LAP1_CLEARANCE_MM);
-        seat.injected = true;
-
-        Serial.print("[PATH] Live avoidance injected seat=");
-        Serial.print(bestSeat);
-        Serial.print(" color=");
-        Serial.println(seat.red ? "RED" : "GREEN");
-    }
 }
 
 void updateProgress(const PathPoint *path, const PositionEstimate &pose)
@@ -706,6 +750,7 @@ void obstacle_path_reset()
     optimizedBuilt = false;
     runtimeTestMode = false;
     loopLengthMm = 0.0f;
+    injectionCount = 0;
     memset(seats, 0, sizeof(seats));
 }
 
@@ -765,7 +810,7 @@ void obstacle_path_update(bool new_camera_frame)
     if (!runtimeTestMode && new_camera_frame)
     {
         if (completedLaps == 0)
-            registerDetection(getLargestValidObstacle());
+            obstacle_path_observe(getLargestValidObstacle());
     }
 
     if (!runtimeTestMode)
@@ -876,4 +921,264 @@ bool obstacle_path_geometry_valid()
         baselinePath[pathLength - 1].y - baselinePath[0].y);
     return fabsf(loopLengthMm - expectedLength) <= 1.0f &&
            closureError <= 1.0f;
+}
+
+ObstacleObservationResult obstacle_path_observe(const Blob *blob)
+{
+    ObstacleObservationResult result;
+    result.injectionCount = injectionCount;
+    if (blob == nullptr || !blob->found)
+    {
+        expirePendingVotes();
+        return result;
+    }
+
+    result.color = blob->color;
+    result.left = blob->minX;
+    result.top = blob->minY;
+    result.right = blob->maxX;
+    result.bottom = blob->maxY;
+    result.productionValid = obstacle_blob_valid_for_acquisition(blob);
+    if (!result.productionValid)
+    {
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_REJECTED_BLOB;
+        return result;
+    }
+
+    const PositionEstimate pose = get_position_struct();
+    result.robotXmm = pose.x_mm;
+    result.robotYmm = pose.y_mm;
+    result.robotHeadingDeg = pose.heading_deg;
+    result.bearingDeg = obstacle_camera_bearing_deg(blob);
+    result.rangeMm = obstacle_estimate_camera_range_mm(blob);
+    if (!isfinite(result.rangeMm) || result.rangeMm <= 0.0f)
+    {
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_INVALID_RANGE;
+        return result;
+    }
+
+    const float robotHeading = pose.heading_deg * PI / 180.0f;
+    result.cameraXmm =
+        pose.x_mm +
+        OBSTACLE_CAMERA_LOCAL_X_MM * cosf(robotHeading) -
+        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(robotHeading);
+    result.cameraYmm =
+        pose.y_mm +
+        OBSTACLE_CAMERA_LOCAL_X_MM * sinf(robotHeading) +
+        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(robotHeading);
+    const float globalBearing =
+        (pose.heading_deg + result.bearingDeg) * PI / 180.0f;
+    result.sightingXmm =
+        result.cameraXmm + result.rangeMm * cosf(globalBearing);
+    result.sightingYmm =
+        result.cameraYmm + result.rangeMm * sinf(globalBearing);
+
+    result.seatId = static_cast<int8_t>(nearestSeatIndex(
+        result.sightingXmm,
+        result.sightingYmm,
+        &result.snapErrorMm));
+    if (result.seatId < 0)
+    {
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+        return result;
+    }
+
+    prepareConsecutiveVote(result.seatId, blob->color);
+    CandidateSeat &seat = seats[result.seatId];
+    if (seat.confirmed)
+    {
+        result.status = OBSTACLE_OBSERVATION_ALREADY_CONFIRMED;
+    }
+    else if (recordSeatVote(seat, blob->color))
+    {
+        result.status = OBSTACLE_OBSERVATION_CONFIRMED;
+        displaceForSeat(livePath, seat, OBSTACLE_LAP1_CLEARANCE_MM);
+        seat.injected = true;
+        if (injectionCount < 65535)
+            ++injectionCount;
+
+        const uint16_t center = nearestPathIndex(
+            baselinePath, seat.x, seat.y, 0, pathLength);
+        result.peakDisplacementMm = hypotf(
+            livePath[center].x - baselinePath[center].x,
+            livePath[center].y - baselinePath[center].y);
+        result.movementCircleClearanceMm =
+            hypotf(
+                livePath[center].x - seat.x,
+                livePath[center].y - seat.y) -
+            42.5f;
+
+        Serial.print("[PATH] Live avoidance injected seat=");
+        Serial.print(result.seatId);
+        Serial.print(" color=");
+        Serial.println(seat.red ? "RED" : "GREEN");
+    }
+    else
+    {
+        result.status = OBSTACLE_OBSERVATION_VOTE;
+    }
+
+    result.redVotes = seat.redVotes;
+    result.greenVotes = seat.greenVotes;
+    result.confirmed = seat.confirmed;
+    result.injected = seat.injected;
+    result.injectionCount = injectionCount;
+    if (seat.confirmed)
+        result.passSide = seat.red ? 'R' : 'L';
+    return result;
+}
+
+uint8_t obstacle_path_seat_count()
+{
+    return OBSTACLE_SEAT_COUNT;
+}
+
+bool obstacle_path_get_seat(uint8_t seat_id, ObstacleSeatInfo &info)
+{
+    if (!running || seat_id >= OBSTACLE_SEAT_COUNT)
+        return false;
+
+    const CandidateSeat &seat = seats[seat_id];
+    info.id = seat_id;
+    info.section = seat_id / 6;
+    info.station = (seat_id % 6) / 2;
+    info.side = (seat_id % 2) == 0 ? 'R' : 'L';
+    info.xMm = seat.x;
+    info.yMm = seat.y;
+    info.headingDeg = seat.headingDeg;
+    info.pathDistanceMm = seat.pathDistanceMm;
+    info.lateralMm = seat.lateralMm;
+    info.redVotes = seat.redVotes;
+    info.greenVotes = seat.greenVotes;
+    info.confirmed = seat.confirmed;
+    info.red = seat.red;
+    info.injected = seat.injected;
+    return true;
+}
+
+void obstacle_path_clear_observations()
+{
+    if (!running)
+        return;
+    memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
+    memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
+    optimizedBuilt = false;
+    injectionCount = 0;
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        seats[i].redVotes = 0;
+        seats[i].greenVotes = 0;
+        seats[i].lastVoteMs = 0;
+        seats[i].confirmed = false;
+        seats[i].red = false;
+        seats[i].injected = false;
+    }
+}
+
+uint16_t obstacle_path_injection_count()
+{
+    return injectionCount;
+}
+
+bool obstacle_path_geometry_preflight()
+{
+    if (!obstacle_path_geometry_valid() ||
+        OBSTACLE_SEAT_COUNT != 24 ||
+        OBSTACLE_SEAT_CONFIRM_VOTES != 2)
+        return false;
+
+    Blob imageLeft;
+    imageLeft.found = true;
+    imageLeft.centerX = 100;
+    Blob imageRight;
+    imageRight.found = true;
+    imageRight.centerX = 220;
+    if (obstacle_camera_bearing_deg(&imageLeft) <= 0.0f ||
+        obstacle_camera_bearing_deg(&imageRight) >= 0.0f)
+        return false;
+
+    const float inside = OBSTACLE_SEAT_SNAP_RADIUS_MM - 1.0f;
+    const float outside = OBSTACLE_SEAT_SNAP_RADIUS_MM + 1.0f;
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        const CandidateSeat &seat = seats[i];
+        if (!isfinite(seat.x) || !isfinite(seat.y) ||
+            !isfinite(seat.headingDeg) || !isfinite(seat.pathDistanceMm) ||
+            seat.pathDistanceMm < 0.0f || seat.pathDistanceMm >= loopLengthMm ||
+            fabsf(fabsf(seat.lateralMm) - OBSTACLE_SEAT_LATERAL_MM) > 0.1f ||
+            nearestSeatIndex(seat.x, seat.y) != i)
+            return false;
+
+        const uint8_t paired = i ^ 1;
+        const float heading = seat.headingDeg * PI / 180.0f;
+        const float normalX = -sinf(heading);
+        const float normalY = cosf(heading);
+        const float centerX = seat.x - normalX * seat.lateralMm;
+        const float centerY = seat.y - normalY * seat.lateralMm;
+        const CandidateSeat &opposite = seats[paired];
+        if (fabsf(opposite.pathDistanceMm - seat.pathDistanceMm) > 0.1f ||
+            hypotf(
+                centerX - (opposite.x - normalX * opposite.lateralMm),
+                centerY - (opposite.y - normalY * opposite.lateralMm)) > 0.1f)
+            return false;
+        const uint8_t station = (i % 6) / 2;
+        if (station < 2 &&
+            fabsf(cyclicDistanceForward(
+                seat.pathDistanceMm,
+                seats[i + 2].pathDistanceMm) -
+                OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f) > 0.1f)
+            return false;
+
+        for (uint8_t other = i + 1; other < OBSTACLE_SEAT_COUNT; ++other)
+        {
+            if (distanceSquared(
+                    seat.x, seat.y, seats[other].x, seats[other].y) < 1.0f)
+                return false;
+        }
+
+        const float outward = seat.lateralMm < 0.0f ? -1.0f : 1.0f;
+        const float outwardX = normalX * outward;
+        const float outwardY = normalY * outward;
+        if (nearestSeatIndex(
+                seat.x + outwardX * inside,
+                seat.y + outwardY * inside) != i ||
+            nearestSeatIndex(
+                seat.x + outwardX * outside,
+                seat.y + outwardY * outside) >= 0)
+            return false;
+    }
+
+    CandidateSeat redTest = seats[0];
+    CandidateSeat greenTest = seats[0];
+    if (recordSeatVote(redTest, ColorType::RED) || redTest.confirmed ||
+        !recordSeatVote(redTest, ColorType::RED) || !redTest.confirmed ||
+        !redTest.red || recordSeatVote(redTest, ColorType::RED))
+        return false;
+    if (recordSeatVote(greenTest, ColorType::GREEN) || greenTest.confirmed ||
+        !recordSeatVote(greenTest, ColorType::GREEN) || !greenTest.confirmed ||
+        greenTest.red || recordSeatVote(greenTest, ColorType::GREEN))
+        return false;
+
+    prepareConsecutiveVote(0, ColorType::RED);
+    if (recordSeatVote(seats[0], ColorType::RED))
+        return false;
+    prepareConsecutiveVote(1, ColorType::RED);
+    if (recordSeatVote(seats[1], ColorType::RED) || seats[0].redVotes != 0)
+        return false;
+    prepareConsecutiveVote(0, ColorType::RED);
+    if (recordSeatVote(seats[0], ColorType::RED) || seats[0].redVotes != 1)
+        return false;
+    clearPendingVotes();
+    if (seats[0].redVotes != 0 || seats[1].redVotes != 0)
+        return false;
+
+    return fabsf(
+               targetLateralForSeat(redTest, OBSTACLE_LAP1_CLEARANCE_MM) -
+               redTest.lateralMm + OBSTACLE_LAP1_CLEARANCE_MM) < 0.1f &&
+           fabsf(
+               targetLateralForSeat(greenTest, OBSTACLE_LAP1_CLEARANCE_MM) -
+               greenTest.lateralMm - OBSTACLE_LAP1_CLEARANCE_MM) < 0.1f;
 }

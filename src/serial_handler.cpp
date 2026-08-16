@@ -41,6 +41,7 @@
 #include "navigation_controller.h"
 #include "obstacle.h"
 #include "obstacle_path_test.h"
+#include "obstacle_seat_test.h"
 #include "course_map.h"
 #include "calibration.h"
 #include "position_estimator.h"
@@ -218,6 +219,60 @@ static bool handle_pid_command(const char *message)
   return true;
 }
 
+static bool handle_seat_command(const char *message)
+{
+  if (strncmp(message, "seat", 4) != 0 ||
+      (message[4] != '\0' && message[4] != ' '))
+    return false;
+
+  if (strcmp(message, "seat show") == 0) {
+    if (current_mode != MODE_OBSTACLE_SEAT_TEST)
+      Serial.println("Start the stationary seat test with S1 or S-1 first.");
+    else
+      obstacle_seat_test_show();
+    return true;
+  }
+  if (strcmp(message, "seat clear") == 0) {
+    if (current_mode != MODE_OBSTACLE_SEAT_TEST)
+      Serial.println("No stationary seat test is active.");
+    else
+      obstacle_seat_test_clear();
+    return true;
+  }
+
+  int section = -1;
+  int station = -1;
+  char side = '?';
+  int range = -1;
+  char extra = '\0';
+  const int fields = sscanf(
+      message,
+      "seat expect %d %d %c %d %c",
+      &section,
+      &station,
+      &side,
+      &range,
+      &extra);
+  bool accepted = false;
+  if (fields == 4 && current_mode == MODE_OBSTACLE_SEAT_TEST) {
+    accepted = obstacle_seat_test_expect(
+        static_cast<uint8_t>(section),
+        static_cast<uint8_t>(station),
+        side,
+        static_cast<float>(range));
+  }
+  if (!accepted) {
+    Serial.print("[SEAT CMD] rejected fields="); Serial.print(fields);
+    Serial.print(" mode="); Serial.print(mode_name(current_mode));
+    Serial.print(" section="); Serial.print(section);
+    Serial.print(" station="); Serial.print(station);
+    Serial.print(" side="); Serial.print(side);
+    Serial.print(" range="); Serial.println(range);
+    Serial.println("Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>");
+  }
+  return true;
+}
+
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
@@ -228,6 +283,10 @@ static void print_serial_command_info()
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
+  Serial.println("S1 / S-1   : Stationary seat-snap test (left/right geometry)");
+  Serial.println("S0         : Stop and clear stationary seat-snap test");
+  Serial.println("seat expect <section> <station> <L|R> <range_mm>");
+  Serial.println("seat clear / seat show : Reset or inspect seat-test state");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
   Serial.println("c<mm>      : CAMERA CALIBRATION at measured pillar distance");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
@@ -304,6 +363,17 @@ void processMessage()
     message[index++] = currentChar;
   }
 
+  // Terminals commonly send CRLF. The ring-buffer framing consumes LF but
+  // leaves CR in the message, which makes strict multi-word parsers see an
+  // unexpected extra argument. Remove trailing line/field whitespace before
+  // dispatch while preserving whitespace inside commands.
+  while (index > 0 &&
+         (message[index - 1] == '\r' ||
+          message[index - 1] == ' ' ||
+          message[index - 1] == '\t'))
+  {
+    --index;
+  }
   message[index] = '\0'; // Null-terminate
 
   // A complete command proves that a laptop terminal is connected. Allow its
@@ -317,6 +387,8 @@ void processMessage()
 void parseMessage(char *msg)
 {
   if (handle_pid_command(msg))
+    return;
+  if (handle_seat_command(msg))
     return;
 
   char cmd[3]; // Command character
@@ -511,6 +583,31 @@ void parseMessage(char *msg)
     else
     {
       Serial.println("Usage: X1 (left/CCW), X-1 (right/CW), X0 (stop)");
+    }
+    break;
+
+  case 'S':
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_SEAT_TEST ||
+          pending_mode == MODE_OBSTACLE_SEAT_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No stationary seat test is active.");
+    }
+    else if (value == 1 || value == -1)
+    {
+      // Restart even when switching directly between S1 and S-1; mode_switch
+      // intentionally treats selecting the current enum as a no-op.
+      if (current_mode == MODE_OBSTACLE_SEAT_TEST ||
+          pending_mode == MODE_OBSTACLE_SEAT_TEST)
+        mode_stop_all();
+      obstacle_seat_test_set_turn_sign(value);
+      select_temporary_mode(MODE_OBSTACLE_SEAT_TEST);
+    }
+    else
+    {
+      Serial.println("Usage: S1 (left/CCW), S-1 (right/CW), S0 (stop)");
     }
     break;
 

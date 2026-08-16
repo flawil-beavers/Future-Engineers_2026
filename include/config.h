@@ -396,6 +396,7 @@ constexpr auto OBSTACLE_PATH_TAPER_WAYPOINTS = 6;
 constexpr auto OBSTACLE_PATH_SMOOTH_RADIUS = 1;
 constexpr auto OBSTACLE_SEAT_SNAP_RADIUS_MM = 140.0f;
 constexpr auto OBSTACLE_SEAT_CONFIRM_VOTES = 2;
+constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.

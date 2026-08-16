@@ -25,9 +25,7 @@ void printCalibrationBlob(
     if (!blob.found || blob.height() <= 0)
         return;
 
-    const float bearing_deg =
-        (static_cast<float>(blob.centerX) - 160.0f) *
-        (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
+    const float bearing_deg = obstacle_camera_bearing_deg(&blob);
     const bool edge_clipped = blob.minX <= 2 || blob.maxX >= 317;
     const float runtime_range_mm =
         obstacle_estimate_camera_range_mm(&blob);
@@ -225,6 +223,17 @@ const Blob *getLargestValidObstacle()
     if (red->maxY != green->maxY)
         return red->maxY > green->maxY ? red : green;
     return red->area >= green->area ? red : green;
+}
+
+float obstacle_camera_bearing_deg(const Blob *obstacle)
+{
+    if (obstacle == nullptr || !obstacle->found)
+        return 0.0f;
+
+    // Image X grows to the right, while the path/global convention uses a
+    // positive bearing to the robot's left.
+    return (160.0f - static_cast<float>(obstacle->centerX)) *
+           (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
 }
 
 float obstacle_estimate_camera_range_mm(const Blob *obstacle)

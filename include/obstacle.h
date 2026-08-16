@@ -63,6 +63,9 @@ const Blob* getLargestObstacle();
  */
 bool obstacle_blob_valid_for_acquisition(const Blob *obstacle);
 
+/** Camera bearing in robot coordinates: positive is left, negative is right. */
+float obstacle_camera_bearing_deg(const Blob *obstacle);
+
 /**
  * @brief Return the best red/green blob after production validation.
  *        Invalid edge lines and background regions cannot mask a valid pillar.
