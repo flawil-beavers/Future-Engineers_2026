@@ -28,6 +28,7 @@
  *   z         : Stop the active mode
  *   b1/b0     : Start/stop Obstacle Bench mode
  *   c         : Start Camera Calibration mode
+ *   camdrive  : Pillar-touch reverse camera ground-plane calibration
  *   j         : Print learned obstacle course map
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Print all serial commands

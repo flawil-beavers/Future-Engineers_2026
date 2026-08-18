@@ -37,9 +37,9 @@ OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
       rear-axle pose origin.
 - [x] Apply the rotated camera mounting offset before projecting a detected
       block into global field coordinates.
-- [ ] Confirm `OBSTACLE_WHEELBASE_MM` against the finished robot.
+- [x] Confirm `OBSTACLE_WHEELBASE_MM` against the finished robot: 100 mm.
 
-## 2. Empty-track path and direction - in progress
+## 2. Empty-track path and direction - complete
 
 Use the dedicated on-robot test mode. It automatically disables camera
 steering, look nudges, and ToF pose correction while retaining ToF emergency
@@ -78,20 +78,25 @@ timeout. Test limits are the `OBSTACLE_PATH_TEST_*` constants in
 
 - [x] Confirm the on-board geometry preflight reports `PASS` before motion.
 - [x] Confirm the generated path turns in the required direction.
-- [ ] Confirm the first corner begins at the correct place.
+- [x] Confirm the first corner begins at the correct place.
 - [x] Confirm the robot remains approximately on the corridor centerline.
 - [x] Confirm it returns close to its starting pose after one lap.
 - [x] Confirm `[PATH] Completed lap 1` appears exactly once per physical lap.
-- [ ] Repeat successfully at least three times clockwise.
-- [ ] Repeat successfully at least three times counterclockwise.
+- [x] Repeat successfully at least three times clockwise.
+- [x] Repeat successfully at least three times counterclockwise.
 
-Recorded evidence from `log_72`, `log_73`, `log_75`, and `log_76`:
+Recorded evidence from `log_72`, `log_73`, `log_75`, `log_76`, and the
+newer removable-drive `log_12`, `log_14`, and `log_15`:
 
-- [x] Two successful left/CCW one-lap runs.
-- [x] Two successful right/CW one-lap runs.
-- [x] All four valid runs passed the automated limits.
+- [x] Four successful left/CCW one-lap runs. At 175 mm/s, `log_15` passed
+      in 42.5 seconds with 35.7 mm maximum cross-track error, 75.9 mm
+      final-position error, and 1.0 degree final-heading error.
+- [x] Three successful right/CW one-lap runs. At 175 mm/s, `log_14` passed
+      in 41.7 seconds with 36.6 mm maximum cross-track error, 75.0 mm
+      final-position error, and 2.8 degrees final-heading error.
+- [x] All seven valid runs passed the automated limits.
 - [x] Worst maximum cross-track error was 36.6 mm.
-- [x] Average final-position error was 49.8 mm.
+- [x] Average final-position error was approximately 55.8 mm.
 - [x] Average final-heading error was 2.1 degrees.
 
 Pass criteria:
@@ -116,12 +121,16 @@ Tune in this order:
 5. `OBSTACLE_LOOKAHEAD_CORNER_SCALE`
 6. `OBSTACLE_MAX_PURSUIT_STEERING_DEG`
 
-- [ ] Straight sections do not oscillate.
-- [ ] Steering returns smoothly to center after corrections.
-- [ ] The robot does not cut across the inside of corners.
-- [ ] The robot does not run wide toward the outer wall.
+- [x] Straight sections do not oscillate at the validated 175 mm/s test speed.
+- [x] Steering returns smoothly to center after corrections.
+- [x] The robot does not cut across the inside of corners.
+- [x] The robot does not run wide toward the outer wall.
 - [ ] Speed decreases sufficiently at corners.
 - [ ] One empty lap succeeds five consecutive times in each direction.
+
+The team deliberately skipped the five-consecutive-lap repetition after clean
+175 mm/s runs in both directions (`log_14` and `log_15`). Keep this item open
+as waived rather than recording an unperformed reliability test as passed.
 
 Adjustment guide:
 
@@ -131,6 +140,157 @@ Adjustment guide:
 - Jerky steering: increase lookahead or reduce maximum steering/speed.
 
 ## 4. Camera bearing and range calibration - in progress
+
+### Automated reverse-drive ground-range calibration
+
+The `camdrive` mode replaces repeated ruler placements with one stepped,
+encoder-referenced run. Put one official pillar on the robot centreline with
+its near face touching the front of the robot, leave at least the requested
+reverse distance clear behind the robot, and send:
+
+```text
+camdrive [reverse-distance-mm]
+```
+
+For example, `camdrive 1000` reverses 1000 mm; `camdrive` uses that same
+distance by default. Before the first run, measure and update these two
+physical constants in `config.h`:
+
+```cpp
+constexpr auto ROBOT_FRONT_FROM_REAR_AXLE_MM = 130.0f;
+constexpr auto OBSTACLE_CAMERA_FROM_REAR_AXLE_MM = 125.0f;
+```
+
+Both are forward distances from the rear-axle midpoint. The first ends at the
+front contact plane touched by the pillar; the second ends at the camera
+optical centre. The initial camera-to-pillar distance is their difference.
+Encoder reverse travel is added continuously. Remeasure the relevant constant
+after changing the robot front or camera mount.
+
+The robot reverses at 80 mm/s while the normal gyro PD controller holds the
+starting heading. Reverse steering uses the opposite sign from forward gyro
+following and is limited to 15 degrees. It first stops at 300 mm encoder
+travel, then every 100 mm through the requested final travel. At each stop it
+waits 700 ms for vibration and rolling to settle, then captures 10 valid camera
+frames (at least 6 are required). It uses a trimmed foot-position average that
+discards the two highest and two lowest values, suppressing brief false colored
+components. Each accepted checkpoint contributes exactly one equally weighted
+point to the final fit. This prevents motion blur, wheel vibration, camera frame
+rate, or a long pause at one distance from biasing the result.
+
+The first detected red/green color is not used while the pillar touches the
+camera. Color voting starts after 180 mm and requires three consecutive valid
+detections before the color is locked. Bottom/side-clipped frames are rejected;
+five consecutive close-pillar geometry frames are required before samples can
+be accepted. Frames captured while driving form a separate
+`moving_cross_check` fit and never alter the authoritative stopped fit. At the
+end the firmware fits
+
+`foot_y = horizon_y + scale_mm_px / true_forward_mm`
+
+and prints ready-to-paste values for
+`OBSTACLE_CAMERA_GROUND_HORIZON_Y` and
+`OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX`. It also prints the stopped fit's
+predicted `foot_y` at 400 and 600 mm and the difference from the moving fit.
+It stops after the final checkpoint, after 45 seconds, or when heading changes
+by more than 6 degrees.
+It reports failure and suppresses copyable constants if the fitted horizon or
+scale is implausible or foot-pixel RMSE exceeds 5 px.
+`z` aborts immediately. Toggling the enable switch pauses and invalidates the
+run; put the robot back against the pillar and send a fresh command rather
+than resuming. Repeat at least three times per camera height/angle
+and for both pillar colors; compare fitted constants and foot-pixel RMSE
+before accepting a mount.
+
+Recorded stationary cross-check from `D:\log_20.txt`:
+
+- [x] Red and green both measured `max_y=150` at 400 mm.
+- [x] Green averaged `max_y=119.9` and red `max_y=120.1` at 600 mm.
+- [x] Those ruler measurements directly imply `horizon_y=60.0` and
+      `scale_mm_px=36000`; these are now the production defaults.
+- [x] The successful moving red run in `D:\log_19.txt` fitted approximately
+      `horizon_y=62.79`, `scale_mm_px=35654`, RMSE 1.46 px. Its proximity to
+      the stationary result is encouraging, but stopped checkpoints are now
+      authoritative because another moving green run contained false foot
+      components.
+
+Recorded evidence from `D:\log_16.txt` (green run followed by two red
+attempts):
+
+- [x] The original unguided runs all stopped at approximately 700-800 mm
+      because heading error exceeded 6 degrees.
+- [x] The first run predominantly saw green, but occasional red components and
+      a false early green component entered the same fit. Do not copy its
+      printed `horizon=132.898`, `scale=5663.1`, or 28.15 px RMSE.
+- [x] As a diagnostic only, the clean logged green sequence beginning at
+      `true_forward=240.1 mm`, `foot_y=212` fits approximately
+      `horizon=69.7`, `scale=32775`, with 2.45 px RMSE. Rerun with the new
+      color lock, monotonic-foot gate, and gyro steering before copying it.
+- [x] Red did not produce a usable run. Stationary center samples were around
+      `H=346-354`, `S=130-183`, `V=41-57`. Update the configurable dark-red
+      range to `H=340-359 or 0-8`, `S>=120`, `V>=35`; reserving `H=9-35` for
+      orange removes the previous hue overlap. Verify with `c0` against both a
+      red pillar and the orange track line.
+
+Recorded follow-up from `D:\log_17.txt`:
+
+- [x] Reverse gyro following held the heading within approximately -1.2 to
+      +0.6 degrees for the full 1000 mm; steering corrections stayed within
+      approximately -1.5 to +3.0 degrees.
+- [x] Color locking remained `GREEN`, and the pillar stayed close to image
+      center (`x=160-175` through most of the usable range).
+- [x] The run collected zero firmware samples only because the initial
+      acquisition gate required `foot_y>=200`; after close-range clipping the
+      real pillar reappeared at `foot_y=180`. Lower the acquisition threshold
+      to 160 px while retaining the monotonic-foot check.
+- [x] An offline fit of the 21 clean logged points from 297.3 to 1004.8 mm
+      gives diagnostic values `horizon=66.98`, `scale=33251.5`, with 1.41 px
+      RMSE. Rerun with the corrected gate to obtain the full-frame firmware
+      fit before copying constants into `config.h`.
+
+Recorded follow-up from `D:\log_18.txt`:
+
+- [x] The complete serial record and printed constants were saved, and the
+      full 1000 mm run completed with 65 accepted frames.
+- [x] The constants were not written into firmware automatically; `config.h`
+      correctly retained the previous production values.
+- [x] The reported `horizon=86.790`, `scale=6385.1`, RMSE 7.20 px result is
+      invalid. The tracker acquired a transient green component at only
+      166.8 mm (`foot_y=164`) before the complete pillar became visible.
+- [x] Add the delayed three-frame color vote, five-frame geometry confirmation,
+      and fit-quality limits before another run.
+
+Copy the two printed `constexpr` lines into `include/config.h` and rebuild.
+`obstacle_estimate_camera_forward_mm()` then uses them for forward depth.
+`obstacle_estimate_camera_range_mm()` combines that depth with the measured
+bearing, and the obstacle path code uses the resulting ray distance plus the
+configured camera-to-rear-axle offset when projecting and snapping pillars to
+known seats. No separate calibration table needs to be copied elsewhere.
+
+The live `lateral_left_mm` field is already a two-dimensional estimate in the
+robot convention (+forward, +left). It uses the currently configured
+horizontal field of view, so the centreline reverse test validates that it
+stays near zero but cannot by itself identify horizontal focal length or lens
+distortion.
+
+### Proposed horizontal-position calibration
+
+After fixing camera height and pitch, add a `camgrid` mode with the robot
+stationary and place a pillar at surveyed lateral offsets -300, -200, -100, 0,
++100, +200, and +300 mm at two or three forward distances. A serial command
+such as `camgrid <forward_mm> <left_mm>` can collect 10-20 frames per point.
+Fit the pinhole relation `pixel_x = principal_x - focal_x * left/forward` and
+inspect residual versus pixel X. If residuals curve near the frame edges, fit
+one radial-distortion coefficient or use a small pixel-to-bearing lookup
+table rather than only changing the nominal FOV.
+
+An equally useful field-oriented alternative is to park the robot at a
+surveyed pose in front of one official three-position section and capture all
+known pillar seats. Repeating from a second forward pose separates horizontal
+scale error from principal-point error. Driving sideways is not recommended:
+Ackermann heading and odometry errors would become calibration inputs. If a
+moving test is desired, drive straight in two lanes of known lateral offset,
+with gyro heading logged and runs in both directions to expose bias.
 
 Use one official 100 mm pillar. Test both colors at measured distances of
 approximately 150, 250, 400, 600, and 800 mm.

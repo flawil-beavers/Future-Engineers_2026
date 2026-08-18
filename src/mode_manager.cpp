@@ -15,6 +15,7 @@
 #include "obstacle_seat_test.h"
 #include "sensors.h"
 #include "position_estimator.h"
+#include "camera_distance_calibration.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -84,6 +85,10 @@ static void stop_mode(RobotMode mode)
     case MODE_CAMERA_CALIBRATION:
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_CAMERA_DISTANCE_CAL:
+        camera_distance_cal_stop();
         break;
 
     case MODE_TURN_RADIUS_CAL:
@@ -161,6 +166,14 @@ static bool start_mode(RobotMode mode)
             return false;
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_CAMERA_DISTANCE_CAL:
+        if (!obstacle_camera_setup())
+            return false;
+        camera_distance_cal_start();
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_FAILED)
+            return false;
         break;
 
     case MODE_TURN_RADIUS_CAL:
@@ -281,6 +294,15 @@ static ModeResult update_active_mode()
         drive_loop();
         return MODE_RESULT_RUNNING;
 
+    case MODE_CAMERA_DISTANCE_CAL:
+        camera_distance_cal_update(updateCameraVision());
+        drive_loop();
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_DONE)
+            return MODE_RESULT_COMPLETED;
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_FAILED)
+            return MODE_RESULT_FAILED;
+        return MODE_RESULT_RUNNING;
+
     case MODE_TURN_RADIUS_CAL:
         turn_radius_cal_update();
         drive_loop();
@@ -348,12 +370,22 @@ void mode_update()
 void mode_pause()
 {
     if (current_mode != MODE_NONE) {
-        pending_mode = current_mode;
+        const RobotMode paused_mode = current_mode;
+        // A camera-distance calibration can only start while the pillar is
+        // touching the configured robot-front plane. After any movement, a
+        // generic resume would establish a false distance origin.
+        pending_mode = paused_mode == MODE_CAMERA_DISTANCE_CAL
+            ? MODE_NONE
+            : paused_mode;
         stop_mode(current_mode);
         current_mode = MODE_NONE;
 
-        Serial.print("Paused. Pending mode: ");
-        Serial.println(mode_name(pending_mode));
+        if (paused_mode == MODE_CAMERA_DISTANCE_CAL)
+            Serial.println("Camera calibration cancelled; return to pillar contact and send camdrive again.");
+        else {
+            Serial.print("Paused. Pending mode: ");
+            Serial.println(mode_name(pending_mode));
+        }
     }
 
     system_disable();
@@ -405,6 +437,7 @@ const char* mode_name(RobotMode mode)
     case MODE_OBSTACLE_SEAT_TEST: return "OBSTACLE_SEAT_TEST";
     case MODE_OBSTACLE_BENCH:     return "OBSTACLE_BENCH";
     case MODE_CAMERA_CALIBRATION:  return "CAMERA_CALIBRATION";
+    case MODE_CAMERA_DISTANCE_CAL: return "CAMERA_DISTANCE_CAL";
     case MODE_TURN_RADIUS_CAL:    return "TURN_RADIUS_CAL";
     case MODE_SERVO_CENTER_CAL:   return "SERVO_CENTER_CAL";
     case MODE_PID_AUTOTUNE:       return "PID_AUTOTUNE";

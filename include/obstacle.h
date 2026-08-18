@@ -73,7 +73,15 @@ float obstacle_camera_bearing_deg(const Blob *obstacle);
 const Blob* getLargestValidObstacle();
 
 /**
- * @brief Estimate horizontal camera-to-block-foot range in millimetres.
+ * @brief Estimate forward camera-to-block-foot depth in millimetres.
+ *        This is the calibrated ground-plane quantity before bearing is
+ *        applied.
+ */
+float obstacle_estimate_camera_forward_mm(const Blob *obstacle);
+
+/**
+ * @brief Estimate horizontal camera-to-block-foot ray range in millimetres.
+ *        Seat projection combines this range with camera bearing.
  */
 float obstacle_estimate_camera_range_mm(const Blob *obstacle);
 

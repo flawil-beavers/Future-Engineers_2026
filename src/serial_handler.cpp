@@ -49,6 +49,7 @@
 #include "mode_manager.h"
 #include "logger.h"
 #include "tof_diagnostic_test.h"
+#include "camera_distance_calibration.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -274,6 +275,31 @@ static bool handle_seat_command(const char *message)
   return true;
 }
 
+static bool handle_camera_drive_command(const char *message)
+{
+  if (strncmp(message, "camdrive", 8) != 0 ||
+      (message[8] != '\0' && message[8] != ' '))
+    return false;
+
+  float travel_mm = CAMERA_DRIVE_CAL_DEFAULT_TRAVEL_MM;
+  char extra = '\0';
+  if (strcmp(message, "camdrive") != 0 &&
+      sscanf(message, "camdrive %f %c", &travel_mm, &extra) != 1)
+  {
+    Serial.println("Usage: camdrive [reverse-distance-mm]");
+    Serial.println("Place the pillar touching the robot front before starting.");
+    return true;
+  }
+
+  if (!camera_distance_cal_configure(travel_mm))
+  {
+    Serial.println("Reverse distance must be 250..1800 mm.");
+    return true;
+  }
+  select_temporary_mode(MODE_CAMERA_DISTANCE_CAL);
+  return true;
+}
+
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
@@ -290,6 +316,7 @@ static void print_serial_command_info()
   Serial.println("seat clear / seat show : Reset or inspect seat-test state");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
   Serial.println("c<mm>      : CAMERA CALIBRATION at measured pillar distance");
+  Serial.println("camdrive [reverse-mm] : Pillar-touch reverse camera calibration");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
   Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
   Serial.println("y          : Start PID AUTOTUNE mode");
@@ -391,6 +418,8 @@ void parseMessage(char *msg)
   if (handle_pid_command(msg))
     return;
   if (handle_seat_command(msg))
+    return;
+  if (handle_camera_drive_command(msg))
     return;
   if (tof_diagnostic_handle_command(msg))
     return;

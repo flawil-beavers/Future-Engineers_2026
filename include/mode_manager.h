@@ -38,6 +38,7 @@ enum RobotMode {
     MODE_OBSTACLE_SEAT_TEST,    ///< Stationary Pure Pursuit seat-snap test
     MODE_OBSTACLE_BENCH,        ///< Stationary camera/steering obstacle test
     MODE_CAMERA_CALIBRATION,     ///< Stationary live camera HSV calibration
+    MODE_CAMERA_DISTANCE_CAL,    ///< Reverse-drive camera distance calibration
     MODE_TURN_RADIUS_CAL,       ///< Turn-radius calibration
     MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning

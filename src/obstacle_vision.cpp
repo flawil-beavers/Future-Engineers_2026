@@ -236,7 +236,7 @@ float obstacle_camera_bearing_deg(const Blob *obstacle)
            (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
 }
 
-float obstacle_estimate_camera_range_mm(const Blob *obstacle)
+float obstacle_estimate_camera_forward_mm(const Blob *obstacle)
 {
     if (obstacle == nullptr || !obstacle->found)
         return 0.0f;
@@ -258,4 +258,20 @@ float obstacle_estimate_camera_range_mm(const Blob *obstacle)
     return OBSTACLE_CAMERA_FOCAL_LENGTH_PX *
            OBSTACLE_PILLAR_HEIGHT_MM /
            static_cast<float>(obstacle->height());
+}
+
+float obstacle_estimate_camera_range_mm(const Blob *obstacle)
+{
+    const float forwardMm = obstacle_estimate_camera_forward_mm(obstacle);
+    if (forwardMm <= 0.0f)
+        return 0.0f;
+
+    // The ground-plane fit estimates forward depth. Convert it to distance
+    // along the bearing ray so obstacle_path.cpp can project off-centre
+    // pillars into the field and snap them to the correct known seat.
+    const float bearingRad = obstacle_camera_bearing_deg(obstacle) * PI / 180.0f;
+    const float bearingCos = cosf(bearingRad);
+    if (bearingCos <= 0.01f)
+        return 0.0f;
+    return forwardMm / bearingCos;
 }

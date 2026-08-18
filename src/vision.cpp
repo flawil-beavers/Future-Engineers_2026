@@ -1,4 +1,5 @@
 #include "vision.h"
+#include "config.h"
 
 Vision::Vision()
 {
@@ -157,9 +158,10 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // RED
 
     if (
-        (hsv.h <= 18 || hsv.h >= 352) &&
-        hsv.s >= 175 &&
-        hsv.v >= 70)
+        (hsv.h <= VISION_RED_HUE_LOW_MAX ||
+         hsv.h >= VISION_RED_HUE_HIGH_MIN) &&
+        hsv.s >= VISION_RED_MIN_SATURATION &&
+        hsv.v >= VISION_RED_MIN_VALUE)
     {
         return ColorType::RED;
     }
@@ -167,8 +169,8 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // ORANGE
 
     if (
-        hsv.h >= 9 &&
-        hsv.h <= 35 &&
+        hsv.h >= VISION_ORANGE_HUE_MIN &&
+        hsv.h <= VISION_ORANGE_HUE_MAX &&
         hsv.s >= 90 &&
         hsv.v >= 60)
     {

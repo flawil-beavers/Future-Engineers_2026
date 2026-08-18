@@ -274,6 +274,16 @@ constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 // Camera processing
 constexpr auto OBSTACLE_CAMERA_INTERVAL_MS = 50;
 
+// HSV color classification. The dark-red limits include the measured
+// log_16 samples (H=346..354, S=130..183, V=41..57). Keeping the low red hue
+// at 0..8 leaves the orange range beginning at 9 degrees unambiguous.
+constexpr auto VISION_RED_HUE_LOW_MAX = 8;
+constexpr auto VISION_RED_HUE_HIGH_MIN = 340;
+constexpr auto VISION_RED_MIN_SATURATION = 120;
+constexpr auto VISION_RED_MIN_VALUE = 35;
+constexpr auto VISION_ORANGE_HUE_MIN = 9;
+constexpr auto VISION_ORANGE_HUE_MAX = 35;
+
 // Detection validation
 constexpr auto OBSTACLE_RED_MIN_AREA = 300;
 constexpr auto OBSTACLE_RED_MIN_HEIGHT = 21;
@@ -401,17 +411,58 @@ constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
 constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 60.0f;
-constexpr auto OBSTACLE_CAMERA_LOCAL_X_MM = 125.0f;
+// Measure both values along the robot centreline whenever the camera or body
+// changes. ROBOT_FRONT_FROM_REAR_AXLE_MM is the plane touched by the near face
+// of the pillar at the start of a camdrive calibration.
+constexpr auto ROBOT_FRONT_FROM_REAR_AXLE_MM = 130.0f;
+constexpr auto OBSTACLE_CAMERA_FROM_REAR_AXLE_MM = 125.0f;
+constexpr auto OBSTACLE_CAMERA_LOCAL_X_MM =
+    OBSTACLE_CAMERA_FROM_REAR_AXLE_MM;
 constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 
 // The official pillar distances are measured horizontally from the camera to
 // the foot of the block. Its top is clipped by the obstacle ROI at longer
 // ranges, so height is not a reliable range input. Ground-plane calibration
-// Final post-ROI calibration from log_88: the dominant stationary boxes have
-// maxY=136 at 400 mm and maxY=108 at 600 mm, giving
+// Stationary red and green measurements from log_20 have maxY=150 at 400 mm
+// and maxY=120 at 600 mm, giving
 // distance = scale / (maxY - horizonY).
-constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 52.0f;
-constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 33600.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 60.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 36000.0f;
+
+// Automated camera ground-plane calibration (serial: camdrive [reverse_mm]).
+// The pillar starts touching ROBOT_FRONT_FROM_REAR_AXLE_MM; encoder travel and
+// the camera offset above provide camera-to-pillar ground truth.
+constexpr auto CAMERA_DRIVE_CAL_SPEED_MMS = 80;
+constexpr auto CAMERA_DRIVE_CAL_DEFAULT_TRAVEL_MM = 1000.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_TRAVEL_MM = 1800.0f;
+constexpr auto CAMERA_DRIVE_CAL_TIMEOUT_MS = 45000UL;
+constexpr auto CAMERA_DRIVE_CAL_PRINT_INTERVAL_MS = 250UL;
+constexpr auto CAMERA_DRIVE_CAL_MAX_HEADING_ERROR_DEG = 6.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_STEERING_DEG = 15.0f;
+constexpr auto CAMERA_DRIVE_CAL_COLOR_DELAY_MM = 180.0f;
+constexpr auto CAMERA_DRIVE_CAL_COLOR_CONFIRM_FRAMES = 3U;
+constexpr auto CAMERA_DRIVE_CAL_GEOMETRY_CONFIRM_FRAMES = 5U;
+// Stop periodically so each regression point is an average without motion
+// blur, steering vibration, or unequal weighting from camera frame timing.
+constexpr auto CAMERA_DRIVE_CAL_FIRST_CHECKPOINT_MM = 300.0f;
+constexpr auto CAMERA_DRIVE_CAL_CHECKPOINT_INTERVAL_MM = 100.0f;
+constexpr auto CAMERA_DRIVE_CAL_CHECKPOINT_SETTLE_MS = 700UL;
+constexpr auto CAMERA_DRIVE_CAL_CHECKPOINT_SAMPLE_TIMEOUT_MS = 2500UL;
+constexpr auto CAMERA_DRIVE_CAL_CHECKPOINT_SAMPLES = 10U;
+constexpr auto CAMERA_DRIVE_CAL_CHECKPOINT_MIN_SAMPLES = 6U;
+constexpr auto CAMERA_DRIVE_CAL_MIN_RANGE_MM = 120.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_RANGE_MM = 1600.0f;
+constexpr auto CAMERA_DRIVE_CAL_MIN_SAMPLES = 5U;
+// Acquire the close pillar low in the image, then require its foot to move
+// upward as distance increases. This rejects unrelated colored components.
+constexpr auto CAMERA_DRIVE_CAL_ACQUIRE_MIN_FOOT_Y = 160;
+constexpr auto CAMERA_DRIVE_CAL_FOOT_Y_TOLERANCE_PX = 6;
+constexpr auto CAMERA_DRIVE_CAL_MAX_CENTER_ERROR_PX = 90;
+constexpr auto CAMERA_DRIVE_CAL_MIN_FIT_SCALE_MM_PX = 15000.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_FIT_SCALE_MM_PX = 60000.0f;
+constexpr auto CAMERA_DRIVE_CAL_MIN_FIT_HORIZON_Y = -20.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_FIT_HORIZON_Y = 150.0f;
+constexpr auto CAMERA_DRIVE_CAL_MAX_FIT_RMSE_PX = 5.0f;
 
 // Retained as a diagnostic/fallback for a blob whose foot is above the
 // calibrated horizon. Normal obstacle range uses the ground-plane model.
@@ -441,7 +492,7 @@ constexpr auto OBSTACLE_CORNER_GATE_AFTER_MM = 280.0f;
 // Empty-track Pure Pursuit test mode (serial: X1 left/CCW, X-1 right/CW).
 // Vision steering and ToF pose correction are disabled during this test so
 // it measures only path anchoring, direction, odometry and path tracking.
-constexpr auto OBSTACLE_PATH_TEST_MAX_SPEED_MM_S = 150.0f;
+constexpr auto OBSTACLE_PATH_TEST_MAX_SPEED_MM_S = 175.0f;
 constexpr auto OBSTACLE_PATH_TEST_TIMEOUT_MS = 75000UL;
 constexpr auto OBSTACLE_PATH_TEST_WALL_STOP_MM = 120.0f;
 constexpr auto OBSTACLE_PATH_TEST_ABORT_CROSS_TRACK_MM = 300.0f;
