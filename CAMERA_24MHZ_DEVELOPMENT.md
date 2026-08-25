@@ -56,7 +56,7 @@ old synchronous capture plus processing time of roughly 149 ms.
 
 Camera-calibration telemetry now includes `test_frames`, `red_valid`, and
 `green_valid`. These counters cover every processed frame, while the detailed
-line is printed only every 500 ms. A reliability run passes only when both
+line is printed only every 2,000 ms. A reliability run passes only when both
 valid counters equal `test_frames` for the fixed two-pillar scene.
 
 ## Safety and fallback
@@ -104,3 +104,43 @@ would require uninterrupted continuous DCMI acquisition with DMA buffer
 handoff, a materially more complex change than the current snapshot ping-pong
 API; undertake that separately only if driving logs show the update jitter
 affects obstacle decisions.
+
+## TODO: optional continuous DCMI acquisition
+
+Consider this only if driving logs show that the occasional 159.25 ms update
+interval causes late obstacle decisions. It is an update-jitter optimization,
+not a fix for image reliability: every delivered frame in the stationary test
+remained usable.
+
+The intended implementation is:
+
+1. Leave the GC2145 running with the accepted 24 MHz XCLK, input `/2`, and PLL
+   ratio 5. Do not combine this work with another sensor-clock experiment.
+2. Replace repeated `DCMI_MODE_SNAPSHOT` stop/start operations with uninterrupted
+   `DCMI_MODE_CONTINUOUS` acquisition.
+3. Use two SDRAM frame buffers. DMA writes only to the active buffer; the frame
+   interrupt atomically publishes the completed buffer and switches DMA to the
+   other one.
+4. Keep cache invalidation and RGB565 processing outside the interrupt. The ISR
+   should only timestamp completion, update buffer ownership, and arm the next
+   DMA destination.
+5. If processing ever falls behind, discard the older completed frame and
+   process the newest complete frame. Never process a buffer while DMA owns it.
+6. Keep the current snapshot implementation behind a compile-time fallback
+   until the continuous path has passed stationary and driving tests.
+
+Acceptance criteria:
+
+- at least 2,000 stationary frames with both fixed pillars production-valid
+  after initial camera settling;
+- completion intervals remain near 79.62 ms with no approximately 159.25 ms
+  intervals;
+- no torn frames, partial pillars, buffer-ownership errors, or cache artifacts;
+- camera service and vision processing do not materially increase the control
+  loop's approximately 6.6 ms blocking time;
+- repeat under the present dark lighting and brighter competition-like light;
+- complete one low-speed obstacle lap before removing the snapshot fallback.
+
+Do not shorten exposure or enable PLL ratio 6 as part of this TODO. Those are
+separate image-quality/timing experiments and would make failures harder to
+attribute.
