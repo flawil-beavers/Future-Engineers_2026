@@ -418,9 +418,6 @@ constexpr auto OBSTACLE_START_MIN_X = 30;
 constexpr auto OBSTACLE_START_MAX_X = 290;
 constexpr auto OBSTACLE_MAX_START_WIDTH = 80;
 constexpr auto OBSTACLE_MAX_START_HEIGHT = 120;
-// A real pillar can be cut by the image edge when a corner exit is laterally
-// imperfect. Permit that shape only inside the outer 45 pixels; the normal
-// central test remains strict so floor/line reflections cannot start OA.
 
 // After every 90 degree corner, let the normal gyro controller remove turn
 // overshoot before camera avoidance can take steering priority.
