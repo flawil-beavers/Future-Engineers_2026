@@ -403,6 +403,7 @@ class Camera {
         Stream *_debug;          /// Pointer to the debug stream
         arduino::MbedI2C *_i2c;  /// Pointer to the I2C interface
         FrameBuffer *_framebuffer; /// Pointer to the frame buffer
+        FrameBuffer *_continuousFramebuffers[2];
         int setResolutionWithZoom(int32_t resolution, int32_t zoom_resolution, int32_t zoom_x, int32_t zoom_y);
 
     public:
@@ -507,6 +508,19 @@ class Camera {
 
         /** Stop/finalize the completed transfer and publish DMA writes. */
         int finishFrame();
+
+        /** Start uninterrupted DCMI capture into alternating DMA buffers. */
+        int startContinuous(FrameBuffer &first, FrameBuffer &second);
+
+        /** Publish the newest complete buffer without stopping DCMI. */
+        bool acquireContinuousFrame(
+            uint32_t consumedSequence,
+            FrameBuffer *&completed,
+            uint32_t &sequence,
+            uint32_t &completedTimeUs);
+
+        /** DMA/DCMI errors observed during continuous capture. */
+        uint32_t continuousErrorCount() const;
 
         /**
          * @brief Enable motion detection with the specified callback.

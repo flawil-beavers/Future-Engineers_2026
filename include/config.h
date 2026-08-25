@@ -617,6 +617,9 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 // auto-start exception never enables a mode that can request motor movement.
 #define CAMERA_ASYNC_STATIONARY_AUTOSTART true
 #define CAMERA_ASYNC_CAPTURE_ENABLED true
+// Keep snapshot async capture as a compile-time fallback while uninterrupted
+// DCMI/DMA double-buffering is validated on the robot.
+#define CAMERA_CONTINUOUS_CAPTURE_ENABLED true
 // GC2145 timing profile. At 24 MHz XCLK the sensor's input divide-by-two bit
 // preserves the proven 12 MHz internal timing. CAMERA_GC2145_PLL_DIVX4 can
 // then be raised independently in controlled tests to increase frame rate.
