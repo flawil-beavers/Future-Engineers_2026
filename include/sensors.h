@@ -88,6 +88,12 @@ float get_angle();
 float get_heading();
 
 /**
+ * @brief Whether fresh game-rotation-vector data is available for control.
+ * @return False during startup and genuine BNO085 reset recovery
+ */
+bool gyro_is_healthy();
+
+/**
  * @brief Get the latest distance from a specific ToF sensor
  * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
  * @return Distance in millimeters, or -1.0 if invalid

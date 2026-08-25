@@ -31,6 +31,14 @@ constexpr auto ENCODER_PIN_B = 2; // Phase B
 constexpr auto BNO085_CS = 10;
 constexpr auto BNO085_INT = A0;
 constexpr auto BNO085_RST = A1;
+// The game rotation vector is requested at 100 Hz. Missing 20 consecutive
+// samples indicates a sensor-side stall, but a main-loop pause must not be
+// mistaken for one: the host was not polling the BNO085 during that pause.
+constexpr uint32_t GYRO_REPORT_INTERVAL_US = 10000UL;
+constexpr uint32_t GYRO_REPORT_TIMEOUT_MS = 200UL;
+// Allow a hardware-reset request time to boot and announce its reset before
+// retrying. Repeated 200 ms resets could otherwise keep a slow boot in a loop.
+constexpr uint32_t GYRO_RESET_RECOVERY_TIMEOUT_MS = 1000UL;
 
 // ==========================================
 // ENABLE SWITCH

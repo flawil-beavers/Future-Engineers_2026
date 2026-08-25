@@ -57,6 +57,12 @@ void loop()
     update_lasers();
     tof_diagnostic_update();
     update_gyro();
+    if (!gyro_is_healthy())
+    {
+        stop(false);
+        robot_logger.update();
+        return;
+    }
     update_position();
     tof_pose_diagnostic_update();
     check_stalling();

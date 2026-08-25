@@ -7,6 +7,7 @@
 #include "config.h"
 #include <Wire.h>
 #include "logger.h"
+#include "motor_control.h"
 #define Serial robot_logger
 
 
@@ -21,6 +22,7 @@ static Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
 static sh2_SensorValue_t sensor_value;
 static float current_degree = 0;
 static float current_heading = 0;
+static bool gyro_stream_healthy = false;
 
 /**
  * @brief The timing budget (refresh rate) of ToF sensors captured at startup.
@@ -39,6 +41,30 @@ static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
 static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
 
+static bool restart_gyro_stream()
+{
+  // A standalone reset does not reliably return this BNO085/SPI combination
+  // to a state where sh2_setSensorConfig() can be written. Repeat the same
+  // transport and SH2 initialization sequence that is proven at startup.
+  // Never retain a drive command during the blocking hardware/transport
+  // restart. The main loop also stays suspended until a fresh quaternion.
+  stop(false);
+  gyro_stream_healthy = false;
+  sh2_close();
+  if (!bno.begin_SPI(BNO085_CS, BNO085_INT, &SPI1))
+    return false;
+  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR,
+                        GYRO_REPORT_INTERVAL_US))
+    return false;
+
+  // Consume boot notifications so they cannot trigger another recovery after
+  // the newly enabled report stream starts.
+  delay(50);
+  bno.getSensorEvent(&sensor_value);
+  bno.wasReset();
+  return true;
+}
+
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
 // ==========================================
@@ -46,17 +72,50 @@ static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
 void update_gyro()
 {
   static unsigned long last_gyro_data_time = 0;
+  static unsigned long last_gyro_poll_time = 0;
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
+  static bool reset_recovery_pending = false;
+
+  const unsigned long now = millis();
+  const bool first_poll = last_gyro_poll_time == 0;
+  const unsigned long poll_gap_ms = first_poll ? 0 : now - last_gyro_poll_time;
+  last_gyro_poll_time = now;
+
+  if (first_poll)
+  {
+    // Give the initial report stream one timeout period to produce a sample.
+    last_gyro_data_time = now;
+  }
+  else if (poll_gap_ms > GYRO_REPORT_TIMEOUT_MS)
+  {
+    // A stale sample after a long main-loop pause is not evidence that the
+    // BNO085 stopped reporting. Start a fresh observation window instead of
+    // resetting the sensor (the old recovery did exactly that while the INT
+    // line was HIGH).
+    Serial.print("[GYRO] Main loop did not poll gyro for ");
+    Serial.print(poll_gap_ms);
+    Serial.println("ms; deferring sensor timeout check.");
+    last_gyro_data_time = now;
+  }
 
   // The BNO085 INT pin is active low. If HIGH, no data is ready.
   if (digitalRead(BNO085_INT) == HIGH)
   {
-    if (last_gyro_data_time != 0 && millis() - last_gyro_data_time > 200)
+    const unsigned long timeout_ms = reset_recovery_pending
+                                         ? GYRO_RESET_RECOVERY_TIMEOUT_MS
+                                         : GYRO_REPORT_TIMEOUT_MS;
+    if (now - last_gyro_data_time > timeout_ms)
     {
-      Serial.println("[GYRO] No data for 200ms, re-enabling reports...");
-      bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
+      // enableReport() cannot be sent directly while INT is HIGH. Reopen the
+      // complete SPI/SH2 transport, which performs a controlled reset first.
+      Serial.println("[GYRO] Sensor report timeout; restarting SPI/SH2...");
+      const bool restarted = restart_gyro_stream();
+      Serial.println(restarted
+                         ? "[GYRO] SPI/SH2 stream restarted."
+                         : "[GYRO] SPI/SH2 restart failed.");
       gyro_initialized = false;
+      reset_recovery_pending = true;
       last_gyro_data_time = millis();
     }
     return;
@@ -68,12 +127,15 @@ void update_gyro()
   // Check if sensor was reset
   if (bno.wasReset())
   {
-    Serial.println("BNO085 was reset! Reinitializing...");
+    Serial.println("BNO085 was reset! Restarting SPI/SH2...");
     gyro_initialized = false; // Reset local tracking on hardware reset
-    delay(10);
-    bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
-    delay(30);
-    return; // Drop this frame to let stream stabilize
+    const bool restarted = restart_gyro_stream();
+    Serial.println(restarted
+                       ? "[GYRO] SPI/SH2 stream restarted."
+                       : "[GYRO] SPI/SH2 restart failed.");
+    reset_recovery_pending = true;
+    last_gyro_data_time = millis();
+    return; // Drop this frame and re-baseline on the first new quaternion.
   }
 
   // Parse Game Rotation Vector (No Magnetometer = No Drift near motors)
@@ -81,7 +143,9 @@ void update_gyro()
   {
     if (sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR)
     {
-      last_gyro_data_time = millis();
+      last_gyro_data_time = now;
+      reset_recovery_pending = false;
+      gyro_stream_healthy = true;
       sh2_RotationVector_t rotationVector = sensor_value.un.gameRotationVector;
       float r = rotationVector.real;
       float i = rotationVector.i;
@@ -456,6 +520,11 @@ float get_heading()
   return current_heading;
 }
 
+bool gyro_is_healthy()
+{
+  return gyro_stream_healthy;
+}
+
 void reset_VL53L4CX_via_I2C(TwoWire &wire)
 {
   // Library address is pre-shifted (0x52); need raw 7-bit address (0x29)
@@ -516,7 +585,8 @@ void sensors_setup()
 
   // Enable Game Rotation Vector (ignores magnetometer interference from motors)
   // Frequency set to 10ms (100Hz) for better tracking during fast turns
-  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000))
+  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR,
+                        GYRO_REPORT_INTERVAL_US))
   {
     Serial.println("ERROR: Failed to enable game rotation vector");
     while (1)
