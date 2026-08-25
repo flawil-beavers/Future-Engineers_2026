@@ -11,11 +11,13 @@ public:
     explicit FullFovGC2145(arduino::MbedI2C &i2c = CameraWire);
     uint32_t getClockFrequency() override { return CAMERA_SENSOR_XCLK_HZ; }
     int setResolution(int32_t resolution) override;
+    uint16_t getExposureLines();
 
 private:
     arduino::MbedI2C *i2c;
 
     int writeRegister(uint8_t reg, uint8_t value);
+    uint8_t readRegister(uint8_t reg);
     int setWindow(
         uint8_t firstRegister,
         uint16_t x,
@@ -35,6 +37,12 @@ public:
     uint8_t* getBuffer();
     uint32_t getBufferSize();
     uint32_t getLastCaptureTimeUs() const;
+    uint32_t getLastReadyWaitTimeUs() const;
+    uint32_t getLastFrameIntervalUs() const;
+    uint32_t getMinFrameIntervalUs() const;
+    uint32_t getMaxFrameIntervalUs() const;
+    uint32_t getLongFrameIntervalCount() const;
+    uint16_t getExposureLines();
     uint32_t getLastServiceTimeUs() const;
     uint32_t getCompletedFrameCount() const;
 
@@ -51,6 +59,12 @@ private:
     uint8_t readyFrame = 0;
     uint32_t captureStartedUs = 0;
     uint32_t lastCaptureTimeUs = 0;
+    uint32_t lastReadyWaitTimeUs = 0;
+    uint32_t lastFrameIntervalUs = 0;
+    uint32_t previousFrameCompletedUs = 0;
+    uint32_t minFrameIntervalUs = UINT32_MAX;
+    uint32_t maxFrameIntervalUs = 0;
+    uint32_t longFrameIntervalCount = 0;
     uint32_t lastServiceTimeUs = 0;
     uint32_t completedFrameCount = 0;
 

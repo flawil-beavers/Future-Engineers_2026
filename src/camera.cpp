@@ -66,6 +66,23 @@ int FullFovGC2145::setResolution(int32_t resolution)
     return result == 0 ? 0 : -1;
 }
 
+uint8_t FullFovGC2145::readRegister(uint8_t reg)
+{
+    i2c->beginTransmission(GC2145_I2C_ADDR);
+    i2c->write(reg);
+    if (i2c->endTransmission(false) != 0)
+        return 0;
+    i2c->requestFrom(GC2145_I2C_ADDR, 1);
+    return i2c->available() ? i2c->read() : 0;
+}
+
+uint16_t FullFovGC2145::getExposureLines()
+{
+    // The clock/timing configuration leaves the sensor on page zero.
+    return (static_cast<uint16_t>(readRegister(0x03) & 0x1F) << 8) |
+        readRegister(0x04);
+}
+
 CameraSystem::CameraSystem()
     : sensor(),
       camera(sensor),
@@ -87,6 +104,10 @@ bool CameraSystem::begin()
     activeFrame = 0;
     readyFrame = 0;
     completedFrameCount = 0;
+    previousFrameCompletedUs = 0;
+    minFrameIntervalUs = UINT32_MAX;
+    maxFrameIntervalUs = 0;
+    longFrameIntervalCount = 0;
 #if CAMERA_ASYNC_CAPTURE_ENABLED
     captureStartedUs = micros();
     return camera.startFrame(frameForIndex(activeFrame)) == 0;
@@ -102,7 +123,26 @@ bool CameraSystem::capture()
     if (!camera.frameReady())
         return false;
 
-    lastCaptureTimeUs = serviceStartedUs - captureStartedUs;
+    uint32_t frameCompletedUs = camera.frameCompletedTimeUs();
+    if (frameCompletedUs == 0)
+        frameCompletedUs = serviceStartedUs;
+    lastCaptureTimeUs = frameCompletedUs - captureStartedUs;
+    lastReadyWaitTimeUs = serviceStartedUs - frameCompletedUs;
+    lastFrameIntervalUs = previousFrameCompletedUs == 0
+        ? 0
+        : frameCompletedUs - previousFrameCompletedUs;
+    if (lastFrameIntervalUs != 0)
+    {
+        if (lastFrameIntervalUs < minFrameIntervalUs)
+            minFrameIntervalUs = lastFrameIntervalUs;
+        if (lastFrameIntervalUs > maxFrameIntervalUs)
+            maxFrameIntervalUs = lastFrameIntervalUs;
+        // Normal completion spacing is about 79.62 ms. More than 1.5 frame
+        // periods means snapshot capture missed at least one sensor frame.
+        if (lastFrameIntervalUs > 120000UL)
+            ++longFrameIntervalCount;
+    }
+    previousFrameCompletedUs = frameCompletedUs;
     if (camera.finishFrame() != 0)
         return false;
 
@@ -141,6 +181,36 @@ uint32_t CameraSystem::getBufferSize()
 uint32_t CameraSystem::getLastCaptureTimeUs() const
 {
     return lastCaptureTimeUs;
+}
+
+uint32_t CameraSystem::getLastReadyWaitTimeUs() const
+{
+    return lastReadyWaitTimeUs;
+}
+
+uint32_t CameraSystem::getLastFrameIntervalUs() const
+{
+    return lastFrameIntervalUs;
+}
+
+uint32_t CameraSystem::getMinFrameIntervalUs() const
+{
+    return minFrameIntervalUs == UINT32_MAX ? 0 : minFrameIntervalUs;
+}
+
+uint32_t CameraSystem::getMaxFrameIntervalUs() const
+{
+    return maxFrameIntervalUs;
+}
+
+uint32_t CameraSystem::getLongFrameIntervalCount() const
+{
+    return longFrameIntervalCount;
+}
+
+uint16_t CameraSystem::getExposureLines()
+{
+    return sensor.getExposureLines();
 }
 
 uint32_t CameraSystem::getLastServiceTimeUs() const

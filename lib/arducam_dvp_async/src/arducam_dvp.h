@@ -502,6 +502,9 @@ class Camera {
         /** True after the active snapshot DMA transfer has completed. */
         bool frameReady() const;
 
+        /** ISR timestamp of the most recently completed DCMI frame. */
+        uint32_t frameCompletedTimeUs() const;
+
         /** Stop/finalize the completed transfer and publish DMA writes. */
         int finishFrame();
 

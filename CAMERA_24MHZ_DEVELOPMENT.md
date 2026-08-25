@@ -69,3 +69,38 @@ timing, set `CAMERA_SENSOR_XCLK_HZ` to `12000000UL`,
 Further frame-rate increases need exposure/anti-flicker work across several
 lighting conditions. Do not enable ratio 6 merely because it is faster; it
 failed the required dark-light reliability test.
+
+## DMA timing follow-up
+
+The original `capture_ms` ended when the main loop noticed `frameReady()`, so
+it mixed hardware capture with service delay. Commit follow-up instrumentation
+timestamps the DCMI frame interrupt and reports:
+
+- `capture_ms`: capture start to DCMI frame-complete interrupt;
+- `ready_wait_ms`: interrupt to main-loop service;
+- `frame_interval_ms`: consecutive DCMI completion timestamps;
+- aggregate minimum/maximum interval and `missed_intervals` over 120 ms;
+- current page-zero exposure in line periods.
+
+In the stationary dark-light test the normal DCMI completion interval was
+79.61–79.63 ms. Normal hardware capture was about 76–79.4 ms, service wait was
+usually 0.1–1.1 ms, and vision processing was about 6.5–6.7 ms. A 2,145-frame
+run confirmed stable pillar geometry; its first three green classifications
+were startup settling, followed by 2,142 consecutive valid green frames and
+2,145/2,145 valid red frames.
+
+True 159.25 ms intervals also occur. An aggregate follow-up observed 20 such
+intervals in the first 303 measured intervals while all 304 delivered frames
+remained valid. Exposure stayed fixed at 1,080 lines, below the normal
+1,258-line frame period, proving these exact doubled intervals are snapshot
+stop/restart misses rather than AEC extending exposure in low light. Do not cap
+exposure to address them: it would reduce dark-scene image quality without
+removing the cause.
+
+The reliable delivered-image rate in this diagnostic-heavy run is therefore
+about 11.8 FPS on average, with 12.56 FPS whenever no VSYNC is missed. Normal
+driving should print much less camera telemetry. Eliminating every missed VSYNC
+would require uninterrupted continuous DCMI acquisition with DMA buffer
+handoff, a materially more complex change than the current snapshot ping-pong
+API; undertake that separately only if driving logs show the update jitter
+affects obstacle decisions.

@@ -127,7 +127,9 @@ bool updateCameraVision()
 void printCameraCalibration()
 {
     static uint32_t last_print = 0;
-    if (millis() - last_print < 500)
+    // Keep test telemetry sparse: USB logging must not distort camera-service
+    // latency or compete with normal control-loop work.
+    if (millis() - last_print < 2000)
         return;
 
     last_print = millis();
@@ -168,6 +170,18 @@ void printCameraCalibration()
     Serial.print(camera_test_green_valid);
     Serial.print(" capture_ms=");
     Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
+    Serial.print(" ready_wait_ms=");
+    Serial.print(camera.getLastReadyWaitTimeUs() / 1000.0f, 3);
+    Serial.print(" frame_interval_ms=");
+    Serial.print(camera.getLastFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_min_ms=");
+    Serial.print(camera.getMinFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_max_ms=");
+    Serial.print(camera.getMaxFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" missed_intervals=");
+    Serial.print(camera.getLongFrameIntervalCount());
+    Serial.print(" exposure_lines=");
+    Serial.print(camera.getExposureLines());
     Serial.print(" service_us=");
     Serial.print(camera.getLastServiceTimeUs());
     Serial.print(" processing_ms=");
