@@ -48,6 +48,21 @@ int FullFovGC2145::setResolution(int32_t resolution)
     result |= writeRegister(0x90, 0x01); // enable crop/subsample output
     result |= writeRegister(0x99, 0x55); // row ratio 5, column ratio 5
     result |= writeRegister(0x9A, 0x0E); // enable subsample mode
+    // The stock profile uses 12 MHz XCLK with the PLL enabled. With a 24 MHz
+    // input, enable its documented input /2 stage so the first test preserves
+    // exactly the known-good internal/PCLK timing. PLL_DIVX4 is varied only by
+    // an explicit compile-time test profile.
+    result |= writeRegister(0xF7, CAMERA_GC2145_PLL_MODE1);
+    result |= writeRegister(0xF8, 0x80 | CAMERA_GC2145_PLL_DIVX4);
+    // AEC anti-flicker is expressed in line clocks. Scale the documented
+    // 0x0168 default with the PLL ratio (DIVX4 / 5) so 50 Hz lighting does not
+    // produce alternating dark horizontal bands at faster profiles.
+    constexpr uint16_t antiFlickerStep =
+        (0x0168U * CAMERA_GC2145_PLL_DIVX4 + 2U) / 5U;
+    result |= writeRegister(0xFE, 0x01);
+    result |= writeRegister(0x25, antiFlickerStep >> 8);
+    result |= writeRegister(0x26, antiFlickerStep & 0xFF);
+    result |= writeRegister(0xFE, 0x00);
     return result == 0 ? 0 : -1;
 }
 

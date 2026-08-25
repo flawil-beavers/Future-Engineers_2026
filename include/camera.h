@@ -2,13 +2,14 @@
 
 #include <Arduino.h>
 #include <arducam_dvp.h>
+#include "config.h"
 #include "GC2145/gc2145.h"
 
 class FullFovGC2145 : public GC2145
 {
 public:
     explicit FullFovGC2145(arduino::MbedI2C &i2c = CameraWire);
-    uint32_t getClockFrequency() override { return 12000000; }
+    uint32_t getClockFrequency() override { return CAMERA_SENSOR_XCLK_HZ; }
     int setResolution(int32_t resolution) override;
 
 private:

@@ -234,3 +234,8 @@ Remaining sequence:
 
 The detailed authoritative checklist and historical evidence are in
 `OBSTACLE_CHALLENGE_TEST_PLAN.md`.
+# Camera implementation notes
+
+- See `CAMERA_ASYNC_BUFFERING.md` for the SDRAM double-buffered DMA design.
+- See `CAMERA_24MHZ_DEVELOPMENT.md` for the accepted GC2145 24 MHz clock
+  profile, measured reliability, rejected faster profile, and fallback.

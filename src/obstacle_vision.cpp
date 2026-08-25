@@ -14,6 +14,9 @@ float red_focal_sum_px = 0.0f;
 float green_focal_sum_px = 0.0f;
 float red_range_error_sum_mm = 0.0f;
 float green_range_error_sum_mm = 0.0f;
+uint32_t camera_test_frames = 0;
+uint32_t camera_test_red_valid = 0;
+uint32_t camera_test_green_valid = 0;
 
 void printCalibrationBlob(
     const char *name,
@@ -105,10 +108,20 @@ bool updateCameraVision()
     if (!camera.capture())
         return false;
 
-    return vision.update(
+    const bool updated = vision.update(
         camera.getBuffer(),
         camera.getWidth(),
         camera.getHeight());
+    if (updated)
+    {
+        const VisionResult &result = vision.getResult();
+        ++camera_test_frames;
+        camera_test_red_valid +=
+            obstacle_blob_valid_for_acquisition(&result.red) ? 1U : 0U;
+        camera_test_green_valid +=
+            obstacle_blob_valid_for_acquisition(&result.green) ? 1U : 0U;
+    }
+    return updated;
 }
 
 void printCameraCalibration()
@@ -147,6 +160,12 @@ void printCameraCalibration()
 #endif
     Serial.print(" frame=");
     Serial.print(camera.getCompletedFrameCount());
+    Serial.print(" test_frames=");
+    Serial.print(camera_test_frames);
+    Serial.print(" red_valid=");
+    Serial.print(camera_test_red_valid);
+    Serial.print(" green_valid=");
+    Serial.print(camera_test_green_valid);
     Serial.print(" capture_ms=");
     Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
     Serial.print(" service_us=");
