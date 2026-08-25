@@ -100,15 +100,10 @@ void printCalibrationBlob(
 
 bool updateCameraVision()
 {
-    static uint32_t last_camera_update = 0;
-    if (millis() - last_camera_update < OBSTACLE_CAMERA_INTERVAL_MS)
+    // Polling is non-blocking. A completed frame is published only after DMA
+    // has switched to the other SDRAM buffer.
+    if (!camera.capture())
         return false;
-
-    last_camera_update = millis();
-    if (!camera.capture()) {
-        Serial.println("Camera capture failed.");
-        return false;
-    }
 
     return vision.update(
         camera.getBuffer(),
@@ -140,6 +135,25 @@ void printCameraCalibration()
     Serial.println(hsv.v);
 
     const VisionResult &result = vision.getResult();
+    Serial.print("[CAM PERF] async=");
+#if CAMERA_ASYNC_CAPTURE_ENABLED
+    Serial.print("yes");
+#else
+    Serial.print("no");
+#endif
+    Serial.print(" frame=");
+    Serial.print(camera.getCompletedFrameCount());
+    Serial.print(" capture_ms=");
+    Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
+    Serial.print(" service_us=");
+    Serial.print(camera.getLastServiceTimeUs());
+    Serial.print(" processing_ms=");
+    Serial.print(result.processingTimeUs / 1000.0f, 2);
+    Serial.print(" control_block_ms=");
+    Serial.println(
+        (camera.getLastServiceTimeUs() + result.processingTimeUs) /
+            1000.0f,
+        2);
     if (!result.red.found && !result.green.found)
     {
         Serial.println("[CAM CAL] blob=NONE");

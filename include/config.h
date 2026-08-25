@@ -454,9 +454,10 @@ constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 175.0f;
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
 // Horizontal pinhole calibration from surveyed +/-100 mm pillar offsets at
 // 400 and 600 mm ray range. The resulting usable 320 px field is about 42 deg.
-constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 42.0f;
-constexpr auto OBSTACLE_CAMERA_PRINCIPAL_X_PX = 154.9f;
-constexpr auto OBSTACLE_CAMERA_FOCAL_X_PX = 417.5f;
+// Provisional full-sensor values. Recalibrate physically before driving.
+constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 65.0f;
+constexpr auto OBSTACLE_CAMERA_PRINCIPAL_X_PX = 156.9f;
+constexpr auto OBSTACLE_CAMERA_FOCAL_X_PX = 250.5f;
 // Measure both values along the robot centreline whenever the camera or body
 // changes. ROBOT_FRONT_FROM_REAR_AXLE_MM is the plane touched by the near face
 // of the pillar at the start of a camdrive calibration.
@@ -472,8 +473,8 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // Stationary red and green measurements from log_20 have maxY=150 at 400 mm
 // and maxY=120 at 600 mm, giving
 // distance = scale / (maxY - horizonY).
-constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 60.0f;
-constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 36000.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 84.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 21600.0f;
 // The wide-angle lens moves the apparent ground contact lower toward either
 // image edge. Remove that measured V-shaped bias before applying the centreline
 // ground-plane fit. Units are vertical foot pixels per horizontal pixel.
@@ -572,4 +573,7 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
+// Stationary safety boot for full-FOV asynchronous camera development.
+#define CAMERA_ASYNC_STATIONARY_AUTOSTART true
+#define CAMERA_ASYNC_CAPTURE_ENABLED true
+#define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION
