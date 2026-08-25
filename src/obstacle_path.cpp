@@ -708,6 +708,7 @@ void applyDiscoveryTargetNudge(
                     OBSTACLE_DISCOVERY_FOV_FRACTION -
                 OBSTACLE_LOOK_FOV_MARGIN_DEG);
         float allowedBearingDeg = comfortableBearingDeg;
+        float targetGain = OBSTACLE_LOOK_TARGET_GAIN;
 
         discoveryScanStation = bestStation;
         if (unresolved0 && unresolved1)
@@ -728,12 +729,14 @@ void applyDiscoveryTargetNudge(
         {
             aimBearingDeg = bearing[0];
             allowedBearingDeg = OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG;
+            targetGain = OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN;
             discoveryScanSide = 0;
         }
         else if (unresolved1)
         {
             aimBearingDeg = bearing[1];
             allowedBearingDeg = OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG;
+            targetGain = OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN;
             discoveryScanSide = 1;
         }
         else
@@ -753,7 +756,7 @@ void applyDiscoveryTargetNudge(
                 0.0f,
                 1.0f);
             desiredNudgeDeg = copysignf(
-                excessBearing * OBSTACLE_LOOK_TARGET_GAIN * taper,
+                excessBearing * targetGain * taper,
                 aimBearingDeg);
             desiredNudgeDeg = clampFloat(
                 desiredNudgeDeg,
@@ -810,12 +813,18 @@ int nearestUpcomingUnresolvedStation(float &forwardMm)
     return bestStation;
 }
 
-bool seatComfortablyVisible(
+void seatCameraGeometry(
     uint8_t seatIndex,
-    const PositionEstimate &pose)
+    const PositionEstimate &pose,
+    float &bearingDeg,
+    float &rangeMm)
 {
     if (seatIndex >= OBSTACLE_SEAT_COUNT)
-        return false;
+    {
+        bearingDeg = 0.0f;
+        rangeMm = -1.0f;
+        return;
+    }
 
     const float heading = pose.heading_deg * PI / 180.0f;
     const float cameraX =
@@ -824,19 +833,27 @@ bool seatComfortablyVisible(
     const float cameraY =
         pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
         OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
-    const float bearingLimit =
-        OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG *
-        OBSTACLE_DISCOVERY_FOV_FRACTION;
-
     const CandidateSeat &seat = seats[seatIndex];
     const float dx = seat.x - cameraX;
     const float dy = seat.y - cameraY;
-    const float range = hypotf(dx, dy);
-    const float bearing = wrap180(
+    rangeMm = hypotf(dx, dy);
+    bearingDeg = wrap180(
         atan2f(dy, dx) * 180.0f / PI - pose.heading_deg);
-    return range >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
-           range <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
-           fabsf(bearing) <= bearingLimit;
+}
+
+bool seatComfortablyVisible(
+    uint8_t seatIndex,
+    const PositionEstimate &pose)
+{
+    float bearingDeg = 0.0f;
+    float rangeMm = -1.0f;
+    seatCameraGeometry(seatIndex, pose, bearingDeg, rangeMm);
+    const float bearingLimit =
+        OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG *
+        OBSTACLE_DISCOVERY_FOV_FRACTION;
+    return rangeMm >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
+           rangeMm <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
+           fabsf(bearingDeg) <= bearingLimit;
 }
 
 void updateDiscoveryCoverage(
@@ -1297,12 +1314,18 @@ bool obstacle_path_get_discovery_telemetry(
     telemetry.station = discoveryScanStation;
     const DiscoveryStation &coverage =
         discoveryStations[discoveryScanStation];
+    const PositionEstimate pose = get_position_struct();
     for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
     {
         telemetry.clearFrames[side] = coverage.clearFrames[side];
         const uint8_t seatIndex =
             discoveryScanStation * COURSE_SEATS_PER_STATION + side;
-        if (seatComfortablyVisible(seatIndex, get_position_struct()))
+        seatCameraGeometry(
+            seatIndex,
+            pose,
+            telemetry.seatBearingDeg[side],
+            telemetry.seatRangeMm[side]);
+        if (seatComfortablyVisible(seatIndex, pose))
             telemetry.visibleMask |= static_cast<uint8_t>(1U << side);
     }
 

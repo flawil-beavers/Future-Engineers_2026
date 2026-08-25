@@ -535,10 +535,11 @@ constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 0.75f;
 // Discovery should use the wide camera view, not steer every seat to the old
 // cropped-camera +/-8 degree target.
 constexpr auto OBSTACLE_LOOK_FOV_MARGIN_DEG = 3.0f;
-// Once one side has been cleared, bring the only unresolved seat farther into
-// the image instead of merely holding it at the edge of the usable view. Both
-// seats still use the simultaneous wide-FOV rule while unresolved.
-constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 12.0f;
+// Once one side has been cleared, centre the only unresolved seat and use the
+// full bearing error. Both seats retain the gentler simultaneous wide-FOV rule
+// while unresolved.
+constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 0.0f;
+constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN = 1.0f;
 constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 35.0f;
 constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 

@@ -129,6 +129,14 @@ void printTelemetry()
         Serial.print(discovery.clearFrames[0]);
         Serial.print("/");
         Serial.print(discovery.clearFrames[1]);
+        Serial.print(" seat_geom=R");
+        Serial.print(discovery.seatBearingDeg[0], 1);
+        Serial.print("/");
+        Serial.print(discovery.seatRangeMm[0], 0);
+        Serial.print(",L");
+        Serial.print(discovery.seatBearingDeg[1], 1);
+        Serial.print("/");
+        Serial.print(discovery.seatRangeMm[1], 0);
         Serial.print(" obs=");
         Serial.print(observationStatusCode(discovery.observationStatus));
         Serial.print(":");

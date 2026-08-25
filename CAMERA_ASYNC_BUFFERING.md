@@ -110,13 +110,15 @@ blanking, exposure limits and possibly DCMI sampling polarity. Validate raw
 frames at increasing internal clock rates; do not enable 24 MHz merely by
 overriding `getClockFrequency()`.
 
-## Remaining validation after merging into `pure-pursuit`
+## Validation after merging into `pure-pursuit`
 
-1. Repeat the representative official-pillar production seat check and the
-   field-clear background check with asynchronous capture. The measured camera
-   constants do not need refitting unless that comparison regresses.
-2. Verify telemetry reports `async=yes`, stable frame increments, roughly
-   77-83 ms capture spans, roughly 6-7 ms processing, and no capture stall.
-3. Only then repeat the pending red-left Pure Pursuit run at 175 mm/s. This run
+1. Completed: the representative official-pillar production seat check and
+   field-clear background check passed with asynchronous capture. The measured
+   camera constants remain valid.
+2. Completed: telemetry reported `async=yes`, stable frame increments, roughly
+   76-84 ms normal capture spans, roughly 6-7 ms processing, and no stall
+   through frame 1929.
+3. Next: repeat the pending red-left Pure Pursuit run at 175 mm/s. This run
    validates both the async integration and the new earlier single-seat nudge.
-4. Restore the intended competition startup mode after development validation.
+4. Later: restore the intended competition startup mode after development
+   validation.

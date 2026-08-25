@@ -40,6 +40,75 @@ disabled. Confirm `[CAM PERF]` reports `async=yes`, advancing frame numbers,
 stable detections, and no capture stalls. Only then resume the exact powered
 test described in the next handoff entry.
 
+`D:\log_39.txt` passed the async and official-pillar portions. Frames advanced
+continuously through 1929; normal capture spans were about 76-84 ms, occasional
+missed sensor-frame spans were about 150-159 ms, service cost was 75-83 us, and
+typical processing/control blockage was about 6.2-6.8 ms. Seat 3 confirmed in
+two frames with one injection and 12.6-22.0 mm snap error. A direct robot-side
+attempt verified that the red pillar was still physically present, so a valid
+field-clear control was impossible. The mode was stopped, the drive motor
+remained locked, and COM4 was released. Remove the pillar; an agent may then
+reconnect and perform the five-second field-clear test without another upload.
+
+That direct continuation is now complete. With the pillar removed, the agent
+resumed the motor-locked seat mode, armed `seat expect 0 1 L 400`, and observed
+for more than seven seconds. Results alternated between no blob and tiny green
+fragments around y=94-100; every fragment was rejected, votes remained `R0/G0`,
+and injections remained zero. The mode was stopped and COM4 released. The next
+step is the user-operated, post-async red-left powered run; do not retune the
+nudge before analyzing it.
+
+Three post-async powered repetitions are now available as `D:\log_40.txt`
+through `D:\log_42.txt`. All three correctly injected red seat 5 exactly once,
+then failed identically at S1 station 0: its right seat cleared, left seat 7
+never appeared in `vis`, observations remained `NONE`, and the 35-degree nudge
+cap arrived only after the viewing window. Maximum CTE was 69.0/67.9/67.8 mm
+and maximum heading error 15.3/16.7/16.6 degrees. Async capture is not the
+blocker. The old blocking loop sometimes produced more heading overshoot; the
+smoother async controller no longer happens to swing the camera far enough.
+
+Proposed next implementation, requiring user approval: only when one seat is
+left unresolved, target it nearer the optical axis and use full bearing-error
+gain so the existing 35-degree cap is reached sooner. Do not modify the stored
+route, the simultaneous two-seat rule, perception confirmation, scan start
+distance, or the Pure Pursuit steering formula. The user explicitly prohibited
+firmware downloads without consent; code changes and uploads should be
+separately confirmed if the requested scope is unclear.
+
+The user approved the code change but not a firmware upload. The single-seat
+target bearing is now 0 degrees and its dedicated gain is 1.0; the simultaneous
+two-seat rule still uses the existing 0.75 gain. The scan start, 35-degree cap,
+routes, perception, and Pure Pursuit formula are unchanged. Build locally and
+request separate consent before uploading to the robot.
+
+The local `giga_r1_m7` build passed at 291096 bytes RAM and 349952 bytes flash.
+No upload or robot connection was performed.
+
+The user subsequently uploaded and ran this firmware themselves. `D:\log_43.txt`
+shows that the stronger single-seat response fixed the earlier first-corner
+failure: S1 stations 0, 1, and 2 all cleared. At S2 station 0 the right seat
+cleared, the nudge reached the unchanged 35-degree cap, and left seat 13 never
+entered `vis`; S2 station 1 cleared independently. The robot stopped at the
+135 mm perception limit. It made one correct obstacle injection, with 92.9 mm
+maximum CTE and 20.9 degrees maximum heading error.
+
+Do not infer the next controller change from `log_43` alone. `vis` combines the
+predicted bearing window with the 260-600 mm range window, so the log cannot
+distinguish an angular miss from seat 13 becoming too close. The next proposed
+change is diagnostic only: expose predicted camera-relative bearing and range
+for both seats of the active discovery station in `[LIVE PATH]` telemetry.
+Ask before implementing if the intended diagnostic scope is uncertain, and
+obtain explicit consent before any firmware upload.
+
+The user approved that diagnostic implementation. `ObstacleDiscoveryTelemetry`
+now carries predicted bearing and range for the right and left seats, and live
+telemetry prints them as
+`seat_geom=R<bearing_deg>/<range_mm>,L<bearing_deg>/<range_mm>`. It uses the
+same camera/seat geometry as `vis` and does not change any controller,
+perception, route, visibility, or timing decision. The IDE-managed build passed
+at 291096 bytes RAM and 350208 bytes flash. It has not been uploaded; explicit
+user consent is still required before uploading or connecting to the robot.
+
 `D:\log_38.txt` is the final pre-async powered result, not an async validation:
 startup left camera calibration pending while the switch was LOW, proving the
 stationary async auto-start was absent. It verified the 850/650 mm discovery

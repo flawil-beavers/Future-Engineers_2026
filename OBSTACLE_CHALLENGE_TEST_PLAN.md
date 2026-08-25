@@ -15,11 +15,11 @@ check is repeated before every powered run and is not a one-time checkbox.
 | Empty-track Pure Pursuit | Complete at 175 mm/s | Seven one-lap tests passed: four left/CCW and three right/CW. Do not repeat the waived five-runs-per-direction test. |
 | Camera ground range | Full-FOV calibration complete | Centred red samples fitted `horizon_y=78.0` and `scale_mm_px=24000`: the 400 mm point reports 400.0 mm and the 600 mm point fits 600.0 mm. The obsolete cropped-view edge correction is disabled. |
 | Camera bearing/FOV | Full-FOV calibration complete | The GC2145 reads the full sensor and subsamples directly to 320x240. Symmetric +/-26.565 degree samples fitted principal X 164.4 px, focal X 248.9 px and 65.3 degrees horizontal FOV. Both complete pillars remained visible and stable. |
-| Stationary perception | Complete with full FOV | The focused production regression selected red middle-left seat 3 with 23.7-23.9 mm snap error and exactly one injection. The widened-view field-clear control held `R0/G0` and zero injections for more than ten seconds. |
+| Stationary perception | Complete with asynchronous full FOV | `log_39` verified stable async capture and selected red middle-left seat 3 in two frames with one injection and 12.6-22.0 mm snap error. The direct field-clear continuation ran for more than seven seconds with only rejected tiny green fragments, zero votes, and zero injections. |
 | Corner speed profile | Deferred | At the current 175 mm/s test cap it does not limit testing. Tune it only when increasing toward production speed. |
-| Pure-Pursuit-only control | Implemented; robot regression pending | Lap-1 discovery adjusts only the temporary lookahead target. Pure Pursuit alone converts that target to steering, and the later-lap residual steering overlay has been removed. |
+| Pure-Pursuit-only control | Implemented; live regression passed the first corner | Lap-1 discovery adjusts only the temporary lookahead target. Pure Pursuit alone converts that target to steering, and the later-lap residual steering overlay has been removed. `log_43` cleared every S1 station with the stronger single-seat target. |
 | ToF pose correction | Complete | Both sensors passed range checks; left/right correction signs, a perpendicular-axis transform, the 500 mm cutoff, fresh-sequence gating, and both direction-specific corner gates passed. |
-| Live obstacle laps | Async camera merge requires stationary regression first | `log_37` isolated the S2 visibility failure and the earlier single-seat nudge is implemented, but the camera pipeline is now asynchronous with SDRAM A/B buffers. Before another powered run, repeat the representative seat and field-clear checks. Then repeat the same red-left layout. |
+| Live obstacle laps | Second-corner geometry diagnostic built; upload pending | `log_43` cleared all S1 stations and S2 station 1, but stopped at S2 station 0 with left seat 13 unseen. `[LIVE PATH]` now reports predicted bearing/range for both seats so the next run can distinguish an angular miss from the 260 mm minimum-range gate. Upload requires separate user consent. |
 | Final parking | Not implemented | Keep separate until three obstacle laps work reliably. |
 
 ## Safety before every powered test
@@ -53,6 +53,21 @@ full-field regression.
 ## Gate 2 - short stationary perception test
 
 ### Current full-FOV regression
+
+Post-merge asynchronous regression:
+
+- [x] `log_39` confirmed `async=yes` through frame 1929 without a stall.
+      Normal capture spans were about 76-84 ms, occasional missed sensor-frame
+      spans were about 150-159 ms, DMA service was 75-83 us, and typical vision
+      processing/control blockage was about 6.2-6.8 ms.
+- [x] The representative red middle-left seat test confirmed seat 3 in two
+      frames with exactly one injection, bearing 16.2-16.4 degrees, range
+      390.5-417.0 mm, and 12.6-22.0 mm snap error.
+- [x] After the pillar was removed, the direct robot-side continuation re-armed
+      `seat expect 0 1 L 400` and observed for more than seven seconds. It
+      reported `REJECTED_NO_BLOB` plus intermittent tiny green fragments around
+      y=94-100; every fragment remained invalid, with `R0/G0` and zero
+      injections. The stationary async regression is complete.
 
 The six-case matrix below was completed with the former centred 42-degree
 camera crop. The field geometry, colour logic and voting logic did not change,
@@ -362,6 +377,72 @@ slew limit and all perception confirmation rules remain unchanged. The
 PlatformIO build passed. Repeat the identical red-left `Y1` run; success
 requires seat 13 to appear in
 `vis`, S2 station 0 to resolve, and no material increase in cross-track error.
+
+`log_38` tested that nudge change on the pre-async firmware. Discovery of S2
+station 0 began near pose `(976, 428)`, about 184 mm earlier along the field
+than `log_37` near `(983, 612)`, so the earlier trigger took effect. The red
+seat-5 pillar was again injected exactly once and all S1 stations cleared. At
+S2 station 0 the right seat reached `clear=2`, but left seat 13 still never
+entered `vis`; the sequence again ended `R-` then `--`, with only `obs=NONE`.
+The run stopped safely with 79.7 mm maximum CTE and 30.2 degrees maximum
+heading error. Do not strengthen the nudge again from this result alone: the
+merged async camera roughly doubles frame opportunities and may collect two
+clear frames during a short visibility interval that the old 150 ms pipeline
+missed. Complete the stationary async regression, then repeat this exact run
+before changing steering or visibility limits.
+
+The stationary async regression passed, but three powered repetitions
+(`log_40`, `log_41`, and `log_42`) produced the same earlier failure at S1
+station 0. All three correctly confirmed and injected red seat 5 once. The
+right seat of S1 station 0 reached two clear frames, while left seat 7 remained
+at zero; telemetry stayed `obs=NONE`. The sampled view progressed `--`, then
+`R-`, then `--`, and the scan nudge rose to 35 degrees only after the useful
+view had passed. S1 station 1 could clear independently, but the car stopped at
+the configured 135 mm perception limit for station 0 in every run. Maximum CTE
+was 69.0, 67.9, and 67.8 mm; maximum heading error was 15.3, 16.7, and 16.6
+degrees. This repeatability rules out camera throughput and random frame timing.
+
+The next proposed change is limited to the already-selected single unresolved
+seat: aim it nearer the camera axis and apply the bearing correction at full
+gain so the existing 35-degree cap is reached earlier. Keep the simultaneous
+two-seat rule, stored routes, perception thresholds, start distance, and Pure
+Pursuit steering calculation unchanged. Ask the user before implementing and
+before any firmware upload.
+
+The user approved that implementation. `OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG`
+is now 0 degrees and the new single-seat-only target gain is 1.0. The shared
+two-seat gain remains 0.75. No other discovery, route, perception, or steering
+constant changed. Build this revision, but do not upload it without separate
+user consent.
+
+The IDE-managed `giga_r1_m7` PlatformIO build passed with 291096 bytes RAM and
+349952 bytes flash. The firmware was not uploaded.
+
+The user-run `log_43` validates that change at the first corner. S1 station 0
+now cleared after the nudge reached 34.5 degrees, and S1 stations 1 and 2 also
+cleared. At S2 station 0 the right seat cleared, the single-seat nudge reached
+the unchanged 35-degree cap, but left seat 13 never entered `vis`; S2 station 1
+cleared independently. The robot stopped safely at the 135 mm perception
+limit. The run had one correct obstacle injection, 92.9 mm maximum CTE, and
+20.9 degrees maximum heading error.
+
+Do not strengthen the nudge or alter the stored route from this result alone.
+The existing `vis` flag combines predicted bearing and predicted range, so it
+does not reveal whether seat 13 stayed outside the camera angle or became
+closer than the 260 mm minimum before the camera faced it. The next diagnostic
+is read-only telemetry of the predicted camera-relative bearing and range for
+both seats of the active discovery station. Repeat one left/CCW run only after
+that diagnostic is implemented, built, uploaded with explicit user consent,
+and placed on the same layout.
+
+That diagnostic is now implemented. Each active-discovery telemetry line adds
+`seat_geom=R<bearing_deg>/<range_mm>,L<bearing_deg>/<range_mm>`. These values
+come from the same predicted camera/seat geometry used by `vis`; no steering,
+route, perception, visibility threshold, or timing behavior changed. The
+IDE-managed `giga_r1_m7` build passed with 291096 bytes RAM and 350208 bytes
+flash. The firmware has not been uploaded. After explicit upload consent,
+repeat one left/CCW run on the same layout and inspect the S2 station 0 left
+seat values as it changes from `vis=R-` to `vis=--`.
 
 Place the robot with the midpoint of its rear axle on the starting-straight
 centreline, at the longitudinal midpoint used for the successful empty-track

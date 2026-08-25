@@ -63,6 +63,10 @@ struct ObstacleDiscoveryTelemetry {
     int8_t station = -1;
     uint8_t visibleMask = 0; // bit 0 = right seat, bit 1 = left seat
     uint8_t clearFrames[2] = {};
+    // Predicted geometry from the camera to the station's right/left seats.
+    // This is independent of whether the image contains an obstacle blob.
+    float seatBearingDeg[2] = {};
+    float seatRangeMm[2] = {};
     ObstacleObservationStatus observationStatus =
         OBSTACLE_OBSERVATION_NO_BLOB;
     int8_t observationSeat = -1;
