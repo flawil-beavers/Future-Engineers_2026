@@ -15,6 +15,7 @@
 #include "mode_manager.h"
 #include "logger.h"
 #include "tof_diagnostic_test.h"
+#include "tof_pose_diagnostic.h"
 #define Serial robot_logger
 
 // Obstacle resources are initialized lazily when an obstacle mode starts.
@@ -57,6 +58,7 @@ void loop()
     tof_diagnostic_update();
     update_gyro();
     update_position();
+    tof_pose_diagnostic_update();
     check_stalling();
 
     mode_update();

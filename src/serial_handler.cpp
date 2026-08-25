@@ -41,6 +41,7 @@
 #include "navigation_controller.h"
 #include "obstacle.h"
 #include "obstacle_path_test.h"
+#include "obstacle_live_test.h"
 #include "obstacle_seat_test.h"
 #include "course_map.h"
 #include "calibration.h"
@@ -49,6 +50,7 @@
 #include "mode_manager.h"
 #include "logger.h"
 #include "tof_diagnostic_test.h"
+#include "tof_pose_diagnostic.h"
 #include "camera_distance_calibration.h"
 #define Serial robot_logger
 
@@ -310,6 +312,8 @@ static void print_serial_command_info()
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
+  Serial.println("Y1 / Y-1   : One-lap LIVE obstacle path test (left/right)");
+  Serial.println("Y0         : Stop LIVE obstacle path test");
   Serial.println("S1 / S-1   : Stationary seat-snap test (left/right geometry)");
   Serial.println("S0         : Stop and clear stationary seat-snap test");
   Serial.println("seat expect <section> <station> <L|R> <range_mm>");
@@ -330,6 +334,7 @@ static void print_serial_command_info()
   Serial.println("f / o      : General debug ON / OFF");
   Serial.println("n / g / v  : Print encoder / gyro / ToF data");
   Serial.println("tof help   : Stationary black/white ToF diagnostic test");
+  Serial.println("tofpose help : Motor-locked production pose-correction test");
   Serial.println("t          : Print estimated position");
   Serial.println("j          : Print learned obstacle course map");
   Serial.println("k          : Print calibration data");
@@ -409,7 +414,8 @@ void processMessage()
   // response to be printed in full, then restore safe unplugging for any mode.
   robot_logger.allow_blocking_terminal_output();
   parseMessage(message);
-  if (current_mode != MODE_NONE || pending_mode != MODE_NONE)
+  if (current_mode != MODE_NONE || pending_mode != MODE_NONE ||
+      tof_pose_diagnostic_active())
     robot_logger.protect_from_terminal_disconnect();
 }
 
@@ -422,6 +428,8 @@ void parseMessage(char *msg)
   if (handle_camera_drive_command(msg))
     return;
   if (tof_diagnostic_handle_command(msg))
+    return;
+  if (tof_pose_diagnostic_handle_command(msg))
     return;
 
   char cmd[3]; // Command character
@@ -616,6 +624,29 @@ void parseMessage(char *msg)
     else
     {
       Serial.println("Usage: X1 (left/CCW), X-1 (right/CW), X0 (stop)");
+    }
+    break;
+
+  case 'Y':
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
+          pending_mode == MODE_OBSTACLE_LIVE_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No live obstacle path test is active.");
+    }
+    else if (value == 1 || value == -1)
+    {
+      if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
+          pending_mode == MODE_OBSTACLE_LIVE_TEST)
+        mode_stop_all();
+      obstacle_live_test_set_turn_sign(value);
+      select_temporary_mode(MODE_OBSTACLE_LIVE_TEST);
+    }
+    else
+    {
+      Serial.println("Usage: Y1 (left/CCW), Y-1 (right/CW), Y0 (stop)");
     }
     break;
 

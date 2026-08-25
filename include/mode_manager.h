@@ -35,6 +35,7 @@ enum RobotMode {
     MODE_OPEN_CHALLENGE,        ///< Gyro-stabilized Open Challenge
     MODE_OBSTACLE_CHALLENGE,    ///< Camera-based Obstacle Challenge
     MODE_OBSTACLE_PATH_TEST,    ///< One-lap empty-track Pure Pursuit test
+    MODE_OBSTACLE_LIVE_TEST,    ///< One-lap live perception Pure Pursuit test
     MODE_OBSTACLE_SEAT_TEST,    ///< Stationary Pure Pursuit seat-snap test
     MODE_OBSTACLE_BENCH,        ///< Stationary camera/steering obstacle test
     MODE_CAMERA_CALIBRATION,     ///< Stationary live camera HSV calibration

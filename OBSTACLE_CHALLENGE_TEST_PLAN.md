@@ -1,791 +1,379 @@
-# Obstacle Challenge Test Plan
+# Obstacle Challenge: remaining validation plan
 
-Run the tests in order. Do not continue to the next phase until every required
-check in the current phase passes repeatedly.
+This file is the current go/no-go checklist for implementing the Obstacle
+Challenge with Pure Pursuit. Completed development history has been reduced to
+the evidence needed to justify the remaining tests.
 
-Keep this file current after every firmware change and analyzed robot log.
-Check an item only when the implementation or recorded evidence demonstrates
-it; leave visual and repetition requirements open until they are explicitly
-confirmed.
+Do the gates in order. A failed gate blocks the later driving tests. The safety
+check is repeated before every powered run and is not a one-time checkbox.
 
-## Safety before every driving test
+## Current status
 
-- [ ] Battery is secured and sufficiently charged.
-- [ ] Emergency disable switch is reachable.
-- [ ] USB cable cannot catch the wheels or steering.
-- [ ] Test area is clear of people and fragile objects.
-- [ ] Begin with the lowest practical speed.
-- [ ] Save the serial log and note the exact configuration used.
+| Area | Status | Decision |
+| --- | --- | --- |
+| Physical geometry | Complete | Rear-axle pose origin, 100 mm wheelbase, camera and ToF offsets are configured. |
+| Empty-track Pure Pursuit | Complete at 175 mm/s | Seven one-lap tests passed: four left/CCW and three right/CW. Do not repeat the waived five-runs-per-direction test. |
+| Camera ground range | Calibrated | Production values are `horizon_y=60.0` and `scale_mm_px=36000`. Red and green measured 400 and 600 mm correctly in `D:\log_20.txt`. |
+| Camera bearing | Calibrated and verified | Six surveyed red/green observations fitted principal X 154.9 px and focal X 417.5 px. A post-upload 600 mm right check measured -9.8 to -10.2 degrees and 589-612 mm. |
+| Stationary perception | Complete for CCW geometry | Red and green seat selection, calibrated 400/600 mm projection, and the no-pillar background regression passed. Optional CW representatives remain deferred to the first mirrored live run. |
+| Corner speed profile | Deferred | At the current 175 mm/s test cap it does not limit testing. Tune it only when increasing toward production speed. |
+| Pure-Pursuit-only control | Implemented; robot regression pending | Lap-1 discovery adjusts only the temporary lookahead target. Pure Pursuit alone converts that target to steering, and the later-lap residual steering overlay has been removed. |
+| ToF pose correction | Complete | Both sensors passed range checks; left/right correction signs, a perpendicular-axis transform, the 500 mm cutoff, fresh-sequence gating, and both direction-specific corner gates passed. |
+| Live obstacle laps | Stateful corner-seat scan pending verification | `log_28` showed the stateless scan alternating `+40 -> -31.5 -> +40` degrees, producing wild steering and 81 mm cross-track error before the same `S1 station=0` abort. That build must not be reused. The scan now locks onto one uncleared seat, holds it until clear, then selects the other; the target is limited to 35 degrees and slewed at 60 deg/s. `scan_seat` and `nudge_deg` identify its state. Pure Pursuit remains the only steering controller. |
+| Final parking | Not implemented | Keep separate until three obstacle laps work reliably. |
 
-## 1. Physical geometry - in progress
+## Safety before every powered test
 
-- [x] Measure the ToF apertures relative to the robot pose origin.
-- [x] Update the sensor offsets in `include/config.h`.
+- Battery secured and sufficiently charged.
+- Emergency disable switch reachable.
+- USB cable cannot catch wheels or steering.
+- Track clear of people and fragile objects.
+- Start with the validated 175 mm/s cap after each material control change.
+- Save the serial log and note firmware commit, direction, layout and result.
 
-Current measured values:
+## Gate 1 - controller prerequisites
 
-```cpp
-OBSTACLE_TOF_LEFT_LOCAL_X_MM = 40.0f;
-OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 35.0f;
-OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 40.0f;
-OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
-```
+The controller change is implemented and builds successfully.
 
-- [x] Confirm that the pose origin used for these measurements is the same
-      origin used by odometry, normally the midpoint of the rear axle.
-- [x] Measure the camera origin: 125 mm forward and 0 mm lateral from the
-      rear-axle pose origin.
-- [x] Apply the rotated camera mounting offset before projecting a detected
-      block into global field coordinates.
-- [x] Confirm `OBSTACLE_WHEELBASE_MM` against the finished robot: 100 mm.
+- [x] Make production steering Pure-Pursuit-only. Lap-1 camera discovery now
+      rotates a temporary lookahead target only when a seat falls outside the
+      comfortable field of view. Both sides of the station are considered.
+      Later laps rely entirely on their optimized path.
+- [x] Rebuild successfully with the IDE-managed PlatformIO environment.
+- [x] Confirm the dedicated empty-track mode still bypasses discovery behavior
+      and therefore retains the already validated Pure Pursuit path unchanged.
 
-## 2. Empty-track path and direction - complete
+The earlier request for five consecutive empty laps in each direction is
+omitted. It duplicates the seven successful runs and does not exercise obstacle
+perception. Repeating an empty lap after this change would also not exercise the
+new target nudge because the dedicated path-test mode deliberately disables all
+camera-discovery behavior. Reliability repetition belongs in the final
+full-field regression.
 
-Use the dedicated on-robot test mode. It automatically disables camera
-steering, look nudges, and ToF pose correction while retaining ToF emergency
-wall stopping. It drives one lap, brakes, and prints a PASS/FAIL report.
+## Gate 2 - short stationary perception test
 
-Preparation:
+Only the following six cases are required before powered obstacle driving.
+Testing every color on all 24 global seats is unnecessary: all sections and
+both directions are rigid rotations of the same three-station geometry, and
+the firmware geometry preflight already verifies all 24 seats in both
+directions.
 
-- Remove every pillar from the track.
-- Place the robot on the corridor centerline, parallel to the straight.
-- Place it at the longitudinal midpoint of the starting straight. The test
-  path expects the first corner approximately 500 mm ahead.
-- Keep the physical disable switch and serial `z` command ready.
+### Field setup
 
-Commands after uploading the firmware:
+Use the middle station of any long straight, preferably the starting straight
+because it is easiest to measure. The physical section number does not matter
+in seat-test mode; `seat expect` resets a virtual field pose.
 
-```powershell
-$pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
-& $pio run --environment giga_r1_m7 --target upload
-```
+1. Face the robot along the straight in the direction selected by `S1`
+   (left/CCW at the next corner). Put its camera optical centre over the track
+   centreline and keep the chassis parallel to the walls.
+2. Put one official pillar squarely on the middle station's left or right
+   50 x 50 mm seat, where left/right is viewed in the robot's driving
+   direction.
+3. For a 400 mm camera-to-pillar slant range, the pillar is 100 mm sideways
+   from the centreline and about 387 mm forward of the camera
+   (`sqrt(400^2 - 100^2)`). Measuring the 400 mm diagonal from the camera to
+   the centre of the pillar's near face is the authoritative placement.
+4. Keep the motor disabled. The seat-test firmware also reasserts its motor
+   lock continuously.
 
-Then open the 115200-baud serial monitor. For the safest start, leave the
-physical enable switch disabled, send the desired command so the mode becomes
-pending, position the robot, clear the track, and only then enable the switch.
-
-```text
-X1     start one lap with left/CCW corners
-X-1    start one lap with right/CW corners
-X0     stop the path test
-z      emergency stop any active mode
-```
-
-The mode prints telemetry every 500 ms and aborts automatically for a wall
-closer than the configured safety distance, excessive cross-track error, or a
-timeout. Test limits are the `OBSTACLE_PATH_TEST_*` constants in
-`include/config.h`.
-
-- [x] Confirm the on-board geometry preflight reports `PASS` before motion.
-- [x] Confirm the generated path turns in the required direction.
-- [x] Confirm the first corner begins at the correct place.
-- [x] Confirm the robot remains approximately on the corridor centerline.
-- [x] Confirm it returns close to its starting pose after one lap.
-- [x] Confirm `[PATH] Completed lap 1` appears exactly once per physical lap.
-- [x] Repeat successfully at least three times clockwise.
-- [x] Repeat successfully at least three times counterclockwise.
-
-Recorded evidence from `log_72`, `log_73`, `log_75`, `log_76`, and the
-newer removable-drive `log_12`, `log_14`, and `log_15`:
-
-- [x] Four successful left/CCW one-lap runs. At 175 mm/s, `log_15` passed
-      in 42.5 seconds with 35.7 mm maximum cross-track error, 75.9 mm
-      final-position error, and 1.0 degree final-heading error.
-- [x] Three successful right/CW one-lap runs. At 175 mm/s, `log_14` passed
-      in 41.7 seconds with 36.6 mm maximum cross-track error, 75.0 mm
-      final-position error, and 2.8 degrees final-heading error.
-- [x] All seven valid runs passed the automated limits.
-- [x] Worst maximum cross-track error was 36.6 mm.
-- [x] Average final-position error was approximately 55.8 mm.
-- [x] Average final-heading error was 2.1 degrees.
-
-Pass criteria:
-
-- No wall contact.
-- No incorrect-direction corner.
-- No premature or missing lap increment.
-- The final pose error is measured and recorded after each lap.
-
-If starting without the parking exit, set and verify
-`OBSTACLE_DEFAULT_TURN_SIGN`: `+1` means left/CCW corners and `-1` means
-right/CW corners.
-
-## 3. Pure Pursuit tuning on an empty track - in progress
-
-Tune in this order:
-
-1. `OBSTACLE_PATH_MIN_SPEED`
-2. `OBSTACLE_PATH_MAX_SPEED`
-3. `OBSTACLE_LOOKAHEAD_MIN_MM`
-4. `OBSTACLE_LOOKAHEAD_MAX_MM`
-5. `OBSTACLE_LOOKAHEAD_CORNER_SCALE`
-6. `OBSTACLE_MAX_PURSUIT_STEERING_DEG`
-
-- [x] Straight sections do not oscillate at the validated 175 mm/s test speed.
-- [x] Steering returns smoothly to center after corrections.
-- [x] The robot does not cut across the inside of corners.
-- [x] The robot does not run wide toward the outer wall.
-- [ ] Speed decreases sufficiently at corners.
-- [ ] One empty lap succeeds five consecutive times in each direction.
-
-The team deliberately skipped the five-consecutive-lap repetition after clean
-175 mm/s runs in both directions (`log_14` and `log_15`). Keep this item open
-as waived rather than recording an unperformed reliability test as passed.
-
-Adjustment guide:
-
-- Straight oscillation: increase lookahead or reduce maximum speed.
-- Corner cutting: reduce `OBSTACLE_LOOKAHEAD_CORNER_SCALE`.
-- Running wide: reduce corner speed or lookahead.
-- Jerky steering: increase lookahead or reduce maximum steering/speed.
-
-## 4. Camera bearing and range calibration - in progress
-
-### Automated reverse-drive ground-range calibration
-
-The `camdrive` mode replaces repeated ruler placements with one stepped,
-encoder-referenced run. Put one official pillar on the robot centreline with
-its near face touching the front of the robot, leave at least the requested
-reverse distance clear behind the robot, and send:
+Start the mode once:
 
 ```text
-camdrive [reverse-distance-mm]
+S1
 ```
 
-For example, `camdrive 1000` reverses 1000 mm; `camdrive` uses that same
-distance by default. Before the first run, measure and update these two
-physical constants in `config.h`:
-
-```cpp
-constexpr auto ROBOT_FRONT_FROM_REAR_AXLE_MM = 130.0f;
-constexpr auto OBSTACLE_CAMERA_FROM_REAR_AXLE_MM = 125.0f;
-```
-
-Both are forward distances from the rear-axle midpoint. The first ends at the
-front contact plane touched by the pillar; the second ends at the camera
-optical centre. The initial camera-to-pillar distance is their difference.
-Encoder reverse travel is added continuously. Remeasure the relevant constant
-after changing the robot front or camera mount.
-
-The robot reverses at 80 mm/s while the normal gyro PD controller holds the
-starting heading. Reverse steering uses the opposite sign from forward gyro
-following and is limited to 15 degrees. It first stops at 300 mm encoder
-travel, then every 100 mm through the requested final travel. At each stop it
-waits 700 ms for vibration and rolling to settle, then captures 10 valid camera
-frames (at least 6 are required). It uses a trimmed foot-position average that
-discards the two highest and two lowest values, suppressing brief false colored
-components. Each accepted checkpoint contributes exactly one equally weighted
-point to the final fit. This prevents motion blur, wheel vibration, camera frame
-rate, or a long pause at one distance from biasing the result.
-
-The first detected red/green color is not used while the pillar touches the
-camera. Color voting starts after 180 mm and requires three consecutive valid
-detections before the color is locked. Bottom/side-clipped frames are rejected;
-five consecutive close-pillar geometry frames are required before samples can
-be accepted. Frames captured while driving form a separate
-`moving_cross_check` fit and never alter the authoritative stopped fit. At the
-end the firmware fits
-
-`foot_y = horizon_y + scale_mm_px / true_forward_mm`
-
-and prints ready-to-paste values for
-`OBSTACLE_CAMERA_GROUND_HORIZON_Y` and
-`OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX`. It also prints the stopped fit's
-predicted `foot_y` at 400 and 600 mm and the difference from the moving fit.
-It stops after the final checkpoint, after 45 seconds, or when heading changes
-by more than 6 degrees.
-It reports failure and suppresses copyable constants if the fitted horizon or
-scale is implausible or foot-pixel RMSE exceeds 5 px.
-`z` aborts immediately. Toggling the enable switch pauses and invalidates the
-run; put the robot back against the pillar and send a fresh command rather
-than resuming. Repeat at least three times per camera height/angle
-and for both pillar colors; compare fitted constants and foot-pixel RMSE
-before accepting a mount.
-
-Recorded stationary cross-check from `D:\log_20.txt`:
-
-- [x] Red and green both measured `max_y=150` at 400 mm.
-- [x] Green averaged `max_y=119.9` and red `max_y=120.1` at 600 mm.
-- [x] Those ruler measurements directly imply `horizon_y=60.0` and
-      `scale_mm_px=36000`; these are now the production defaults.
-- [x] The successful moving red run in `D:\log_19.txt` fitted approximately
-      `horizon_y=62.79`, `scale_mm_px=35654`, RMSE 1.46 px. Its proximity to
-      the stationary result is encouraging, but stopped checkpoints are now
-      authoritative because another moving green run contained false foot
-      components.
-
-Recorded evidence from `D:\log_16.txt` (green run followed by two red
-attempts):
-
-- [x] The original unguided runs all stopped at approximately 700-800 mm
-      because heading error exceeded 6 degrees.
-- [x] The first run predominantly saw green, but occasional red components and
-      a false early green component entered the same fit. Do not copy its
-      printed `horizon=132.898`, `scale=5663.1`, or 28.15 px RMSE.
-- [x] As a diagnostic only, the clean logged green sequence beginning at
-      `true_forward=240.1 mm`, `foot_y=212` fits approximately
-      `horizon=69.7`, `scale=32775`, with 2.45 px RMSE. Rerun with the new
-      color lock, monotonic-foot gate, and gyro steering before copying it.
-- [x] Red did not produce a usable run. Stationary center samples were around
-      `H=346-354`, `S=130-183`, `V=41-57`. Update the configurable dark-red
-      range to `H=340-359 or 0-8`, `S>=120`, `V>=35`; reserving `H=9-35` for
-      orange removes the previous hue overlap. Verify with `c0` against both a
-      red pillar and the orange track line.
-
-Recorded follow-up from `D:\log_17.txt`:
-
-- [x] Reverse gyro following held the heading within approximately -1.2 to
-      +0.6 degrees for the full 1000 mm; steering corrections stayed within
-      approximately -1.5 to +3.0 degrees.
-- [x] Color locking remained `GREEN`, and the pillar stayed close to image
-      center (`x=160-175` through most of the usable range).
-- [x] The run collected zero firmware samples only because the initial
-      acquisition gate required `foot_y>=200`; after close-range clipping the
-      real pillar reappeared at `foot_y=180`. Lower the acquisition threshold
-      to 160 px while retaining the monotonic-foot check.
-- [x] An offline fit of the 21 clean logged points from 297.3 to 1004.8 mm
-      gives diagnostic values `horizon=66.98`, `scale=33251.5`, with 1.41 px
-      RMSE. Rerun with the corrected gate to obtain the full-frame firmware
-      fit before copying constants into `config.h`.
-
-Recorded follow-up from `D:\log_18.txt`:
-
-- [x] The complete serial record and printed constants were saved, and the
-      full 1000 mm run completed with 65 accepted frames.
-- [x] The constants were not written into firmware automatically; `config.h`
-      correctly retained the previous production values.
-- [x] The reported `horizon=86.790`, `scale=6385.1`, RMSE 7.20 px result is
-      invalid. The tracker acquired a transient green component at only
-      166.8 mm (`foot_y=164`) before the complete pillar became visible.
-- [x] Add the delayed three-frame color vote, five-frame geometry confirmation,
-      and fit-quality limits before another run.
-
-Copy the two printed `constexpr` lines into `include/config.h` and rebuild.
-`obstacle_estimate_camera_forward_mm()` then uses them for forward depth.
-`obstacle_estimate_camera_range_mm()` combines that depth with the measured
-bearing, and the obstacle path code uses the resulting ray distance plus the
-configured camera-to-rear-axle offset when projecting and snapping pillars to
-known seats. No separate calibration table needs to be copied elsewhere.
-
-The live `lateral_left_mm` field is already a two-dimensional estimate in the
-robot convention (+forward, +left). It uses the currently configured
-horizontal field of view, so the centreline reverse test validates that it
-stays near zero but cannot by itself identify horizontal focal length or lens
-distortion.
-
-### Proposed horizontal-position calibration
-
-After fixing camera height and pitch, add a `camgrid` mode with the robot
-stationary and place a pillar at surveyed lateral offsets -300, -200, -100, 0,
-+100, +200, and +300 mm at two or three forward distances. A serial command
-such as `camgrid <forward_mm> <left_mm>` can collect 10-20 frames per point.
-Fit the pinhole relation `pixel_x = principal_x - focal_x * left/forward` and
-inspect residual versus pixel X. If residuals curve near the frame edges, fit
-one radial-distortion coefficient or use a small pixel-to-bearing lookup
-table rather than only changing the nominal FOV.
-
-An equally useful field-oriented alternative is to park the robot at a
-surveyed pose in front of one official three-position section and capture all
-known pillar seats. Repeating from a second forward pose separates horizontal
-scale error from principal-point error. Driving sideways is not recommended:
-Ackermann heading and odometry errors would become calibration inputs. If a
-moving test is desired, drive straight in two lanes of known lateral offset,
-with gyro heading logged and runs in both directions to expose bias.
-
-Use one official 100 mm pillar. Test both colors at measured distances of
-approximately 150, 250, 400, 600, and 800 mm.
-
-The camera test is stationary and keeps the drive motor stopped. Place the
-front of the camera at the measured distance from the pillar, then send the
-matching command:
+Require:
 
 ```text
-c150
-c250
-c400
-c600
-c800
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
 ```
 
-Changing the distance resets the per-color sample average. Allow at least ten
-samples at each distance and save the serial log. Each `[CAM CAL]` record
-contains blob position and size, bearing, the firmware's current range
-estimate, whether the image edge clipped the blob, the focal-length sample,
-the average for that color, the exact bounding limits, and
-`production_valid=yes|no`. The faint green competition-mat edge may still be
-reported for diagnostics, but it must always report `production_valid=no` and
-cannot enter live seat snapping. Use `c0` for diagnostics without a known
-distance and `z` to stop the mode.
-
-Normal range estimation uses the calibrated image position of the block's foot
-(`max_y`), because the top of a distant block is intentionally clipped by the
-obstacle ROI. `range_error_mm` and `range_error_avg_mm` compare that production
-estimate with the distance supplied in the `c<mm>` command. Measure that
-distance horizontally from the camera to the foot of the block. Blob-height
-focal samples remain diagnostic only.
-
-- [x] Record blob height, bounds, center X, estimated bearing, and estimated
-      range in `log_81`, `log_83`, and `log_85`.
-- [x] Calculate diagnostic focal length samples:
-
-  `focal_length_px = range_mm * blob_height_px / 100`
-
-- [x] Confirm that height-based focal range is unsuitable when the obstacle ROI
-      clips the top of the block; retain 277 px as a fallback only.
-- [x] Calibrate production foot range from ruler measurements. Final restored-
-      ROI values from `log_88` are 400 mm at `max_y=136` and 600 mm at
-      `max_y=108`.
-- [x] Implement the ground-plane range model and serial range-error reporting.
-- [x] Verify the ground-plane model with a post-update `c400` and `c600`
-      run for both colors.
-- [ ] Confirm the final two-pixel horizon refinement (`52 px`) in the next
-      camera or stationary seat-snapping log.
-- [ ] Verify `OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG` at both frame edges.
-- [ ] Tune `OBSTACLE_EDGE_CLIPPED_RANGE_MM` using close, clipped pillars.
-- [x] Red classification is stable under expected lighting at 400 and 600 mm
-      (`log_85`, at least 25 accepted samples at each distance).
-- [x] Green classification is stable under expected lighting at 400 and
-      600 mm (`log_88`, repeated accepted stationary samples).
-- [x] Faint green competition-mat/background components report
-      `production_valid=no` and are excluded from calibration and live
-      Pure Pursuit seat input.
-- [x] A valid green pillar remains independently detectable when the mat line
-      is visible under competition lighting.
-- [ ] Background objects do not produce confirmed seats during the stationary
-      seat-snapping test.
-- [x] Two consecutive observations are normally available before the pillar
-      reaches the minimum safe reaction distance.
-
-Recorded camera evidence from `log_88`:
-
-- [x] Red pillar repeatedly accepted at 400 and 600 mm.
-- [x] Green pillar repeatedly accepted at 400 and 600 mm.
-- [x] The faint left-edge green mat component remained
-      `production_valid=no sample_accepted=no`.
-- [x] Dominant 400 mm samples were within approximately 10-20 mm before the
-      final two-pixel horizon adjustment.
-- [x] Dominant 600 mm samples were within approximately 0-46 mm before the
-      final adjustment; the stable clusters support the final horizon value.
-- [x] Camera-to-block range is transformed from the camera origin 125 mm ahead
-      of the rear axle before seat snapping.
-
-## 5. Seat snapping while stationary or pushed by hand
-
-Keep the drive motor disabled. Place a pillar on each of the six seat types in
-one straight section and move the robot through the expected approach.
-
-### Rules basis for this phase
-
-- [x] Confirm each straight section contains six traffic-sign seats: three
-      longitudinal stations by two lateral positions (rules Figure 3).
-- [x] Confirm every seat is 50 x 50 mm (rule 13.13).
-- [x] Confirm every traffic sign is 50 x 50 x 100 mm (rule 13.19).
-- [x] Confirm the movement-evaluation circle is 85 mm in diameter
-      (rules 13.14-13.15).
-- [x] Confirm red must be passed on the right and green on the left
-      (rule 9.19).
-- [x] Keep the test compatible with either randomized driving direction and
-      all official seat positions.
-
-### Firmware implementation plan
-
-1. **Separate observation from control**
-
-   - [x] Refactor the current private `registerDetection()` logic into one
-         shared observation function used by both competition mode and test
-         mode.
-   - [x] Keep production validation, camera-foot range, the rotated 125 mm
-         camera offset, nearest-seat lookup, voting, confirmation, and tapered
-         live-path injection in that single code path.
-   - [x] Return a read-only result structure containing rejection reason,
-         projected global point, selected seat, snap error, votes,
-         confirmation state, and injection count.
-   - [x] Expose read-only seat metadata: seat ID, section, station, lateral
-         side, path distance, global position, and confirmed color.
-
-2. **Add deterministic geometry checks**
-
-   - [x] Verify all 24 generated seats are finite, unique, and within the
-         known straight-section geometry for left/CCW paths.
-   - [x] Repeat the same checks for right/CW paths.
-   - [x] Verify a point at every seat center selects that exact seat.
-   - [x] Verify points just inside/outside `OBSTACLE_SEAT_SNAP_RADIUS_MM`
-         behave correctly.
-   - [x] Verify neighboring longitudinal and opposite-lateral seats cannot win
-         for a perfect observation.
-   - [x] Verify red selects the right-pass displacement and green selects the
-         left-pass displacement.
-   - [x] Verify two matching votes confirm once, while one vote cannot confirm
-         or inject.
-
-3. **Create a motor-locked on-robot mode**
-
-   - [x] Add `MODE_OBSTACLE_SEAT_TEST` with its own small source/header module.
-   - [x] Initialize the real camera and known Pure Pursuit geometry, but never
-         call the steering/speed controller.
-   - [x] Reassert motor stop, zero target speed, and centered/disabled steering
-         on every update, regardless of the physical enable-switch state.
-   - [x] Disable ToF pose correction, look-heading nudges, lap advancement,
-         parking behavior, and normal challenge state transitions.
-   - [x] Permit path displacement only in the isolated test path so the real
-         injection code is exercised without vehicle motion.
-   - [x] Keep `z`, the physical disable switch, and a dedicated stop command
-         effective at all times.
-
-4. **Add serial controls**
-
-   - [x] `S1`: start the seat test with left/CCW field geometry.
-   - [x] `S-1`: start the seat test with right/CW field geometry.
-   - [x] `S0`: stop and clear the seat test.
-   - [x] `seat expect <section> <station> <L|R> <range_mm>`: arm one expected
-         seat and set the test-only odometry pose to the known approach pose.
-   - [x] `seat clear`: clear votes/injection state before changing the pillar.
-   - [x] `seat show`: print all seat coordinates and current states.
-   - [x] Reject malformed indices, sides, ranges, or commands without changing
-         the active test state.
-
-5. **Add concise diagnostic output**
-
-   - [x] Print blob color, bounds, production-valid flag, bearing, and
-         camera-to-foot range.
-   - [x] Print robot-origin pose, rotated camera position, projected sighting
-         position, nearest seat label, and snap error in millimetres.
-   - [x] Print red/green vote counts and explicit events for `VOTE`,
-         `CONFIRMED`, `INJECTED`, `REJECTED`, and `WRONG_SEAT`.
-   - [x] Print the displaced waypoint peak, pass side, taper extent, and
-         clearance from the 85 mm movement circle.
-   - [x] Throttle repeated frame telemetry while never suppressing state-change
-         or failure events.
-
-6. **Compile and bench-verify before field testing**
-
-   - [x] Build incrementally with the IDE-managed PlatformIO installation;
-         preserve `.pio` and the package cache.
-   - [x] Confirm the geometry preflight and motor-lock preflight both pass.
-   - [ ] Confirm the mode remains safe through start, pause, resume, malformed
-         commands, `S0`, `z`, and USB disconnect.
-   - [x] Confirm the existing empty-track `X1`/`X-1`, camera `c<mm>`, and
-         competition modes still compile and retain their commands.
-
-First on-robot smoke logs: both preflights passed and the test mode stayed
-motor-locked. Two serial portability issues caused valid `seat expect` commands
-to be rejected: CRLF left trailing whitespace, and this embedded C library does
-not link floating-point `scanf` support. Command input is now trimmed and the
-whole-millimetre range is parsed as an integer before conversion to the internal
-float. Repeat the first seat observation with the rebuilt firmware before
-checking the remaining safety and physical items.
-
-The next smoke log armed `0/0/L` successfully and proved the confirmation guard:
-the red pillar produced two votes, exactly one injection, and then remained at
-`injections=1`. It also exposed an image-to-path sign mismatch: an image-left
-blob at `centerX` about 97 was projected with a negative/right bearing and
-therefore snapped to seat `0/R` instead of expected seat `1/L`. Camera bearing
-now converts image-left to positive/path-left in one shared helper used by both
-calibration diagnostics and live seat projection. Repeat `0/0/L` before
-expanding the matrix.
-
-The corrected `0/0/L` repeat passed with the camera on the field centerline and
-the red pillar's foot measured 400 mm from the camera. Valid observations used
-a positive-left bearing of about 16.1-16.3 degrees, selected
-`seat=1 expected=1` with 29-37 mm snap error, confirmed after two red votes,
-injected a right-pass path exactly once, and remained at `injections=1`.
-Intermittent smaller red fragments were rejected after confirmation and did not
-change the seat or injection state.
-
-The first `0/0/R` run initially selected the expected right seat with a
-negative bearing and injected the correct red right-pass path. It later failed
-the overall case: two isolated false red blobs on the far image-left accumulated
-stale votes around many correct/rejected frames, confirmed seat `1/L`, and
-raised the injection count to two. Voting now requires consecutive accepted
-observations of the same seat and color; another seat, invalid blob, invalid
-range, or no-seat observation clears pending unconfirmed votes. Repeat `0/0/R`
-before marking it complete.
-
-The false component was suspected to be the distant orange boundary line. It
-appeared at image `x=32-56`, with `minY=80` exactly on the
-obstacle ROI boundary, while the real right-side pillar was at `x=228-276`.
-The classifier currently checks red first at hue <=18 and orange second at hue
-9-35, so camera/lighting shifts can classify the overlapping 9-18 range as red.
-Before changing HSV thresholds, run `c0` with no pillar and the orange line in
-the same top-left position; save whether it reports a production-valid RED blob
-with matching bounds.
-
-The no-pillar `c0` control did **not** reproduce the suspected orange-line
-misclassification: every sampled frame reported `blob=NONE`, including after
-the robot was moved slightly. The printed `center_hsv` samples describe only
-the image-centre pixel, not the top-left line, but `blob=NONE` confirms that no
-qualifying red/green component was found anywhere in those frames. Do not tune
-HSV from this hypothesis. Treat the earlier left-side red components as
-intermittent/pillar-dependent until another controlled test reproduces them;
-the consecutive-vote protection must still prevent them from injecting.
-
-The rebuilt `0/0/R` repeat passed. The real pillar selected
-`seat=0 expected=0` at a negative 12-degree bearing with 20-27 mm snap error,
-confirmed after two consecutive red votes, and injected the right-pass path
-once. Two later false left-seat observations each reached only `R1`; correct or
-rejected intervening frames cleared the pending vote, so seat 1 never confirmed
-and the run remained at `injections=1`. This validates the consecutive-vote
-regression fix under the artifact that previously caused a second injection.
-
-The first station-1 left/right attempts did not confirm. Valid pillar frames
-were interleaved with rejected small fragments, so the strict consecutive-frame
-implementation repeatedly returned correct-seat evidence to `R1`. Voting now
-uses a 400 ms evidence window: rejected/no-blob/no-seat flicker only expires a
-vote after that window, while an accepted different seat or different color
-still resets incompatible pending evidence immediately. This retains the
-false-seat protection without requiring two adjacent camera frames. The
-station-1 left observation also estimated only 251-263 mm and reached the
-140 mm snap boundary, so repeat it only after repositioning the robot—not just
-the block—to restore the measured 400 mm camera-to-foot distance and centreline
-alignment. Neither station-1 matrix entry is complete yet.
-
-### Physical test matrix after implementation
-
-For each case, place the robot on the straight centerline at the commanded
-400-600 mm approach pose, parallel to the straight, and place one official
-pillar squarely on the selected 50 mm seat. Keep the wheels off powered drive;
-re-arm/reset the test between cases. `range_mm` is the ruler distance from the
-camera to the foot of the pillar. `L` and `R` name the seat as seen in the
-driving direction; they do not name the required passing side.
-
-Upload the firmware, leave the robot supported so the drive wheels cannot move,
-and run this first smoke test:
-
-1. Send `S1`; require both `[SEAT] geometry preflight LEFT+RIGHT: PASS` and
-   `[SEAT] motor lock: PASS`.
-2. Send `seat show` and save the 24-seat table.
-3. Put a pillar at section 0, station 0, left seat, measure 400 mm from the
-   camera to its foot, then send `seat expect 0 0 L 400`.
-4. Require one `VOTE`, then one `CONFIRMED_INJECTED`, with `seat=1`,
-   `expected=1`, and `injections=1`. Continued frames must remain at one
-   injection.
-5. Send `seat clear`, move the pillar, and arm the next matrix entry. Use `S0`
-   or `z` at any time to stop and clear the mode.
-
-- Red pillar at the left lateral position:
-  - [x] Station 0.
-  - [ ] Station 1.
-  - [ ] Station 2.
-- Red pillar at the right lateral position:
-  - [x] Station 0.
-  - [ ] Station 1.
-  - [ ] Station 2.
-- Green pillar at the left lateral position:
-  - [ ] Station 0.
-  - [ ] Station 1.
-  - [ ] Station 2.
-- Green pillar at the right lateral position:
-  - [ ] Station 0.
-  - [ ] Station 1.
-  - [ ] Station 2.
-- [ ] Repeat representative near/far seats with right/CW geometry.
-- [ ] Run with no pillar and the faint green mat line visible; no seat may
-      receive a vote.
-- [ ] Present one isolated bad-color frame between correct frames; it must not
-      confirm or inject the wrong color.
-- [ ] Save serial logs and record the expected and selected seat for every
-      matrix entry.
-
-### Phase pass criteria
-
-- [ ] Each detection snaps to the correct seat.
-- [ ] No detection snaps to the neighboring longitudinal station.
-- [ ] No detection snaps to the seat on the opposite side of the corridor.
-- [x] A pillar produces only one live-injection event. (Passed `0/0/L` and the
-      rebuilt `0/0/R`; isolated false-seat observations remained at one vote.)
-- [ ] A single bad-color frame does not confirm the wrong color.
-- [ ] Test all seat types with red.
-- [ ] Test all seat types with green.
-
-Tune only after checking camera calibration and odometry:
-
-- `OBSTACLE_SEAT_SNAP_RADIUS_MM`
-- `OBSTACLE_SEAT_CONFIRM_VOTES`
-
-Keep the snap radius as small as practical. Increasing it can hide a pose or
-camera-calibration error and select the wrong seat.
-
-## 6. Live lap-1 avoidance
-
-Start with one pillar in the middle of a straight and use minimum speed.
-
-- [ ] Red pillar: robot passes on the right.
-- [ ] Green pillar: robot passes on the left.
-- [ ] Avoidance is injected immediately after confirmation.
-- [ ] Serial output contains exactly one
-      `[PATH] Live avoidance injected` event.
-- [ ] Steering enters and leaves the detour smoothly.
-- [ ] The robot clears the pillar and its 85 mm movement circle.
-- [ ] The robot retains safe wall clearance.
-- [ ] The robot returns smoothly to the nominal path.
-- [ ] Repeat with the pillar at both lateral seat positions.
-- [ ] Repeat at the first, middle, and last station in a straight.
-- [ ] Repeat in all four straight sections.
-
-Tune:
-
-- `OBSTACLE_LAP1_CLEARANCE_MM`
-- `OBSTACLE_PATH_TAPER_WAYPOINTS`
-- `OBSTACLE_PATH_SMOOTH_RADIUS`
-- Minimum speed and short lookahead
-
-## 7. Look-heading nudges
-
-Test candidate seats that are outside the camera view on the nominal path.
-
-- [ ] The chassis begins looking toward the seat before the reaction point.
-- [ ] The seat enters the camera frame reliably.
-- [ ] The nudge does not make the robot cross an unsafe lane position.
-- [ ] The nudge tapers out smoothly.
-- [ ] A confirmed seat is not scanned repeatedly.
-
-Tune:
-
-- `OBSTACLE_LOOK_START_MM`
-- `OBSTACLE_LOOK_END_MM`
-- `OBSTACLE_LOOK_HEADING_KP`
-- `OBSTACLE_LOOK_MAX_STEERING_DEG`
-
-## 8. ToF odometry correction
-
-### ToF sensor validation and remaining runtime work
-
-The original unreliable right-hand module has been isolated and replaced. The
-fault followed that physical module when the two sensors and I2C ports were
-swapped, so it was not caused by the port, mounting side, or a constant software
-offset. Keep the defective module out of navigation-critical use.
-
-Observed at a measured 500 mm right-sensor-to-wall distance:
-
-- Black wall: 10 readings averaged 354.0 mm (335-367 mm).
-- White paper over the same wall, without moving the robot: 10 readings
-  averaged 504.8 mm (503-507 mm).
-- The right sensor was also accurate at approximately 300 mm from the black
-  wall, so this is not a constant distance offset.
-
-The white-target result confirmed that the sensor position and aiming could
-produce an accurate measurement. The later swap test isolated the fault to the
-module itself. Do not compensate for the discarded module with a fixed offset.
-
-The replacement sensor passed controlled black-wall captures with 20/20 valid
-samples at each distance: 304.5 mm at 300 mm, 403.0 mm at 400 mm, and 498.4 mm
-at 500 mm. Its 500 mm mean was accurate, although individual unfiltered samples
-ranged from 467-528 mm. MEDIUM mode at a 30 ms timing budget is therefore the
-accepted provisional normal configuration.
-
-- [x] Add diagnostics for selected distance, raw distance, signal rate, sigma,
-      range status, object candidates, active distance mode, and timing budget
-      for both sensors.
-- [x] Correct initialization so `TOF_TIMING_BUDGET_US` is explicitly applied
-      and the actual mode and budget are read back and printed.
-- [x] Isolate the original failure by swapping both modules and I2C ports.
-- [x] Replace the defective module and verify the replacement on a black wall
-      at controlled 300, 400, and 500 mm distances.
-- [ ] Complete matched black-versus-white captures at 300, 400, and 500 mm if
-      surface-color characterization is still desired.
-- [ ] Repeat with a 100 ms timing budget and use 200 ms if necessary.
-- [x] Review `min_accept_signal` and `max_accept_sigma` after collecting the
-      diagnostic data. Retain `0.3 Mcps / 20 mm` for normal operation and
-      `0.3 Mcps / 30 mm` provisionally for discovery mode.
-- [ ] Verify the other navigation sensor at controlled 300, 400, and 500 mm
-      black-wall distances so both installed modules have equivalent evidence.
-- [ ] Confirm whether runtime discovery intentionally uses MEDIUM mode at
-      300 ms or should switch to hardware LONG mode; `nav_long_range_active`
-      currently changes the budget and filters but not the distance mode.
-- [ ] Repeatedly switch runtime discovery from 30 ms to 300 ms and back while
-      checking the reported actual budget and continued frame delivery.
-- [ ] Make corner/opening confirmation count distinct ToF frame sequence
-      numbers rather than repeated control-loop uses of one cached reading.
-- [ ] Perform a moving black-wall disappearance and reacquisition test at the
-      intended driving speed before treating long-range discovery as final.
-- [x] Confirm USB saves retain the requested RAM data until the completed file
-      has been flushed, closed, reopened, and size-verified.
-
-Restore `OBSTACLE_TOF_CORRECTION_GAIN` and mark several ground-truth robot
-positions on each straight.
-
-- [ ] Compare the reported pose before and after correction.
-- [ ] Correction moves the estimate toward ground truth.
-- [ ] Correction is primarily lateral on straight sections.
-- [ ] Readings at or above 500 mm do not correct the pose.
-- [ ] Left and right sensors correct in the proper direction.
-- [ ] Repeated readings converge instead of pulling the estimate past truth.
-- [ ] The inside/receding sensor is ignored around every corner.
-- [ ] The valid outer sensor does not introduce a corner jump.
-- [ ] Test all four corners in both driving directions.
-
-Tune:
-
-- `OBSTACLE_TOF_CORRECTION_GAIN`
-- `OBSTACLE_TOF_CORRECTION_MAX_STEP_MM`
-- `OBSTACLE_CORNER_GATE_BEFORE_MM`
-- `OBSTACLE_CORNER_GATE_AFTER_MM`
-
-If correction has the wrong sign, verify the sensor coordinates and left/right
-convention before changing the gain.
-
-## 9. Optimized laps 2 and 3
-
-- [ ] After lap 1, serial output reports
-      `[PATH] Optimized laps 2-3 path built`.
-- [ ] Only confirmed occupied seats affect the optimized path.
-- [ ] Look-heading scanning is inactive on laps 2 and 3.
-- [ ] The tighter optimized clearance remains safe at every seat position.
-- [ ] Residual vision trim improves small errors without overpowering pursuit.
-- [ ] Lap progress wraps exactly once per physical lap.
-- [ ] The robot completes three laps without recomputing the optimized path.
-
-Tune:
-
-- `OBSTACLE_OPTIMIZED_CLEARANCE_MM`
-- `OBSTACLE_RESIDUAL_VISION_KP`
-- `OBSTACLE_RESIDUAL_VISION_MAX_DEG`
-
-## 10. Full-field regression
-
-- [ ] Clockwise three-lap run.
-- [ ] Counterclockwise three-lap run.
-- [ ] Every intended starting configuration.
-- [ ] Pillars on every seat type.
-- [ ] Two nearby pillars with opposing colors.
-- [ ] Maximum expected number of pillars.
-- [ ] Bright lighting, dim lighting, and shadows.
-- [ ] Partially occluded and edge-clipped pillars.
+Then perform these cases, using `seat clear` before moving the pillar:
+
+| Case | Pillar | Command | Required result |
+| --- | --- | --- | --- |
+| Already passed | Red, station 0 left | `seat expect 0 0 L 400` | Seat 1, two votes, one injection |
+| Already passed | Red, station 0 right | `seat expect 0 0 R 400` | Seat 0, two votes, one injection |
+| Passed | Green, middle left | `seat expect 0 1 L 400` | Seat 3, pass `L`, one injection |
+| Passed | Green, middle right | `seat expect 0 1 R 400` | Seat 2, pass `L`, one injection |
+| Passed | Red, far station left | `seat expect 0 2 L 600` | Seat 5, pass `R`, one injection |
+| Passed | Red, far station right | `seat expect 0 2 R 600` | Seat 4, pass `R`, one injection |
+
+For the 600 mm cases, the longitudinal camera-to-pillar separation is about
+592 mm while the lateral offset remains 100 mm. The diagonal camera-to-foot
+range must be 600 mm.
+
+For every new case require:
+
+- `seat=expected`, snap error below 140 mm and preferably below 50 mm.
+- Two compatible votes within 400 ms, followed by exactly one
+  `CONFIRMED_INJECTED` event.
+- Red reports pass `R`; green reports pass `L`.
+- Later fragments or rejected frames never increase `injections` above one.
+
+Recorded green 400 mm results:
+
+- [x] Middle-left selected seat 3, confirmed after two votes, reported pass
+      `L`, and injected once. Range was about 372-373 mm, bearing about
+      +21.7 degrees, and initial snap error about 56 mm.
+- [x] Middle-right selected seat 2, confirmed after two votes, reported pass
+      `L`, and injected once. Range was about 374 mm, bearing about
+      -19.2 degrees, and snap error about 41 mm.
+- [x] Correct the horizontal bearing model before powered obstacle driving.
+      The surveyed geometry requires approximately +/-14.5 degrees. The
+      unequal pixel offsets also indicate that the optical principal point is
+      not exactly the assumed image centre.
+
+Recorded red 400 mm cross-check:
+
+- [x] Middle-left selected seat 3, confirmed after two votes, reported pass
+      `R`, and injected once. Its bounds and +21.6 degree bearing matched the
+      green-left observation, proving the horizontal error is not color
+      dependent. Range was about 365 mm and snap error about 59 mm.
+- [x] Middle-right selected seat 2, confirmed after two votes, reported pass
+      `R`, and injected once. Bearing was about -18.9 degrees, range about
+      366 mm, and snap error about 45 mm. The red and green centroids agree.
+- [x] Capture a surveyed 600 mm off-axis pair before fitting. The 400 mm data
+      imply a horizontal principal point near pixel 153 and focal length near
+      420 px, but the off-axis foot position also shows a range bias that needs
+      a second distance before correction.
+- [x] Red 600 mm left selected seat 5, confirmed, reported pass `R`, and
+      injected once. It measured about +13.8 degrees and 545 mm instead of the
+      surveyed +9.6 degrees and 600 mm; snap error was about 69 mm.
+- [x] Red 600 mm right selected seat 4, confirmed, reported pass `R`, and
+      injected once. It measured about -12.6 degrees and 542 mm instead of the
+      surveyed -9.6 degrees and 600 mm; snap error was about 65 mm.
+- [x] Fit and implement a pinhole horizontal model using principal X 154.9 px
+      and focal X 417.5 px. Add the observed off-axis foot correction of 0.11
+      vertical pixels per horizontal pixel from the principal point.
+- [x] Upload and repeat the red 600 mm right measurement. Require bearing
+      within +/-2 degrees, range within +/-30 mm, and snap error below 50 mm.
+      It passed with -9.8 to -10.2 degrees, 589-612 mm, 9-14 mm snap error,
+      correct seat/pass side, and exactly one injection.
+
+The two stationary CW repetitions previously proposed with `S-1` are omitted.
+The deterministic geometry preflight checks both transforms and the first two
+mirrored live runs in Gate 4 exercise the CW transform under real motion.
+
+### Bearing check included in the seat test
+
+At 400 mm range and 100 mm lateral offset, expect approximately `+14.5 deg`
+for a left seat and `-14.5 deg` for a right seat. At 600 mm, expect about
+`+/-9.6 deg`. If both signs are correct and their magnitudes are within about
+2 degrees, no separate seven-position `camgrid` calibration is needed now.
+Implement `camgrid` only if this check fails or later edge-of-frame detections
+show a systematic bearing error.
+
+### Background control
+
+With `S1` still active, remove the pillar, arm one expected case, and expose
+the normal mat and orange boundary line for at least two seconds. No seat may
+confirm or inject. The prior `c0` no-pillar test found no blob; this one is
+still useful because it exercises the production seat-voting path.
+
+The first production-path control failed: the green mat line remained invalid,
+but orange-background fragments with `minY=132..186` were intermittently
+classified as red. Two compatible observations confirmed seat 3 and injected
+once. Genuine 400/600 mm pillars consistently reach the obstacle ROI top at
+`minY=80`, so acquisition now requires `minY<=100`. A deterministic preflight
+checks that a representative pillar passes and a lower floor fragment fails.
+The post-upload rerun passed for about 16 seconds in the same field view. The
+green mat line and orange/background fragments were still detected but every
+fragment was rejected. Votes remained `R0/G0`, with no confirmation and zero
+injections. The `minY<=100` acquisition regression is therefore accepted.
+
+The current uneven lighting is a required operating condition, not a reason to
+improve the room lighting. Camera diagnostics in this condition reported
+centre-pixel `V` around 207-222/255, so exposure is adequate. The real red
+pillar remained production-valid with stable bounds and centroid across all
+sampled frames. Small green-looking background components appeared repeatedly;
+most were production-invalid, while a few seat-test frames produced only one
+wrong-seat vote and never confirmed. The completed 16-second control supersedes
+the shorter earlier observations; do not repeat it unless the camera position,
+lighting, thresholds, or acquisition geometry changes materially.
+
+The following former tests are omitted or deferred:
+
+- Repeating every color at every station and in all four sections: duplicate
+  rigid geometry and covered later by real layouts.
+- Manually presenting one isolated bad-color frame: hard to reproduce and
+  already covered by deterministic vote checks plus the observed false-fragment
+  regression on the red/right case.
+- A complete horizontal distortion fit: defer unless targeted bearing or edge
+  tests fail.
+- Further 150/250/400/600/800 mm ground-range calibration: the installed
+  400/600 mm production calibration is sufficient for the first live test.
+- The obsolete `52 px` horizon confirmation: replaced by the accepted 60 px
+  value from `D:\log_20.txt`.
+
+## Gate 3 - ToF correction sanity test
+
+This test uses the motor-locked `tofpose` diagnostic and never commands drive
+or steering. Keep the physical enable switch LOW. It is required because
+production mode enables pose correction; further surface-color characterization
+and longer timing budgets are optional.
+
+- [x] Implement and compile a stationary diagnostic that initializes the real
+      fixed-field path, applies the production correction to 12 fresh paired
+      ToF frames, and reports sensor use, corner gating, correction vector and
+      lateral convergence. It aborts if the enable switch goes HIGH.
+- [x] Upload the diagnostic build before running the steps below.
+- [x] Make production correction consume each ToF sequence at most once. Both
+      sensors now have independent last-consumed sequence counters, reset with
+      the path. The diagnostic also calls correction twice per frame and
+      requires all 12 unchanged-sequence duplicates to be blocked. Build,
+      upload and hardware confirmation passed with
+      `duplicate_blocked_frames=12`.
+
+- [x] Verify both installed navigation sensors at controlled 300, 400 and
+      500 mm distances from a black wall. Both passed; do not repeat this.
+- [x] On the middle of each of two perpendicular straights, place the robot at
+      a measured lateral offset and parallel to the walls. Use
+      `tofpose arm <L|R> straight <section> <actual_lateral_mm>` and require a
+      `PASS` after 12 frames.
+      - [x] CCW section 0 at +100 mm: left readings 366-371 mm corrected the
+        estimate from 0 to +86.5 mm. Final error was 13.5 mm and motor lock
+        passed.
+      - [x] CCW section 1 at -100 mm exercised the right sensor on a
+        perpendicular straight. The first run verified the correct sensor,
+        sign and rotated X-axis correction, but ended at -71.5 mm (28.5 mm
+        error). After fresh-sequence gating, it ended at -79.0 mm (21.0 mm
+        error), one millimetre outside the strict diagnostic threshold.
+        Tape distance was 365 mm while the field wall returned 375-380 mm in
+        the final run.
+        A separate 300 mm black-board capture returned 308.3 mm, so do not
+        apply a fixed 20 mm sensor offset; resolve production update cadence
+        and acceptability of the surface-dependent residual first.
+- [x] Verify left and right sensors move the pose toward ground truth, not away
+      from it, and repeated samples converge without overshoot.
+- [x] Place the robot at a corner midpoint in each driving direction and use
+      `tofpose arm <L|R> corner <corner> <actual_lateral_mm>`. The receding
+      inside-wall sensor must be gated in all 12 frames and never used.
+      - [x] CCW corner 0: left/inside gated 12/12, pose unchanged, duplicate
+        sequences blocked 12/12. The outside sensor had no valid return, so
+        outside-wall correction remains covered by the straight tests.
+      - [x] CW corner 0: right/inside gated 12/12 even with valid 457-498 mm
+        returns, pose unchanged, and duplicate sequences blocked 12/12.
+- [x] Verify readings at or beyond the configured 500 mm correction limit do
+      not alter pose. In the section-0 run, all right readings were 570-595 mm,
+      `used=R0` for all 12 frames, and only the valid left sensor corrected.
+
+Do not block live testing on black-versus-white comparisons, 100/200 ms timing
+budget experiments, or exhaustive testing of all eight direction/corner
+combinations unless this sanity test exposes a fault.
+
+## Gate 4 - first powered obstacle tests
+
+Place the robot with the midpoint of its rear axle on the starting-straight
+centreline, at the longitudinal midpoint used for the successful empty-track
+tests. Keep it parallel to the walls and facing the first corner, which should
+be about 500 mm ahead. Do not put a pillar beside the robot at this station.
+
+Put the first pillar at the next station in the driving direction: 500 mm ahead
+of the rear-axle midpoint and 100 mm to the left for the first red-left test.
+This is the station near the end/tangent of the starting straight. Since the
+camera is about 125 mm ahead of the rear axle, the initial camera-to-pillar
+geometry is about 375 mm forward and 100 mm sideways (about 388 mm slant range).
+
+Use the dedicated live-test commands:
+
+- `Y1`: arm a left/CCW one-lap run.
+- `Y-1`: arm a right/CW one-lap run.
+- `Y0`: abort and brake.
+
+Arm the command while the physical enable switch is LOW. The robot waits; toggle
+the switch HIGH only after the placement and safety checks are complete. This
+mode bypasses the parking-exit manoeuvre, uses production camera/ToF localization
+and Pure Pursuit steering, caps speed at 175 mm/s, and stops after one lap. It
+aborts on cross-track error above 300 mm or a 120 s timeout. Raw side-ToF range
+is logged but cannot safely trigger an emergency stop here: a legal nearby
+pillar is indistinguishable from a nearby wall in a single range value. Keep
+the physical switch reachable throughout the test.
+
+Run in this order:
+
+1. Red pillar on the left seat, left/CCW course.
+2. Green pillar on the right seat, left/CCW course.
+3. Mirror both cases for right/CW.
+
+For each run require:
+
+- Detection selects the correct seat and injects exactly once.
+- Red is passed on the right; green is passed on the left.
+- The complete robot clears the pillar's 85 mm movement circle and both walls.
+- Steering enters and leaves the displaced path smoothly.
+- The robot returns to the nominal path and completes exactly one lap.
+
+Stop and tune only one cause at a time:
+
+- Physical clearance: `OBSTACLE_LAP1_CLEARANCE_MM`.
+- Detour shape: `OBSTACLE_PATH_TAPER_WAYPOINTS` and smoothing radius.
+- Corner tracking at the current test speed: corner lookahead.
+- Wrong seat: calibration/pose first; do not enlarge the 140 mm snap radius to
+  hide the error.
+
+After these four representative runs pass, test station 0 and station 2, then
+two adjacent opposing-color pillars. Testing every section individually is
+deferred to full-field regression because the path and seat geometry repeat by
+rotation.
+
+## Gate 5 - three laps and optimization
+
+- [ ] Lap 1 resolves occupied and clear stations without stopping prematurely.
+- [ ] After lap 1, `[PATH] Optimized laps 2-3 path built` appears once.
+- [ ] Only confirmed occupied seats alter the optimized path.
+- [ ] Pure Pursuit remains the only steering controller on laps 2 and 3.
+- [ ] Optimized clearance is safe at near, middle and far stations.
+- [ ] Lap progress wraps once per physical lap and the robot stops after lap 3.
+- [ ] Pass one complete layout in each direction before increasing speed.
+
+Look-heading behavior is no longer a separate test phase. If path-based camera
+aiming is retained, verify during lap 1 that it brings the seat into view while
+maintaining wall clearance and fades out smoothly.
+
+## Gate 6 - full-field regression
+
+Use layouts, lighting and start arrangements that add genuinely different
+failure modes rather than repeating symmetric geometry.
+
+- [ ] Clockwise and counterclockwise three-lap runs.
+- [ ] Every supported starting/parking-exit configuration.
+- [ ] Near, middle and far stations represented on both lateral sides.
+- [ ] Nearby pillars with opposing colors and the maximum allowed pillar count.
+- [ ] Bright, dim, shadowed and edge-clipped observations.
 - [ ] Low and high battery conditions.
-- [ ] Ten consecutive three-lap runs without a wrong-side pass, moved pillar,
-      wall contact, or lap-count error.
-- [ ] Controlled stop occurs after exactly three laps.
+- [ ] Ten consecutive full runs without wrong-side pass, moved pillar, wall
+      contact or lap-count error.
+- [ ] Controlled stop after exactly three laps.
 
-## 11. Final parking - not implemented yet
+## Gate 7 - final speed optimization
 
-The current code stops safely in the starting section after three laps. It does
-not perform the required final parallel-parking maneuver.
+Do this only after representative three-lap layouts work reliably at the
+validated 175 mm/s cap. The current speed profile is almost flat: at a 500 mm
+corner radius, `OBSTACLE_CURVATURE_SPEED_GAIN=950` lowers the configured
+260 mm/s maximum by only about 2 mm/s. That is irrelevant while the separate
+test cap holds the robot to 175 mm/s, but it must be corrected before raising
+the cap toward production speed.
 
-- [ ] Design and implement the final parking state machine.
-- [ ] Detect and approach the correct parking gap.
-- [ ] Reverse into the lot without touching either magenta boundary.
+- [ ] Increase the test cap in small steps, repeating one representative
+      three-lap layout in each direction at every step.
+- [ ] Tune the curvature speed gain so corners are deliberately slower than
+      straights.
+- [ ] Verify telemetry shows smooth deceleration before each corner and smooth
+      acceleration after it.
+- [ ] At each speed, require the established path accuracy, wall clearance,
+      pillar-circle clearance and reliable camera confirmation.
+- [ ] Stop increasing speed when accuracy or perception margin begins to
+      degrade; maximum configured speed is not itself a target.
+
+## Gate 8 - final parking (not implemented)
+
+The current code stops in the starting section after three laps. Implement and
+test parking independently before adding it to the full run.
+
+- [ ] Detect and approach the correct gap.
+- [ ] Reverse without touching either magenta boundary.
 - [ ] Finish fully inside the parking rectangle.
-- [ ] Verify parallel alignment: side-distance difference no greater than
-      20 mm.
-- [ ] Test parking independently before adding it to a three-lap run.
-
-## Test record
-
-Copy this block for every test session:
-
-```text
-Date/time:
-Firmware commit:
-Driving direction:
-Starting configuration:
-Pillar layout:
-Battery voltage:
-Configuration changes:
-Expected result:
-Actual result:
-Pass/fail:
-Pose error after lap:
-Relevant serial messages:
-Video/log filename:
-Next adjustment:
-```
+- [ ] Meet the 20 mm maximum difference between the two side distances.

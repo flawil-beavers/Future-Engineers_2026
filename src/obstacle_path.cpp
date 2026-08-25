@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "course_map.h"
 #include "motor_control.h"
 #include "obstacle.h"
 #include "position_estimator.h"
@@ -48,11 +49,19 @@ struct CornerGeometry
     bool recedesOnRight = false;
 };
 
+struct DiscoveryStation
+{
+    uint8_t clearFrames[COURSE_SEATS_PER_STATION] = {};
+    bool seatObservedClear[COURSE_SEATS_PER_STATION] = {};
+    bool observedClear = false;
+};
+
 PathPoint baselinePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint livePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint smoothingBuffer[OBSTACLE_MAX_PATH_WAYPOINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
+DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
 
 uint16_t pathLength = 0;
 uint16_t progressIndex = 0;
@@ -62,9 +71,19 @@ bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
 bool runtimeTestMode = false;
+uint8_t runtimeLapTarget = 3;
+float runtimeSpeedCapMmS = 0.0f;
 float loopLengthMm = 0.0f;
+float firstCornerDistanceMm = OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f;
 uint16_t injectionCount = 0;
+bool discoveryBlocked = false;
+int8_t discoveryBlockedStation = -1;
+float lastDiscoveryTargetNudgeDeg = 0.0f;
+int8_t discoveryScanStation = -1;
+int8_t discoveryScanSide = -1;
+uint32_t lastDiscoveryNudgeUpdateMs = 0;
 CornerGeometry corners[4];
+uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -213,10 +232,13 @@ void initializeSeats()
 {
     const float cornerArc = PI * OBSTACLE_CORNER_RADIUS_MM * 0.5f;
     const float sectionStarts[4] = {
-        loopLengthMm - 0.5f * OBSTACLE_STRAIGHT_LENGTH_MM,
-        0.5f * OBSTACLE_STRAIGHT_LENGTH_MM + cornerArc,
-        1.5f * OBSTACLE_STRAIGHT_LENGTH_MM + 2.0f * cornerArc,
-        2.5f * OBSTACLE_STRAIGHT_LENGTH_MM + 3.0f * cornerArc};
+        loopLengthMm + firstCornerDistanceMm -
+            OBSTACLE_STRAIGHT_LENGTH_MM,
+        firstCornerDistanceMm + cornerArc,
+        firstCornerDistanceMm + OBSTACLE_STRAIGHT_LENGTH_MM +
+            2.0f * cornerArc,
+        firstCornerDistanceMm + 2.0f * OBSTACLE_STRAIGHT_LENGTH_MM +
+            3.0f * cornerArc};
 
     uint8_t seatIndex = 0;
     for (uint8_t section = 0; section < 4; ++section)
@@ -249,6 +271,63 @@ void initializeSeats()
             }
         }
     }
+}
+
+PositionEstimate nominalFieldStartPose(
+    int8_t turnSign,
+    float distanceToFirstCornerMm)
+{
+    PositionEstimate pose;
+    pose.y_mm =
+        OBSTACLE_FIELD_ORIGIN_Y_MM -
+        OBSTACLE_CENTERLINE_HALF_EXTENT_MM;
+    pose.confidence_mm = 0.0f;
+
+    if (turnSign > 0)
+    {
+        // CCW: travel east (+X) along the south straight before turning left.
+        pose.x_mm =
+            OBSTACLE_FIELD_ORIGIN_X_MM +
+            OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f -
+            distanceToFirstCornerMm;
+        pose.heading_deg = 0.0f;
+    }
+    else
+    {
+        // CW: travel west (-X) along the south straight before turning right.
+        pose.x_mm =
+            OBSTACLE_FIELD_ORIGIN_X_MM -
+            OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f +
+            distanceToFirstCornerMm;
+        pose.heading_deg = 180.0f;
+    }
+    return pose;
+}
+
+uint8_t stationIndexForSeat(uint8_t seatIndex)
+{
+    return seatIndex / 2;
+}
+
+bool stationResolved(uint8_t stationIndex)
+{
+    if (stationIndex >= OBSTACLE_SEAT_COUNT / 2)
+        return true;
+    const uint8_t firstSeat = stationIndex * 2;
+    return discoveryStations[stationIndex].observedClear ||
+           seats[firstSeat].confirmed || seats[firstSeat + 1].confirmed;
+}
+
+bool allStationsResolved()
+{
+    for (uint8_t station = 0;
+         station < OBSTACLE_SEAT_COUNT / 2;
+         ++station)
+    {
+        if (!stationResolved(station))
+            return false;
+    }
+    return true;
 }
 
 int nearestSeatIndex(float x, float y, float *errorMm = nullptr)
@@ -544,92 +623,285 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
     if (previous > pathLength * 3 / 4 &&
         progressIndex < pathLength / 4)
     {
+        if (!runtimeTestMode && completedLaps == 0 &&
+            !allStationsResolved())
+        {
+            Serial.println(
+                "[PATH] Lap boundary reached with unresolved stations");
+            return;
+        }
         if (completedLaps < 255)
             ++completedLaps;
         Serial.print("[PATH] Completed lap ");
         Serial.println(completedLaps);
 
-        if (runtimeTestMode)
+        if (completedLaps >= runtimeLapTarget)
             finished = true;
         else if (completedLaps == 1)
             buildOptimizedPath();
-        else if (completedLaps >= 3)
-            finished = true;
     }
 }
 
-float computeLookSteering(const PositionEstimate &pose)
-{
-    if (completedLaps != 0)
-        return 0.0f;
+bool seatComfortablyVisible(
+    uint8_t seatIndex,
+    const PositionEstimate &pose);
 
+void applyDiscoveryTargetNudge(
+    PathPoint &target,
+    const PositionEstimate &pose)
+{
+    float desiredNudgeDeg = 0.0f;
     const float currentDistance = baselinePath[progressIndex].distanceMm;
     float bestForward = OBSTACLE_LOOK_START_MM + 1.0f;
-    float steering = 0.0f;
+    int bestStation = -1;
 
-    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    if (completedLaps == 0)
     {
-        if (seats[i].confirmed)
+        for (uint8_t station = 0;
+             station < OBSTACLE_SEAT_COUNT / COURSE_SEATS_PER_STATION;
+             ++station)
+        {
+            if (stationResolved(station))
+                continue;
+            const float forward = cyclicDistanceForward(
+                currentDistance,
+                seats[station * COURSE_SEATS_PER_STATION].pathDistanceMm);
+            if (forward < OBSTACLE_LOOK_END_MM ||
+                forward > OBSTACLE_LOOK_START_MM ||
+                forward >= bestForward)
+                continue;
+
+            bestForward = forward;
+            bestStation = station;
+        }
+    }
+
+    if (bestStation >= 0)
+    {
+        const float heading = pose.heading_deg * PI / 180.0f;
+        const float cameraX =
+            pose.x_mm + OBSTACLE_CAMERA_LOCAL_X_MM * cosf(heading) -
+            OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(heading);
+        const float cameraY =
+            pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
+            OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
+        float bearing[COURSE_SEATS_PER_STATION] = {};
+        bool visible[COURSE_SEATS_PER_STATION] = {};
+        for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
+        {
+            const uint8_t seatIndex =
+                bestStation * COURSE_SEATS_PER_STATION + side;
+            const CandidateSeat &seat = seats[seatIndex];
+            bearing[side] = wrap180(
+                atan2f(seat.y - cameraY, seat.x - cameraX) *
+                    180.0f / PI -
+                pose.heading_deg);
+            visible[side] = seatComfortablyVisible(seatIndex, pose);
+        }
+
+        DiscoveryStation &coverage = discoveryStations[bestStation];
+        if (visible[0] && visible[1])
+        {
+            // Both seats can accumulate clear evidence without steering away
+            // from the nominal path.
+            discoveryScanStation = bestStation;
+            discoveryScanSide = -1;
+        }
+        else
+        {
+            const bool selectionInvalid =
+                discoveryScanStation != bestStation ||
+                discoveryScanSide < 0 ||
+                discoveryScanSide >= COURSE_SEATS_PER_STATION ||
+                coverage.seatObservedClear[discoveryScanSide];
+            if (selectionInvalid)
+            {
+                discoveryScanStation = bestStation;
+                discoveryScanSide = -1;
+                for (uint8_t side = 0;
+                     side < COURSE_SEATS_PER_STATION;
+                     ++side)
+                {
+                    if (coverage.seatObservedClear[side])
+                        continue;
+                    if (discoveryScanSide < 0 ||
+                        (visible[side] &&
+                         !visible[discoveryScanSide]) ||
+                        (visible[side] == visible[discoveryScanSide] &&
+                         fabsf(bearing[side]) <
+                             fabsf(bearing[discoveryScanSide])))
+                        discoveryScanSide = side;
+                }
+            }
+
+            if (discoveryScanSide >= 0)
+            {
+                const float excessBearing = fmaxf(
+                    0.0f,
+                    fabsf(bearing[discoveryScanSide]) -
+                        OBSTACLE_LOOK_TARGET_BEARING_DEG);
+                const float taper = clampFloat(
+                    (OBSTACLE_LOOK_START_MM - bestForward) /
+                        (OBSTACLE_LOOK_START_MM -
+                         OBSTACLE_LOOK_FULL_NUDGE_MM),
+                    0.0f,
+                    1.0f);
+                desiredNudgeDeg = copysignf(
+                    excessBearing * OBSTACLE_LOOK_TARGET_GAIN * taper,
+                    bearing[discoveryScanSide]);
+                desiredNudgeDeg = clampFloat(
+                    desiredNudgeDeg,
+                    -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,
+                    OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
+            }
+        }
+    }
+    else
+    {
+        discoveryScanStation = -1;
+        discoveryScanSide = -1;
+    }
+
+    const uint32_t now = millis();
+    const float elapsedSeconds = lastDiscoveryNudgeUpdateMs == 0
+        ? 0.02f
+        : fminf(0.25f, (now - lastDiscoveryNudgeUpdateMs) / 1000.0f);
+    lastDiscoveryNudgeUpdateMs = now;
+    const float maximumChange =
+        OBSTACLE_LOOK_NUDGE_SLEW_DEG_S * elapsedSeconds;
+    lastDiscoveryTargetNudgeDeg += clampFloat(
+        desiredNudgeDeg - lastDiscoveryTargetNudgeDeg,
+        -maximumChange,
+        maximumChange);
+
+    const float nudge = lastDiscoveryTargetNudgeDeg * PI / 180.0f;
+    const float dx = target.x - pose.x_mm;
+    const float dy = target.y - pose.y_mm;
+    target.x = pose.x_mm + dx * cosf(nudge) - dy * sinf(nudge);
+    target.y = pose.y_mm + dx * sinf(nudge) + dy * cosf(nudge);
+}
+
+int nearestUpcomingUnresolvedStation(float &forwardMm)
+{
+    const float currentDistance = baselinePath[progressIndex].distanceMm;
+    int bestStation = -1;
+    forwardMm = loopLengthMm;
+    for (uint8_t station = 0;
+         station < OBSTACLE_SEAT_COUNT / 2;
+         ++station)
+    {
+        if (stationResolved(station))
             continue;
         const float forward = cyclicDistanceForward(
             currentDistance,
-            seats[i].pathDistanceMm);
-        if (forward < OBSTACLE_LOOK_END_MM ||
-            forward > OBSTACLE_LOOK_START_MM ||
-            forward >= bestForward)
-        {
+            seats[station * 2].pathDistanceMm);
+        // A station exactly underneath the startup pose is behind the camera;
+        // it becomes observable normally when approached at the end of lap 1.
+        if (forward <= 50.0f || forward >= forwardMm)
             continue;
-        }
-
-        const float expectedBearing = atan2f(
-            seats[i].y - pose.y_mm,
-            seats[i].x - pose.x_mm) *
-            180.0f / PI;
-        const float bearingError =
-            wrap180(expectedBearing - pose.heading_deg);
-        if (fabsf(bearingError) <=
-            OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG * 0.42f)
-        {
-            continue;
-        }
-
-        const float taper = clampFloat(
-            (OBSTACLE_LOOK_START_MM - forward) /
-                (OBSTACLE_LOOK_START_MM - OBSTACLE_LOOK_END_MM),
-            0.0f,
-            1.0f);
-        // Positive bearing is left; positive servo command is right.
-        steering = clampFloat(
-            -bearingError * OBSTACLE_LOOK_HEADING_KP * taper,
-            -OBSTACLE_LOOK_MAX_STEERING_DEG,
-            OBSTACLE_LOOK_MAX_STEERING_DEG);
-        bestForward = forward;
+        forwardMm = forward;
+        bestStation = station;
     }
-    return steering;
+    return bestStation;
 }
 
-float residualVisionSteering()
+bool seatComfortablyVisible(
+    uint8_t seatIndex,
+    const PositionEstimate &pose)
 {
-    if (completedLaps == 0)
-        return 0.0f;
+    if (seatIndex >= OBSTACLE_SEAT_COUNT)
+        return false;
 
-    const Blob *blob = getLargestValidObstacle();
-    if (blob == nullptr || !blob->found)
-        return 0.0f;
+    const float heading = pose.heading_deg * PI / 180.0f;
+    const float cameraX =
+        pose.x_mm + OBSTACLE_CAMERA_LOCAL_X_MM * cosf(heading) -
+        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(heading);
+    const float cameraY =
+        pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
+        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
+    const float bearingLimit =
+        OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG *
+        OBSTACLE_DISCOVERY_FOV_FRACTION;
 
-    const int targetX =
-        blob->color == ColorType::RED
-            ? OBSTACLE_RED_TARGET_X
-            : OBSTACLE_GREEN_TARGET_X;
-    return clampFloat(
-        (blob->centerX - targetX) * OBSTACLE_RESIDUAL_VISION_KP,
-        -OBSTACLE_RESIDUAL_VISION_MAX_DEG,
-        OBSTACLE_RESIDUAL_VISION_MAX_DEG);
+    const CandidateSeat &seat = seats[seatIndex];
+    const float dx = seat.x - cameraX;
+    const float dy = seat.y - cameraY;
+    const float range = hypotf(dx, dy);
+    const float bearing = wrap180(
+        atan2f(dy, dx) * 180.0f / PI - pose.heading_deg);
+    return range >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
+           range <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
+           fabsf(bearing) <= bearingLimit;
 }
 
-void applyTofCorrection(const PositionEstimate &pose)
+void updateDiscoveryCoverage(
+    const ObstacleObservationResult &observation,
+    const PositionEstimate &pose)
 {
-    const float pathDistance = baselinePath[progressIndex].distanceMm;
+    if (completedLaps != 0)
+        return;
+
+    const bool clearFrame =
+        observation.status == OBSTACLE_OBSERVATION_NO_BLOB;
+
+    // A difficult corner station must not prevent the camera from collecting
+    // evidence for another station that is already visible. Track every seat
+    // independently so the two sides may be verified during different parts
+    // of the camera sweep.
+    for (uint8_t station = 0;
+         station < OBSTACLE_SEAT_COUNT / COURSE_SEATS_PER_STATION;
+         ++station)
+    {
+        if (stationResolved(station))
+            continue;
+
+        DiscoveryStation &coverage = discoveryStations[station];
+        for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
+        {
+            if (coverage.seatObservedClear[side])
+                continue;
+
+            const uint8_t seatIndex =
+                station * COURSE_SEATS_PER_STATION + side;
+            if (!seatComfortablyVisible(seatIndex, pose) || !clearFrame)
+            {
+                coverage.clearFrames[side] = 0;
+                continue;
+            }
+
+            if (coverage.clearFrames[side] < 255)
+                ++coverage.clearFrames[side];
+            if (coverage.clearFrames[side] >=
+                OBSTACLE_DISCOVERY_CLEAR_FRAMES)
+                coverage.seatObservedClear[side] = true;
+        }
+
+        if (!coverage.seatObservedClear[0] ||
+            !coverage.seatObservedClear[1])
+            continue;
+
+        coverage.observedClear = true;
+        const uint8_t firstSeat =
+            station * COURSE_SEATS_PER_STATION;
+        course_map_record_clear_station(
+            station / COURSE_STATIONS_PER_SECTION,
+            station % COURSE_STATIONS_PER_SECTION,
+            seats[firstSeat].x,
+            seats[firstSeat].y,
+            seats[firstSeat + 1].x,
+            seats[firstSeat + 1].y);
+    }
+}
+
+ObstacleTofCorrectionResult applyTofCorrectionAt(
+    const PositionEstimate &pose,
+    float pathDistance)
+{
+    ObstacleTofCorrectionResult result;
+    if (!running || pathLength < 2 || !isfinite(pathDistance))
+        return result;
+
+    result.geometryReady = true;
     int cornerIndex = -1;
     for (uint8_t corner = 0; corner < 4; ++corner)
     {
@@ -640,7 +912,7 @@ void applyTofCorrection(const PositionEstimate &pose)
         }
     }
 
-    const PathPoint center = baselinePath[progressIndex];
+    const PathPoint center = interpolateBaseline(pathDistance);
     const float pathHeading = center.headingDeg * PI / 180.0f;
     const float wallNormalX = -sinf(pathHeading);
     const float wallNormalY = cosf(pathHeading);
@@ -654,6 +926,19 @@ void applyTofCorrection(const PositionEstimate &pose)
     for (uint8_t sensorIndex = 0; sensorIndex < 2; ++sensorIndex)
     {
         const bool left = sensorIndex == 0;
+        const TofSensor sensor = left ? TOF_LEFT : TOF_RIGHT;
+        TofDiagnosticSnapshot snapshot;
+        if (!get_tof_diagnostic_snapshot(sensor, snapshot) ||
+            snapshot.sequence == lastTofCorrectionSequence[sensor])
+            continue;
+        lastTofCorrectionSequence[sensor] = snapshot.sequence;
+
+        const float reading = snapshot.filtered_distance_mm;
+        if (left)
+            result.leftReadingMm = reading;
+        else
+            result.rightReadingMm = reading;
+
         // The inside wall opens at a known corner: left for a left-turning
         // route, right for a right-turning route. This is the precomputed
         // corner-side geometry gate; no measurement-jump detector is used.
@@ -662,11 +947,12 @@ void applyTofCorrection(const PositionEstimate &pose)
             (left
                  ? corners[cornerIndex].recedesOnLeft
                  : corners[cornerIndex].recedesOnRight);
+        if (left)
+            result.leftCornerGated = recedingAtCorner;
+        else
+            result.rightCornerGated = recedingAtCorner;
         if (recedingAtCorner)
             continue;
-
-        const float reading = get_tof_distance(
-            left ? TOF_LEFT : TOF_RIGHT);
         if (reading <= 0.0f ||
             reading >= OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM)
         {
@@ -707,15 +993,22 @@ void applyTofCorrection(const PositionEstimate &pose)
             OBSTACLE_TOF_CORRECTION_MAX_STEP_MM);
         correctionX += wallNormalX * lateralError;
         correctionY += wallNormalY * lateralError;
+        if (left)
+            result.leftUsed = true;
+        else
+            result.rightUsed = true;
         ++corrections;
     }
 
     if (corrections > 0)
     {
+        result.correctionXmm = correctionX / corrections;
+        result.correctionYmm = correctionY / corrections;
         position_apply_xy_correction(
-            correctionX / corrections,
-            correctionY / corrections);
+            result.correctionXmm,
+            result.correctionYmm);
     }
+    return result;
 }
 
 PathPoint findLookahead(
@@ -749,17 +1042,70 @@ void obstacle_path_reset()
     finished = false;
     optimizedBuilt = false;
     runtimeTestMode = false;
+    runtimeLapTarget = 3;
+    runtimeSpeedCapMmS = 0.0f;
     loopLengthMm = 0.0f;
+    firstCornerDistanceMm = OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f;
     injectionCount = 0;
+    discoveryBlocked = false;
+    discoveryBlockedStation = -1;
+    lastDiscoveryTargetNudgeDeg = 0.0f;
+    discoveryScanStation = -1;
+    discoveryScanSide = -1;
+    lastDiscoveryNudgeUpdateMs = 0;
+    memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     memset(seats, 0, sizeof(seats));
+    memset(discoveryStations, 0, sizeof(discoveryStations));
 }
 
-void obstacle_path_start(int8_t turn_sign, bool test_mode)
+void obstacle_path_start(
+    int8_t turn_sign,
+    bool test_mode,
+    float first_corner_distance_mm,
+    uint8_t lap_target,
+    float speed_cap_mm_s)
 {
     obstacle_path_reset();
     runtimeTestMode = test_mode;
+    runtimeLapTarget = lap_target > 0
+        ? lap_target
+        : (runtimeTestMode ? 1 : 3);
+    runtimeSpeedCapMmS = isfinite(speed_cap_mm_s) && speed_cap_mm_s > 0.0f
+        ? speed_cap_mm_s
+        : 0.0f;
     routeTurnSign = turn_sign < 0 ? -1 : 1;
-    const PositionEstimate anchor = get_position_struct();
+    firstCornerDistanceMm = clampFloat(
+        first_corner_distance_mm,
+        50.0f,
+        OBSTACLE_STRAIGHT_LENGTH_MM - 50.0f);
+    PositionEstimate anchor;
+    if (runtimeTestMode)
+    {
+        // Bench/empty-track tests remain portable: their path begins wherever
+        // the robot was placed instead of requiring a physical field origin.
+        anchor = get_position_struct();
+    }
+    else
+    {
+        // The calibrated parking exit establishes the production field pose.
+        // Subsequent encoder/gyro odometry and ToF corrections now live in the
+        // same fixed frame as every path point and pillar seat.
+        anchor = nominalFieldStartPose(
+            routeTurnSign,
+            firstCornerDistanceMm);
+        position_reset(
+            anchor.x_mm,
+            anchor.y_mm,
+            anchor.heading_deg);
+        anchor = get_position_struct();
+
+        Serial.print("[FIELD] Nominal exit pose x=");
+        Serial.print(anchor.x_mm, 1);
+        Serial.print(" y=");
+        Serial.print(anchor.y_mm, 1);
+        Serial.print(" heading=");
+        Serial.println(anchor.heading_deg, 1);
+    }
 
     float x = 0.0f;
     float y = 0.0f;
@@ -767,14 +1113,14 @@ void obstacle_path_start(int8_t turn_sign, bool test_mode)
     float distance = 0.0f;
     appendLocalPoint(x, y, 0.0f, distance, anchor);
     appendStraight(
-        OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f,
+        firstCornerDistanceMm,
         x, y, heading, distance, anchor);
     for (uint8_t corner = 0; corner < 4; ++corner)
     {
         appendCorner(corner, x, y, heading, distance, anchor);
         appendStraight(
             corner == 3
-                ? OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f
+                ? OBSTACLE_STRAIGHT_LENGTH_MM - firstCornerDistanceMm
                 : OBSTACLE_STRAIGHT_LENGTH_MM,
             x, y, heading, distance, anchor);
     }
@@ -792,7 +1138,9 @@ void obstacle_path_start(int8_t turn_sign, bool test_mode)
     Serial.print(" length_mm=");
     Serial.print(loopLengthMm, 0);
     Serial.print(" turns=");
-    Serial.println(routeTurnSign > 0 ? "LEFT" : "RIGHT");
+    Serial.print(routeTurnSign > 0 ? "LEFT" : "RIGHT");
+    Serial.print(" first_corner_mm=");
+    Serial.println(firstCornerDistanceMm, 0);
 }
 
 void obstacle_path_update(bool new_camera_frame)
@@ -810,11 +1158,19 @@ void obstacle_path_update(bool new_camera_frame)
     if (!runtimeTestMode && new_camera_frame)
     {
         if (completedLaps == 0)
-            obstacle_path_observe(getLargestValidObstacle());
+        {
+            const ObstacleObservationResult observation =
+                obstacle_path_observe(getLargestValidObstacle());
+            updateDiscoveryCoverage(
+                observation,
+                pose);
+        }
     }
 
     if (!runtimeTestMode)
-        applyTofCorrection(pose);
+        applyTofCorrectionAt(
+            pose,
+            baselinePath[progressIndex].distanceMm);
     pose = get_position_struct();
 
     const PathPoint &progress = path[progressIndex];
@@ -831,7 +1187,9 @@ void obstacle_path_update(bool new_camera_frame)
     if (constrainedGeometry)
         lookahead *= OBSTACLE_LOOKAHEAD_CORNER_SCALE;
 
-    const PathPoint target = findLookahead(path, pose, lookahead);
+    PathPoint target = findLookahead(path, pose, lookahead);
+    if (!runtimeTestMode)
+        applyDiscoveryTargetNudge(target, pose);
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
     const float heading = pose.heading_deg * PI / 180.0f;
@@ -839,22 +1197,51 @@ void obstacle_path_update(bool new_camera_frame)
     const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
     const float curvature = 2.0f * localY / targetDistanceSquared;
     // Positive geometric curvature is left; positive servo command is right.
-    float steering =
-        -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
-    if (!runtimeTestMode)
-        steering += computeLookSteering(pose);
-    if (!runtimeTestMode && new_camera_frame)
-        steering += residualVisionSteering();
-    steering = clampFloat(
-        steering,
+    const float steering = clampFloat(
+        -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI,
         -OBSTACLE_MAX_PURSUIT_STEERING_DEG,
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
 
     set_steering(static_cast<int>(steering));
-    const float commandedSpeed = runtimeTestMode
+    float commandedSpeed = runtimeTestMode
         ? fminf(progress.speedMmS, OBSTACLE_PATH_TEST_MAX_SPEED_MM_S)
         : progress.speedMmS;
-    set_speed(static_cast<int>(commandedSpeed));
+    if (runtimeSpeedCapMmS > 0.0f)
+        commandedSpeed = fminf(commandedSpeed, runtimeSpeedCapMmS);
+    float safeSpeed = commandedSpeed;
+    if (!runtimeTestMode && completedLaps == 0)
+    {
+        float unresolvedForward = 0.0f;
+        const int unresolvedStation =
+            nearestUpcomingUnresolvedStation(unresolvedForward);
+        if (unresolvedStation >= 0)
+        {
+            if (unresolvedForward <=
+                OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM)
+            {
+                safeSpeed = 0.0f;
+                if (!discoveryBlocked)
+                {
+                    discoveryBlocked = true;
+                    discoveryBlockedStation = unresolvedStation;
+                    Serial.print("[PATH] Perception blocked at S");
+                    Serial.print(unresolvedStation /
+                                 COURSE_STATIONS_PER_SECTION);
+                    Serial.print(" station=");
+                    Serial.print(unresolvedStation %
+                                 COURSE_STATIONS_PER_SECTION);
+                    Serial.print(" forward_mm=");
+                    Serial.println(unresolvedForward, 0);
+                }
+            }
+            else if (unresolvedForward <=
+                     OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM)
+                safeSpeed = fminf(
+                    safeSpeed,
+                    OBSTACLE_DISCOVERY_SPEED_MM_S);
+        }
+    }
+    set_speed(static_cast<int>(safeSpeed));
 }
 
 bool obstacle_path_started()
@@ -865,6 +1252,29 @@ bool obstacle_path_started()
 bool obstacle_path_complete()
 {
     return finished;
+}
+
+bool obstacle_path_perception_blocked()
+{
+    return discoveryBlocked;
+}
+
+int8_t obstacle_path_blocked_station()
+{
+    return discoveryBlockedStation;
+}
+
+float obstacle_path_discovery_target_nudge_deg()
+{
+    return lastDiscoveryTargetNudgeDeg;
+}
+
+int8_t obstacle_path_discovery_scan_seat()
+{
+    if (discoveryScanStation < 0 || discoveryScanSide < 0)
+        return -1;
+    return discoveryScanStation * COURSE_SEATS_PER_STATION +
+           discoveryScanSide;
 }
 
 uint8_t obstacle_path_lap()
@@ -986,6 +1396,32 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
+    if (!runtimeTestMode)
+    {
+        // Permit any upcoming station within the calibrated camera horizon.
+        // The seat snap still rejects a noisy estimate elsewhere on the field,
+        // while a difficult corner station no longer masks another station.
+        const uint8_t observedStation = stationIndexForSeat(
+            static_cast<uint8_t>(result.seatId));
+        const float currentDistance =
+            baselinePath[progressIndex].distanceMm;
+        const float observedForward = cyclicDistanceForward(
+            currentDistance,
+            seats[observedStation * COURSE_SEATS_PER_STATION].pathDistanceMm);
+        const float maximumRelevantForward =
+            OBSTACLE_CAMERA_LOCAL_X_MM +
+            OBSTACLE_DISCOVERY_VIEW_MAX_MM +
+            OBSTACLE_SEAT_SNAP_RADIUS_MM;
+        if (observedForward <= 1.0f ||
+            observedForward > maximumRelevantForward)
+        {
+            expirePendingVotes();
+            result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+            result.seatId = -1;
+            return result;
+        }
+    }
+
     prepareConsecutiveVote(result.seatId, blob->color);
     CandidateSeat &seat = seats[result.seatId];
     if (seat.confirmed)
@@ -1015,6 +1451,15 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         Serial.print(result.seatId);
         Serial.print(" color=");
         Serial.println(seat.red ? "RED" : "GREEN");
+
+        const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
+        course_map_record_seat_obstacle(
+            seatIndex / 6,
+            (seatIndex % 6) / 2,
+            seatIndex % 2,
+            seat.red ? ColorType::RED : ColorType::GREEN,
+            seat.x,
+            seat.y);
     }
     else
     {
@@ -1083,6 +1528,64 @@ uint16_t obstacle_path_injection_count()
     return injectionCount;
 }
 
+bool obstacle_path_prepare_tof_diagnostic(
+    int8_t turn_sign,
+    bool corner,
+    uint8_t index,
+    float initial_lateral_mm,
+    float &path_distance_mm,
+    float &center_x_mm,
+    float &center_y_mm,
+    float &heading_deg)
+{
+    if ((corner && index >= 4) || (!corner && index >= 4) ||
+        !isfinite(initial_lateral_mm) ||
+        fabsf(initial_lateral_mm) > OBSTACLE_CORRIDOR_HALF_WIDTH_MM)
+        return false;
+
+    const int8_t direction = turn_sign < 0 ? -1 : 1;
+    const float firstCorner = direction > 0
+        ? OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM
+        : OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM;
+    obstacle_path_start(direction, false, firstCorner);
+    if (!running)
+        return false;
+
+    PathPoint center;
+    if (corner)
+    {
+        path_distance_mm =
+            0.5f * (corners[index].pathStartMm + corners[index].pathEndMm);
+        center = interpolateBaseline(path_distance_mm);
+    }
+    else
+    {
+        const CandidateSeat &seat = seats[index * 6 + 2];
+        path_distance_mm = seat.pathDistanceMm;
+        center = interpolateBaseline(path_distance_mm);
+    }
+
+    const float headingRad = center.headingDeg * PI / 180.0f;
+    const float normalX = -sinf(headingRad);
+    const float normalY = cosf(headingRad);
+    center_x_mm = center.x;
+    center_y_mm = center.y;
+    heading_deg = center.headingDeg;
+    position_reset(
+        center.x + normalX * initial_lateral_mm,
+        center.y + normalY * initial_lateral_mm,
+        center.headingDeg);
+    return true;
+}
+
+ObstacleTofCorrectionResult obstacle_path_apply_tof_diagnostic(
+    float path_distance_mm)
+{
+    return applyTofCorrectionAt(
+        get_position_struct(),
+        path_distance_mm);
+}
+
 bool obstacle_path_geometry_preflight()
 {
     if (!obstacle_path_geometry_valid() ||
@@ -1098,6 +1601,22 @@ bool obstacle_path_geometry_preflight()
     imageRight.centerX = 220;
     if (obstacle_camera_bearing_deg(&imageLeft) <= 0.0f ||
         obstacle_camera_bearing_deg(&imageRight) >= 0.0f)
+        return false;
+
+    Blob pillarShape;
+    pillarShape.found = true;
+    pillarShape.color = ColorType::RED;
+    pillarShape.centerX = 100;
+    pillarShape.minX = 70;
+    pillarShape.maxX = 110;
+    pillarShape.minY = 80;
+    pillarShape.maxY = 166;
+    pillarShape.area = 1200;
+    Blob floorFragment = pillarShape;
+    floorFragment.minY = 132;
+    floorFragment.maxY = 174;
+    if (!obstacle_blob_valid_for_acquisition(&pillarShape) ||
+        obstacle_blob_valid_for_acquisition(&floorFragment))
         return false;
 
     const float inside = OBSTACLE_SEAT_SNAP_RADIUS_MM - 1.0f;

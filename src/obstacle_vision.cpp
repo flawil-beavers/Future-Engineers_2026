@@ -231,9 +231,13 @@ float obstacle_camera_bearing_deg(const Blob *obstacle)
         return 0.0f;
 
     // Image X grows to the right, while the path/global convention uses a
-    // positive bearing to the robot's left.
-    return (160.0f - static_cast<float>(obstacle->centerX)) *
-           (OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG / 320.0f);
+    // positive bearing to the robot's left. Use the surveyed optical centre
+    // and focal length instead of assuming a centred, angle-linear image.
+    return atanf(
+               (OBSTACLE_CAMERA_PRINCIPAL_X_PX -
+                static_cast<float>(obstacle->centerX)) /
+               OBSTACLE_CAMERA_FOCAL_X_PX) *
+           180.0f / PI;
 }
 
 float obstacle_estimate_camera_forward_mm(const Blob *obstacle)
@@ -244,8 +248,14 @@ float obstacle_estimate_camera_forward_mm(const Blob *obstacle)
     if (obstacle->minX <= 2 || obstacle->maxX >= 317)
         return OBSTACLE_EDGE_CLIPPED_RANGE_MM;
 
-    const float ground_denominator =
+    const float horizontalOffset = fabsf(
+        static_cast<float>(obstacle->centerX) -
+        OBSTACLE_CAMERA_PRINCIPAL_X_PX);
+    const float correctedFootY =
         static_cast<float>(obstacle->maxY) -
+        OBSTACLE_CAMERA_FOOT_EDGE_SLOPE * horizontalOffset;
+    const float ground_denominator =
+        correctedFootY -
         OBSTACLE_CAMERA_GROUND_HORIZON_Y;
     if (ground_denominator > 1.0f)
     {

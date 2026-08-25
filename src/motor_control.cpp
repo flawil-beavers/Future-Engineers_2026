@@ -382,6 +382,15 @@ void drive_loop()
 
   if (dc_state == DC_ENABLED)
   {
+    // A resumed forward command must never inherit enough negative ramp
+    // acceleration to make the speed profile briefly reverse (and vice versa).
+    if (target_speed > 0 && current_speed <= 0.0f &&
+        current_acceleration < 0.0f)
+        current_acceleration = 0.0f;
+    else if (target_speed < 0 && current_speed >= 0.0f &&
+             current_acceleration > 0.0f)
+        current_acceleration = 0.0f;
+
     active_acceleration_limit = target_speed == 0
         ? fminf(SOFT_STOP_DECELERATION_MMSS, acc)
         : constrain(
@@ -410,8 +419,17 @@ void drive_loop()
         -max_acceleration_change,
         max_acceleration_change);
 
-    const float next_speed =
+    float next_speed =
         current_speed + current_acceleration * last_loop_time;
+    const bool crossesForwardTarget =
+        target_speed > 0 && next_speed < 0.0f;
+    const bool crossesReverseTarget =
+        target_speed < 0 && next_speed > 0.0f;
+    const bool crossesZeroTarget = target_speed == 0 &&
+        ((current_speed > 0.0f && next_speed < 0.0f) ||
+         (current_speed < 0.0f && next_speed > 0.0f));
+    if (crossesForwardTarget || crossesReverseTarget || crossesZeroTarget)
+        next_speed = 0.0f;
     if ((speed_error > 0.0f && next_speed >= target_speed) ||
         (speed_error < 0.0f && next_speed <= target_speed) ||
         fabsf(speed_error) <= 0.5f)

@@ -774,6 +774,11 @@ bool obstacle_blob_valid_for_acquisition(
         return false;
     }
 
+    if (obstacle->minY > OBSTACLE_MAX_TOP_Y)
+    {
+        return false;
+    }
+
     if (
         obstacle->centerX < OBSTACLE_START_MIN_X ||
         obstacle->centerX > OBSTACLE_START_MAX_X ||
@@ -1593,7 +1598,14 @@ void obstacle_challenge_update(
             OBSTACLE_PARKING_EXIT_ENABLED
                 ? (oc_parking_exit_steering > 0 ? -1 : 1)
                 : OBSTACLE_DEFAULT_TURN_SIGN;
-        obstacle_path_start(turnSign);
+        const float firstCornerDistance =
+            turnSign > 0
+                ? OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM
+                : OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM;
+        obstacle_path_start(
+            turnSign,
+            false,
+            firstCornerDistance);
     }
 
     if (!obstacle_path_complete())

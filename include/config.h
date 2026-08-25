@@ -271,6 +271,14 @@ constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS = 450;
 constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS = 250;
 constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 
+// Calibrated route phase after the parking manoeuvre: distance from the rear
+// axle at the aligned exit pose to the first centreline corner. The parking
+// bay is not centred on its straight, so clockwise and counter-clockwise runs
+// deliberately have separate values. Measure these on the assembled field;
+// 500 mm preserves the former midpoint assumption until then.
+constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM = 500.0f;
+constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM = 500.0f;
+
 // Camera processing
 constexpr auto OBSTACLE_CAMERA_INTERVAL_MS = 50;
 
@@ -329,6 +337,11 @@ constexpr auto OBSTACLE_WALL_GUARD_MAX_STEERING = 18.0f;
 
 // A block must extend this far down in the logical 320x240 image.
 constexpr auto OBSTACLE_MIN_BOTTOM_Y = 100;
+// A real 100 mm pillar intersects the obstacle ROI's upper boundary throughout
+// the acquisition range. Floor-line fragments begin substantially lower in
+// the image; requiring the blob to reach near the ROI top rejects them even
+// when lighting shifts orange pixels into the red hue range.
+constexpr auto OBSTACLE_MAX_TOP_Y = 100;
 
 // Upright WRO obstacle blocks are taller than they are wide. This rejects
 // broad greenish background regions and blobs merged with the horizon.
@@ -385,6 +398,17 @@ constexpr auto OBSTACLE_WHEELBASE_MM = 100.0f;
 constexpr auto OBSTACLE_MAX_PATH_WAYPOINTS = 192;
 constexpr auto OBSTACLE_SEAT_COUNT = 24;
 
+// Canonical field frame used by production obstacle navigation. The origin is
+// the geometric centre of the rounded-square centreline, +X points along the
+// south straight toward its CCW corner, and +Y points toward the north side.
+// With the known geometry the centreline tangencies and outer arc extrema fit
+// inside +/-1000 mm on both axes.
+constexpr auto OBSTACLE_FIELD_ORIGIN_X_MM = 0.0f;
+constexpr auto OBSTACLE_FIELD_ORIGIN_Y_MM = 0.0f;
+constexpr auto OBSTACLE_CENTERLINE_HALF_EXTENT_MM =
+    OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f +
+    OBSTACLE_CORNER_RADIUS_MM;
+
 // If the parking exit is disabled, the code cannot infer which way around
 // the field the car was placed. Set +1 for left/CCW corners or -1 for
 // right/CW corners before that test. A parking-lot start infers this from the
@@ -408,9 +432,28 @@ constexpr auto OBSTACLE_SEAT_SNAP_RADIUS_MM = 140.0f;
 constexpr auto OBSTACLE_SEAT_CONFIRM_VOTES = 2;
 constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 
+// First-lap discovery must resolve a station before the car reaches it. Empty
+// stations require several camera frames in which both legal seats were well
+// inside the calibrated field of view. If a station is still unknown near the
+// decision point, slow down and finally hold rather than risk a wrong pass.
+constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 260.0f;
+constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
+constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.40f;
+constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 5;
+constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
+constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 170.0f;
+// The drivetrain oscillates below its continuous controllable range at
+// 90 mm/s. Use the already validated test speed while approaching an unresolved
+// station; the final hold remains available if perception cannot resolve it.
+constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 175.0f;
+
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
-constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 60.0f;
+// Horizontal pinhole calibration from surveyed +/-100 mm pillar offsets at
+// 400 and 600 mm ray range. The resulting usable 320 px field is about 42 deg.
+constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 42.0f;
+constexpr auto OBSTACLE_CAMERA_PRINCIPAL_X_PX = 154.9f;
+constexpr auto OBSTACLE_CAMERA_FOCAL_X_PX = 417.5f;
 // Measure both values along the robot centreline whenever the camera or body
 // changes. ROBOT_FRONT_FROM_REAR_AXLE_MM is the plane touched by the near face
 // of the pillar at the start of a camdrive calibration.
@@ -428,6 +471,10 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // distance = scale / (maxY - horizonY).
 constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 60.0f;
 constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 36000.0f;
+// The wide-angle lens moves the apparent ground contact lower toward either
+// image edge. Remove that measured V-shaped bias before applying the centreline
+// ground-plane fit. Units are vertical foot pixels per horizontal pixel.
+constexpr auto OBSTACLE_CAMERA_FOOT_EDGE_SLOPE = 0.11f;
 
 // Automated camera ground-plane calibration (serial: camdrive [reverse_mm]).
 // The pillar starts touching ROBOT_FRONT_FROM_REAR_AXLE_MM; encoder travel and
@@ -469,12 +516,16 @@ constexpr auto CAMERA_DRIVE_CAL_MAX_FIT_RMSE_PX = 5.0f;
 constexpr auto OBSTACLE_CAMERA_FOCAL_LENGTH_PX = 277.0f;
 constexpr auto OBSTACLE_PILLAR_HEIGHT_MM = 100.0f;
 constexpr auto OBSTACLE_EDGE_CLIPPED_RANGE_MM = 170.0f;
-constexpr auto OBSTACLE_LOOK_START_MM = 420.0f;
+// A corner-exit inside seat is about 54 degrees off the nominal camera axis
+// while still in the calibrated range. Begin a Pure-Pursuit target scan early
+// enough to rotate the chassis/camera toward it before reaching the tangent.
+constexpr auto OBSTACLE_LOOK_START_MM = 700.0f;
+constexpr auto OBSTACLE_LOOK_FULL_NUDGE_MM = 550.0f;
 constexpr auto OBSTACLE_LOOK_END_MM = 80.0f;
-constexpr auto OBSTACLE_LOOK_HEADING_KP = 0.22f;
-constexpr auto OBSTACLE_LOOK_MAX_STEERING_DEG = 9.0f;
-constexpr auto OBSTACLE_RESIDUAL_VISION_KP = 0.025f;
-constexpr auto OBSTACLE_RESIDUAL_VISION_MAX_DEG = 4.0f;
+constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 0.75f;
+constexpr auto OBSTACLE_LOOK_TARGET_BEARING_DEG = 8.0f;
+constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 35.0f;
+constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 
 // ToF locations in the robot frame: +X forward, +Y left. The documented
 // 120 mm body width places the side-facing sensor apertures about 60 mm from
@@ -494,12 +545,16 @@ constexpr auto OBSTACLE_CORNER_GATE_AFTER_MM = 280.0f;
 // it measures only path anchoring, direction, odometry and path tracking.
 constexpr auto OBSTACLE_PATH_TEST_MAX_SPEED_MM_S = 175.0f;
 constexpr auto OBSTACLE_PATH_TEST_TIMEOUT_MS = 75000UL;
+// Valid only for the empty-track X test. The live Y test cannot distinguish a
+// legal pillar from a wall using one raw side-ToF range.
 constexpr auto OBSTACLE_PATH_TEST_WALL_STOP_MM = 120.0f;
 constexpr auto OBSTACLE_PATH_TEST_ABORT_CROSS_TRACK_MM = 300.0f;
 constexpr auto OBSTACLE_PATH_TEST_PASS_CROSS_TRACK_MM = 180.0f;
 constexpr auto OBSTACLE_PATH_TEST_PASS_POSITION_MM = 200.0f;
 constexpr auto OBSTACLE_PATH_TEST_PASS_HEADING_DEG = 12.0f;
 constexpr auto OBSTACLE_PATH_TEST_TELEMETRY_MS = 500UL;
+constexpr auto OBSTACLE_LIVE_TEST_TIMEOUT_MS = 120000UL;
+constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 
 
 

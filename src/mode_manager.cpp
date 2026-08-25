@@ -12,6 +12,7 @@
 #include "navigation_controller.h"
 #include "obstacle.h"
 #include "obstacle_path_test.h"
+#include "obstacle_live_test.h"
 #include "obstacle_seat_test.h"
 #include "sensors.h"
 #include "position_estimator.h"
@@ -71,6 +72,10 @@ static void stop_mode(RobotMode mode)
 
     case MODE_OBSTACLE_PATH_TEST:
         obstacle_path_test_stop();
+        break;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        obstacle_live_test_stop();
         break;
 
     case MODE_OBSTACLE_SEAT_TEST:
@@ -144,6 +149,12 @@ static bool start_mode(RobotMode mode)
 
     case MODE_OBSTACLE_PATH_TEST:
         obstacle_path_test_start();
+        break;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        if (!obstacle_camera_setup())
+            return false;
+        obstacle_live_test_start();
         break;
 
     case MODE_OBSTACLE_SEAT_TEST:
@@ -273,6 +284,15 @@ static ModeResult update_active_mode()
         if (!obstacle_path_test_finished())
             return MODE_RESULT_RUNNING;
         return obstacle_path_test_passed()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_FAILED;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        obstacle_live_test_update(updateCameraVision());
+        drive_loop();
+        if (!obstacle_live_test_finished())
+            return MODE_RESULT_RUNNING;
+        return obstacle_live_test_passed()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_FAILED;
 
@@ -434,6 +454,7 @@ const char* mode_name(RobotMode mode)
     case MODE_OPEN_CHALLENGE:     return "OPEN_CHALLENGE";
     case MODE_OBSTACLE_CHALLENGE: return "OBSTACLE_CHALLENGE";
     case MODE_OBSTACLE_PATH_TEST: return "OBSTACLE_PATH_TEST";
+    case MODE_OBSTACLE_LIVE_TEST: return "OBSTACLE_LIVE_TEST";
     case MODE_OBSTACLE_SEAT_TEST: return "OBSTACLE_SEAT_TEST";
     case MODE_OBSTACLE_BENCH:     return "OBSTACLE_BENCH";
     case MODE_CAMERA_CALIBRATION:  return "CAMERA_CALIBRATION";
