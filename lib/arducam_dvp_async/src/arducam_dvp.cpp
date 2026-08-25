@@ -123,6 +123,7 @@ static const struct { GPIO_TypeDef *port; uint16_t pin; } dcmi_pins[] = {
 static TIM_HandleTypeDef  htim  = {0};
 static DMA_HandleTypeDef  hdma  = {0};
 static DCMI_HandleTypeDef hdcmi = {0};
+static volatile uint32_t dcmi_frame_completed_us = 0;
 
 /// Table to store the amount of bytes per pixel for each pixel format
 const uint32_t pixtab[CAMERA_PMAX] = {
@@ -327,6 +328,12 @@ void DCMI_IRQHandler(void)
 void DMA2_Stream3_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&hdma);
+}
+
+void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *handle)
+{
+    if (handle == &hdcmi)
+        dcmi_frame_completed_us = micros();
 }
 
 inline void pixelDataAssemble(uint8_t *framebuffer,uint32_t framesize)
@@ -697,6 +704,7 @@ int Camera::startFrame(FrameBuffer &fb)
         return -1;
     }
 
+    dcmi_frame_completed_us = 0;
     if (HAL_DCMI_Start_DMA(
             &hdcmi,
             DCMI_MODE_SNAPSHOT,
@@ -714,6 +722,11 @@ bool Camera::frameReady() const
 {
     return this->_framebuffer != NULL &&
            !(hdcmi.Instance->CR & DCMI_CR_CAPTURE);
+}
+
+uint32_t Camera::frameCompletedTimeUs() const
+{
+    return dcmi_frame_completed_us;
 }
 
 int Camera::finishFrame()

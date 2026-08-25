@@ -14,6 +14,9 @@ float red_focal_sum_px = 0.0f;
 float green_focal_sum_px = 0.0f;
 float red_range_error_sum_mm = 0.0f;
 float green_range_error_sum_mm = 0.0f;
+uint32_t camera_test_frames = 0;
+uint32_t camera_test_red_valid = 0;
+uint32_t camera_test_green_valid = 0;
 
 void printCalibrationBlob(
     const char *name,
@@ -105,16 +108,28 @@ bool updateCameraVision()
     if (!camera.capture())
         return false;
 
-    return vision.update(
+    const bool updated = vision.update(
         camera.getBuffer(),
         camera.getWidth(),
         camera.getHeight());
+    if (updated)
+    {
+        const VisionResult &result = vision.getResult();
+        ++camera_test_frames;
+        camera_test_red_valid +=
+            obstacle_blob_valid_for_acquisition(&result.red) ? 1U : 0U;
+        camera_test_green_valid +=
+            obstacle_blob_valid_for_acquisition(&result.green) ? 1U : 0U;
+    }
+    return updated;
 }
 
 void printCameraCalibration()
 {
     static uint32_t last_print = 0;
-    if (millis() - last_print < 500)
+    // Keep test telemetry sparse: USB logging must not distort camera-service
+    // latency or compete with normal control-loop work.
+    if (millis() - last_print < 2000)
         return;
 
     last_print = millis();
@@ -147,8 +162,26 @@ void printCameraCalibration()
 #endif
     Serial.print(" frame=");
     Serial.print(camera.getCompletedFrameCount());
+    Serial.print(" test_frames=");
+    Serial.print(camera_test_frames);
+    Serial.print(" red_valid=");
+    Serial.print(camera_test_red_valid);
+    Serial.print(" green_valid=");
+    Serial.print(camera_test_green_valid);
     Serial.print(" capture_ms=");
     Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
+    Serial.print(" ready_wait_ms=");
+    Serial.print(camera.getLastReadyWaitTimeUs() / 1000.0f, 3);
+    Serial.print(" frame_interval_ms=");
+    Serial.print(camera.getLastFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_min_ms=");
+    Serial.print(camera.getMinFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_max_ms=");
+    Serial.print(camera.getMaxFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" missed_intervals=");
+    Serial.print(camera.getLongFrameIntervalCount());
+    Serial.print(" exposure_lines=");
+    Serial.print(camera.getExposureLines());
     Serial.print(" service_us=");
     Serial.print(camera.getLastServiceTimeUs());
     Serial.print(" processing_ms=");

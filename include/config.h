@@ -589,4 +589,10 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 // auto-start exception never enables a mode that can request motor movement.
 #define CAMERA_ASYNC_STATIONARY_AUTOSTART true
 #define CAMERA_ASYNC_CAPTURE_ENABLED true
+// GC2145 timing profile. At 24 MHz XCLK the sensor's input divide-by-two bit
+// preserves the proven 12 MHz internal timing. CAMERA_GC2145_PLL_DIVX4 can
+// then be raised independently in controlled tests to increase frame rate.
+#define CAMERA_SENSOR_XCLK_HZ 24000000UL
+#define CAMERA_GC2145_PLL_MODE1 0x1F
+#define CAMERA_GC2145_PLL_DIVX4 0x05
 #define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION
