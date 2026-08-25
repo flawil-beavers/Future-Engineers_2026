@@ -19,7 +19,7 @@ check is repeated before every powered run and is not a one-time checkbox.
 | Corner speed profile | Deferred | At the current 175 mm/s test cap it does not limit testing. Tune it only when increasing toward production speed. |
 | Pure-Pursuit-only control | Implemented; robot regression pending | Lap-1 discovery adjusts only the temporary lookahead target. Pure Pursuit alone converts that target to steering, and the later-lap residual steering overlay has been removed. |
 | ToF pose correction | Complete | Both sensors passed range checks; left/right correction signs, a perpendicular-axis transform, the 500 mm cutoff, fresh-sequence gating, and both direction-specific corner gates passed. |
-| Live obstacle laps | Earlier single-seat nudge implemented; robot regression pending | `log_37` correctly injected red seat 5 and cleared every S1 station, but left seat 13 never entered the accepted camera view at S2 station 0. The stored route remains unchanged. Discovery now begins target orientation at 850 mm and, after one side clears, brings the remaining seat toward 12 degrees instead of accepting it near the view edge. Repeat the same layout. |
+| Live obstacle laps | Async camera merge requires stationary regression first | `log_37` isolated the S2 visibility failure and the earlier single-seat nudge is implemented, but the camera pipeline is now asynchronous with SDRAM A/B buffers. Before another powered run, repeat the representative seat and field-clear checks. Then repeat the same red-left layout. |
 | Final parking | Not implemented | Keep separate until three obstacle laps work reliably. |
 
 ## Safety before every powered test

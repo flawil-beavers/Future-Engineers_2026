@@ -1,4 +1,6 @@
 #include "camera.h"
+#include "config.h"
+#include <SDRAM.h>
 
 FullFovGC2145::FullFovGC2145(arduino::MbedI2C &cameraI2c)
     : GC2145(cameraI2c),
@@ -52,45 +54,93 @@ int FullFovGC2145::setResolution(int32_t resolution)
 CameraSystem::CameraSystem()
     : sensor(),
       camera(sensor),
-      frame()
+      frameA(FRAME_A_ADDRESS),
+      frameB(FRAME_B_ADDRESS)
 {
 }
 
 bool CameraSystem::begin()
 {
-    // The custom sensor mode retains the full optical view while emitting the
-    // original-size framebuffer, keeping DMA and processing costs low.
-    if (!camera.begin(CAMERA_R320x240, CAMERA_RGB565, 30))
-    {
+    // Do not add SDRAM to the general heap: these two fixed regions are owned
+    // exclusively by camera DMA and remain 32-byte aligned.
+    if (!SDRAM.begin(0))
         return false;
-    }
 
-    // Camera is mounted upside down
-    
+    if (!camera.begin(CAMERA_R320x240, CAMERA_RGB565, 30))
+        return false;
+
+    activeFrame = 0;
+    readyFrame = 0;
+    completedFrameCount = 0;
+#if CAMERA_ASYNC_CAPTURE_ENABLED
+    captureStartedUs = micros();
+    return camera.startFrame(frameForIndex(activeFrame)) == 0;
+#else
     return true;
+#endif
 }
 
 bool CameraSystem::capture()
 {
-    const uint32_t startedUs = micros();
-    const bool captured = camera.grabFrame(frame, 3000) == 0;
-    lastCaptureTimeUs = micros() - startedUs;
-    return captured;
+    const uint32_t serviceStartedUs = micros();
+#if CAMERA_ASYNC_CAPTURE_ENABLED
+    if (!camera.frameReady())
+        return false;
+
+    lastCaptureTimeUs = serviceStartedUs - captureStartedUs;
+    if (camera.finishFrame() != 0)
+        return false;
+
+    readyFrame = activeFrame;
+    activeFrame ^= 1U;
+
+    captureStartedUs = micros();
+    if (camera.startFrame(frameForIndex(activeFrame)) != 0)
+        return false;
+
+    lastServiceTimeUs = micros() - serviceStartedUs;
+    ++completedFrameCount;
+    return true;
+#else
+    captureStartedUs = serviceStartedUs;
+    if (camera.grabFrame(frameA, 3000) != 0)
+        return false;
+    readyFrame = 0;
+    lastCaptureTimeUs = micros() - captureStartedUs;
+    lastServiceTimeUs = lastCaptureTimeUs;
+    ++completedFrameCount;
+    return true;
+#endif
 }
 
 uint8_t* CameraSystem::getBuffer()
 {
-    return frame.getBuffer();
+    return frameForIndex(readyFrame).getBuffer();
 }
 
 uint32_t CameraSystem::getBufferSize()
 {
-    return frame.getBufferSize();
+    return FRAME_BYTES;
 }
 
 uint32_t CameraSystem::getLastCaptureTimeUs() const
 {
     return lastCaptureTimeUs;
+}
+
+uint32_t CameraSystem::getLastServiceTimeUs() const
+{
+    return lastServiceTimeUs;
+}
+
+uint32_t CameraSystem::getCompletedFrameCount() const
+{
+    return completedFrameCount;
+}
+
+FrameBuffer& CameraSystem::frameForIndex(uint8_t index)
+{
+    return index == 0 ? frameA : frameB;
 }
 
 uint16_t CameraSystem::getWidth() const

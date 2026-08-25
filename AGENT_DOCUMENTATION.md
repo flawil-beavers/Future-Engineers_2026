@@ -18,6 +18,23 @@ remain the authoritative checklists.
 
 ---
 
+## 2026-08-25 - Asynchronous camera branch integration
+
+`camera-async-buffering` was merged into `pure-pursuit`. Conflict resolution
+kept the measured full-FOV calibration and the latest obstacle-discovery nudge,
+while adding the project-owned Arducam driver, two fixed SDRAM framebuffers,
+and non-blocking DCMI/DMA capture. `CAMERA_ASYNC_CAPTURE_ENABLED` and the safe
+stationary camera auto-start are enabled. The stored routes and Pure Pursuit
+steering calculation were not changed by this merge.
+
+The merged build succeeds. Before the pending powered red-left run, repeat the
+representative official-pillar seat test and field-clear test with motors
+disabled. Confirm `[CAM PERF]` reports `async=yes`, advancing frame numbers,
+stable detections, and no capture stalls. Only then resume the exact powered
+test described in the next handoff entry.
+
+---
+
 ## 2026-08-25 - Obstacle Challenge Pure Pursuit and full-FOV camera handoff
 
 ### Objective and architectural constraint

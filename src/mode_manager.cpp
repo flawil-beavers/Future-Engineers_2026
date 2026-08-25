@@ -4,6 +4,7 @@
  */
 
 #include "mode_manager.h"
+#include "config.h"
 #include "motor_control.h"
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
@@ -226,6 +227,25 @@ void mode_switch(RobotMode new_mode)
         Serial.println("Mode switched to: NONE");
         return;
     }
+
+#if CAMERA_ASYNC_STATIONARY_AUTOSTART
+    // Development-only exception: run camera calibration while leaving the
+    // motor system disabled. This does not bypass the switch for any mode that
+    // can request motion.
+    if (new_mode == MODE_CAMERA_CALIBRATION)
+    {
+        pending_mode = MODE_NONE;
+        stop(false);
+        if (!start_mode(new_mode))
+        {
+            Serial.println("Could not start stationary camera mode.");
+            return;
+        }
+        current_mode = new_mode;
+        Serial.println("Stationary camera mode auto-started; motors remain disabled.");
+        return;
+    }
+#endif
 
     if (!system_enabled) {
         pending_mode = new_mode;

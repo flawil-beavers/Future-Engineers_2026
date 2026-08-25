@@ -584,6 +584,8 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-// Stationary safety boot during full-FOV camera validation. Restore obstacle
-// challenge startup only after recalibration and with the enable switch LOW.
+// Stationary safety boot for full-FOV asynchronous camera validation. This
+// auto-start exception never enables a mode that can request motor movement.
+#define CAMERA_ASYNC_STATIONARY_AUTOSTART true
+#define CAMERA_ASYNC_CAPTURE_ENABLED true
 #define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION

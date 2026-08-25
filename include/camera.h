@@ -34,6 +34,8 @@ public:
     uint8_t* getBuffer();
     uint32_t getBufferSize();
     uint32_t getLastCaptureTimeUs() const;
+    uint32_t getLastServiceTimeUs() const;
+    uint32_t getCompletedFrameCount() const;
 
     uint16_t getWidth() const;
     uint16_t getHeight() const;
@@ -41,9 +43,22 @@ public:
 private:
     FullFovGC2145 sensor;
     Camera camera;
-    FrameBuffer frame;
+    FrameBuffer frameA;
+    FrameBuffer frameB;
+
+    uint8_t activeFrame = 0;
+    uint8_t readyFrame = 0;
+    uint32_t captureStartedUs = 0;
     uint32_t lastCaptureTimeUs = 0;
+    uint32_t lastServiceTimeUs = 0;
+    uint32_t completedFrameCount = 0;
+
+    FrameBuffer& frameForIndex(uint8_t index);
 
     static constexpr uint16_t WIDTH = 320;
     static constexpr uint16_t HEIGHT = 240;
+    static constexpr uint32_t FRAME_BYTES = WIDTH * HEIGHT * 2UL;
+    static constexpr uint32_t FRAME_A_ADDRESS = 0x60000000UL;
+    static constexpr uint32_t FRAME_B_ADDRESS =
+        FRAME_A_ADDRESS + FRAME_BYTES;
 };
