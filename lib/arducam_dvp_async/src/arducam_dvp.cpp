@@ -124,6 +124,40 @@ static TIM_HandleTypeDef  htim  = {0};
 static DMA_HandleTypeDef  hdma  = {0};
 static DCMI_HandleTypeDef hdcmi = {0};
 static volatile uint32_t dcmi_frame_completed_us = 0;
+static volatile uint32_t dcmi_continuous_sequence = 0;
+static volatile uint32_t dcmi_continuous_completed_us = 0;
+static volatile uint32_t dcmi_continuous_error_count = 0;
+static volatile uint8_t dcmi_continuous_completed_buffer = 0;
+static volatile bool dcmi_continuous_active = false;
+
+static void dcmiContinuousBufferComplete(uint8_t buffer)
+{
+    if (!dcmi_continuous_active)
+        return;
+
+    dcmi_continuous_completed_buffer = buffer;
+    dcmi_continuous_completed_us = micros();
+    __DMB();
+    ++dcmi_continuous_sequence;
+}
+
+static void dcmiContinuousMemory0Complete(DMA_HandleTypeDef *handle)
+{
+    if (handle == &hdma)
+        dcmiContinuousBufferComplete(0);
+}
+
+static void dcmiContinuousMemory1Complete(DMA_HandleTypeDef *handle)
+{
+    if (handle == &hdma)
+        dcmiContinuousBufferComplete(1);
+}
+
+static void dcmiContinuousDmaError(DMA_HandleTypeDef *handle)
+{
+    if (handle == &hdma)
+        ++dcmi_continuous_error_count;
+}
 
 /// Table to store the amount of bytes per pixel for each pixel format
 const uint32_t pixtab[CAMERA_PMAX] = {
@@ -336,6 +370,12 @@ void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *handle)
         dcmi_frame_completed_us = micros();
 }
 
+void HAL_DCMI_ErrorCallback(DCMI_HandleTypeDef *handle)
+{
+    if (handle == &hdcmi && dcmi_continuous_active)
+        ++dcmi_continuous_error_count;
+}
+
 inline void pixelDataAssemble(uint8_t *framebuffer,uint32_t framesize)
 {
     for (uint32_t pidx = 0, idx = 0; idx < framesize; idx++)
@@ -410,7 +450,8 @@ Camera::Camera(ImageSensor &sensor) :
     framerate(-1),
     sensor(&sensor),
     _debug(NULL),
-    _framebuffer(NULL)
+    _framebuffer(NULL),
+    _continuousFramebuffers{NULL, NULL}
 {
 }
 
@@ -753,6 +794,113 @@ int Camera::finishFrame()
 
     this->_framebuffer = NULL;
     return 0;
+}
+
+int Camera::startContinuous(FrameBuffer &first, FrameBuffer &second)
+{
+    if (this->sensor == NULL ||
+        this->pixformat == -1 ||
+        this->resolution == -1 ||
+        this->_framebuffer != NULL ||
+        !first.isAllocated() ||
+        !second.isAllocated())
+    {
+        return -1;
+    }
+
+    const uint32_t framesize =
+        frameSize() * this->sensor->getPixelReadingCycle();
+    if ((first.hasFixedSize() && first.getBufferSize() < framesize) ||
+        (second.hasFixedSize() && second.getBufferSize() < framesize))
+    {
+        return -1;
+    }
+
+    uint8_t *firstBuffer = first.getBuffer();
+    uint8_t *secondBuffer = second.getBuffer();
+    if (firstBuffer == NULL || secondBuffer == NULL ||
+        ((uint32_t)firstBuffer & 0x1F) ||
+        ((uint32_t)secondBuffer & 0x1F) ||
+        (framesize / 4U) > 0xFFFFU)
+    {
+        return -1;
+    }
+
+    dcmi_continuous_active = false;
+    dcmi_continuous_sequence = 0;
+    dcmi_continuous_completed_us = 0;
+    dcmi_continuous_error_count = 0;
+    dcmi_continuous_completed_buffer = 0;
+    this->_continuousFramebuffers[0] = &first;
+    this->_continuousFramebuffers[1] = &second;
+
+    hdcmi.State = HAL_DCMI_STATE_BUSY;
+    hdcmi.ErrorCode = HAL_DCMI_ERROR_NONE;
+    __HAL_DCMI_ENABLE(&hdcmi);
+    hdcmi.Instance->CR &= ~DCMI_CR_CM;
+    hdcmi.Instance->CR |= DCMI_MODE_CONTINUOUS;
+
+    hdma.XferCpltCallback = dcmiContinuousMemory0Complete;
+    hdma.XferM1CpltCallback = dcmiContinuousMemory1Complete;
+    hdma.XferHalfCpltCallback = NULL;
+    hdma.XferM1HalfCpltCallback = NULL;
+    hdma.XferErrorCallback = dcmiContinuousDmaError;
+    hdma.XferAbortCallback = NULL;
+
+    if (HAL_DMAEx_MultiBufferStart_IT(
+            &hdma,
+            (uint32_t)&hdcmi.Instance->DR,
+            (uint32_t)firstBuffer,
+            (uint32_t)secondBuffer,
+            framesize / 4U) != HAL_OK)
+    {
+        hdcmi.State = HAL_DCMI_STATE_ERROR;
+        return -1;
+    }
+
+    dcmi_continuous_active = true;
+    hdcmi.Instance->CR |= DCMI_CR_CAPTURE;
+    return 0;
+}
+
+bool Camera::acquireContinuousFrame(
+    uint32_t consumedSequence,
+    FrameBuffer *&completed,
+    uint32_t &sequence,
+    uint32_t &completedTimeUs)
+{
+    const uint32_t framesize =
+        frameSize() * this->sensor->getPixelReadingCycle();
+    uint8_t completedBuffer;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    sequence = dcmi_continuous_sequence;
+    completedBuffer = dcmi_continuous_completed_buffer;
+    completedTimeUs = dcmi_continuous_completed_us;
+    if (!primask)
+        __enable_irq();
+
+    if (!dcmi_continuous_active ||
+        sequence == 0 ||
+        sequence == consumedSequence)
+    {
+        completed = NULL;
+        return false;
+    }
+
+    completed = _continuousFramebuffers[completedBuffer];
+#if defined(__CORTEX_M7)
+    SCB_InvalidateDCache_by_Addr(
+        (uint32_t *)completed->getBuffer(), framesize);
+#endif
+    if (this->sensor->getPixelReadingCycle() == 2)
+        pixelDataAssemble(completed->getBuffer(), framesize);
+    return true;
+}
+
+uint32_t Camera::continuousErrorCount() const
+{
+    return dcmi_continuous_error_count;
 }
 
 int Camera::setMotionDetectionThreshold(uint32_t threshold)

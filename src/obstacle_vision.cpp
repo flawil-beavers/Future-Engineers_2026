@@ -160,6 +160,14 @@ void printCameraCalibration()
 #else
     Serial.print("no");
 #endif
+    Serial.print(" capture_mode=");
+#if CAMERA_ASYNC_CAPTURE_ENABLED && CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    Serial.print("continuous");
+#elif CAMERA_ASYNC_CAPTURE_ENABLED
+    Serial.print("snapshot");
+#else
+    Serial.print("blocking");
+#endif
     Serial.print(" frame=");
     Serial.print(camera.getCompletedFrameCount());
     Serial.print(" test_frames=");
@@ -180,6 +188,10 @@ void printCameraCalibration()
     Serial.print(camera.getMaxFrameIntervalUs() / 1000.0f, 2);
     Serial.print(" missed_intervals=");
     Serial.print(camera.getLongFrameIntervalCount());
+    Serial.print(" discarded_frames=");
+    Serial.print(camera.getDiscardedFrameCount());
+    Serial.print(" capture_errors=");
+    Serial.print(camera.getCaptureErrorCount());
     Serial.print(" exposure_lines=");
     Serial.print(camera.getExposureLines());
     Serial.print(" service_us=");

@@ -42,6 +42,8 @@ public:
     uint32_t getMinFrameIntervalUs() const;
     uint32_t getMaxFrameIntervalUs() const;
     uint32_t getLongFrameIntervalCount() const;
+    uint32_t getDiscardedFrameCount() const;
+    uint32_t getCaptureErrorCount() const;
     uint16_t getExposureLines();
     uint32_t getLastServiceTimeUs() const;
     uint32_t getCompletedFrameCount() const;
@@ -67,6 +69,8 @@ private:
     uint32_t longFrameIntervalCount = 0;
     uint32_t lastServiceTimeUs = 0;
     uint32_t completedFrameCount = 0;
+    uint32_t acquiredFrameSequence = 0;
+    uint32_t discardedFrameCount = 0;
 
     FrameBuffer& frameForIndex(uint8_t index);
 
