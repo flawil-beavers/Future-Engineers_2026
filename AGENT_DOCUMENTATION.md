@@ -12,6 +12,13 @@ remain the authoritative checklists.
 - Put the newest entry first.
 - Separate measured facts from hypotheses and proposed changes.
 - Include source files, log names, build results, and reproducible next steps.
+- Ask the user when an unresolved question could materially affect safety,
+  architecture, hardware placement, calibration, the validity of a test, or
+  how a change should be implemented. If the intended behaviour, design choice,
+  or tradeoff is unclear, ask before implementing it.
+- If work can safely continue with a reasonable assumption, state the
+  assumption to the user and record it in the relevant dated entry. Never
+  present an assumption as a measured or verified fact.
 - Preserve still-relevant earlier entries; consolidate them only when their
   conclusions have been superseded and state what replaced them.
 - Never store credentials, personal access tokens, or large raw logs here.
@@ -32,6 +39,14 @@ representative official-pillar seat test and field-clear test with motors
 disabled. Confirm `[CAM PERF]` reports `async=yes`, advancing frame numbers,
 stable detections, and no capture stalls. Only then resume the exact powered
 test described in the next handoff entry.
+
+`D:\log_38.txt` is the final pre-async powered result, not an async validation:
+startup left camera calibration pending while the switch was LOW, proving the
+stationary async auto-start was absent. It verified the 850/650 mm discovery
+trigger but still failed on S2 left seat 13. Discovery started about 184 mm
+earlier than in `log_37`; the right seat cleared, while the left never appeared
+in `vis`. Maximum CTE was 79.7 mm. Do not tune the nudge again until the merged
+async firmware has passed its stationary checks and the identical powered run.
 
 ---
 
