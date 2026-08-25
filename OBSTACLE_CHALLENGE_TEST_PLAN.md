@@ -13,13 +13,13 @@ check is repeated before every powered run and is not a one-time checkbox.
 | --- | --- | --- |
 | Physical geometry | Complete | Rear-axle pose origin, 100 mm wheelbase, camera and ToF offsets are configured. |
 | Empty-track Pure Pursuit | Complete at 175 mm/s | Seven one-lap tests passed: four left/CCW and three right/CW. Do not repeat the waived five-runs-per-direction test. |
-| Camera ground range | Calibrated | Production values are `horizon_y=60.0` and `scale_mm_px=36000`. Red and green measured 400 and 600 mm correctly in `D:\log_20.txt`. |
-| Camera bearing | Calibrated and verified | Six surveyed red/green observations fitted principal X 154.9 px and focal X 417.5 px. A post-upload 600 mm right check measured -9.8 to -10.2 degrees and 589-612 mm. |
-| Stationary perception | Complete for CCW geometry | Red and green seat selection, calibrated 400/600 mm projection, and the no-pillar background regression passed. Optional CW representatives remain deferred to the first mirrored live run. |
+| Camera ground range | Full-FOV calibration complete | Centred red samples fitted `horizon_y=78.0` and `scale_mm_px=24000`: the 400 mm point reports 400.0 mm and the 600 mm point fits 600.0 mm. The obsolete cropped-view edge correction is disabled. |
+| Camera bearing/FOV | Full-FOV calibration complete | The GC2145 reads the full sensor and subsamples directly to 320x240. Symmetric +/-26.565 degree samples fitted principal X 164.4 px, focal X 248.9 px and 65.3 degrees horizontal FOV. Both complete pillars remained visible and stable. |
+| Stationary perception | Complete with full FOV | The focused production regression selected red middle-left seat 3 with 23.7-23.9 mm snap error and exactly one injection. The widened-view field-clear control held `R0/G0` and zero injections for more than ten seconds. |
 | Corner speed profile | Deferred | At the current 175 mm/s test cap it does not limit testing. Tune it only when increasing toward production speed. |
 | Pure-Pursuit-only control | Implemented; robot regression pending | Lap-1 discovery adjusts only the temporary lookahead target. Pure Pursuit alone converts that target to steering, and the later-lap residual steering overlay has been removed. |
 | ToF pose correction | Complete | Both sensors passed range checks; left/right correction signs, a perpendicular-axis transform, the 500 mm cutoff, fresh-sequence gating, and both direction-specific corner gates passed. |
-| Live obstacle laps | Shorter simultaneous scan pending verification | `log_30` showed a smooth midpoint scan (`scan_seat=-2`) with no direction oscillation. One seat cleared, but the other required a follow-up and the run again blocked at `S1 station=0` with 135 mm remaining. Maximum cross-track error was 68 mm. Empty-seat confirmation is reduced from five to three consecutive usable views; pillar confirmation and existing background rejection remain unchanged. Prefer tuning this single scan over adding another discovery state. Pure Pursuit remains the only steering controller. |
+| Live obstacle laps | Earlier single-seat nudge implemented; robot regression pending | `log_37` correctly injected red seat 5 and cleared every S1 station, but left seat 13 never entered the accepted camera view at S2 station 0. The stored route remains unchanged. Discovery now begins target orientation at 850 mm and, after one side clears, brings the remaining seat toward 12 degrees instead of accepting it near the view edge. Repeat the same layout. |
 | Final parking | Not implemented | Keep separate until three obstacle laps work reliably. |
 
 ## Safety before every powered test
@@ -52,7 +52,44 @@ full-field regression.
 
 ## Gate 2 - short stationary perception test
 
-Only the following six cases are required before powered obstacle driving.
+### Current full-FOV regression
+
+The six-case matrix below was completed with the former centred 42-degree
+camera crop. The field geometry, colour logic and voting logic did not change,
+so repeating all six cases would be duplicate work. The wider view does expose
+more background and uses new bearing/range calibration, so these two focused
+production-path checks remain before powered driving:
+
+- [x] Read the full GC2145 sensor and subsample directly to 320x240 without a
+      large framebuffer or a second coordinate system.
+- [x] Verify stable detection at the centre and at +/-200 mm lateral offset,
+      400 mm forward depth. Edge centroids were x=39-40 and x=288-289; neither
+      pillar was clipped, and both were production-valid.
+- [x] Fit principal X 164.4 px, focal X 248.9 px and 65.3-degree horizontal
+      FOV. The right-edge post-upload check reported -26.4 to -26.6 degrees
+      against -26.565 degrees measured.
+- [x] Fit ground range from exact centred 400/600 mm samples to horizon 78 px
+      and scale 24000 mm-px. The uploaded 400 mm regression is stable at
+      exactly 400.0 mm; the two-point fit gives exactly 600.0 mm at maxY=118.
+- [x] Keep processing near the former cost. Stable full-FOV frames take about
+      5.8-6.2 ms to process. Total capture-to-result time is 147-150 ms because
+      the sensor must read the full array. Faster 18 and 24 MHz clocks reduced
+      capture latency but corrupted otherwise stationary detections, so the
+      supported 12 MHz clock is retained.
+- [x] Run one representative production seat test: red, middle-station left,
+      `seat expect 0 1 L 400`. Require seat 3, pass `R`, two votes, exactly one
+      injection, bearing within 2 degrees of +14.5, range within 30 mm and snap
+      error preferably below 50 mm. It passed with bearing 14.9-15.2 degrees,
+      range 376.4-376.7 mm, snap error 23.7-23.9 mm and one injection.
+- [x] Without moving the robot, remove the pillar, run `seat clear`, arm the
+      same expectation, and observe the widened field view for at least five
+      seconds. More than ten seconds passed with `R0/G0`, no confirmation and
+      zero injections. One small green edge fragment was rejected as invalid.
+
+After these two checks, continue directly to Gate 4. Do not repeat the older
+six-case matrix unless this focused regression fails.
+
+The following six cases document the completed cropped-view calibration.
 Testing every color on all 24 global seats is unnecessary: all sections and
 both directions are rigid rotations of the same three-station geometry, and
 the firmware geometry preflight already verifies all 24 seats in both
@@ -265,6 +302,66 @@ budget experiments, or exhaustive testing of all eight direction/corner
 combinations unless this sanity test exposes a fault.
 
 ## Gate 4 - first powered obstacle tests
+
+### Latest full-FOV live result
+
+`log_33` correctly confirmed the red S0 station-2 left pillar as seat 5 and
+injected its path exactly once. Unlike the cropped-view runs, it then cleared
+all three S1 stations. At S2 the old scan rule still aimed a remaining seat at
+only +/-8 degrees, saturated the temporary Pure Pursuit target nudge at 35
+degrees, reached 104.8 mm cross-track error, and stopped safely with S2
+station 0 unresolved.
+
+The existing nudge now uses the measured full-FOV geometry. A single seat may
+remain anywhere inside the comfortable half-angle minus a 3-degree margin. For
+two unresolved seats, their midpoint may remain off-axis by the comfortable
+half-angle minus half their angular separation. This keeps both seats visible
+without unnecessarily steering the robot toward the optical axis. Repeat the
+same red-left `Y1` run next; do not add another scan state or alter path
+clearance before evaluating that result.
+
+`log_34` verified the steering improvement: maximum cross-track error fell
+from 104.8 to 57.6 mm and the initial two-seat nudge peaked at 16.8 degrees.
+One side of S1 station 0 cleared, but the other did not collect three
+consecutive clear frames before leaving the usable view. Full-FOV frames take
+about 150 ms, making that window about 450 ms or 79 mm of travel at 175 mm/s.
+Empty confirmation is therefore reduced to two consecutive frames (about
+300 ms or 53 mm). Pillar detection still requires its independent two
+compatible votes, and later pillar observations remain able to replace an
+earlier clear result. Repeat the same `Y1` layout without further changes.
+
+Two repetitions with that change were not consistent. `log_35` blocked at S1
+station 0 with left seat 7 unresolved and 64.0 mm maximum cross-track error.
+`log_36` cleared every S1 station but blocked at S2 station 0 with left seat 13
+unresolved and 78.2 mm maximum cross-track error. Both runs correctly injected
+the red seat-5 pillar exactly once. Because both failures selected the odd/left
+seat, do not reduce empty confirmation to one frame. The existing `[LIVE PATH]`
+line now adds `vis=`, `clear=`, `obs=` and conditional `blob=` fields during a
+scan. Run the identical layout once more and use those fields to decide whether
+the left seat leaves the geometric view or a production-valid colored fragment
+resets its counter. This diagnostic is read-only.
+
+`log_37` resolved that question. It injected the red seat-5 pillar exactly once
+and cleared all three S1 stations. During S2 station 0, every observation was
+`obs=NONE`; the right seat reached `clear=2`, while left seat 13 never appeared
+in `vis` at all. The sequence was `vis=--`, then `vis=R-`, then `vis=--` as the
+robot passed the station. Therefore background colour filtering and the
+two-frame clear requirement are not the blocker. The scan begins too late or
+does not turn the camera far enough toward the inside seat around the second
+corner. The next code change should adjust only the temporary Pure-Pursuit
+lookahead-target nudge timing/strength; do not add a second steering controller
+or weaken perception confirmation.
+
+That change is now implemented without modifying the stored centreline or any
+injected avoidance route. Target orientation begins at 850 mm, before a station
+enters the calibrated 600 mm camera range, and reaches full taper response at
+650 mm. While both seats are unresolved, the simultaneous full-FOV midpoint
+rule is unchanged. Once either side is clear, the remaining seat is brought
+toward 12 degrees from the camera axis. The existing 35-degree cap, 60 deg/s
+slew limit and all perception confirmation rules remain unchanged. The
+PlatformIO build passed. Repeat the identical red-left `Y1` run; success
+requires seat 13 to appear in
+`vis`, S2 station 0 to resolve, and no material increase in cross-track error.
 
 Place the robot with the midpoint of its rear axle on the starting-straight
 centreline, at the longitudinal midpoint used for the successful empty-track

@@ -82,6 +82,7 @@ float lastDiscoveryTargetNudgeDeg = 0.0f;
 int8_t discoveryScanStation = -1;
 int8_t discoveryScanSide = -1;
 uint32_t lastDiscoveryNudgeUpdateMs = 0;
+ObstacleObservationResult lastDiscoveryObservation;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
 
@@ -701,27 +702,38 @@ void applyDiscoveryTargetNudge(
         const bool unresolved0 = !coverage.seatObservedClear[0];
         const bool unresolved1 = !coverage.seatObservedClear[1];
         float aimBearingDeg = 0.0f;
-        float allowedBearingDeg = OBSTACLE_LOOK_TARGET_BEARING_DEG;
+        const float comfortableBearingDeg = fmaxf(
+            0.0f,
+            OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG *
+                    OBSTACLE_DISCOVERY_FOV_FRACTION -
+                OBSTACLE_LOOK_FOV_MARGIN_DEG);
+        float allowedBearingDeg = comfortableBearingDeg;
 
         discoveryScanStation = bestStation;
         if (unresolved0 && unresolved1)
         {
-            // Aim between the two seats and hold that view until both have
-            // collected enough clear frames. The wrapped difference avoids
-            // choosing the long way around at the +/-180-degree boundary.
+            // Use the full comfortable view: nudge only when centring the pair
+            // this far from the optical axis would put either seat outside it.
+            // The wrapped difference avoids the long way around at +/-180.
+            const float separationDeg =
+                fabsf(wrap180(bearing[1] - bearing[0]));
             aimBearingDeg = wrap180(
                 bearing[0] + 0.5f * wrap180(bearing[1] - bearing[0]));
-            allowedBearingDeg = 0.0f;
+            allowedBearingDeg = fmaxf(
+                0.0f,
+                comfortableBearingDeg - 0.5f * separationDeg);
             discoveryScanSide = -2; // telemetry: both seats simultaneously
         }
         else if (unresolved0)
         {
             aimBearingDeg = bearing[0];
+            allowedBearingDeg = OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG;
             discoveryScanSide = 0;
         }
         else if (unresolved1)
         {
             aimBearingDeg = bearing[1];
+            allowedBearingDeg = OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG;
             discoveryScanSide = 1;
         }
         else
@@ -1046,6 +1058,7 @@ void obstacle_path_reset()
     discoveryScanStation = -1;
     discoveryScanSide = -1;
     lastDiscoveryNudgeUpdateMs = 0;
+    lastDiscoveryObservation = ObstacleObservationResult();
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     memset(seats, 0, sizeof(seats));
     memset(discoveryStations, 0, sizeof(discoveryStations));
@@ -1154,6 +1167,7 @@ void obstacle_path_update(bool new_camera_frame)
         {
             const ObstacleObservationResult observation =
                 obstacle_path_observe(getLargestValidObstacle());
+            lastDiscoveryObservation = observation;
             updateDiscoveryCoverage(
                 observation,
                 pose);
@@ -1270,6 +1284,37 @@ int8_t obstacle_path_discovery_scan_seat()
         return -2;
     return discoveryScanStation * COURSE_SEATS_PER_STATION +
            discoveryScanSide;
+}
+
+bool obstacle_path_get_discovery_telemetry(
+    ObstacleDiscoveryTelemetry &telemetry)
+{
+    telemetry = ObstacleDiscoveryTelemetry();
+    if (!running || discoveryScanStation < 0 ||
+        discoveryScanStation >= OBSTACLE_SEAT_COUNT / 2)
+        return false;
+
+    telemetry.station = discoveryScanStation;
+    const DiscoveryStation &coverage =
+        discoveryStations[discoveryScanStation];
+    for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
+    {
+        telemetry.clearFrames[side] = coverage.clearFrames[side];
+        const uint8_t seatIndex =
+            discoveryScanStation * COURSE_SEATS_PER_STATION + side;
+        if (seatComfortablyVisible(seatIndex, get_position_struct()))
+            telemetry.visibleMask |= static_cast<uint8_t>(1U << side);
+    }
+
+    telemetry.observationStatus = lastDiscoveryObservation.status;
+    telemetry.observationSeat = lastDiscoveryObservation.seatId;
+    telemetry.left = lastDiscoveryObservation.left;
+    telemetry.top = lastDiscoveryObservation.top;
+    telemetry.right = lastDiscoveryObservation.right;
+    telemetry.bottom = lastDiscoveryObservation.bottom;
+    telemetry.bearingDeg = lastDiscoveryObservation.bearingDeg;
+    telemetry.rangeMm = lastDiscoveryObservation.rangeMm;
+    return true;
 }
 
 uint8_t obstacle_path_lap()

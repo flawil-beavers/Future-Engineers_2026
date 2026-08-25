@@ -438,11 +438,14 @@ constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 // decision point, slow down and finally hold rather than risk a wrong pass.
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 260.0f;
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
-constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.40f;
-// Three consecutive usable views reject a one-frame camera dropout while
-// allowing an empty seat to resolve within the short corner-viewing window.
-// Pillars still use their separate two-vote geometry and colour confirmation.
-constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 3;
+// A complete official pillar remained visible and stable at +/-26.6 degrees
+// in the full-sensor mode, with about 20 px clearance to the image edge.
+constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.42f;
+// Full-FOV capture takes about 150 ms, so two consecutive usable views require
+// about 300 ms while still rejecting a single-frame dropout. Pillars use their
+// separate two-vote geometry and colour confirmation and can still override an
+// earlier clear observation if they appear later in the approach.
+constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
 constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 170.0f;
 // The drivetrain oscillates below its continuous controllable range at
@@ -452,11 +455,12 @@ constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 175.0f;
 
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
-// Horizontal pinhole calibration from surveyed +/-100 mm pillar offsets at
-// 400 and 600 mm ray range. The resulting usable 320 px field is about 42 deg.
-constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 42.0f;
-constexpr auto OBSTACLE_CAMERA_PRINCIPAL_X_PX = 154.9f;
-constexpr auto OBSTACLE_CAMERA_FOCAL_X_PX = 417.5f;
+// Horizontal pinhole calibration from symmetric +/-200 mm offsets at 400 mm
+// forward depth. The full-sensor centroids were x=39.9 and x=288.8 at
+// +/-26.565 degrees. The GC2145 subsamples the full view directly to 320x240.
+constexpr auto OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG = 65.3f;
+constexpr auto OBSTACLE_CAMERA_PRINCIPAL_X_PX = 164.4f;
+constexpr auto OBSTACLE_CAMERA_FOCAL_X_PX = 248.9f;
 // Measure both values along the robot centreline whenever the camera or body
 // changes. ROBOT_FRONT_FROM_REAR_AXLE_MM is the plane touched by the near face
 // of the pillar at the start of a camdrive calibration.
@@ -469,15 +473,15 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // The official pillar distances are measured horizontally from the camera to
 // the foot of the block. Its top is clipped by the obstacle ROI at longer
 // ranges, so height is not a reliable range input. Ground-plane calibration
-// Stationary red and green measurements from log_20 have maxY=150 at 400 mm
-// and maxY=120 at 600 mm, giving
+// Full-sensor stationary red measurements have maxY=138 at 400 mm and
+// maxY=118 at 600 mm, giving
 // distance = scale / (maxY - horizonY).
-constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 60.0f;
-constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 36000.0f;
-// The wide-angle lens moves the apparent ground contact lower toward either
-// image edge. Remove that measured V-shaped bias before applying the centreline
-// ground-plane fit. Units are vertical foot pixels per horizontal pixel.
-constexpr auto OBSTACLE_CAMERA_FOOT_EDGE_SLOPE = 0.11f;
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 78.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 24000.0f;
+// The former centred-crop mode needed a V-shaped off-axis correction. In the
+// full-sensor mode, equal 400 mm forward-depth samples had maxY=136 (left) and
+// maxY=138 (right), so the old 0.11 slope badly overcorrected their range.
+constexpr auto OBSTACLE_CAMERA_FOOT_EDGE_SLOPE = 0.0f;
 
 // Automated camera ground-plane calibration (serial: camdrive [reverse_mm]).
 // The pillar starts touching ROBOT_FRONT_FROM_REAR_AXLE_MM; encoder travel and
@@ -519,14 +523,22 @@ constexpr auto CAMERA_DRIVE_CAL_MAX_FIT_RMSE_PX = 5.0f;
 constexpr auto OBSTACLE_CAMERA_FOCAL_LENGTH_PX = 277.0f;
 constexpr auto OBSTACLE_PILLAR_HEIGHT_MM = 100.0f;
 constexpr auto OBSTACLE_EDGE_CLIPPED_RANGE_MM = 170.0f;
-// A corner-exit inside seat is about 54 degrees off the nominal camera axis
-// while still in the calibrated range. Begin a Pure-Pursuit target scan early
-// enough to rotate the chassis/camera toward it before reaching the tangent.
-constexpr auto OBSTACLE_LOOK_START_MM = 700.0f;
-constexpr auto OBSTACLE_LOOK_FULL_NUDGE_MM = 550.0f;
+// A corner-exit inside seat is about 54 degrees off the nominal camera axis.
+// Begin rotating the Pure-Pursuit target before the station enters the
+// calibrated 600 mm camera range, and reach full response near that boundary,
+// so the chassis/camera is already oriented when usable frames arrive.
+constexpr auto OBSTACLE_LOOK_START_MM = 850.0f;
+constexpr auto OBSTACLE_LOOK_FULL_NUDGE_MM = 650.0f;
 constexpr auto OBSTACLE_LOOK_END_MM = 80.0f;
 constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 0.75f;
-constexpr auto OBSTACLE_LOOK_TARGET_BEARING_DEG = 8.0f;
+// Keep a complete pillar a few degrees inside the measured comfortable view.
+// Discovery should use the wide camera view, not steer every seat to the old
+// cropped-camera +/-8 degree target.
+constexpr auto OBSTACLE_LOOK_FOV_MARGIN_DEG = 3.0f;
+// Once one side has been cleared, bring the only unresolved seat farther into
+// the image instead of merely holding it at the edge of the usable view. Both
+// seats still use the simultaneous wide-FOV rule while unresolved.
+constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 12.0f;
 constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 35.0f;
 constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 
@@ -572,4 +584,6 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 //   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
 //   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
 //   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
+// Stationary safety boot during full-FOV camera validation. Restore obstacle
+// challenge startup only after recalibration and with the enable switch LOW.
+#define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION

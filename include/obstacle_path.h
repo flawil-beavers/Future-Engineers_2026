@@ -59,6 +59,21 @@ struct ObstacleObservationResult {
     float movementCircleClearanceMm = 0.0f;
 };
 
+struct ObstacleDiscoveryTelemetry {
+    int8_t station = -1;
+    uint8_t visibleMask = 0; // bit 0 = right seat, bit 1 = left seat
+    uint8_t clearFrames[2] = {};
+    ObstacleObservationStatus observationStatus =
+        OBSTACLE_OBSERVATION_NO_BLOB;
+    int8_t observationSeat = -1;
+    int16_t left = 0;
+    int16_t top = 0;
+    int16_t right = 0;
+    int16_t bottom = 0;
+    float bearingDeg = 0.0f;
+    float rangeMm = -1.0f;
+};
+
 struct ObstacleTofCorrectionResult {
     bool geometryReady = false;
     bool leftUsed = false;
@@ -92,6 +107,8 @@ bool obstacle_path_perception_blocked();
 int8_t obstacle_path_blocked_station();
 float obstacle_path_discovery_target_nudge_deg();
 int8_t obstacle_path_discovery_scan_seat();
+bool obstacle_path_get_discovery_telemetry(
+    ObstacleDiscoveryTelemetry &telemetry);
 uint8_t obstacle_path_lap();
 uint16_t obstacle_path_progress_index();
 uint16_t obstacle_path_waypoint_count();

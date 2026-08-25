@@ -59,6 +59,21 @@ void sampleDriveTelemetry()
     windowMaximumTargetSpeed = max(windowMaximumTargetSpeed, target_speed);
 }
 
+const char *observationStatusCode(ObstacleObservationStatus status)
+{
+    switch (status)
+    {
+    case OBSTACLE_OBSERVATION_NO_BLOB: return "NONE";
+    case OBSTACLE_OBSERVATION_REJECTED_BLOB: return "REJECT";
+    case OBSTACLE_OBSERVATION_INVALID_RANGE: return "RANGE";
+    case OBSTACLE_OBSERVATION_NO_SEAT: return "NOSEAT";
+    case OBSTACLE_OBSERVATION_VOTE: return "VOTE";
+    case OBSTACLE_OBSERVATION_CONFIRMED: return "CONF";
+    case OBSTACLE_OBSERVATION_ALREADY_CONFIRMED: return "KNOWN";
+    }
+    return "?";
+}
+
 void beginBraking(const char *reason)
 {
     if (state != LIVE_RUNNING)
@@ -100,6 +115,40 @@ void printTelemetry()
     Serial.print(obstacle_path_discovery_target_nudge_deg(), 1);
     Serial.print(" scan_seat=");
     Serial.print(static_cast<int>(obstacle_path_discovery_scan_seat()));
+    ObstacleDiscoveryTelemetry discovery;
+    if (obstacle_path_get_discovery_telemetry(discovery))
+    {
+        Serial.print(" disc=S");
+        Serial.print(discovery.station / COURSE_STATIONS_PER_SECTION);
+        Serial.print(".");
+        Serial.print(discovery.station % COURSE_STATIONS_PER_SECTION);
+        Serial.print(" vis=");
+        Serial.print((discovery.visibleMask & 0x01) != 0 ? "R" : "-");
+        Serial.print((discovery.visibleMask & 0x02) != 0 ? "L" : "-");
+        Serial.print(" clear=");
+        Serial.print(discovery.clearFrames[0]);
+        Serial.print("/");
+        Serial.print(discovery.clearFrames[1]);
+        Serial.print(" obs=");
+        Serial.print(observationStatusCode(discovery.observationStatus));
+        Serial.print(":");
+        Serial.print(discovery.observationSeat);
+        if (discovery.observationStatus != OBSTACLE_OBSERVATION_NO_BLOB)
+        {
+            Serial.print(" blob=");
+            Serial.print(discovery.left);
+            Serial.print(",");
+            Serial.print(discovery.top);
+            Serial.print("-");
+            Serial.print(discovery.right);
+            Serial.print(",");
+            Serial.print(discovery.bottom);
+            Serial.print("@");
+            Serial.print(discovery.bearingDeg, 1);
+            Serial.print("/");
+            Serial.print(discovery.rangeMm, 0);
+        }
+    }
     Serial.print(" tof="); Serial.print(get_tof_distance(TOF_LEFT), 0);
     Serial.print("/"); Serial.println(get_tof_distance(TOF_RIGHT), 0);
     resetDriveTelemetryWindow();

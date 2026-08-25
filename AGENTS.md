@@ -1,5 +1,13 @@
 # Workspace Instructions
 
+## Agent handoffs
+
+- Read `AGENT_DOCUMENTATION.md` before continuing an existing investigation or
+  robot-validation sequence.
+- Append durable engineering findings and exact next steps there after a
+  substantial session. Keep mandatory agent instructions in this file and
+  project history in `AGENT_DOCUMENTATION.md`.
+
 ## PlatformIO builds
 
 - Always build and compile this project with the PlatformIO Core installation managed by the IDE on the current machine.

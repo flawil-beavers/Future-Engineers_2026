@@ -140,6 +140,19 @@ void printCameraCalibration()
     Serial.println(hsv.v);
 
     const VisionResult &result = vision.getResult();
+    Serial.print("[CAM PERF] source=");
+    Serial.print(camera.getWidth());
+    Serial.print("x");
+    Serial.print(camera.getHeight());
+    Serial.print(" capture_ms=");
+    Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
+    Serial.print(" processing_ms=");
+    Serial.print(result.processingTimeUs / 1000.0f, 2);
+    Serial.print(" total_ms=");
+    Serial.println(
+        (camera.getLastCaptureTimeUs() + result.processingTimeUs) /
+            1000.0f,
+        2);
     if (!result.red.found && !result.green.found)
     {
         Serial.println("[CAM CAL] blob=NONE");
