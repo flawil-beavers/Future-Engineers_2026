@@ -29,7 +29,8 @@ enum ObstacleAvoidanceState
     OA_IDLE,
     OA_TRACKING,
     OA_PASSING,
-    OA_RECOVERING
+    OA_RECOVERING,
+    OA_REALIGNING
 };
 
 

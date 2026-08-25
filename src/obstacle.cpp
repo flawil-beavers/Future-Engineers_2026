@@ -24,6 +24,9 @@ static float oa_base_heading = 0.0f;
 
 // Encoder distance at beginning of a state.
 static float oa_state_start_distance = 0.0f;
+// Kept across all avoidance states so "passed" is referenced to the first
+// stable sighting, not to whichever state happened to start most recently.
+static float oa_detection_start_distance = 0.0f;
 
 // Used to avoid immediately detecting the same obstacle again.
 static float oa_last_finish_distance = 0.0f;
@@ -34,6 +37,7 @@ static uint8_t oa_lost_frames = 0;
 static ColorType oa_candidate_color = ColorType::NONE;
 
 static float oa_last_camera_error = 0.0f;
+static int oa_max_seen_bottom_y = 0;
 static bool oa_pending_map_record = false;
 static float oa_pending_detection_distance = 0.0f;
 static int16_t oa_pending_image_x = 0;
@@ -70,6 +74,7 @@ static uint8_t oc_current_lap = 0;
 static float oc_section_start_distance = 0.0f;
 static NavigationState oc_last_navigation_state = NAV_IDLE;
 static bool oc_corner_settling = false;
+static float oc_corner_settle_start_distance = 0.0f;
 static int oc_last_completed_turn = 0;
 static bool oc_start_section_complete = false;
 static bool oc_known_obstacle_used[
@@ -254,8 +259,9 @@ static bool updateParkingExit()
         oc_parking_exit_state_distance = get_distance();
         oc_parking_exit_state = PARKING_EXIT_BLOCK_BACKUP;
         servo_disabled = false;
-        Serial.println(
-            "[PARK EXIT] Reverse 100 mm for start-section visibility");
+        Serial.print("[PARK EXIT] Reverse ");
+        Serial.print(OBSTACLE_START_BLOCK_BACKUP_MM, 0);
+        Serial.println(" mm for start-section visibility");
         return true;
     }
 
@@ -442,49 +448,24 @@ static bool updateLearnedLanePlan()
             oc_current_section,
             current);
 
+    const CourseSection &learnedSection =
+        course_map_get_section(oc_current_section);
+    if (!learnedSection.learningComplete)
+        return false;
+
+    WallSide desiredWall = SIDE_UNKNOWN;
+
     if (currentCount == 0)
     {
-        const CourseSection &section =
-            course_map_get_section(oc_current_section);
-        WallSide guessedWall = SIDE_UNKNOWN;
-
-        if (section.successfulLane < 0)
-            guessedWall = SIDE_LEFT;
-        else if (section.successfulLane > 0)
-            guessedWall = SIDE_RIGHT;
-        else
-        {
-            guessedWall =
-                navigation_get_following_wall();
-            if (guessedWall == SIDE_UNKNOWN)
-                guessedWall = SIDE_LEFT;
-        }
-
-        navigation_select_wall(
-            guessedWall,
-            OBSTACLE_PLANNED_LANE_WALL_MM);
-
-        static int lastGuessSection = -1;
-        if (lastGuessSection != oc_current_section)
-        {
-            lastGuessSection = oc_current_section;
-            Serial.print("[MAP] EXCEPTION: guessing S");
-            Serial.print(oc_current_section);
-            Serial.print(" from traversed lane ");
-            Serial.println(
-                guessedWall == SIDE_LEFT
-                    ? "LEFT"
-                    : "RIGHT");
-        }
-        return true;
+        // This is a confirmed empty section, not a failed observation. Use
+        // the inner lane until it is time to prepare for the next section.
+        desiredWall = navigation_get_course_wall();
     }
-
-    ColorType desiredColor = ColorType::NONE;
     const float sectionDistance = obstacleSectionDistance();
 
     if (currentCount > 0)
     {
-        desiredColor = current[0]->color;
+        ColorType desiredColor = current[0]->color;
 
         if (currentCount == 2 &&
             sectionDistance >=
@@ -493,32 +474,41 @@ static bool updateLearnedLanePlan()
         {
             desiredColor = current[1]->color;
         }
+        desiredWall = wallForColor(desiredColor);
+    }
 
-        const CourseObstacle *last =
-            current[currentCount - 1];
-        if (sectionDistance >=
-                last->firstDetectionDistanceMm +
-                    OBSTACLE_PLANNED_NEXT_SECTION_MM)
+    // Enter the corner already on the lane needed by the next section. The
+    // learned first-lap corner position is a stable reference, unlike a
+    // camera trigger that changes when a pillar is clipped at the image edge.
+    const float learnedLength =
+        navigation_get_learned_straight_mm(oc_current_section);
+    if (learnedLength > 0.0f &&
+        sectionDistance >= fmaxf(
+            0.0f,
+            learnedLength - OBSTACLE_PLANNED_NEXT_SECTION_MM))
+    {
+        const uint8_t nextSection =
+            (oc_current_section + 1) % COURSE_SECTION_COUNT;
+        const CourseObstacle *next[
+            COURSE_MAX_OBSTACLES_PER_SECTION] = {nullptr, nullptr};
+        const uint8_t nextCount =
+            sortedKnownObstacles(nextSection, next);
+        const CourseSection &nextLearned =
+            course_map_get_section(nextSection);
+        if (nextLearned.learningComplete)
         {
-            const CourseObstacle *next[
-                COURSE_MAX_OBSTACLES_PER_SECTION] =
-                    {nullptr, nullptr};
-            const uint8_t nextCount =
-                sortedKnownObstacles(
-                    (oc_current_section + 1) %
-                        COURSE_SECTION_COUNT,
-                    next);
-            if (nextCount > 0)
-                desiredColor = next[0]->color;
+            desiredWall = nextCount > 0
+                ? wallForColor(next[0]->color)
+                : navigation_get_course_wall();
         }
     }
 
-    if (desiredColor != ColorType::NONE)
-    {
+    if (desiredWall == SIDE_UNKNOWN)
+        desiredWall = navigation_get_course_wall();
+    if (desiredWall != SIDE_UNKNOWN)
         navigation_select_wall(
-            wallForColor(desiredColor),
+            desiredWall,
             OBSTACLE_PLANNED_LANE_WALL_MM);
-    }
 
     return true;
 }
@@ -528,9 +518,25 @@ static void updateCourseProgress()
     const NavigationState navigationState =
         navigation_get_state();
 
-    if (oc_current_lap == 0 &&
+    const bool sectionJustReachedCorner =
         oc_last_navigation_state == NAV_FOLLOWING &&
-        navigationState == NAV_TURNING)
+        navigationState == NAV_TURNING;
+
+    if (sectionJustReachedCorner)
+    {
+        const bool completeNormalLearningSection =
+            oc_current_lap == 0 && oc_current_section != 0;
+        const bool completeStartLearningSection =
+            oc_current_section == 0 &&
+            !oc_start_section_complete &&
+            navigation_get_turn_count() >= 5;
+        if (completeNormalLearningSection ||
+            completeStartLearningSection)
+            course_map_mark_learning_complete(oc_current_section);
+    }
+
+    if (oc_current_lap == 0 &&
+        sectionJustReachedCorner)
     {
         const WallSide wall =
             navigation_get_following_wall();
@@ -544,8 +550,7 @@ static void updateCourseProgress()
 
     if (oc_current_section == 0 &&
         !oc_start_section_complete &&
-        oc_last_navigation_state == NAV_FOLLOWING &&
-        navigationState == NAV_TURNING &&
+        sectionJustReachedCorner &&
         navigation_get_turn_count() >= 5)
     {
         oc_start_section_complete = true;
@@ -574,6 +579,7 @@ static void updateCourseProgress()
         // same positions remain valid on the faster later laps.
         oc_section_start_distance =
             navigation_get_section_origin_distance();
+        oc_corner_settle_start_distance = get_distance();
         oc_corner_settling = true;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
@@ -939,6 +945,58 @@ static const Blob *getTrackedObstacle()
     return nullptr;
 }
 
+static int obstacleTargetX(ColorType color);
+
+static void updateActiveObstacleObservation(
+    bool newCameraFrame)
+{
+    if (!newCameraFrame || oa_state == OA_IDLE)
+        return;
+
+    const Blob *obstacle = getTrackedObstacle();
+    if (validTrackedObstacle(obstacle))
+    {
+        oa_lost_frames = 0;
+        if (obstacle->maxY > oa_max_seen_bottom_y)
+            oa_max_seen_bottom_y = obstacle->maxY;
+        oa_last_camera_error =
+            obstacle->centerX - obstacleTargetX(oa_color);
+    }
+    else if (oa_lost_frames < 255)
+    {
+        ++oa_lost_frames;
+    }
+}
+
+static float obstaclePassWallDistance()
+{
+    return get_tof_distance(
+        oa_color == ColorType::GREEN
+            ? TOF_LEFT
+            : TOF_RIGHT);
+}
+
+static bool obstacleCenterVisible(float &centerError)
+{
+    const float left = get_tof_distance(TOF_LEFT);
+    const float right = get_tof_distance(TOF_RIGHT);
+    const bool leftValid =
+        left > 0.0f && left <= TOF_MAX_RELIABLE_DISTANCE_MM;
+    const bool rightValid =
+        right > 0.0f && right <= TOF_MAX_RELIABLE_DISTANCE_MM;
+
+    if (leftValid && rightValid)
+        centerError = (right - left) * 0.5f;
+    else if (leftValid)
+        centerError = OBSTACLE_CORRIDOR_CENTER_TOF_MM - left;
+    else if (rightValid)
+        centerError = right - OBSTACLE_CORRIDOR_CENTER_TOF_MM;
+    else
+        return false;
+
+    return true;
+}
+
 // ============================================================
 // TARGET X POSITION
 //
@@ -984,6 +1042,70 @@ static int obstacleAvoidDirection(
     }
 
     return -1;
+}
+
+static bool handoffToNextObstacle(bool newCameraFrame)
+{
+    if (!newCameraFrame ||
+        distanceSince(oa_detection_start_distance) <
+            OBSTACLE_NEXT_BLOCK_HANDOFF_MIN_TOTAL_MM)
+        return false;
+
+    const Blob *next = getLargestObstacle();
+    if (!validObstacle(next) ||
+        next->maxY > OBSTACLE_NEXT_BLOCK_HANDOFF_MAX_BOTTOM_Y)
+    {
+        oa_candidate_color = ColorType::NONE;
+        oa_confirm_frames = 0;
+        return false;
+    }
+
+    if (next->color != oa_candidate_color)
+    {
+        oa_candidate_color = next->color;
+        oa_confirm_frames = 1;
+        return false;
+    }
+    if (oa_confirm_frames < 255)
+        ++oa_confirm_frames;
+    if (oa_confirm_frames < OBSTACLE_CONFIRM_FRAMES)
+        return false;
+
+    // RECOVERING is entered only after the former pillar is confirmed behind
+    // the car. Store it before immediately giving the second official pillar
+    // priority over finishing the centre-return manoeuvre.
+    if (oa_pending_map_record)
+    {
+        course_map_record_obstacle(
+            oc_current_section,
+            oc_current_lap,
+            oa_color,
+            oa_pending_detection_distance,
+            oa_pending_image_x,
+            oa_pending_bottom_y);
+        oa_pending_map_record = false;
+        Serial.println("[MAP] Successful avoidance stored before next block");
+    }
+
+    oa_color = next->color;
+    oa_pending_map_record = true;
+    oa_pending_detection_distance = obstacleSectionDistance();
+    oa_pending_image_x = next->centerX;
+    oa_pending_bottom_y = next->maxY;
+    oa_base_heading = navigation_get_target_heading();
+    oa_last_camera_error = next->centerX - obstacleTargetX(oa_color);
+    oa_max_seen_bottom_y = next->maxY;
+    oa_lost_frames = 0;
+    oa_confirm_frames = 0;
+    oa_candidate_color = ColorType::NONE;
+    oa_state_start_distance = get_distance();
+    oa_detection_start_distance = oa_state_start_distance;
+    oa_state = OA_TRACKING;
+
+    Serial.print("[OA] NEXT TRACKING ");
+    Serial.println(
+        oa_color == ColorType::RED ? "RED" : "GREEN");
+    return true;
 }
 
 static int expectedKnownObstacleIndex(
@@ -1077,6 +1199,9 @@ obstacle_avoidance_state_string(
     case OA_RECOVERING:
         return "RECOVERING";
 
+    case OA_REALIGNING:
+        return "REALIGNING";
+
     default:
         return "UNKNOWN";
     }
@@ -1097,6 +1222,7 @@ void obstacle_avoidance_reset()
     oa_base_heading = 0;
 
     oa_state_start_distance = 0;
+    oa_detection_start_distance = 0;
 
     oa_last_finish_distance = 0;
 
@@ -1109,6 +1235,7 @@ void obstacle_avoidance_reset()
     oa_candidate_color = ColorType::NONE;
 
     oa_last_camera_error = 0;
+    oa_max_seen_bottom_y = 0;
     oa_pending_map_record = false;
     oa_pending_detection_distance = 0.0f;
     oa_pending_image_x = 0;
@@ -1245,11 +1372,14 @@ bool obstacle_avoidance_update(
             obstacle->centerX -
             obstacleTargetX(
                 oa_color);
+        oa_max_seen_bottom_y = obstacle->maxY;
 
         oa_lost_frames = 0;
 
         oa_state_start_distance =
             get_distance();
+        oa_detection_start_distance =
+            oa_state_start_distance;
 
         oa_state =
             OA_TRACKING;
@@ -1271,50 +1401,38 @@ bool obstacle_avoidance_update(
         return true;
     }
 
+    updateActiveObstacleObservation(newCameraFrame);
+
     // ========================================================
-    // TRACKING
-    //
-    // Camera error + gyro heading correction.
+    // TRACKING: move onto the rule-required pass side.
     // ========================================================
 
     if (oa_state == OA_TRACKING)
     {
-        const Blob *obstacle =
-            getTrackedObstacle();
+        const int direction = obstacleAvoidDirection(oa_color);
+        const float desiredShiftHeading =
+            oa_base_heading -
+            direction * OBSTACLE_SHIFT_HEADING_DEG;
+        const float shiftHeadingError =
+            get_angle() - desiredShiftHeading;
+        const float shiftDistance =
+            distanceSince(oa_state_start_distance);
+        const bool shiftedFarEnough =
+            shiftDistance >= OBSTACLE_SHIFT_MIN_DISTANCE_MM;
+        const float passWallDistance = obstaclePassWallDistance();
+        const bool passLaneReached =
+            passWallDistance > 0.0f &&
+            passWallDistance <= OBSTACLE_PASS_LANE_WALL_MM;
+        const bool shiftDistanceLimit =
+            shiftDistance >= OBSTACLE_SHIFT_MAX_DISTANCE_MM;
 
-        // Only count lost frames when a genuinely new
-        // camera image has been processed.
-
-        if (newCameraFrame)
-        {
-            if (
-                validTrackedObstacle(
-                    obstacle))
-            {
-                oa_lost_frames = 0;
-
-                oa_last_camera_error =
-                    obstacle->centerX -
-                    obstacleTargetX(
-                        oa_color);
-            }
-            else
-            {
-                if (
-                    oa_lost_frames <
-                    255)
-                {
-                    ++oa_lost_frames;
-                }
-            }
-        }
-
-        // Object disappeared for several camera frames:
-        // assume the vehicle has reached/passed its side.
-
-        if (
-            oa_lost_frames >=
-            OBSTACLE_LOST_FRAMES)
+        // Camera x/size is not a safe lateral-distance measurement when the
+        // pillar is clipped at an image edge. Use the wall on the prescribed
+        // pass side, with an encoder limit as sensor fallback.
+        if ((oc_bench_test &&
+             oa_lost_frames >= OBSTACLE_LOST_FRAMES) ||
+            (shiftedFarEnough &&
+             (passLaneReached || shiftDistanceLimit)))
         {
             if (oc_bench_test)
             {
@@ -1325,35 +1443,29 @@ bool obstacle_avoidance_update(
                 return true;
             }
 
-            oa_state =
-                OA_PASSING;
+            oa_state = OA_PASSING;
 
             oa_state_start_distance =
                 get_distance();
 
-            Serial.println(
-                "[OA] TRACKING -> PASSING");
+            Serial.print("[OA] TRACKING -> PASSING wall=");
+            Serial.print(passWallDistance, 0);
+            Serial.print(" shift=");
+            Serial.println(shiftDistance, 0);
 
             return true;
         }
 
-        const float headingError =
-            get_angle() -
-            oa_base_heading;
-
         float steering =
-            OBSTACLE_CAMERA_KP *
-                oa_last_camera_error +
-            OBSTACLE_HEADING_KP *
-                headingError;
+            OBSTACLE_SHIFT_HEADING_KP * shiftHeadingError;
 
         steering = applyWallGuard(steering);
 
         steering =
             clampValue(
                 steering,
-                -OBSTACLE_MAX_STEERING,
-                OBSTACLE_MAX_STEERING);
+                -OBSTACLE_SHIFT_MAX_STEERING,
+                OBSTACLE_SHIFT_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
@@ -1368,24 +1480,17 @@ bool obstacle_avoidance_update(
     // ========================================================
     // PASSING
     //
-    // Continue around the obstacle after it leaves the camera.
+    // Return parallel to the grid, then remain beside the pillar until it is
+    // genuinely behind the camera/car.
     // ========================================================
 
     if (oa_state == OA_PASSING)
     {
-        const int direction =
-            obstacleAvoidDirection(
-                oa_color);
-
         const float headingError =
             get_angle() -
             oa_base_heading;
 
-        float steering =
-            direction *
-                OBSTACLE_PASS_STEERING +
-            OBSTACLE_HEADING_KP *
-                headingError;
+        float steering = OBSTACLE_RECOVER_KP * headingError;
 
         steering = applyWallGuard(steering);
 
@@ -1402,16 +1507,30 @@ bool obstacle_avoidance_update(
         setAvoidanceSpeed(
             OBSTACLE_AVOID_SPEED);
 
-        if (
-            distanceSince(
-                oa_state_start_distance) >=
-            OBSTACLE_PASS_DISTANCE_MM)
+        const float totalDistance =
+            distanceSince(oa_detection_start_distance);
+        const bool passedByVision =
+            oa_max_seen_bottom_y >= OBSTACLE_PASS_CLOSE_BOTTOM_Y &&
+            oa_lost_frames >= OBSTACLE_LOST_FRAMES &&
+            totalDistance >= OBSTACLE_PASS_VISION_MIN_TOTAL_MM;
+        const bool passedByDistance =
+            totalDistance >= OBSTACLE_PASS_DISTANCE_TOTAL_MM;
+
+        if (!oc_bench_test &&
+            fabsf(headingError) <= OBSTACLE_PASS_HEADING_TOLERANCE_DEG &&
+            (passedByVision || passedByDistance))
         {
             oa_state =
                 OA_RECOVERING;
 
-            Serial.println(
-                "[OA] PASSING -> RECOVERING");
+            oa_state_start_distance = get_distance();
+
+            Serial.print("[OA] PASSING -> RECOVERING total=");
+            Serial.print(totalDistance, 0);
+            Serial.print(" max_bottom=");
+            Serial.print(oa_max_seen_bottom_y);
+            Serial.print(" lost=");
+            Serial.println(oa_lost_frames);
         }
 
         return true;
@@ -1420,17 +1539,23 @@ bool obstacle_avoidance_update(
     // ========================================================
     // RECOVERING
     //
-    // Return to the original gyro heading.
+    // Actively return from the pass lane toward the corridor centre.
     // ========================================================
 
     if (oa_state == OA_RECOVERING)
     {
+        if (handoffToNextObstacle(newCameraFrame))
+            return true;
+
+        const int direction = obstacleAvoidDirection(oa_color);
+        const float desiredCenterHeading =
+            oa_base_heading +
+            direction * OBSTACLE_CENTER_HEADING_DEG;
         const float headingError =
-            get_angle() -
-            oa_base_heading;
+            get_angle() - desiredCenterHeading;
 
         float steering =
-            OBSTACLE_RECOVER_KP *
+            OBSTACLE_CENTER_KP *
             headingError;
 
         steering = applyWallGuard(steering);
@@ -1438,8 +1563,8 @@ bool obstacle_avoidance_update(
         steering =
             clampValue(
                 steering,
-                -OBSTACLE_RECOVER_MAX_STEERING,
-                OBSTACLE_RECOVER_MAX_STEERING);
+                -OBSTACLE_CENTER_MAX_STEERING,
+                OBSTACLE_CENTER_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
@@ -1448,9 +1573,66 @@ bool obstacle_avoidance_update(
         setAvoidanceSpeed(
             OBSTACLE_RECOVER_SPEED);
 
-        if (
+        const float recoveryDistance =
+            distanceSince(oa_state_start_distance);
+        float centerError = 0.0f;
+        const bool centerVisible =
+            obstacleCenterVisible(centerError);
+        const bool recoveryCentered =
+            recoveryDistance >= OBSTACLE_CENTER_MIN_DISTANCE_MM &&
+            centerVisible &&
+            fabsf(centerError) <=
+                OBSTACLE_CENTER_TOF_TOLERANCE_MM;
+        const bool recoveryDistanceLimit =
+            recoveryDistance >= OBSTACLE_CENTER_MAX_DISTANCE_MM;
+
+        if (recoveryCentered || recoveryDistanceLimit)
+        {
+            oa_state = OA_REALIGNING;
+            oa_state_start_distance = get_distance();
+            Serial.print("[OA] RECOVERING -> REALIGNING center_error=");
+            if (centerVisible)
+                Serial.print(centerError, 0);
+            else
+                Serial.print("NA");
+            Serial.print(" distance=");
+            Serial.println(recoveryDistance, 0);
+        }
+
+        return true;
+    }
+
+    // ========================================================
+    // REALIGNING: finish the centre return on the grid heading.
+    // ========================================================
+
+    if (oa_state == OA_REALIGNING)
+    {
+        if (handoffToNextObstacle(newCameraFrame))
+            return true;
+
+        const float headingError =
+            get_angle() - oa_base_heading;
+        float steering =
+            OBSTACLE_RECOVER_KP * headingError;
+        steering = applyWallGuard(steering);
+        steering = clampValue(
+            steering,
+            -OBSTACLE_RECOVER_MAX_STEERING,
+            OBSTACLE_RECOVER_MAX_STEERING);
+        set_steering(static_cast<int>(steering));
+        setAvoidanceSpeed(OBSTACLE_RECOVER_SPEED);
+
+        const float realignDistance =
+            distanceSince(oa_state_start_distance);
+        const bool realigned =
+            realignDistance >= OBSTACLE_REALIGN_MIN_DISTANCE_MM &&
             fabsf(headingError) <=
-            OBSTACLE_RECOVER_TOLERANCE_DEG)
+                OBSTACLE_REALIGN_TOLERANCE_DEG;
+        const bool realignLimit =
+            realignDistance >= OBSTACLE_REALIGN_MAX_DISTANCE_MM;
+
+        if (realigned || realignLimit)
         {
             if (oa_pending_map_record)
             {
@@ -1627,6 +1809,7 @@ void obstacle_challenge_update(
         oc_last_completed_turn =
             navigation_get_turn_count();
         oc_corner_settling = false;
+        oc_corner_settle_start_distance = get_distance();
         oc_start_section_complete = false;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
@@ -1665,18 +1848,27 @@ void obstacle_challenge_update(
         oc_corner_settling &&
         navigation_get_state() == NAV_FOLLOWING)
     {
-        const float settleDistance = obstacleSectionDistance();
+        const float settleDistance =
+            distanceSince(oc_corner_settle_start_distance);
         const float headingError =
             fabsf(
                 get_angle() -
                 navigation_get_target_heading());
+        float centerError = 0.0f;
+        const bool centerVisible =
+            obstacleCenterVisible(centerError);
+        const bool centeredForLearning =
+            centerVisible &&
+            fabsf(centerError) <=
+                OBSTACLE_CORRIDOR_CENTER_TOLERANCE_MM;
 
         // Vision may already see the next sign, but an Ackermann car must
         // first be nearly parallel to the new section. Otherwise a sign seen
         // far to one side during the turn commands a large, wrong arc.
         const bool alignedForEarlyTakeover =
             headingError <=
-            OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG;
+                OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG &&
+            (learnedLaneActive || centeredForLearning);
 
         const bool obstacleNeedsControl =
             !learnedLaneActive &&
@@ -1699,7 +1891,8 @@ void obstacle_challenge_update(
             (settleDistance >=
                  OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM &&
              headingError <=
-                 OBSTACLE_CORNER_SETTLE_HEADING_DEG) ||
+                 OBSTACLE_CORNER_SETTLE_HEADING_DEG &&
+             (learnedLaneActive || centeredForLearning)) ||
             settleDistance >=
                 OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM)
         {
@@ -1709,7 +1902,12 @@ void obstacle_challenge_update(
             Serial.print("[OC] Section aligned distance=");
             Serial.print(settleDistance, 0);
             Serial.print(" heading_error=");
-            Serial.println(headingError, 1);
+            Serial.print(headingError, 1);
+            Serial.print(" center_error=");
+            if (centerVisible)
+                Serial.println(centerError, 0);
+            else
+                Serial.println("NA");
         }
 
         return;

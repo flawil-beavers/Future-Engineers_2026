@@ -45,6 +45,11 @@ float nav_target_distance = OPEN_WALL_TARGET_DISTANCE_MM;
 float nav_wall_margin = TOF_MAX_RELIABLE_DISTANCE_MM; // Threshold to detect gap/open space (mm)
 int nav_turn_angle = 0;                // +90 or -90 degrees
 WallSide nav_following_wall = SIDE_UNKNOWN; // Which wall are we following
+// The side on which corners open determines clockwise/counter-clockwise
+// travel. It must never be overwritten by a red/green planned lane.
+WallSide nav_course_wall = SIDE_UNKNOWN;
+bool nav_planned_lane_active = false;
+bool nav_planned_lane_acquiring = false;
 
 // Gyro following parameters
 float nav_gyro_target = 0;             // Target gyro angle
@@ -62,6 +67,9 @@ uint32_t nav_corner_brake_start_ms = 0;
 int nav_turn_count = 0;
 float nav_start_angle = 0;
 float nav_start_distance = 0;
+// Separate lockout origin for corner detection. The geometric/map origin is
+// intentionally kept in nav_start_distance.
+float nav_corner_detection_start_distance = 0;
 int nav_completed_rounds = 0;
 
 // Speed parameters
@@ -99,6 +107,35 @@ static bool all_open_straights_learned()
   for (int i = 0; i < 4; ++i)
     if (nav_learned_straight_mm[i] <= 0.0f)
       return false;
+  return true;
+}
+
+static bool valid_obstacle_center_distance(float distance)
+{
+  return distance > 0.0f &&
+      distance <= TOF_MAX_RELIABLE_DISTANCE_MM;
+}
+
+// Returns a signed correction with the same sign as forward steering:
+// positive moves away from the left wall, negative away from the right wall.
+// One valid side sensor is enough; this is essential just after a corner,
+// where the inner sensor often still sees the opening.
+static bool obstacle_center_steering_error(float &error)
+{
+  const float left = get_tof_distance(TOF_LEFT);
+  const float right = get_tof_distance(TOF_RIGHT);
+  const bool left_valid = valid_obstacle_center_distance(left);
+  const bool right_valid = valid_obstacle_center_distance(right);
+
+  if (left_valid && right_valid)
+    error = (right - left) * 0.5f;
+  else if (left_valid)
+    error = OBSTACLE_CORRIDOR_CENTER_TOF_MM - left;
+  else if (right_valid)
+    error = right - OBSTACLE_CORRIDOR_CENTER_TOF_MM;
+  else
+    return false;
+
   return true;
 }
 
@@ -305,21 +342,48 @@ void state_following()
   // straight is about one metre long; accepting another corner after only
   // 300 mm caused false turns after obstacle manoeuvres.
   float blind_dist =
+      (nav_obstacle_mode && nav_turn_count > 0 && nav_turn_count <= 4)
+          ? OBSTACLE_FIRST_LAP_CORNER_BLIND_MM :
       (nav_obstacle_mode && nav_turn_count > 0) ? 650.0f :
       ((nav_turn_count == 1) ? 600.0f : 300.0f);
   float wall_margin = nav_long_range_active ? 1500 : nav_wall_margin;
   // Encoder distance can decrease during the first-lap reverse alignment.
   // Always compare travelled displacement from the corner origin; a signed
   // comparison could permanently suppress every corner after the first one.
-  bool beyond_blind_distance =
-      fabsf(get_distance() - nav_start_distance) > blind_dist;
+  const float corner_detection_distance = nav_obstacle_mode
+      ? get_distance() - nav_corner_detection_start_distance
+      : fabsf(get_distance() - nav_start_distance);
+  bool beyond_blind_distance = corner_detection_distance > blind_dist;
   bool heading_plausible = fabs(gyro_error) < (nav_obstacle_mode ? 12.0f : 180.0f);
-  bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
-  const bool corner_warning =
-      beyond_blind_distance && heading_plausible && gap_seen;
-  const TofSensor corner_sensor = nav_following_wall == SIDE_RIGHT
+  const WallSide corner_wall = nav_course_wall != SIDE_UNKNOWN
+      ? nav_course_wall
+      : nav_following_wall;
+  const TofSensor corner_sensor = corner_wall == SIDE_RIGHT
       ? TOF_RIGHT
       : TOF_LEFT;
+  // Never use the weak-signal raw fallback to declare that a wall still
+  // exists. In the three field runs it turned a filtered 9999 corner gap into
+  // a false 406 mm wall and made the car drive straight into the end barrier.
+  const float filtered_corner_distance = corner_wall == SIDE_UNKNOWN
+      ? fmaxf(get_tof_distance(TOF_LEFT), get_tof_distance(TOF_RIGHT))
+      : get_tof_distance(corner_sensor);
+  bool gap_seen =
+      filtered_corner_distance > wall_margin &&
+      filtered_corner_distance > 0;
+  const float opposite_wall_distance = corner_wall == SIDE_RIGHT
+      ? get_tof_distance(TOF_LEFT)
+      : get_tof_distance(TOF_RIGHT);
+  // At the very first corner the side is deliberately still unknown: the
+  // disappearing wall is what determines clockwise/counter-clockwise travel.
+  // Therefore the opposite-wall lane check is valid only after that choice.
+  const bool first_lap_position_gate =
+      nav_obstacle_mode && nav_turn_count > 0 && nav_turn_count <= 4;
+  const bool opposite_position_safe = !first_lap_position_gate ||
+      corner_wall == SIDE_UNKNOWN || opposite_wall_distance <= 0 ||
+      opposite_wall_distance >= OBSTACLE_CORNER_OPPOSITE_MIN_MM;
+  const bool corner_warning =
+      beyond_blind_distance && heading_plausible && gap_seen &&
+      opposite_position_safe;
   const uint32_t corner_tof_sample =
       get_tof_measurement_count(corner_sensor);
   if (corner_tof_sample != nav_last_corner_tof_sample)
@@ -335,22 +399,36 @@ void state_following()
   const int detection_section = nav_turn_count % 4;
   const float detection_straight_distance =
       fabsf(get_distance() - nav_start_distance);
-  const bool predicted_detection_zone =
-      !nav_obstacle_mode && all_open_straights_learned() &&
+  const bool learned_straight_available =
+      all_open_straights_learned() &&
       nav_learned_straight_mm[detection_section] > 0.0f &&
       detection_straight_distance >= fmaxf(
           0.0f,
           nav_learned_straight_mm[detection_section] -
-              OPEN_CORNER_PREDICT_MARGIN_MM);
+              (nav_obstacle_mode
+                  ? OBSTACLE_LEARNED_CORNER_GATE_MM
+                  : OPEN_CORNER_PREDICT_MARGIN_MM));
+  const bool predicted_detection_zone =
+      learned_straight_available;
+  if (nav_obstacle_mode && nav_turn_count > 4 &&
+      nav_learned_straight_mm[detection_section] > 0.0f)
+  {
+    // On a stored outer lane the inner ToF can see the corner opening for
+    // much of the straight. Encoder-gate it at the first-lap corner position.
+    beyond_blind_distance = predicted_detection_zone;
+  }
   const uint8_t required_gap_samples = nav_obstacle_mode
-      ? 4
+      ? (nav_turn_count > 4 && predicted_detection_zone ? 3 : 4)
       : (predicted_detection_zone
             ? OPEN_PREDICTED_CORNER_CONFIRM_SAMPLES
             : OPEN_CORNER_CONFIRM_SAMPLES);
   if (nav_corner_gap_samples >= required_gap_samples)
   {
     nav_corner_gap_samples = 0;
-    if (!nav_obstacle_mode && nav_turn_count > 0)
+    const bool learning_obstacle_straight =
+        nav_obstacle_mode && nav_turn_count > 0 && nav_turn_count <= 4;
+    if ((!nav_obstacle_mode && nav_turn_count > 0) ||
+        learning_obstacle_straight)
     {
       const float learned_length =
           fabsf(get_distance() - nav_start_distance);
@@ -361,7 +439,9 @@ void state_following()
         nav_learned_straight_mm[section] = learned_length;
         const int opposite_section = (section + 2) % 4;
         nav_learned_straight_mm[opposite_section] = learned_length;
-        Serial.print("[NAV] Learned straight S");
+        Serial.print(nav_obstacle_mode
+            ? "[NAV] Learned obstacle straight S"
+            : "[NAV] Learned straight S");
         Serial.print(section);
         Serial.print(" and opposite S");
         Serial.print(opposite_section);
@@ -378,6 +458,7 @@ void state_following()
       if (dist_left > wall_margin && dist_left > 0)
       {
         nav_following_wall = SIDE_LEFT;
+        nav_course_wall = SIDE_LEFT;
         nav_turn_angle = 90;
         Serial.print("Dist Left: ");
         Serial.println(dist_left);
@@ -385,6 +466,7 @@ void state_following()
       else if (dist_right > wall_margin && dist_right > 0)
       {
         nav_following_wall = SIDE_RIGHT;
+        nav_course_wall = SIDE_RIGHT;
         nav_turn_angle = -90;
         Serial.print("Dist Right: ");
         Serial.println(dist_right);
@@ -398,7 +480,7 @@ void state_following()
     }
     else
     {
-      nav_turn_angle = (nav_following_wall == SIDE_LEFT) ? 90 : -90;
+      nav_turn_angle = (nav_course_wall == SIDE_LEFT) ? 90 : -90;
     }
 
     nav_turn_count++;
@@ -422,6 +504,10 @@ void state_following()
     return;
   }
 
+  const bool post_turn_gyro_only =
+      nav_obstacle_mode &&
+      get_distance() < nav_wall_correction_resume_distance;
+
   /**
    * DISTANCE PD CONTROL
    * 
@@ -434,10 +520,6 @@ void state_following()
     if (nav_searching_for_wall) {
       if (current_wall_distance < (nav_target_distance + 100.0)) nav_searching_for_wall = false;
     }
-
-    const bool post_turn_gyro_only =
-        nav_obstacle_mode &&
-        get_distance() < nav_wall_correction_resume_distance;
 
     const TofSensor distance_sensor = nav_following_wall == SIDE_RIGHT
         ? TOF_RIGHT
@@ -500,10 +582,61 @@ void state_following()
     }
   }
 
-  // Combine Steering: Gyro + Distance Correction
+  // Combine steering. During the learning lap the required camera pose is
+  // the corridor centre, so use either valid side sensor instead of blindly
+  // following the inner sensor (which often still sees the corner opening).
+  const bool first_lap_center_mode =
+      nav_obstacle_mode && nav_turn_count > 0 && nav_turn_count <= 4 &&
+      !nav_planned_lane_active;
   float total_steering = gyro_pd;
-  if (nav_following_wall == SIDE_LEFT) total_steering -= dist_pd;
-  else if (nav_following_wall == SIDE_RIGHT) total_steering += dist_pd;
+
+  if (nav_planned_lane_active && nav_planned_lane_acquiring &&
+      !post_turn_gyro_only)
+  {
+    const bool lane_wall_visible =
+        current_wall_distance > 0.0f &&
+        current_wall_distance <= TOF_MAX_RELIABLE_DISTANCE_MM;
+    if (lane_wall_visible &&
+        current_wall_distance <=
+            nav_target_distance +
+                OBSTACLE_PLANNED_LANE_REACHED_MARGIN_MM)
+    {
+      nav_planned_lane_acquiring = false;
+      nav_last_distance_error = 0.0f;
+      nav_distance_pd = 0.0f;
+      Serial.print("[NAV] Planned lane reached ");
+      Serial.println(
+          nav_following_wall == SIDE_LEFT ? "LEFT" : "RIGHT");
+    }
+    else
+    {
+      const float desired_lane_heading =
+          nav_gyro_target +
+          (nav_following_wall == SIDE_LEFT
+              ? OBSTACLE_PLANNED_LANE_HEADING_DEG
+              : -OBSTACLE_PLANNED_LANE_HEADING_DEG);
+      total_steering = constrain(
+          0.95f * (get_angle() - desired_lane_heading),
+          -OBSTACLE_PLANNED_LANE_MAX_STEERING,
+          OBSTACLE_PLANNED_LANE_MAX_STEERING);
+    }
+  }
+  else if (first_lap_center_mode && !post_turn_gyro_only)
+  {
+    float center_error = 0.0f;
+    if (obstacle_center_steering_error(center_error))
+    {
+      total_steering += constrain(
+          center_error * OBSTACLE_FIRST_LAP_FORWARD_CENTER_KP,
+          -OBSTACLE_FIRST_LAP_FORWARD_CENTER_MAX_STEERING,
+          OBSTACLE_FIRST_LAP_FORWARD_CENTER_MAX_STEERING);
+    }
+  }
+  else
+  {
+    if (nav_following_wall == SIDE_LEFT) total_steering -= dist_pd;
+    else if (nav_following_wall == SIDE_RIGHT) total_steering += dist_pd;
+  }
 
   // Clamp to physical servo limits
   if (total_steering > 60) total_steering = 60;
@@ -515,9 +648,6 @@ void state_following()
   // of the new straight slow while gyro-only steering makes it parallel;
   // using the close return from the old wall here pulled the car across the
   // corridor in clockwise runs.
-  const bool post_turn_gyro_only =
-      nav_obstacle_mode &&
-      get_distance() < nav_wall_correction_resume_distance;
   const int current_section = nav_turn_count % 4;
   const bool actual_map_ready = all_open_straights_learned();
   const float predicted_length = actual_map_ready
@@ -586,7 +716,19 @@ void state_turning()
     set_speed(OPEN_CHALLENGE_CORNER_SPEED_MMS);
   }
 
-  if ((get_angle() - nav_turn_start_angle - nav_turn_angle) * nav_turn_angle/fabs(nav_turn_angle) > 0)
+  const float commanded_turn =
+      nav_obstacle_mode && nav_turn_count <= 4
+          ? copysignf(
+                OBSTACLE_FIRST_LAP_FORWARD_TURN_DEG,
+                static_cast<float>(nav_turn_angle))
+          : (nav_obstacle_mode
+                ? copysignf(
+                      OBSTACLE_LATER_LAP_FORWARD_TURN_DEG,
+                      static_cast<float>(nav_turn_angle))
+                : static_cast<float>(nav_turn_angle));
+
+  if ((get_angle() - nav_turn_start_angle - commanded_turn) *
+          commanded_turn / fabsf(commanded_turn) > 0)
   {
     nav_gyro_target += nav_turn_angle;
     nav_last_gyro_error = 0;
@@ -636,13 +778,21 @@ void state_corner_reversing()
   const float reverse_distance =
       fabsf(get_distance() - nav_corner_phase_start_distance);
 
-  set_steering(
-      nav_turn_angle > 0
-          ? -OBSTACLE_FIRST_LAP_REVERSE_STEERING
-          : OBSTACLE_FIRST_LAP_REVERSE_STEERING);
+  // While reversing, steering has the opposite yaw effect. Drive toward the
+  // gyro target in either direction; this also corrects a forward-turn
+  // overshoot instead of declaring the reverse phase complete at 0 mm.
+  const float heading_error = get_angle() - nav_gyro_target;
+  float reverse_steering = constrain(
+      -heading_error * 1.8f,
+      -OBSTACLE_FIRST_LAP_REVERSE_STEERING,
+      OBSTACLE_FIRST_LAP_REVERSE_STEERING);
+  set_steering(static_cast<int>(reverse_steering));
   set_speed(-OBSTACLE_FIRST_LAP_REVERSE_SPEED);
 
-  if (reverse_distance >= OBSTACLE_FIRST_LAP_REVERSE_TARGET_MM)
+  if ((reverse_distance >= 10.0f &&
+       fabsf(heading_error) <=
+           OBSTACLE_FIRST_LAP_REVERSE_HEADING_TOLERANCE_DEG) ||
+      reverse_distance >= OBSTACLE_FIRST_LAP_REVERSE_MAX_MM)
   {
     set_speed(0);
     set_steering(0);
@@ -663,10 +813,13 @@ void state_corner_braking_for_align()
   if (!corner_direction_change_ready())
     return;
 
+  // Measure the visibility backup independently of the preceding reverse
+  // steering arc. Previously both phases shared an origin, so a logged
+  // "408 mm backup" contained 60-124 mm of turning and was much too short.
   nav_corner_phase_start_distance = get_distance();
   nav_last_gyro_error = 0;
-  nav_state = NAV_CORNER_ALIGNING;
-  Serial.println("[NAV] Standstill -> FIRST-LAP FORWARD ALIGNING");
+  nav_state = NAV_CORNER_SECTION_BACKING;
+  Serial.println("[NAV] Standstill -> BACKING STRAIGHT FOR VISIBILITY");
 }
 
 void state_corner_aligning()
@@ -727,6 +880,23 @@ void state_corner_section_backing()
 
   // Steering effect reverses when the car drives backwards.
   float steering = -0.85f * heading_error;
+
+  // Use either side wall during the reverse. Immediately after a corner the
+  // inner ToF commonly reads 9999, but the outer wall alone still gives an
+  // absolute centre reference of 465 mm.
+  const float left_distance = get_tof_distance(TOF_LEFT);
+  const float right_distance = get_tof_distance(TOF_RIGHT);
+  float center_error = 0.0f;
+  const bool center_visible =
+      obstacle_center_steering_error(center_error);
+  if (center_visible)
+  {
+    const float center_correction = constrain(
+        -center_error * OBSTACLE_FIRST_LAP_BACKUP_CENTER_KP,
+        -OBSTACLE_FIRST_LAP_BACKUP_CENTER_MAX_STEERING,
+        OBSTACLE_FIRST_LAP_BACKUP_CENTER_MAX_STEERING);
+    steering += center_correction;
+  }
   steering = constrain(
       steering,
       -OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_STEERING,
@@ -734,14 +904,38 @@ void state_corner_section_backing()
   set_steering(static_cast<int>(steering));
   set_speed(-OBSTACLE_FIRST_LAP_SECTION_BACKUP_SPEED);
 
-  if (backup_distance >= OBSTACLE_FIRST_LAP_SECTION_BACKUP_MM)
+  const bool centred =
+      center_visible &&
+      fabsf(center_error) <=
+          OBSTACLE_CORRIDOR_CENTER_TOLERANCE_MM;
+  const bool minimum_backup_complete =
+      backup_distance >= OBSTACLE_FIRST_LAP_SECTION_BACKUP_MM;
+  const bool centre_and_heading_ready =
+      minimum_backup_complete && centred &&
+      fabsf(heading_error) <=
+          OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG;
+  const bool backup_limit =
+      backup_distance >= OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_MM;
+
+  if (centre_and_heading_ready || backup_limit)
   {
     set_speed(0);
     set_steering(0);
     nav_corner_brake_start_ms = millis();
     nav_state = NAV_CORNER_BRAKING_AFTER_SECTION_BACKUP;
     Serial.print("[NAV] Section visibility backup complete distance=");
-    Serial.println(backup_distance, 0);
+    Serial.print(backup_distance, 0);
+    Serial.print(" heading_error=");
+    Serial.print(heading_error, 1);
+    Serial.print(" left=");
+    Serial.print(left_distance, 0);
+    Serial.print(" right=");
+    Serial.print(right_distance, 0);
+    Serial.print(" center_error=");
+    if (center_visible)
+      Serial.println(center_error, 0);
+    else
+      Serial.println("NA");
   }
 }
 
@@ -751,10 +945,20 @@ void state_corner_braking_after_section_backup()
   set_speed(0);
   if (!corner_direction_change_ready()) return;
 
-  nav_wall_correction_resume_distance = get_distance() + 200.0f;
+  // During the learning lap the camera must begin every new section near the
+  // corridor centre. Following the inner wall at the Open-Challenge 150 mm
+  // target made the first visible pillar appear too far to one image edge.
+  nav_target_distance = OBSTACLE_CORRIDOR_CENTER_TOF_MM;
+  nav_planned_lane_active = false;
+  nav_planned_lane_acquiring = false;
+  nav_wall_correction_resume_distance = get_distance() + 50.0f;
   nav_searching_for_wall = true;
   nav_last_gyro_error = 0;
   nav_last_distance_error = 0;
+  // The 400 mm reverse move places the robot at the true beginning of its
+  // observation run. Do not count that reverse distance toward the next
+  // corner, otherwise a pillar-lane ToF reading can trigger an early turn.
+  nav_corner_detection_start_distance = get_distance();
   nav_state = NAV_FOLLOWING;
   Serial.println("[NAV] Visibility backup stopped -> FOLLOWING");
 }
@@ -838,6 +1042,7 @@ void navigation_enable()
 
   nav_start_angle = get_angle();
   nav_start_distance = current_distance;
+  nav_corner_detection_start_distance = current_distance;
   nav_gyro_target = nav_start_angle;
   nav_wall_correction_resume_distance = nav_start_distance;
   
@@ -846,6 +1051,9 @@ void navigation_enable()
   nav_soft_stop_started = false;
   nav_soft_stop_complete = false;
   nav_following_wall = SIDE_UNKNOWN;
+  nav_course_wall = SIDE_UNKNOWN;
+  nav_planned_lane_active = false;
+  nav_planned_lane_acquiring = false;
   nav_turn_count = 0;
   nav_completed_rounds = 0;
   nav_last_distance_error = 0;
@@ -1040,6 +1248,18 @@ WallSide navigation_get_following_wall()
   return nav_following_wall;
 }
 
+WallSide navigation_get_course_wall()
+{
+  return nav_course_wall;
+}
+
+float navigation_get_learned_straight_mm(uint8_t section)
+{
+  if (section >= 4)
+    return 0.0f;
+  return nav_learned_straight_mm[section];
+}
+
 void navigation_set_speed(float speed_mm_s)
 {
   if (speed_mm_s < 0)
@@ -1055,7 +1275,11 @@ void navigation_set_obstacle_mode(bool enable)
 {
   nav_obstacle_mode = enable;
   if (!enable)
+  {
     nav_target_distance = OPEN_WALL_TARGET_DISTANCE_MM;
+    nav_planned_lane_active = false;
+    nav_planned_lane_acquiring = false;
+  }
   nav_corner_gap_samples = 0;
   nav_last_corner_tof_sample = get_tof_measurement_count(TOF_LEFT);
 }
@@ -1077,6 +1301,8 @@ void navigation_select_wall(
   {
     nav_following_wall = side;
     nav_target_distance = target_distance_mm;
+    nav_planned_lane_active = nav_obstacle_mode;
+    nav_planned_lane_acquiring = nav_obstacle_mode;
     nav_searching_for_wall = true;
     nav_last_distance_error = 0;
     nav_distance_pd = 0;

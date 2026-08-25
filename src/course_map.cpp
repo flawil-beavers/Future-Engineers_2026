@@ -168,6 +168,17 @@ void course_map_record_successful_lane(
     Serial.println(lane < 0 ? "LEFT" : "RIGHT");
 }
 
+void course_map_mark_learning_complete(uint8_t section)
+{
+    if (section >= COURSE_SECTION_COUNT)
+        return;
+
+    courseSections[section].learningComplete = true;
+    Serial.print("[MAP] S");
+    Serial.print(section);
+    Serial.println(" learning complete");
+}
+
 void course_map_print()
 {
     Serial.println("===== COURSE MAP =====");
@@ -185,6 +196,11 @@ void course_map_print()
                 : (courseSection.successfulLane > 0
                        ? "RIGHT"
                        : "UNKNOWN"));
+        Serial.print("  learning=");
+        Serial.println(
+            courseSection.learningComplete
+                ? "COMPLETE"
+                : "INCOMPLETE");
 
         for (uint8_t i = 0; i < COURSE_MAX_OBSTACLES_PER_SECTION; ++i)
         {

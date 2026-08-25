@@ -105,6 +105,8 @@ float navigation_get_section_origin_distance();
 int navigation_get_turn_count();
 int navigation_get_turn_angle();
 WallSide navigation_get_following_wall();
+WallSide navigation_get_course_wall();
+float navigation_get_learned_straight_mm(uint8_t section);
 #endif // WALL_FOLLOWER_H
 
 

@@ -296,7 +296,10 @@ constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_SPEED = 80;
 constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM = 239.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM = 250.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM = 180.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM = 400.0f;
+// At 8 degrees of steering the measured radius is roughly 0.8 m. Correcting
+// a remaining 9 degree parking-exit error therefore needs about 125 mm more
+// travel than the old 400 mm cap allowed.
+constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM = 550.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG = 30.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED = 50;
 constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING = 8.0f;
@@ -333,6 +336,53 @@ constexpr auto OBSTACLE_CAMERA_KP = 0.16f;
 constexpr auto OBSTACLE_HEADING_KP = 0.30f;
 constexpr auto OBSTACLE_MAX_STEERING = 20.0f;
 
+// First-lap geometric S-trajectory. Vision confirms colour and side; the gyro
+// then creates a repeatable lateral displacement instead of merely keeping a
+// pillar at one pixel coordinate.
+constexpr auto OBSTACLE_SHIFT_HEADING_DEG = 32.0f;
+constexpr auto OBSTACLE_SHIFT_HEADING_KP = 1.15f;
+constexpr auto OBSTACLE_SHIFT_MAX_STEERING = 30.0f;
+constexpr auto OBSTACLE_SHIFT_MIN_DISTANCE_MM = 50.0f;
+constexpr auto OBSTACLE_SHIFT_MAX_DISTANCE_MM = 620.0f;
+// With pillar centres at 400/600 mm across the 1000 mm corridor, a side-ToF
+// clearance of <=260 mm places the roughly 100 mm wide running gear safely
+// on the prescribed side with useful margin around a 50 mm pillar.
+// Start the return arc before the final pass clearance is reached. At a
+// 32-degree approach the Ackermann return arc consumes roughly another
+// 50-60 mm laterally, yielding a final pass lane near 240-250 mm.
+constexpr auto OBSTACLE_PASS_LANE_WALL_MM = 300.0f;
+constexpr auto OBSTACLE_SHIFT_CLOSE_BOTTOM_Y = 175;
+constexpr auto OBSTACLE_RETURN_MIN_DISTANCE_MM = 180.0f;
+constexpr auto OBSTACLE_RECOVER_STRAIGHT_MM = 100.0f;
+
+// Do not call a block passed merely because the gyro returned to the grid
+// heading. It must either disappear after being seen close, or the car must
+// cover a conservative distance from first confirmed detection.
+constexpr auto OBSTACLE_PASS_CLOSE_BOTTOM_Y = 155;
+// The first field run began the centre return at 804 mm and came too close to
+// the rear edge of the green pillar. Keep the pass lane for another 50 mm.
+constexpr auto OBSTACLE_PASS_VISION_MIN_TOTAL_MM = 850.0f;
+constexpr auto OBSTACLE_PASS_DISTANCE_TOTAL_MM = 950.0f;
+constexpr auto OBSTACLE_PASS_HEADING_TOLERANCE_DEG = 8.0f;
+
+// Active return from the prescribed pass lane to the camera-friendly centre.
+constexpr auto OBSTACLE_CENTER_HEADING_DEG = 30.0f;
+constexpr auto OBSTACLE_CENTER_KP = 1.15f;
+constexpr auto OBSTACLE_CENTER_MAX_STEERING = 26.0f;
+constexpr auto OBSTACLE_CENTER_MIN_DISTANCE_MM = 50.0f;
+constexpr auto OBSTACLE_CENTER_MAX_DISTANCE_MM = 550.0f;
+constexpr auto OBSTACLE_CENTER_TOF_TOLERANCE_MM = 45.0f;
+constexpr auto OBSTACLE_REALIGN_MIN_DISTANCE_MM = 80.0f;
+constexpr auto OBSTACLE_REALIGN_MAX_DISTANCE_MM = 180.0f;
+constexpr auto OBSTACLE_REALIGN_TOLERANCE_DEG = 4.0f;
+constexpr auto OBSTACLE_NEXT_BLOCK_HANDOFF_MIN_TOTAL_MM = 1000.0f;
+constexpr auto OBSTACLE_NEXT_BLOCK_HANDOFF_MAX_BOTTOM_Y = 135;
+// Recovery must always hand control back to navigation. A nearby barrier can
+// keep the wall guard active, so an exact gyro tolerance must not hold this
+// state forever.
+constexpr auto OBSTACLE_RECOVER_MAX_DISTANCE_MM = 180.0f;
+constexpr auto OBSTACLE_RECOVER_EXIT_TOLERANCE_DEG = 6.0f;
+
 // Start slowly while tuning
 constexpr auto OBSTACLE_AVOID_SPEED = 160;
 constexpr auto OBSTACLE_CRUISE_SPEED = 220;
@@ -368,6 +418,9 @@ constexpr auto OBSTACLE_START_MIN_X = 30;
 constexpr auto OBSTACLE_START_MAX_X = 290;
 constexpr auto OBSTACLE_MAX_START_WIDTH = 80;
 constexpr auto OBSTACLE_MAX_START_HEIGHT = 120;
+// A real pillar can be cut by the image edge when a corner exit is laterally
+// imperfect. Permit that shape only inside the outer 45 pixels; the normal
+// central test remains strict so floor/line reflections cannot start OA.
 
 // After every 90 degree corner, let the normal gyro controller remove turn
 // overshoot before camera avoidance can take steering priority.
@@ -380,13 +433,19 @@ constexpr auto OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG = 6.0f;
 // servo -40 -> R ~= 154.6 mm -> 90 degree arc ~= 242.8 mm
 // servo +40 -> R ~= 158.8 mm -> 90 degree arc ~= 249.4 mm
 constexpr auto OBSTACLE_CORNER_STEERING = 40.0f;
+constexpr auto OBSTACLE_FIRST_LAP_FORWARD_TURN_DEG = 65.0f;
+// At 180 mm/s the measured car continued rotating about 8 degrees after the
+// command ended. Ending the powered arc at 82 degrees lets the gyro follower
+// settle onto the stored 90-degree grid heading without overshooting it.
+constexpr auto OBSTACLE_LATER_LAP_FORWARD_TURN_DEG = 82.0f;
 constexpr auto OBSTACLE_FIRST_LAP_CORNER_SPEED = 140.0f;
 constexpr auto OBSTACLE_LATER_LAP_CORNER_SPEED = 180.0f;
 constexpr auto OBSTACLE_FIRST_LAP_REVERSE_SPEED = 80.0f;
 constexpr auto OBSTACLE_FIRST_LAP_REVERSE_STEERING = 40.0f;
-// At R ~= 156.7 mm this 50 mm reverse arc changes the body angle by about
-// 18.3 degrees and shifts the car outward before the final forward alignment.
-constexpr auto OBSTACLE_FIRST_LAP_REVERSE_TARGET_MM = 50.0f;
+// The remaining ~25 degrees are completed while reversing, keeping the front
+// of the car out of a possible first pillar seat at the section boundary.
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_MAX_MM = 120.0f;
+constexpr auto OBSTACLE_FIRST_LAP_REVERSE_HEADING_TOLERANCE_DEG = 2.0f;
 constexpr auto OBSTACLE_CORNER_DIRECTION_CHANGE_MIN_MS = 150UL;
 constexpr auto OBSTACLE_CORNER_DIRECTION_CHANGE_MAX_MS = 1000UL;
 constexpr auto OBSTACLE_CORNER_STOPPED_SPEED_MM_S = 20.0f;
@@ -396,14 +455,36 @@ constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MIN_MM = 120.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_MAX_MM = 260.0f;
 constexpr auto OBSTACLE_FIRST_LAP_ALIGN_TOLERANCE_DEG = 3.0f;
 constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_MM = 400.0f;
+constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_MM = 500.0f;
 constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_SPEED = 80.0f;
 constexpr auto OBSTACLE_FIRST_LAP_SECTION_BACKUP_MAX_STEERING = 10.0f;
+constexpr auto OBSTACLE_FIRST_LAP_BACKUP_CENTER_KP = 0.04f;
+constexpr auto OBSTACLE_FIRST_LAP_BACKUP_CENTER_MAX_STEERING = 10.0f;
+constexpr auto OBSTACLE_FIRST_LAP_FORWARD_CENTER_KP = 0.08f;
+constexpr auto OBSTACLE_FIRST_LAP_FORWARD_CENTER_MAX_STEERING = 12.0f;
+// Both ToF sensors are 35 mm from the vehicle centre. In the official
+// 1000 mm corridor they therefore read 500 - 35 = 465 mm when the chassis is
+// centred. A former empirical 29 mm left/right bias was actually caused by a
+// non-centred test pose and made later corners progressively worse.
+constexpr auto OBSTACLE_CORRIDOR_CENTER_TOF_MM = 465.0f;
+constexpr auto OBSTACLE_CORRIDOR_CENTER_TOLERANCE_MM = 45.0f;
 
-// Learned-lap lane planner. Official signs sit roughly 400 mm from a wall;
-// a 190 mm vehicle-centre offset leaves useful clearance on both sides.
+// A large reading on the followed side is only a real corner when the car is
+// no longer hugging the opposite barrier. This rejects the 627 mm reading
+// observed immediately after passing a green pillar in the left lane.
+constexpr auto OBSTACLE_CORNER_OPPOSITE_MIN_MM = 280.0f;
+constexpr auto OBSTACLE_FIRST_LAP_CORNER_BLIND_MM = 1050.0f;
+
+// Learned-lap lane planner. The sensor is 35 mm from the centre, therefore a
+// 190 mm ToF target is a 225 mm vehicle-centre lane. Lane acquisition uses a
+// shallow gyro-controlled diagonal and never changes the course turn side.
 constexpr auto OBSTACLE_PLANNED_LANE_WALL_MM = 190.0f;
+constexpr auto OBSTACLE_PLANNED_LANE_HEADING_DEG = 25.0f;
+constexpr auto OBSTACLE_PLANNED_LANE_REACHED_MARGIN_MM = 45.0f;
+constexpr auto OBSTACLE_PLANNED_LANE_MAX_STEERING = 24.0f;
 constexpr auto OBSTACLE_PLANNED_SWITCH_AFTER_MM = 200.0f;
-constexpr auto OBSTACLE_PLANNED_NEXT_SECTION_MM = 180.0f;
+constexpr auto OBSTACLE_PLANNED_NEXT_SECTION_MM = 300.0f;
+constexpr auto OBSTACLE_LEARNED_CORNER_GATE_MM = 40.0f;
 
 
 
