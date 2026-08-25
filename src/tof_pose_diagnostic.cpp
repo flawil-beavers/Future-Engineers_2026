@@ -255,6 +255,11 @@ void tof_pose_diagnostic_update()
     Serial.print("/R"); Serial.print(result.rightUsed ? 1 : 0);
     Serial.print(" gated=L"); Serial.print(result.leftCornerGated ? 1 : 0);
     Serial.print("/R"); Serial.print(result.rightCornerGated ? 1 : 0);
+    Serial.print(" residual_gated=L");
+    Serial.print(result.leftResidualGated ? 1 : 0);
+    Serial.print("/R"); Serial.print(result.rightResidualGated ? 1 : 0);
+    Serial.print(" residual=L"); Serial.print(result.leftResidualMm, 1);
+    Serial.print("/R"); Serial.print(result.rightResidualMm, 1);
     Serial.print(" lateral="); Serial.print(beforeLateral, 1);
     Serial.print("->"); Serial.print(afterLateral, 1);
     Serial.print(" correction="); Serial.print(result.correctionXmm, 1);

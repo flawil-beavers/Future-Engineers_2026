@@ -53,6 +53,7 @@ struct DiscoveryStation
 {
     uint8_t clearFrames[COURSE_SEATS_PER_STATION] = {};
     bool seatObservedClear[COURSE_SEATS_PER_STATION] = {};
+    uint8_t lastClearEvidenceMask = 0;
     bool observedClear = false;
 };
 
@@ -83,6 +84,7 @@ int8_t discoveryScanStation = -1;
 int8_t discoveryScanSide = -1;
 uint32_t lastDiscoveryNudgeUpdateMs = 0;
 ObstacleObservationResult lastDiscoveryObservation;
+ObstacleTofCorrectionResult lastTofCorrectionResult;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
 
@@ -841,6 +843,60 @@ void seatCameraGeometry(
         atan2f(dy, dx) * 180.0f / PI - pose.heading_deg);
 }
 
+float cameraBearingForImageX(float imageX)
+{
+    return atanf(
+               (OBSTACLE_CAMERA_PRINCIPAL_X_PX - imageX) /
+               OBSTACLE_CAMERA_FOCAL_X_PX) *
+           180.0f / PI;
+}
+
+bool observationAllowsClearAtGeometry(
+    const ObstacleObservationResult &observation,
+    float seatBearingDeg,
+    float seatRangeMm)
+{
+    if (observation.status == OBSTACLE_OBSERVATION_NO_BLOB)
+        return true;
+
+    // A rejected blob may be a partial pillar. Only production-valid geometry
+    // can prove that the blob is elsewhere or safely behind this seat.
+    if (!observation.productionValid ||
+        !isfinite(observation.rangeMm) || observation.rangeMm <= 0.0f)
+        return false;
+
+    const float edgeBearing0 = cameraBearingForImageX(observation.left);
+    const float edgeBearing1 = cameraBearingForImageX(observation.right);
+    const float blobMinimumBearing =
+        fminf(edgeBearing0, edgeBearing1) -
+        OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG;
+    const float blobMaximumBearing =
+        fmaxf(edgeBearing0, edgeBearing1) +
+        OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG;
+    const bool overlapsSeatBearing =
+        seatBearingDeg >= blobMinimumBearing &&
+        seatBearingDeg <= blobMaximumBearing;
+    if (!overlapsSeatBearing)
+        return true;
+
+    return observation.rangeMm >=
+        seatRangeMm + OBSTACLE_DISCOVERY_BEHIND_SEAT_MARGIN_MM;
+}
+
+bool observationAllowsSeatClear(
+    const ObstacleObservationResult &observation,
+    uint8_t seatIndex,
+    const PositionEstimate &pose)
+{
+    float seatBearingDeg = 0.0f;
+    float seatRangeMm = -1.0f;
+    seatCameraGeometry(seatIndex, pose, seatBearingDeg, seatRangeMm);
+    return observationAllowsClearAtGeometry(
+        observation,
+        seatBearingDeg,
+        seatRangeMm);
+}
+
 bool seatComfortablyVisible(
     uint8_t seatIndex,
     const PositionEstimate &pose)
@@ -863,9 +919,6 @@ void updateDiscoveryCoverage(
     if (completedLaps != 0)
         return;
 
-    const bool clearFrame =
-        observation.status == OBSTACLE_OBSERVATION_NO_BLOB;
-
     // A difficult corner station must not prevent the camera from collecting
     // evidence for another station that is already visible. Track every seat
     // independently so the two sides may be verified during different parts
@@ -878,6 +931,7 @@ void updateDiscoveryCoverage(
             continue;
 
         DiscoveryStation &coverage = discoveryStations[station];
+        coverage.lastClearEvidenceMask = 0;
         for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
         {
             if (coverage.seatObservedClear[side])
@@ -885,7 +939,15 @@ void updateDiscoveryCoverage(
 
             const uint8_t seatIndex =
                 station * COURSE_SEATS_PER_STATION + side;
-            if (!seatComfortablyVisible(seatIndex, pose) || !clearFrame)
+            const bool comfortablyVisible =
+                seatComfortablyVisible(seatIndex, pose);
+            const bool clearEvidence =
+                comfortablyVisible &&
+                observationAllowsSeatClear(observation, seatIndex, pose);
+            if (clearEvidence)
+                coverage.lastClearEvidenceMask |=
+                    static_cast<uint8_t>(1U << side);
+            if (!clearEvidence)
             {
                 coverage.clearFrames[side] = 0;
                 continue;
@@ -1006,11 +1068,26 @@ ObstacleTofCorrectionResult applyTofCorrectionAt(
             center.y + sensorSide *
                            OBSTACLE_CORRIDOR_HALF_WIDTH_MM * wallNormalY;
 
-        float lateralError =
+        const float lateralResidual =
             (expectedWallX - measuredWallX) * wallNormalX +
             (expectedWallY - measuredWallY) * wallNormalY;
-        lateralError = clampFloat(
-            lateralError * OBSTACLE_TOF_CORRECTION_GAIN,
+        if (left)
+            result.leftResidualMm = lateralResidual;
+        else
+            result.rightResidualMm = lateralResidual;
+        if (!isfinite(lateralResidual) ||
+            fabsf(lateralResidual) >
+                OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM)
+        {
+            if (left)
+                result.leftResidualGated = true;
+            else
+                result.rightResidualGated = true;
+            continue;
+        }
+
+        const float lateralError = clampFloat(
+            lateralResidual * OBSTACLE_TOF_CORRECTION_GAIN,
             -OBSTACLE_TOF_CORRECTION_MAX_STEP_MM,
             OBSTACLE_TOF_CORRECTION_MAX_STEP_MM);
         correctionX += wallNormalX * lateralError;
@@ -1077,6 +1154,7 @@ void obstacle_path_reset()
     lastDiscoveryNudgeUpdateMs = 0;
     lastDiscoveryObservation = ObstacleObservationResult();
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
+    lastTofCorrectionResult = ObstacleTofCorrectionResult{};
     memset(seats, 0, sizeof(seats));
     memset(discoveryStations, 0, sizeof(discoveryStations));
 }
@@ -1192,9 +1270,14 @@ void obstacle_path_update(bool new_camera_frame)
     }
 
     if (!runtimeTestMode)
-        applyTofCorrectionAt(
+    {
+        const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
             pose,
             baselinePath[progressIndex].distanceMm);
+        if (correction.leftReadingMm > 0.0f ||
+            correction.rightReadingMm > 0.0f)
+            lastTofCorrectionResult = correction;
+    }
     pose = get_position_struct();
 
     const PathPoint &progress = path[progressIndex];
@@ -1314,6 +1397,7 @@ bool obstacle_path_get_discovery_telemetry(
     telemetry.station = discoveryScanStation;
     const DiscoveryStation &coverage =
         discoveryStations[discoveryScanStation];
+    telemetry.clearEvidenceMask = coverage.lastClearEvidenceMask;
     const PositionEstimate pose = get_position_struct();
     for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
     {
@@ -1649,11 +1733,26 @@ ObstacleTofCorrectionResult obstacle_path_apply_tof_diagnostic(
         path_distance_mm);
 }
 
+ObstacleTofCorrectionResult obstacle_path_last_tof_correction()
+{
+    return lastTofCorrectionResult;
+}
+
 bool obstacle_path_geometry_preflight()
 {
+    const float normalWallResidualMm = 100.0f;
+    const float pillarLikeResidualMm = -(
+        OBSTACLE_CORRIDOR_HALF_WIDTH_MM -
+        fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM) - 108.0f);
     if (!obstacle_path_geometry_valid() ||
         OBSTACLE_SEAT_COUNT != 24 ||
-        OBSTACLE_SEAT_CONFIRM_VOTES != 2)
+        OBSTACLE_SEAT_CONFIRM_VOTES != 2 ||
+        fabsf(normalWallResidualMm) >
+            OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM ||
+        fabsf(-normalWallResidualMm) >
+            OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM ||
+        fabsf(pillarLikeResidualMm) <=
+            OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM)
         return false;
 
     Blob imageLeft;
@@ -1680,6 +1779,32 @@ bool obstacle_path_geometry_preflight()
     floorFragment.maxY = 174;
     if (!obstacle_blob_valid_for_acquisition(&pillarShape) ||
         obstacle_blob_valid_for_acquisition(&floorFragment))
+        return false;
+
+    ObstacleObservationResult noBlob;
+    if (!observationAllowsClearAtGeometry(noBlob, 20.0f, 439.0f))
+        return false;
+
+    ObstacleObservationResult validBlob;
+    validBlob.status = OBSTACLE_OBSERVATION_NO_SEAT;
+    validBlob.productionValid = true;
+    validBlob.left = 68;
+    validBlob.right = 82;
+    validBlob.rangeMm = 912.0f;
+    // Reproduce log_46: a far blob on the same bearing proves the nearer seat
+    // clear, while a nearby overlapping blob must still block that inference.
+    if (!observationAllowsClearAtGeometry(validBlob, 20.3f, 439.0f))
+        return false;
+    validBlob.rangeMm = 520.0f;
+    if (observationAllowsClearAtGeometry(validBlob, 20.3f, 439.0f))
+        return false;
+    validBlob.rangeMm = 439.0f;
+    validBlob.left = 200;
+    validBlob.right = 220;
+    if (!observationAllowsClearAtGeometry(validBlob, 20.3f, 439.0f))
+        return false;
+    validBlob.productionValid = false;
+    if (observationAllowsClearAtGeometry(validBlob, 20.3f, 439.0f))
         return false;
 
     const float inside = OBSTACLE_SEAT_SNAP_RADIUS_MM - 1.0f;

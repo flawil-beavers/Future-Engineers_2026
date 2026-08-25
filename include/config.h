@@ -424,9 +424,15 @@ constexpr auto OBSTACLE_PATH_MIN_SPEED = 135.0f;
 constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
 constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 
-constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 200.0f;
+// Radius-1 smoothing reduces the requested displacement. 260 mm adds about
+// 20 mm in the approach where the green-left rear wheel touched in log_54 and
+// about 27 mm at the peak, while retaining estimated body-to-wall margin.
+constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
 constexpr auto OBSTACLE_OPTIMIZED_CLEARANCE_MM = 160.0f;
-constexpr auto OBSTACLE_PATH_TAPER_WAYPOINTS = 6;
+// Begin obstacle displacement 100 mm earlier than the former 6-point taper so
+// Pure Pursuit tracks outward before the closest approach instead of cutting
+// inside the green-left path as observed in log_55.
+constexpr auto OBSTACLE_PATH_TAPER_WAYPOINTS = 8;
 constexpr auto OBSTACLE_PATH_SMOOTH_RADIUS = 1;
 constexpr auto OBSTACLE_SEAT_SNAP_RADIUS_MM = 140.0f;
 constexpr auto OBSTACLE_SEAT_CONFIRM_VOTES = 2;
@@ -436,15 +442,22 @@ constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 // stations require several camera frames in which both legal seats were well
 // inside the calibrated field of view. If a station is still unknown near the
 // decision point, slow down and finally hold rather than risk a wrong pass.
-constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 260.0f;
+constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 230.0f;
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
+// Clear evidence is evaluated for each seat independently. Include the
+// calibrated bearing uncertainty around the detected blob, and accept an
+// overlapping blob as evidence of a clear nearer seat only when it is well
+// behind that seat. Consecutive stations are 500 mm apart, so 180 mm remains
+// conservative while separating the log_46 seat-3/seat-5 sight line.
+constexpr auto OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG = 2.0f;
+constexpr auto OBSTACLE_DISCOVERY_BEHIND_SEAT_MARGIN_MM = 180.0f;
 // A complete official pillar remained visible and stable at +/-26.6 degrees
 // in the full-sensor mode, with about 20 px clearance to the image edge.
 constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.42f;
-// Full-FOV capture takes about 150 ms, so two consecutive usable views require
-// about 300 ms while still rejecting a single-frame dropout. Pillars use their
-// separate two-vote geometry and colour confirmation and can still override an
-// earlier clear observation if they appear later in the approach.
+// Normal asynchronous full-FOV completion takes about 80 ms, so two
+// consecutive usable views require at least about 160 ms while still rejecting
+// a single-frame dropout. Pillars use their separate two-vote geometry and
+// colour confirmation and can override an earlier clear observation.
 constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
 constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 170.0f;
@@ -530,7 +543,7 @@ constexpr auto OBSTACLE_EDGE_CLIPPED_RANGE_MM = 170.0f;
 constexpr auto OBSTACLE_LOOK_START_MM = 850.0f;
 constexpr auto OBSTACLE_LOOK_FULL_NUDGE_MM = 650.0f;
 constexpr auto OBSTACLE_LOOK_END_MM = 80.0f;
-constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 0.75f;
+constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 1.0f;
 // Keep a complete pillar a few degrees inside the measured comfortable view.
 // Discovery should use the wide camera view, not steer every seat to the old
 // cropped-camera +/-8 degree target.
@@ -540,7 +553,10 @@ constexpr auto OBSTACLE_LOOK_FOV_MARGIN_DEG = 3.0f;
 // while unresolved.
 constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 0.0f;
 constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN = 1.0f;
-constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 35.0f;
+// The green-right CCW detour left the next inside seat about 1.2 degrees beyond
+// the validated view at 248 mm. Allow a short additional target rotation while
+// retaining the existing slew limit and Pure Pursuit steering calculation.
+constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 40.0f;
 constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 
 // ToF locations in the robot frame: +X forward, +Y left. The documented
@@ -551,6 +567,10 @@ constexpr auto OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 35.0f;
 constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 40.0f;
 constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
 constexpr auto OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM = 500.0f;
+// Reject a side return whose implied wall-position error is too large to be a
+// credible localization error. This keeps the validated +/-100 mm correction
+// cases but prevents a nearby pillar from being treated as the field wall.
+constexpr auto OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM = 150.0f;
 constexpr auto OBSTACLE_TOF_CORRECTION_GAIN = 0.18f;
 constexpr auto OBSTACLE_TOF_CORRECTION_MAX_STEP_MM = 12.0f;
 constexpr auto OBSTACLE_CORNER_GATE_BEFORE_MM = 120.0f;

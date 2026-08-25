@@ -62,6 +62,7 @@ struct ObstacleObservationResult {
 struct ObstacleDiscoveryTelemetry {
     int8_t station = -1;
     uint8_t visibleMask = 0; // bit 0 = right seat, bit 1 = left seat
+    uint8_t clearEvidenceMask = 0; // current frame, same side bits as visible
     uint8_t clearFrames[2] = {};
     // Predicted geometry from the camera to the station's right/left seats.
     // This is independent of whether the image contains an obstacle blob.
@@ -84,8 +85,12 @@ struct ObstacleTofCorrectionResult {
     bool rightUsed = false;
     bool leftCornerGated = false;
     bool rightCornerGated = false;
+    bool leftResidualGated = false;
+    bool rightResidualGated = false;
     float leftReadingMm = -1.0f;
     float rightReadingMm = -1.0f;
+    float leftResidualMm = 0.0f;
+    float rightResidualMm = 0.0f;
     float correctionXmm = 0.0f;
     float correctionYmm = 0.0f;
 };
@@ -146,6 +151,9 @@ bool obstacle_path_prepare_tof_diagnostic(
  * position. This changes only the position estimator; it never drives. */
 ObstacleTofCorrectionResult obstacle_path_apply_tof_diagnostic(
     float path_distance_mm);
+
+/** Most recent fresh ToF frame evaluated by production pose correction. */
+ObstacleTofCorrectionResult obstacle_path_last_tof_correction();
 
 /** Deterministic checks for the currently generated direction. */
 bool obstacle_path_geometry_preflight();

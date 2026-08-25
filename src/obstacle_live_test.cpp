@@ -129,6 +129,9 @@ void printTelemetry()
         Serial.print(discovery.clearFrames[0]);
         Serial.print("/");
         Serial.print(discovery.clearFrames[1]);
+        Serial.print(" evidence=");
+        Serial.print((discovery.clearEvidenceMask & 0x01) != 0 ? "R" : "-");
+        Serial.print((discovery.clearEvidenceMask & 0x02) != 0 ? "L" : "-");
         Serial.print(" seat_geom=R");
         Serial.print(discovery.seatBearingDeg[0], 1);
         Serial.print("/");
@@ -158,7 +161,21 @@ void printTelemetry()
         }
     }
     Serial.print(" tof="); Serial.print(get_tof_distance(TOF_LEFT), 0);
-    Serial.print("/"); Serial.println(get_tof_distance(TOF_RIGHT), 0);
+    Serial.print("/"); Serial.print(get_tof_distance(TOF_RIGHT), 0);
+    const ObstacleTofCorrectionResult tofCorrection =
+        obstacle_path_last_tof_correction();
+    if (tofCorrection.leftResidualGated ||
+        tofCorrection.rightResidualGated)
+    {
+        Serial.print(" tof_residual_gate=");
+        Serial.print(tofCorrection.leftResidualGated ? "L" : "-");
+        Serial.print(tofCorrection.rightResidualGated ? "R" : "-");
+        Serial.print(" residual=");
+        Serial.print(tofCorrection.leftResidualMm, 0);
+        Serial.print("/");
+        Serial.print(tofCorrection.rightResidualMm, 0);
+    }
+    Serial.println();
     resetDriveTelemetryWindow();
 }
 
