@@ -99,7 +99,7 @@ void printTelemetry()
     Serial.print(" nudge_deg=");
     Serial.print(obstacle_path_discovery_target_nudge_deg(), 1);
     Serial.print(" scan_seat=");
-    Serial.print(obstacle_path_discovery_scan_seat());
+    Serial.print(static_cast<int>(obstacle_path_discovery_scan_seat()));
     Serial.print(" tof="); Serial.print(get_tof_distance(TOF_LEFT), 0);
     Serial.print("/"); Serial.println(get_tof_distance(TOF_RIGHT), 0);
     resetDriveTelemetryWindow();

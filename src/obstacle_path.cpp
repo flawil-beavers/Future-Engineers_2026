@@ -686,7 +686,6 @@ void applyDiscoveryTargetNudge(
             pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
             OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
         float bearing[COURSE_SEATS_PER_STATION] = {};
-        bool visible[COURSE_SEATS_PER_STATION] = {};
         for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
         {
             const uint8_t seatIndex =
@@ -696,64 +695,58 @@ void applyDiscoveryTargetNudge(
                 atan2f(seat.y - cameraY, seat.x - cameraX) *
                     180.0f / PI -
                 pose.heading_deg);
-            visible[side] = seatComfortablyVisible(seatIndex, pose);
         }
 
         DiscoveryStation &coverage = discoveryStations[bestStation];
-        if (visible[0] && visible[1])
+        const bool unresolved0 = !coverage.seatObservedClear[0];
+        const bool unresolved1 = !coverage.seatObservedClear[1];
+        float aimBearingDeg = 0.0f;
+        float allowedBearingDeg = OBSTACLE_LOOK_TARGET_BEARING_DEG;
+
+        discoveryScanStation = bestStation;
+        if (unresolved0 && unresolved1)
         {
-            // Both seats can accumulate clear evidence without steering away
-            // from the nominal path.
-            discoveryScanStation = bestStation;
-            discoveryScanSide = -1;
+            // Aim between the two seats and hold that view until both have
+            // collected enough clear frames. The wrapped difference avoids
+            // choosing the long way around at the +/-180-degree boundary.
+            aimBearingDeg = wrap180(
+                bearing[0] + 0.5f * wrap180(bearing[1] - bearing[0]));
+            allowedBearingDeg = 0.0f;
+            discoveryScanSide = -2; // telemetry: both seats simultaneously
+        }
+        else if (unresolved0)
+        {
+            aimBearingDeg = bearing[0];
+            discoveryScanSide = 0;
+        }
+        else if (unresolved1)
+        {
+            aimBearingDeg = bearing[1];
+            discoveryScanSide = 1;
         }
         else
         {
-            const bool selectionInvalid =
-                discoveryScanStation != bestStation ||
-                discoveryScanSide < 0 ||
-                discoveryScanSide >= COURSE_SEATS_PER_STATION ||
-                coverage.seatObservedClear[discoveryScanSide];
-            if (selectionInvalid)
-            {
-                discoveryScanStation = bestStation;
-                discoveryScanSide = -1;
-                for (uint8_t side = 0;
-                     side < COURSE_SEATS_PER_STATION;
-                     ++side)
-                {
-                    if (coverage.seatObservedClear[side])
-                        continue;
-                    if (discoveryScanSide < 0 ||
-                        (visible[side] &&
-                         !visible[discoveryScanSide]) ||
-                        (visible[side] == visible[discoveryScanSide] &&
-                         fabsf(bearing[side]) <
-                             fabsf(bearing[discoveryScanSide])))
-                        discoveryScanSide = side;
-                }
-            }
+            discoveryScanSide = -1;
+        }
 
-            if (discoveryScanSide >= 0)
-            {
-                const float excessBearing = fmaxf(
-                    0.0f,
-                    fabsf(bearing[discoveryScanSide]) -
-                        OBSTACLE_LOOK_TARGET_BEARING_DEG);
-                const float taper = clampFloat(
-                    (OBSTACLE_LOOK_START_MM - bestForward) /
-                        (OBSTACLE_LOOK_START_MM -
-                         OBSTACLE_LOOK_FULL_NUDGE_MM),
-                    0.0f,
-                    1.0f);
-                desiredNudgeDeg = copysignf(
-                    excessBearing * OBSTACLE_LOOK_TARGET_GAIN * taper,
-                    bearing[discoveryScanSide]);
-                desiredNudgeDeg = clampFloat(
-                    desiredNudgeDeg,
-                    -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,
-                    OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
-            }
+        if (discoveryScanSide != -1)
+        {
+            const float excessBearing = fmaxf(
+                0.0f,
+                fabsf(aimBearingDeg) - allowedBearingDeg);
+            const float taper = clampFloat(
+                (OBSTACLE_LOOK_START_MM - bestForward) /
+                    (OBSTACLE_LOOK_START_MM -
+                     OBSTACLE_LOOK_FULL_NUDGE_MM),
+                0.0f,
+                1.0f);
+            desiredNudgeDeg = copysignf(
+                excessBearing * OBSTACLE_LOOK_TARGET_GAIN * taper,
+                aimBearingDeg);
+            desiredNudgeDeg = clampFloat(
+                desiredNudgeDeg,
+                -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,
+                OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
         }
     }
     else
@@ -1271,8 +1264,10 @@ float obstacle_path_discovery_target_nudge_deg()
 
 int8_t obstacle_path_discovery_scan_seat()
 {
-    if (discoveryScanStation < 0 || discoveryScanSide < 0)
+    if (discoveryScanStation < 0 || discoveryScanSide == -1)
         return -1;
+    if (discoveryScanSide == -2)
+        return -2;
     return discoveryScanStation * COURSE_SEATS_PER_STATION +
            discoveryScanSide;
 }

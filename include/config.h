@@ -439,7 +439,10 @@ constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 260.0f;
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
 constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.40f;
-constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 5;
+// Three consecutive usable views reject a one-frame camera dropout while
+// allowing an empty seat to resolve within the short corner-viewing window.
+// Pillars still use their separate two-vote geometry and colour confirmation.
+constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 3;
 constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 170.0f;
 // The drivetrain oscillates below its continuous controllable range at
