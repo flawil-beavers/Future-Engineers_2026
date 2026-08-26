@@ -95,6 +95,42 @@ struct ObstacleTofCorrectionResult {
     float correctionYmm = 0.0f;
 };
 
+enum ObstacleWallFeature : uint8_t {
+    OBSTACLE_WALL_UNKNOWN,
+    OBSTACLE_WALL_OUTER_SOUTH,
+    OBSTACLE_WALL_OUTER_EAST,
+    OBSTACLE_WALL_OUTER_NORTH,
+    OBSTACLE_WALL_OUTER_WEST,
+    OBSTACLE_WALL_INNER_SOUTH,
+    OBSTACLE_WALL_INNER_EAST,
+    OBSTACLE_WALL_INNER_NORTH,
+    OBSTACLE_WALL_INNER_WEST,
+    OBSTACLE_WALL_INNER_CORNER_SW,
+    OBSTACLE_WALL_INNER_CORNER_SE,
+    OBSTACLE_WALL_INNER_CORNER_NE,
+    OBSTACLE_WALL_INNER_CORNER_NW
+};
+
+/** One geometric clearance sample for the conservative complete-robot
+ * capsule. Distances are to the pillar movement circle or physical wall;
+ * negative values mean that the two safety envelopes overlap. */
+struct ObstacleClearanceSample {
+    bool valid = false;
+    float pillarMm = 1.0e9f;
+    float wallMm = 1.0e9f;
+    ObstacleWallFeature wallFeature = OBSTACLE_WALL_UNKNOWN;
+    float wallXmm = 0.0f;
+    float wallYmm = 0.0f;
+    float robotXmm = 0.0f;
+    float robotYmm = 0.0f;
+    float robotHeadingDeg = 0.0f;
+    float wallRobotXmm = 0.0f;
+    float wallRobotYmm = 0.0f;
+    float wallRobotHeadingDeg = 0.0f;
+    // SW, SE, NE, NW inner-wall corner clearance.
+    float innerCornerMm[4] = {};
+};
+
 /** Known-field waypoint planner and Pure Pursuit controller for the
  * WRO Future Engineers Obstacle Challenge.
  *
@@ -122,6 +158,8 @@ uint8_t obstacle_path_lap();
 uint16_t obstacle_path_progress_index();
 uint16_t obstacle_path_waypoint_count();
 float obstacle_path_loop_length_mm();
+/** Baseline path distance travelled, unwrapped across completed laps. */
+float obstacle_path_travel_distance_mm();
 float obstacle_path_cross_track_error_mm();
 float obstacle_path_heading_error_deg();
 bool obstacle_path_geometry_valid();
@@ -132,6 +170,19 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob);
 
 uint8_t obstacle_path_seat_count();
 bool obstacle_path_get_seat(uint8_t seat_id, ObstacleSeatInfo &info);
+/** Minimum clearance of the current planned Pure Pursuit route over the same
+ * longitudinal passage window used by the ToF logger. */
+bool obstacle_path_get_planned_clearance(
+    uint8_t seat_id,
+    ObstacleClearanceSample &sample);
+/** Clearance of one calculated rear-axle odometry pose. */
+bool obstacle_path_sample_pose_clearance(
+    uint8_t seat_id,
+    float x_mm,
+    float y_mm,
+    float heading_deg,
+    ObstacleClearanceSample &sample);
+const char *obstacle_path_wall_feature_name(ObstacleWallFeature feature);
 void obstacle_path_clear_observations();
 uint16_t obstacle_path_injection_count();
 

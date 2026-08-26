@@ -636,17 +636,19 @@ void parseMessage(char *msg)
       else
         Serial.println("No live obstacle path test is active.");
     }
-    else if (value == 1 || value == -1)
+    else if (value == 1 || value == -1 || value == 3 || value == -3)
     {
       if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
           pending_mode == MODE_OBSTACLE_LIVE_TEST)
         mode_stop_all();
       obstacle_live_test_set_turn_sign(value);
+      obstacle_live_test_set_lap_target(abs(value) == 3 ? 3 : 1);
       select_temporary_mode(MODE_OBSTACLE_LIVE_TEST);
     }
     else
     {
-      Serial.println("Usage: Y1 (left/CCW), Y-1 (right/CW), Y0 (stop)");
+      Serial.println(
+          "Usage: Y1/Y-1 (one lap), Y3/Y-3 (three laps), Y0 (stop)");
     }
     break;
 

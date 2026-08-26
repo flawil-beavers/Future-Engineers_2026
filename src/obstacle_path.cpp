@@ -63,6 +63,8 @@ PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint smoothingBuffer[OBSTACLE_MAX_PATH_WAYPOINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
 DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
+ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
+bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT] = {};
 
 uint16_t pathLength = 0;
 uint16_t progressIndex = 0;
@@ -82,6 +84,9 @@ int8_t discoveryBlockedStation = -1;
 float lastDiscoveryTargetNudgeDeg = 0.0f;
 int8_t discoveryScanStation = -1;
 int8_t discoveryScanSide = -1;
+int8_t lastConfirmedSeatIndex = -1;
+bool extremeAdjacentReleasePending = false;
+int8_t deferredInjectionSeatIndex = -1;
 uint32_t lastDiscoveryNudgeUpdateMs = 0;
 ObstacleObservationResult lastDiscoveryObservation;
 ObstacleTofCorrectionResult lastTofCorrectionResult;
@@ -91,6 +96,27 @@ uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
 float clampFloat(float value, float minimum, float maximum)
 {
     return value < minimum ? minimum : (value > maximum ? maximum : value);
+}
+
+float cappedPathSpeed(float pathSpeedMmS)
+{
+    float cappedSpeed = runtimeTestMode
+        ? fminf(pathSpeedMmS, OBSTACLE_PATH_TEST_MAX_SPEED_MM_S)
+        : pathSpeedMmS;
+    if (runtimeSpeedCapMmS > 0.0f)
+        cappedSpeed = fminf(cappedSpeed, runtimeSpeedCapMmS);
+    return cappedSpeed;
+}
+
+float adaptiveLookahead(float speedMmS)
+{
+    return OBSTACLE_LOOKAHEAD_MIN_MM +
+        (OBSTACLE_LOOKAHEAD_MAX_MM - OBSTACLE_LOOKAHEAD_MIN_MM) *
+            clampFloat(
+                (speedMmS - OBSTACLE_PATH_MIN_SPEED) /
+                    (OBSTACLE_PATH_MAX_SPEED - OBSTACLE_PATH_MIN_SPEED),
+                0.0f,
+                1.0f);
 }
 
 float wrap180(float angle)
@@ -561,6 +587,326 @@ float targetLateralForSeat(const CandidateSeat &seat, float clearanceMm)
     return seat.lateralMm + (seat.red ? -clearanceMm : clearanceMm);
 }
 
+struct WallSegment
+{
+    float ax;
+    float ay;
+    float bx;
+    float by;
+    ObstacleWallFeature feature;
+};
+
+constexpr float FIELD_INNER_HALF_MM =
+    OBSTACLE_CENTERLINE_HALF_EXTENT_MM - OBSTACLE_CORRIDOR_HALF_WIDTH_MM;
+constexpr float FIELD_OUTER_HALF_MM =
+    OBSTACLE_CENTERLINE_HALF_EXTENT_MM + OBSTACLE_CORRIDOR_HALF_WIDTH_MM;
+
+const WallSegment FIELD_WALLS[] = {
+    {-FIELD_OUTER_HALF_MM, -FIELD_OUTER_HALF_MM,
+      FIELD_OUTER_HALF_MM, -FIELD_OUTER_HALF_MM, OBSTACLE_WALL_OUTER_SOUTH},
+    { FIELD_OUTER_HALF_MM, -FIELD_OUTER_HALF_MM,
+      FIELD_OUTER_HALF_MM,  FIELD_OUTER_HALF_MM, OBSTACLE_WALL_OUTER_EAST},
+    { FIELD_OUTER_HALF_MM,  FIELD_OUTER_HALF_MM,
+     -FIELD_OUTER_HALF_MM,  FIELD_OUTER_HALF_MM, OBSTACLE_WALL_OUTER_NORTH},
+    {-FIELD_OUTER_HALF_MM,  FIELD_OUTER_HALF_MM,
+     -FIELD_OUTER_HALF_MM, -FIELD_OUTER_HALF_MM, OBSTACLE_WALL_OUTER_WEST},
+    {-FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM,
+      FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM, OBSTACLE_WALL_INNER_SOUTH},
+    { FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM,
+      FIELD_INNER_HALF_MM,  FIELD_INNER_HALF_MM, OBSTACLE_WALL_INNER_EAST},
+    { FIELD_INNER_HALF_MM,  FIELD_INNER_HALF_MM,
+     -FIELD_INNER_HALF_MM,  FIELD_INNER_HALF_MM, OBSTACLE_WALL_INNER_NORTH},
+    {-FIELD_INNER_HALF_MM,  FIELD_INNER_HALF_MM,
+     -FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM, OBSTACLE_WALL_INNER_WEST}
+};
+
+float pointSegmentDistance(
+    float px, float py, float ax, float ay, float bx, float by,
+    float *nearestX = nullptr, float *nearestY = nullptr)
+{
+    const float dx = bx - ax;
+    const float dy = by - ay;
+    const float lengthSquared = dx * dx + dy * dy;
+    const float t = lengthSquared > 0.0f
+        ? clampFloat(((px - ax) * dx + (py - ay) * dy) / lengthSquared,
+                     0.0f, 1.0f)
+        : 0.0f;
+    const float qx = ax + t * dx;
+    const float qy = ay + t * dy;
+    if (nearestX != nullptr) *nearestX = qx;
+    if (nearestY != nullptr) *nearestY = qy;
+    return hypotf(px - qx, py - qy);
+}
+
+float orientation(float ax, float ay, float bx, float by, float cx, float cy)
+{
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
+bool segmentsIntersect(
+    float ax, float ay, float bx, float by,
+    float cx, float cy, float dx, float dy)
+{
+    const float o1 = orientation(ax, ay, bx, by, cx, cy);
+    const float o2 = orientation(ax, ay, bx, by, dx, dy);
+    const float o3 = orientation(cx, cy, dx, dy, ax, ay);
+    const float o4 = orientation(cx, cy, dx, dy, bx, by);
+    constexpr float epsilon = 0.001f;
+    const bool properCrossing =
+        ((o1 > epsilon && o2 < -epsilon) ||
+         (o1 < -epsilon && o2 > epsilon)) &&
+        ((o3 > epsilon && o4 < -epsilon) ||
+         (o3 < -epsilon && o4 > epsilon));
+    if (properCrossing)
+        return true;
+    const auto onSegment = [epsilon](
+        float px, float py, float sx, float sy, float ex, float ey)
+    {
+        return px >= fminf(sx, ex) - epsilon &&
+               px <= fmaxf(sx, ex) + epsilon &&
+               py >= fminf(sy, ey) - epsilon &&
+               py <= fmaxf(sy, ey) + epsilon;
+    };
+    return (fabsf(o1) <= epsilon && onSegment(cx, cy, ax, ay, bx, by)) ||
+           (fabsf(o2) <= epsilon && onSegment(dx, dy, ax, ay, bx, by)) ||
+           (fabsf(o3) <= epsilon && onSegment(ax, ay, cx, cy, dx, dy)) ||
+           (fabsf(o4) <= epsilon && onSegment(bx, by, cx, cy, dx, dy));
+}
+
+float segmentDistanceToWall(
+    float ax, float ay, float bx, float by, const WallSegment &wall,
+    float &wallX, float &wallY)
+{
+    if (segmentsIntersect(ax, ay, bx, by, wall.ax, wall.ay, wall.bx, wall.by))
+    {
+        wallX = ax;
+        wallY = ay;
+        return 0.0f;
+    }
+    float best = 1.0e9f;
+    float qx = 0.0f;
+    float qy = 0.0f;
+    const float endpoints[4] = {ax, ay, bx, by};
+    for (uint8_t i = 0; i < 2; ++i)
+    {
+        float wx = 0.0f;
+        float wy = 0.0f;
+        const float d = pointSegmentDistance(
+            endpoints[i * 2], endpoints[i * 2 + 1],
+            wall.ax, wall.ay, wall.bx, wall.by, &wx, &wy);
+        if (d < best) { best = d; qx = wx; qy = wy; }
+    }
+    const float wallEndpoints[4] = {wall.ax, wall.ay, wall.bx, wall.by};
+    for (uint8_t i = 0; i < 2; ++i)
+    {
+        const float d = pointSegmentDistance(
+            wallEndpoints[i * 2], wallEndpoints[i * 2 + 1],
+            ax, ay, bx, by);
+        if (d < best)
+        {
+            best = d;
+            qx = wallEndpoints[i * 2];
+            qy = wallEndpoints[i * 2 + 1];
+        }
+    }
+    wallX = qx;
+    wallY = qy;
+    return best;
+}
+
+ObstacleWallFeature classifyWallFeature(
+    ObstacleWallFeature face, float wallX, float wallY)
+{
+    if (face < OBSTACLE_WALL_INNER_SOUTH ||
+        face > OBSTACLE_WALL_INNER_WEST)
+        return face;
+    const bool atXEnd =
+        fabsf(fabsf(wallX) - FIELD_INNER_HALF_MM) < 0.1f;
+    const bool atYEnd =
+        fabsf(fabsf(wallY) - FIELD_INNER_HALF_MM) < 0.1f;
+    if (!atXEnd || !atYEnd)
+        return face;
+    if (wallX < 0.0f && wallY < 0.0f) return OBSTACLE_WALL_INNER_CORNER_SW;
+    if (wallX > 0.0f && wallY < 0.0f) return OBSTACLE_WALL_INNER_CORNER_SE;
+    if (wallX > 0.0f && wallY > 0.0f) return OBSTACLE_WALL_INNER_CORNER_NE;
+    return OBSTACLE_WALL_INNER_CORNER_NW;
+}
+
+bool calculateClearanceAtPose(
+    const CandidateSeat &seat,
+    float x,
+    float y,
+    float headingDeg,
+    ObstacleClearanceSample &sample)
+{
+    if (!isfinite(x) || !isfinite(y) || !isfinite(headingDeg))
+        return false;
+    const float heading = headingDeg * PI / 180.0f;
+    const float axisEndX =
+        x + OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * cosf(heading);
+    const float axisEndY =
+        y + OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * sinf(heading);
+    sample = ObstacleClearanceSample{};
+    sample.valid = true;
+    sample.robotXmm = x;
+    sample.robotYmm = y;
+    sample.robotHeadingDeg = headingDeg;
+    sample.wallRobotXmm = x;
+    sample.wallRobotYmm = y;
+    sample.wallRobotHeadingDeg = headingDeg;
+    sample.pillarMm = pointSegmentDistance(
+        seat.x, seat.y, x, y, axisEndX, axisEndY) -
+        OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM -
+        OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+
+    for (const WallSegment &wall : FIELD_WALLS)
+    {
+        float wallX = 0.0f;
+        float wallY = 0.0f;
+        const float clearance = segmentDistanceToWall(
+            x, y, axisEndX, axisEndY, wall, wallX, wallY) -
+            OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM;
+        if (clearance < sample.wallMm)
+        {
+            sample.wallMm = clearance;
+            sample.wallFeature = classifyWallFeature(
+                wall.feature, wallX, wallY);
+            sample.wallXmm = wallX;
+            sample.wallYmm = wallY;
+        }
+    }
+
+    const float cornerX[4] = {
+        -FIELD_INNER_HALF_MM, FIELD_INNER_HALF_MM,
+         FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM};
+    const float cornerY[4] = {
+        -FIELD_INNER_HALF_MM, -FIELD_INNER_HALF_MM,
+         FIELD_INNER_HALF_MM, FIELD_INNER_HALF_MM};
+    for (uint8_t corner = 0; corner < 4; ++corner)
+    {
+        sample.innerCornerMm[corner] = pointSegmentDistance(
+            cornerX[corner], cornerY[corner],
+            x, y, axisEndX, axisEndY) -
+            OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM;
+    }
+    return true;
+}
+
+bool isExtremeAdjacentPair(
+    uint8_t firstIndex,
+    const CandidateSeat &first,
+    uint8_t secondIndex,
+    const CandidateSeat &second)
+{
+    constexpr uint8_t seatsPerSection =
+        COURSE_STATIONS_PER_SECTION * COURSE_SEATS_PER_STATION;
+    const int firstStation = (firstIndex % seatsPerSection) /
+        COURSE_SEATS_PER_STATION;
+    const int secondStation = (secondIndex % seatsPerSection) /
+        COURSE_SEATS_PER_STATION;
+    if (firstIndex / seatsPerSection != secondIndex / seatsPerSection ||
+        abs(firstStation - secondStation) != 1)
+        return false;
+
+    const float firstTarget =
+        targetLateralForSeat(first, OBSTACLE_LAP1_CLEARANCE_MM);
+    const float secondTarget =
+        targetLateralForSeat(second, OBSTACLE_LAP1_CLEARANCE_MM);
+    return firstTarget * secondTarget < 0.0f &&
+           fabsf(firstTarget) > OBSTACLE_LAP1_CLEARANCE_MM &&
+           fabsf(secondTarget) > OBSTACLE_LAP1_CLEARANCE_MM;
+}
+
+bool targetsOuterExtreme(const CandidateSeat &seat)
+{
+    return fabsf(targetLateralForSeat(
+                     seat,
+                     OBSTACLE_LAP1_CLEARANCE_MM)) >
+           OBSTACLE_LAP1_CLEARANCE_MM;
+}
+
+bool hasConfirmedExtremeAdjacentPair(uint8_t seatIndex)
+{
+    for (uint8_t otherIndex = 0;
+         otherIndex < OBSTACLE_SEAT_COUNT;
+         ++otherIndex)
+    {
+        if (otherIndex != seatIndex && seats[otherIndex].confirmed &&
+            isExtremeAdjacentPair(
+                seatIndex,
+                seats[seatIndex],
+                otherIndex,
+                seats[otherIndex]))
+            return true;
+    }
+    return false;
+}
+
+bool isSecondExtremeAdjacentSeat(uint8_t seatIndex)
+{
+    for (uint8_t otherIndex = 0;
+         otherIndex < OBSTACLE_SEAT_COUNT;
+         ++otherIndex)
+    {
+        if (otherIndex != seatIndex && seats[otherIndex].confirmed &&
+            isExtremeAdjacentPair(
+                seatIndex,
+                seats[seatIndex],
+                otherIndex,
+                seats[otherIndex]))
+            return seatIndex / COURSE_SEATS_PER_STATION >
+                   otherIndex / COURSE_SEATS_PER_STATION;
+    }
+    return false;
+}
+
+bool upcomingAdjacentStationUnresolved(uint8_t seatIndex)
+{
+    const uint8_t localStation =
+        (seatIndex %
+         (COURSE_STATIONS_PER_SECTION * COURSE_SEATS_PER_STATION)) /
+        COURSE_SEATS_PER_STATION;
+    if (localStation + 1 >= COURSE_STATIONS_PER_SECTION)
+        return false;
+    return !stationResolved(
+        seatIndex / COURSE_SEATS_PER_STATION + 1);
+}
+
+float validatedClearanceForSeat(uint8_t seatIndex)
+{
+    if (hasConfirmedExtremeAdjacentPair(seatIndex))
+        return isSecondExtremeAdjacentSeat(seatIndex)
+            ? OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM
+            : OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
+    if (targetsOuterExtreme(seats[seatIndex]) &&
+        upcomingAdjacentStationUnresolved(seatIndex))
+        return OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
+    return OBSTACLE_LAP1_CLEARANCE_MM;
+}
+
+bool completingExtremeAdjacentPair(float currentDistanceMm)
+{
+    if (!extremeAdjacentReleasePending || lastConfirmedSeatIndex < 0 ||
+        !hasConfirmedExtremeAdjacentPair(
+            static_cast<uint8_t>(lastConfirmedSeatIndex)))
+    {
+        extremeAdjacentReleasePending = false;
+        return false;
+    }
+
+    const CandidateSeat &lastSeat = seats[lastConfirmedSeatIndex];
+    const float forwardToSeat = cyclicDistanceForward(
+        currentDistanceMm,
+        lastSeat.pathDistanceMm);
+    if (forwardToSeat < loopLengthMm * 0.5f)
+        return true;
+    const float distancePastSeat = loopLengthMm - forwardToSeat;
+    if (distancePastSeat < OBSTACLE_EXTREME_ADJACENT_RELEASE_MM)
+        return true;
+    extremeAdjacentReleasePending = false;
+    return false;
+}
+
 void displaceForSeat(
     PathPoint *path,
     CandidateSeat &seat,
@@ -597,20 +943,127 @@ void displaceForSeat(
     recomputeSpeedProfile(path);
 }
 
+void rebuildLivePath()
+{
+    memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        if (seats[i].confirmed && seats[i].injected)
+            displaceForSeat(
+                livePath,
+                seats[i],
+                validatedClearanceForSeat(i));
+    }
+    recomputeSpeedProfile(livePath);
+}
+
+int8_t earlierExtremeAdjacentSeat(uint8_t seatIndex)
+{
+    for (uint8_t other = 0; other < OBSTACLE_SEAT_COUNT; ++other)
+    {
+        if (other < seatIndex && seats[other].confirmed &&
+            seats[other].injected &&
+            isExtremeAdjacentPair(
+                other, seats[other], seatIndex, seats[seatIndex]))
+            return static_cast<int8_t>(other);
+    }
+    return -1;
+}
+
+void printInjectedSeat(uint8_t seatIndex, bool delayed)
+{
+    Serial.print("[PATH] Live avoidance injected seat=");
+    Serial.print(seatIndex);
+    Serial.print(" color=");
+    Serial.print(seats[seatIndex].red ? "RED" : "GREEN");
+    Serial.print(" clearance_mm=");
+    Serial.print(validatedClearanceForSeat(seatIndex), 0);
+    if (delayed)
+        Serial.print(" delayed_until_first_clear=yes");
+    Serial.println();
+}
+
+void injectSeat(uint8_t seatIndex, bool delayed)
+{
+    CandidateSeat &seat = seats[seatIndex];
+    if (seat.injected)
+        return;
+    seat.injected = true;
+    if (injectionCount < 65535)
+        ++injectionCount;
+    rebuildLivePath();
+    ObstacleClearanceSample snapshot;
+    if (obstacle_path_get_planned_clearance(seatIndex, snapshot))
+    {
+        plannedClearanceAtInjection[seatIndex] = snapshot;
+        plannedClearanceSnapshotValid[seatIndex] = true;
+    }
+    printInjectedSeat(seatIndex, delayed);
+}
+
+void activateDeferredInjection(float currentDistanceMm)
+{
+    if (deferredInjectionSeatIndex < 0)
+        return;
+    const uint8_t deferred =
+        static_cast<uint8_t>(deferredInjectionSeatIndex);
+    const int8_t earlier = earlierExtremeAdjacentSeat(deferred);
+    if (earlier < 0)
+    {
+        injectSeat(deferred, true);
+        deferredInjectionSeatIndex = -1;
+        return;
+    }
+    const float forwardToFirst = cyclicDistanceForward(
+        currentDistanceMm, seats[earlier].pathDistanceMm);
+    if (forwardToFirst < loopLengthMm * 0.5f)
+        return;
+    const float distancePastFirst = loopLengthMm - forwardToFirst;
+    if (distancePastFirst < OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM)
+        return;
+    injectSeat(deferred, true);
+    deferredInjectionSeatIndex = -1;
+}
+
 void buildOptimizedPath()
 {
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
     for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
     {
         if (seats[i].confirmed)
+        {
+            const float clearance = validatedClearanceForSeat(i);
             displaceForSeat(
                 optimizedPath,
                 seats[i],
-                OBSTACLE_OPTIMIZED_CLEARANCE_MM);
+                clearance);
+            Serial.print("[PATH] Later-lap avoidance seat=");
+            Serial.print(i);
+            Serial.print(" color=");
+            Serial.print(seats[i].red ? "RED" : "GREEN");
+            Serial.print(" clearance_mm=");
+            Serial.println(clearance, 0);
+        }
     }
     recomputeSpeedProfile(optimizedPath);
     optimizedBuilt = true;
-    Serial.println("[PATH] Optimized laps 2-3 path built");
+    // Lap-1 passage reports have already consumed their injection snapshots.
+    // Replace them with the actual later-lap route for lap-2/3 diagnostics.
+    for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        if (!seats[i].confirmed)
+            continue;
+        plannedClearanceSnapshotValid[i] = false;
+        ObstacleClearanceSample snapshot;
+        if (obstacle_path_get_planned_clearance(i, snapshot))
+        {
+            plannedClearanceAtInjection[i] = snapshot;
+            plannedClearanceSnapshotValid[i] = true;
+        }
+    }
+    Serial.println(
+        "[PATH] Optimized laps 2-3 path built "
+        "clearance_policy=validated-layout");
 }
 
 void updateProgress(const PathPoint *path, const PositionEstimate &pose)
@@ -658,7 +1111,8 @@ void applyDiscoveryTargetNudge(
     float bestForward = OBSTACLE_LOOK_START_MM + 1.0f;
     int bestStation = -1;
 
-    if (completedLaps == 0)
+    if (completedLaps == 0 &&
+        !completingExtremeAdjacentPair(currentDistance))
     {
         for (uint8_t station = 0;
              station < OBSTACLE_SEAT_COUNT / COURSE_SEATS_PER_STATION;
@@ -1151,12 +1605,19 @@ void obstacle_path_reset()
     lastDiscoveryTargetNudgeDeg = 0.0f;
     discoveryScanStation = -1;
     discoveryScanSide = -1;
+    lastConfirmedSeatIndex = -1;
+    extremeAdjacentReleasePending = false;
+    deferredInjectionSeatIndex = -1;
     lastDiscoveryNudgeUpdateMs = 0;
     lastDiscoveryObservation = ObstacleObservationResult();
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     lastTofCorrectionResult = ObstacleTofCorrectionResult{};
     memset(seats, 0, sizeof(seats));
     memset(discoveryStations, 0, sizeof(discoveryStations));
+    memset(
+        plannedClearanceSnapshotValid,
+        0,
+        sizeof(plannedClearanceSnapshotValid));
 }
 
 void obstacle_path_start(
@@ -1269,6 +1730,11 @@ void obstacle_path_update(bool new_camera_frame)
         }
     }
 
+    // A second adjacent extreme route is intentionally held back until the
+    // rear envelope is clear of the first pillar. Its confirmation remains
+    // recorded, so this delays only geometry activation, not perception.
+    activateDeferredInjection(baselinePath[progressIndex].distanceMm);
+
     if (!runtimeTestMode)
     {
         const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
@@ -1281,16 +1747,10 @@ void obstacle_path_update(bool new_camera_frame)
     pose = get_position_struct();
 
     const PathPoint &progress = path[progressIndex];
+    const float commandedSpeed = cappedPathSpeed(progress.speedMmS);
     const bool constrainedGeometry =
         nearCorner(progress.distanceMm);
-    float lookahead =
-        OBSTACLE_LOOKAHEAD_MIN_MM +
-        (OBSTACLE_LOOKAHEAD_MAX_MM - OBSTACLE_LOOKAHEAD_MIN_MM) *
-            clampFloat(
-                (progress.speedMmS - OBSTACLE_PATH_MIN_SPEED) /
-                    (OBSTACLE_PATH_MAX_SPEED - OBSTACLE_PATH_MIN_SPEED),
-                0.0f,
-                1.0f);
+    float lookahead = adaptiveLookahead(commandedSpeed);
     if (constrainedGeometry)
         lookahead *= OBSTACLE_LOOKAHEAD_CORNER_SCALE;
 
@@ -1310,11 +1770,6 @@ void obstacle_path_update(bool new_camera_frame)
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
 
     set_steering(static_cast<int>(steering));
-    float commandedSpeed = runtimeTestMode
-        ? fminf(progress.speedMmS, OBSTACLE_PATH_TEST_MAX_SPEED_MM_S)
-        : progress.speedMmS;
-    if (runtimeSpeedCapMmS > 0.0f)
-        commandedSpeed = fminf(commandedSpeed, runtimeSpeedCapMmS);
     float safeSpeed = commandedSpeed;
     if (!runtimeTestMode && completedLaps == 0)
     {
@@ -1442,6 +1897,14 @@ uint16_t obstacle_path_waypoint_count()
 float obstacle_path_loop_length_mm()
 {
     return loopLengthMm;
+}
+
+float obstacle_path_travel_distance_mm()
+{
+    if (!running || pathLength == 0 || progressIndex >= pathLength)
+        return 0.0f;
+    return completedLaps * loopLengthMm +
+        baselinePath[progressIndex].distanceMm;
 }
 
 float obstacle_path_cross_track_error_mm()
@@ -1578,28 +2041,44 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     else if (recordSeatVote(seat, blob->color))
     {
         result.status = OBSTACLE_OBSERVATION_CONFIRMED;
-        displaceForSeat(livePath, seat, OBSTACLE_LAP1_CLEARANCE_MM);
-        seat.injected = true;
-        if (injectionCount < 65535)
-            ++injectionCount;
-
-        const uint16_t center = nearestPathIndex(
-            baselinePath, seat.x, seat.y, 0, pathLength);
-        result.peakDisplacementMm = hypotf(
-            livePath[center].x - baselinePath[center].x,
-            livePath[center].y - baselinePath[center].y);
-        result.movementCircleClearanceMm =
-            hypotf(
-                livePath[center].x - seat.x,
-                livePath[center].y - seat.y) -
-            42.5f;
-
-        Serial.print("[PATH] Live avoidance injected seat=");
-        Serial.print(result.seatId);
-        Serial.print(" color=");
-        Serial.println(seat.red ? "RED" : "GREEN");
-
         const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
+        lastConfirmedSeatIndex = result.seatId;
+        extremeAdjacentReleasePending =
+            hasConfirmedExtremeAdjacentPair(seatIndex);
+        const int8_t earlier = earlierExtremeAdjacentSeat(seatIndex);
+        if (earlier >= 0)
+        {
+            deferredInjectionSeatIndex = result.seatId;
+            // Rebuild without the deferred seat. This also applies the
+            // established extreme-pair clearance to the first member.
+            rebuildLivePath();
+            Serial.print("[PATH] Avoidance confirmed seat=");
+            Serial.print(result.seatId);
+            Serial.print(" injection=DEFERRED until_mm_past_seat_");
+            Serial.print(earlier);
+            Serial.print("=");
+            Serial.println(
+                OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM, 0);
+        }
+        else
+        {
+            injectSeat(seatIndex, false);
+        }
+
+        if (seat.injected)
+        {
+            const uint16_t center = nearestPathIndex(
+                baselinePath, seat.x, seat.y, 0, pathLength);
+            result.peakDisplacementMm = hypotf(
+                livePath[center].x - baselinePath[center].x,
+                livePath[center].y - baselinePath[center].y);
+            result.movementCircleClearanceMm =
+                hypotf(
+                    livePath[center].x - seat.x,
+                    livePath[center].y - seat.y) -
+                OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+        }
+
         course_map_record_seat_obstacle(
             seatIndex / 6,
             (seatIndex % 6) / 2,
@@ -1651,6 +2130,101 @@ bool obstacle_path_get_seat(uint8_t seat_id, ObstacleSeatInfo &info)
     return true;
 }
 
+const char *obstacle_path_wall_feature_name(ObstacleWallFeature feature)
+{
+    switch (feature)
+    {
+    case OBSTACLE_WALL_OUTER_SOUTH: return "outer_south";
+    case OBSTACLE_WALL_OUTER_EAST: return "outer_east";
+    case OBSTACLE_WALL_OUTER_NORTH: return "outer_north";
+    case OBSTACLE_WALL_OUTER_WEST: return "outer_west";
+    case OBSTACLE_WALL_INNER_SOUTH: return "inner_south_face";
+    case OBSTACLE_WALL_INNER_EAST: return "inner_east_face";
+    case OBSTACLE_WALL_INNER_NORTH: return "inner_north_face";
+    case OBSTACLE_WALL_INNER_WEST: return "inner_west_face";
+    case OBSTACLE_WALL_INNER_CORNER_SW: return "inner_corner_SW";
+    case OBSTACLE_WALL_INNER_CORNER_SE: return "inner_corner_SE";
+    case OBSTACLE_WALL_INNER_CORNER_NE: return "inner_corner_NE";
+    case OBSTACLE_WALL_INNER_CORNER_NW: return "inner_corner_NW";
+    default: return "unknown";
+    }
+}
+
+bool obstacle_path_sample_pose_clearance(
+    uint8_t seat_id,
+    float x_mm,
+    float y_mm,
+    float heading_deg,
+    ObstacleClearanceSample &sample)
+{
+    if (!running || seat_id >= OBSTACLE_SEAT_COUNT)
+        return false;
+    return calculateClearanceAtPose(
+        seats[seat_id], x_mm, y_mm, heading_deg, sample);
+}
+
+bool obstacle_path_get_planned_clearance(
+    uint8_t seat_id,
+    ObstacleClearanceSample &sample)
+{
+    if (!running || seat_id >= OBSTACLE_SEAT_COUNT || pathLength < 2)
+        return false;
+    if (plannedClearanceSnapshotValid[seat_id])
+    {
+        sample = plannedClearanceAtInjection[seat_id];
+        return sample.valid;
+    }
+    const CandidateSeat &seat = seats[seat_id];
+    const PathPoint *path = optimizedBuilt ? optimizedPath : livePath;
+    sample = ObstacleClearanceSample{};
+    for (uint8_t corner = 0; corner < 4; ++corner)
+        sample.innerCornerMm[corner] = 1.0e9f;
+
+    bool found = false;
+    for (uint16_t i = 0; i < pathLength; ++i)
+    {
+        const float forward = cyclicDistanceForward(
+            seat.pathDistanceMm, path[i].distanceMm);
+        const bool inWindow =
+            forward <= OBSTACLE_TOF_PASSAGE_AFTER_MM ||
+            forward >= loopLengthMm - OBSTACLE_TOF_PASSAGE_BEFORE_MM;
+        if (!inWindow)
+            continue;
+        const uint16_t before = (i + pathLength - 1) % pathLength;
+        const uint16_t after = (i + 1) % pathLength;
+        const float headingDeg = atan2f(
+            path[after].y - path[before].y,
+            path[after].x - path[before].x) * 180.0f / PI;
+        ObstacleClearanceSample instant;
+        if (!calculateClearanceAtPose(
+                seat, path[i].x, path[i].y, headingDeg, instant))
+            continue;
+        if (!found || instant.pillarMm < sample.pillarMm)
+        {
+            sample.pillarMm = instant.pillarMm;
+            sample.robotXmm = instant.robotXmm;
+            sample.robotYmm = instant.robotYmm;
+            sample.robotHeadingDeg = instant.robotHeadingDeg;
+        }
+        if (!found || instant.wallMm < sample.wallMm)
+        {
+            sample.wallMm = instant.wallMm;
+            sample.wallFeature = instant.wallFeature;
+            sample.wallXmm = instant.wallXmm;
+            sample.wallYmm = instant.wallYmm;
+            sample.wallRobotXmm = instant.wallRobotXmm;
+            sample.wallRobotYmm = instant.wallRobotYmm;
+            sample.wallRobotHeadingDeg = instant.wallRobotHeadingDeg;
+        }
+        for (uint8_t corner = 0; corner < 4; ++corner)
+            sample.innerCornerMm[corner] = fminf(
+                sample.innerCornerMm[corner], instant.innerCornerMm[corner]);
+        found = true;
+    }
+    sample.valid = found;
+    return found;
+}
+
 void obstacle_path_clear_observations()
 {
     if (!running)
@@ -1659,6 +2233,13 @@ void obstacle_path_clear_observations()
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
     optimizedBuilt = false;
     injectionCount = 0;
+    lastConfirmedSeatIndex = -1;
+    extremeAdjacentReleasePending = false;
+    deferredInjectionSeatIndex = -1;
+    memset(
+        plannedClearanceSnapshotValid,
+        0,
+        sizeof(plannedClearanceSnapshotValid));
     for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
     {
         seats[i].redVotes = 0;
@@ -1744,9 +2325,21 @@ bool obstacle_path_geometry_preflight()
     const float pillarLikeResidualMm = -(
         OBSTACLE_CORRIDOR_HALF_WIDTH_MM -
         fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM) - 108.0f);
+    const float expectedTestLookaheadMm =
+        OBSTACLE_LOOKAHEAD_MIN_MM +
+        (OBSTACLE_LOOKAHEAD_MAX_MM - OBSTACLE_LOOKAHEAD_MIN_MM) *
+            (OBSTACLE_PATH_TEST_MAX_SPEED_MM_S -
+             OBSTACLE_PATH_MIN_SPEED) /
+            (OBSTACLE_PATH_MAX_SPEED - OBSTACLE_PATH_MIN_SPEED);
     if (!obstacle_path_geometry_valid() ||
         OBSTACLE_SEAT_COUNT != 24 ||
         OBSTACLE_SEAT_CONFIRM_VOTES != 2 ||
+        fabsf(adaptiveLookahead(OBSTACLE_PATH_TEST_MAX_SPEED_MM_S) -
+              expectedTestLookaheadMm) > 0.1f ||
+        fabsf(adaptiveLookahead(OBSTACLE_PATH_MIN_SPEED) -
+              OBSTACLE_LOOKAHEAD_MIN_MM) > 0.1f ||
+        fabsf(adaptiveLookahead(OBSTACLE_PATH_MAX_SPEED) -
+              OBSTACLE_LOOKAHEAD_MAX_MM) > 0.1f ||
         fabsf(normalWallResidualMm) >
             OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM ||
         fabsf(-normalWallResidualMm) >
@@ -1880,6 +2473,66 @@ bool obstacle_path_geometry_preflight()
         return false;
     clearPendingVotes();
     if (seats[0].redVotes != 0 || seats[1].redVotes != 0)
+        return false;
+
+    CandidateSeat outerRed = seats[6];
+    CandidateSeat outerGreen = seats[9];
+    CandidateSeat moderateRed = seats[7];
+    CandidateSeat moderateGreen = seats[8];
+    CandidateSeat separatedGreen = seats[11];
+    outerRed.red = true;
+    outerGreen.red = false;
+    moderateRed.red = true;
+    moderateGreen.red = false;
+    separatedGreen.red = false;
+    const float reducedOuterReversalMm = fabsf(
+        targetLateralForSeat(
+            outerGreen,
+            OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM) -
+        targetLateralForSeat(
+            outerRed,
+            OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM));
+    const float nominalWheelMarginMm =
+        OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM -
+        OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM -
+        OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM;
+    const float outerHeading = outerRed.headingDeg * PI / 180.0f;
+    const float outerNormalX = -sinf(outerHeading);
+    const float outerNormalY = cosf(outerHeading);
+    const float outerCenterX =
+        outerRed.x - outerNormalX * outerRed.lateralMm;
+    const float outerCenterY =
+        outerRed.y - outerNormalY * outerRed.lateralMm;
+    const float outerTarget = targetLateralForSeat(
+        outerRed, OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM);
+    ObstacleClearanceSample envelopeCheck;
+    if (!calculateClearanceAtPose(
+            outerRed,
+            outerCenterX + outerNormalX * outerTarget,
+            outerCenterY + outerNormalY * outerTarget,
+            outerRed.headingDeg,
+            envelopeCheck))
+        return false;
+    if (!isExtremeAdjacentPair(6, outerRed, 9, outerGreen) ||
+        isExtremeAdjacentPair(7, moderateRed, 8, moderateGreen) ||
+        isExtremeAdjacentPair(6, outerRed, 11, separatedGreen) ||
+        !targetsOuterExtreme(outerRed) ||
+        targetsOuterExtreme(moderateRed) ||
+        !upcomingAdjacentStationUnresolved(6) ||
+        upcomingAdjacentStationUnresolved(10) ||
+        fabsf(reducedOuterReversalMm - 610.0f) > 0.1f ||
+        OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM <
+            OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM ||
+        OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM >=
+            OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f ||
+        OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM -
+                OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM -
+                OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM <
+            50.0f ||
+        nominalWheelMarginMm < 30.0f ||
+        !envelopeCheck.valid ||
+        fabsf(envelopeCheck.pillarMm - nominalWheelMarginMm) > 0.1f ||
+        !isfinite(envelopeCheck.wallMm))
         return false;
 
     return fabsf(

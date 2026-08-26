@@ -51,7 +51,8 @@ constexpr auto ENABLE_SWITCH_PIN = A2; // Enable switch - HIGH to enable, LOW to
 constexpr auto GEAR_RATIO = 30; // Motor gear ratio
 constexpr auto ENCODER_COUNTS_PER_REV = (GEAR_RATIO * 7 * 4); // CPR of the motor
 constexpr auto ENCODER_COUNTS_PER_WHEEL_REV = (28.0 / 20.0 * ENCODER_COUNTS_PER_REV); // CPR of the wheel
-constexpr auto COUNTER_TO_MM = (PI * 43.2 / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
+constexpr auto DRIVE_WHEEL_DIAMETER_MM = 43.2f;
+constexpr auto COUNTER_TO_MM = (PI * DRIVE_WHEEL_DIAMETER_MM / ENCODER_COUNTS_PER_WHEEL_REV); // mm per encoder count
 
 constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
 constexpr auto MOTOR_MIN_DC = 80; // Min duty cycle to overcome static friction
@@ -436,7 +437,24 @@ constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 // 20 mm in the approach where the green-left rear wheel touched in log_54 and
 // about 27 mm at the peak, while retaining estimated body-to-wall margin.
 constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
-constexpr auto OBSTACLE_OPTIMIZED_CLEARANCE_MM = 160.0f;
+// The first member of the worst adjacent outer-seat reversal needs more than
+// the former 160 mm reduced value. Log_84 measured -6 mm ToF wheel clearance
+// at 160 mm while about 242 mm remained to the opposite wall. Request 200 mm to
+// add roughly 40 mm of physical placement tolerance. Ordinary first-lap
+// routes retain their proven 260 mm clearance.
+constexpr auto OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM = 200.0f;
+// The second member needs extra rear-wheel margin. Log_82 measured a -16 mm
+// green wheel-envelope estimate while about 207 mm remained to the outer wall.
+constexpr auto OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM = 210.0f;
+// Do not aim at the following station while Pure Pursuit is still completing
+// the extreme adjacent transition. At release, that station remains about
+// 400 mm ahead and inside the existing perception/hold window.
+constexpr auto OBSTACLE_EXTREME_ADJACENT_RELEASE_MM = 100.0f;
+// A newly confirmed second obstacle must not reshape the route while the rear
+// of the robot is still clearing the first obstacle.  At 100 mm past the first
+// seat, the conservative robot envelope is clear and 400 mm of approach to the
+// adjacent station remains.
+constexpr auto OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM = 100.0f;
 // Begin obstacle displacement 100 mm earlier than the former 6-point taper so
 // Pure Pursuit tracks outward before the closest approach instead of cutting
 // inside the green-left path as observed in log_55.
@@ -468,7 +486,9 @@ constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.42f;
 // colour confirmation and can override an earlier clear observation.
 constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
 constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
-constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 170.0f;
+// Stop early enough that an unresolved near-side pillar cannot overlap the
+// chassis before the camera has produced a usable edge-of-view observation.
+constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
 // The drivetrain oscillates below its continuous controllable range at
 // 90 mm/s. Use the already validated test speed while approaching an unresolved
 // station; the final hold remains available if perception cannot resolve it.
@@ -556,11 +576,12 @@ constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 1.0f;
 // Discovery should use the wide camera view, not steer every seat to the old
 // cropped-camera +/-8 degree target.
 constexpr auto OBSTACLE_LOOK_FOV_MARGIN_DEG = 3.0f;
-// Once one side has been cleared, centre the only unresolved seat and use the
-// full bearing error. Both seats retain the gentler simultaneous wide-FOV rule
-// while unresolved.
+// Once one side has been cleared, bias the Pure-Pursuit target beyond the only
+// unresolved seat's bearing. A 1.35 gain drives the logged 29.9-degree seat-6
+// edge miss to the existing 40-degree cap without widening camera acceptance.
+// Both seats retain the gentler simultaneous wide-FOV rule while unresolved.
 constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 0.0f;
-constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN = 1.0f;
+constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN = 1.35f;
 // The green-right CCW detour left the next inside seat about 1.2 degrees beyond
 // the validated view at 248 mm. Allow a short additional target rotation while
 // retaining the existing slew limit and Pure Pursuit steering calculation.
@@ -568,12 +589,39 @@ constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 40.0f;
 constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 
 // ToF locations in the robot frame: +X forward, +Y left. The documented
-// 120 mm body width places the side-facing sensor apertures about 60 mm from
-// the pose origin; update DX after measuring the final printed mounts.
+// coordinates are the side-facing sensor aperture/measurement origins.
 constexpr auto OBSTACLE_TOF_LEFT_LOCAL_X_MM = 40.0f;
 constexpr auto OBSTACLE_TOF_LEFT_LOCAL_Y_MM = 35.0f;
 constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_X_MM = 40.0f;
 constexpr auto OBSTACLE_TOF_RIGHT_LOCAL_Y_MM = -35.0f;
+// Clearance diagnostic geometry. The 125 mm value is measured outside wheel
+// to outside wheel. Steering can widen the wheel envelope by approximately
+// 7.5 mm per side, so its conservative half-width is 125/2 + 7.5 = 70 mm.
+// Each aperture is 35 mm from the centre, leaving a 70 - 35 = 35 mm inset.
+// A side-facing ToF range minus this inset is a conservative geometry-based
+// outer-wheel clearance estimate, not an exact swept-body minimum.
+constexpr auto OBSTACLE_WHEEL_OUTSIDE_WIDTH_MM = 125.0f;
+constexpr auto OBSTACLE_STEERING_ENVELOPE_PER_SIDE_MM = 7.5f;
+constexpr auto OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM =
+    OBSTACLE_WHEEL_OUTSIDE_WIDTH_MM * 0.5f +
+    OBSTACLE_STEERING_ENVELOPE_PER_SIDE_MM;
+// Clearance logs model the complete safety envelope as a capsule.  Its radius
+// is the maximum steered-wheel half-width.  The centre segment starts at the
+// rear axle and ends 60 mm forward, so the capsule reaches the measured
+// 130 mm front plane and conservatively reaches 70 mm behind the rear axle.
+constexpr auto OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM =
+    ROBOT_FRONT_FROM_REAR_AXLE_MM - OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM;
+// Official 85 mm obstacle movement circle, expressed as a radius.
+constexpr auto OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM = 42.5f;
+constexpr auto OBSTACLE_TOF_LEFT_TO_WHEEL_ENVELOPE_MM =
+    OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM - OBSTACLE_TOF_LEFT_LOCAL_Y_MM;
+constexpr auto OBSTACLE_TOF_RIGHT_TO_WHEEL_ENVELOPE_MM =
+    OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM + OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+// Capture every fresh facing-side sample for 300 mm before and after the
+// confirmed seat. Adjacent 500 mm stations intentionally overlap by 100 mm;
+// their per-seat accumulators remain independent.
+constexpr auto OBSTACLE_TOF_PASSAGE_BEFORE_MM = 300.0f;
+constexpr auto OBSTACLE_TOF_PASSAGE_AFTER_MM = 300.0f;
 constexpr auto OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM = 500.0f;
 // Reject a side return whose implied wall-position error is too large to be a
 // credible localization error. This keeps the validated +/-100 mm correction
@@ -599,6 +647,9 @@ constexpr auto OBSTACLE_PATH_TEST_PASS_HEADING_DEG = 12.0f;
 constexpr auto OBSTACLE_PATH_TEST_TELEMETRY_MS = 500UL;
 constexpr auto OBSTACLE_LIVE_TEST_TIMEOUT_MS = 120000UL;
 constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
+// Three-lap diagnostics must fit in the 128 KiB USB log buffer. Clearance
+// events remain unthrottled; only the repetitive live status line is slower.
+constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
 
 
 
