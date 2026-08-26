@@ -81,6 +81,9 @@ float firstCornerDistanceMm = OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f;
 uint16_t injectionCount = 0;
 bool discoveryBlocked = false;
 int8_t discoveryBlockedStation = -1;
+bool discoveryHolding = false;
+int8_t discoveryHoldStation = -1;
+uint32_t discoveryHoldStartMs = 0;
 float lastDiscoveryTargetNudgeDeg = 0.0f;
 int8_t discoveryScanStation = -1;
 int8_t discoveryScanSide = -1;
@@ -522,10 +525,14 @@ void recomputeSpeedProfile(PathPoint *path)
     }
 }
 
-void smoothRange(PathPoint *path, int center, int taper)
+void smoothRange(
+    PathPoint *path,
+    int center,
+    int approachWaypoints,
+    int exitWaypoints)
 {
-    const int first = center - taper - 1;
-    const int last = center + taper + 1;
+    const int first = center - approachWaypoints - 1;
+    const int last = center + exitWaypoints + 1;
     memcpy(smoothingBuffer, path, sizeof(PathPoint) * pathLength);
 
     for (int raw = first; raw <= last; ++raw)
@@ -880,8 +887,25 @@ float validatedClearanceForSeat(uint8_t seatIndex)
             : OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
     if (targetsOuterExtreme(seats[seatIndex]) &&
         upcomingAdjacentStationUnresolved(seatIndex))
-        return OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
+        return OBSTACLE_OUTER_SAFE_CLEARANCE_MM;
     return OBSTACLE_LAP1_CLEARANCE_MM;
+}
+
+float optimizedClearanceForSeat(uint8_t seatIndex)
+{
+    if (hasConfirmedExtremeAdjacentPair(seatIndex))
+        return isSecondExtremeAdjacentSeat(seatIndex)
+            ? OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM
+            : OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
+    if (targetsOuterExtreme(seats[seatIndex]))
+        return OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM;
+    return OBSTACLE_LAP1_CLEARANCE_MM;
+}
+
+bool optimizedUsesOuterPlateau(uint8_t seatIndex)
+{
+    return targetsOuterExtreme(seats[seatIndex]) &&
+           !hasConfirmedExtremeAdjacentPair(seatIndex);
 }
 
 bool completingExtremeAdjacentPair(float currentDistanceMm)
@@ -909,9 +933,11 @@ bool completingExtremeAdjacentPair(float currentDistanceMm)
 
 void displaceForSeat(
     PathPoint *path,
-    CandidateSeat &seat,
-    float clearanceMm)
+    uint8_t seatIndex,
+    float clearanceMm,
+    bool useOuterPlateau)
 {
+    CandidateSeat &seat = seats[seatIndex];
     const uint16_t center = nearestPathIndex(
         baselinePath,
         seat.x,
@@ -922,9 +948,18 @@ void displaceForSeat(
     const float heading = baselinePath[center].headingDeg * PI / 180.0f;
     const float normalX = -sinf(heading);
     const float normalY = cosf(heading);
+    const bool safeOuterPlateau =
+        useOuterPlateau && targetsOuterExtreme(seat);
+    const int approachLeadWaypoints = safeOuterPlateau
+        ? OBSTACLE_OUTER_SAFE_APPROACH_LEAD_WAYPOINTS
+        : 0;
+    const int exitHoldWaypoints = safeOuterPlateau
+        ? OBSTACLE_OUTER_SAFE_EXIT_HOLD_WAYPOINTS
+        : 0;
 
-    for (int offset = -OBSTACLE_PATH_TAPER_WAYPOINTS;
-         offset <= OBSTACLE_PATH_TAPER_WAYPOINTS;
+    for (int offset =
+             -OBSTACLE_PATH_TAPER_WAYPOINTS - approachLeadWaypoints;
+         offset <= OBSTACLE_PATH_TAPER_WAYPOINTS + exitHoldWaypoints;
          ++offset)
     {
         int index = static_cast<int>(center) + offset;
@@ -932,14 +967,28 @@ void displaceForSeat(
             index += pathLength;
         while (index >= pathLength)
             index -= pathLength;
-        const float taper =
-            1.0f - fabsf(static_cast<float>(offset)) /
-                       (OBSTACLE_PATH_TAPER_WAYPOINTS + 1.0f);
+        // A positive offset is after the pillar in travel direction. The
+        // safe outer-seat route reaches and holds its peak for one extra
+        // waypoint on each side so the front and rear wheels both clear.
+        const int effectiveOffset = offset <= 0
+            ? (-offset > approachLeadWaypoints
+                   ? -offset - approachLeadWaypoints
+                   : 0)
+            : (offset > exitHoldWaypoints
+                   ? offset - exitHoldWaypoints
+                   : 0);
+        const float taper = 1.0f -
+            static_cast<float>(effectiveOffset) /
+                (OBSTACLE_PATH_TAPER_WAYPOINTS + 1.0f);
         path[index].x += normalX * targetLateral * taper;
         path[index].y += normalY * targetLateral * taper;
     }
 
-    smoothRange(path, center, OBSTACLE_PATH_TAPER_WAYPOINTS);
+    smoothRange(
+        path,
+        center,
+        OBSTACLE_PATH_TAPER_WAYPOINTS + approachLeadWaypoints,
+        OBSTACLE_PATH_TAPER_WAYPOINTS + exitHoldWaypoints);
     recomputeSpeedProfile(path);
 }
 
@@ -949,10 +998,15 @@ void rebuildLivePath()
     for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
     {
         if (seats[i].confirmed && seats[i].injected)
+        {
+            const float clearance = validatedClearanceForSeat(i);
             displaceForSeat(
                 livePath,
-                seats[i],
-                validatedClearanceForSeat(i));
+                i,
+                clearance,
+                fabsf(
+                    clearance - OBSTACLE_OUTER_SAFE_CLEARANCE_MM) < 0.1f);
+        }
     }
     recomputeSpeedProfile(livePath);
 }
@@ -1032,11 +1086,12 @@ void buildOptimizedPath()
     {
         if (seats[i].confirmed)
         {
-            const float clearance = validatedClearanceForSeat(i);
+            const float clearance = optimizedClearanceForSeat(i);
             displaceForSeat(
                 optimizedPath,
-                seats[i],
-                clearance);
+                i,
+                clearance,
+                optimizedUsesOuterPlateau(i));
             Serial.print("[PATH] Later-lap avoidance seat=");
             Serial.print(i);
             Serial.print(" color=");
@@ -1360,7 +1415,8 @@ bool seatComfortablyVisible(
     seatCameraGeometry(seatIndex, pose, bearingDeg, rangeMm);
     const float bearingLimit =
         OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG *
-        OBSTACLE_DISCOVERY_FOV_FRACTION;
+            OBSTACLE_DISCOVERY_FOV_FRACTION -
+        OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG;
     return rangeMm >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
            rangeMm <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
            fabsf(bearingDeg) <= bearingLimit;
@@ -1602,6 +1658,9 @@ void obstacle_path_reset()
     injectionCount = 0;
     discoveryBlocked = false;
     discoveryBlockedStation = -1;
+    discoveryHolding = false;
+    discoveryHoldStation = -1;
+    discoveryHoldStartMs = 0;
     lastDiscoveryTargetNudgeDeg = 0.0f;
     discoveryScanStation = -1;
     discoveryScanSide = -1;
@@ -1782,18 +1841,36 @@ void obstacle_path_update(bool new_camera_frame)
                 OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM)
             {
                 safeSpeed = 0.0f;
-                if (!discoveryBlocked)
+                const uint32_t now = millis();
+                if (!discoveryHolding ||
+                    discoveryHoldStation != unresolvedStation)
                 {
-                    discoveryBlocked = true;
-                    discoveryBlockedStation = unresolvedStation;
-                    Serial.print("[PATH] Perception blocked at S");
+                    discoveryHolding = true;
+                    discoveryHoldStation = unresolvedStation;
+                    discoveryHoldStartMs = now;
+                    Serial.print("[PATH] Perception hold at S");
                     Serial.print(unresolvedStation /
                                  COURSE_STATIONS_PER_SECTION);
                     Serial.print(" station=");
                     Serial.print(unresolvedStation %
                                  COURSE_STATIONS_PER_SECTION);
                     Serial.print(" forward_mm=");
-                    Serial.println(unresolvedForward, 0);
+                    Serial.print(unresolvedForward, 0);
+                    Serial.print(" grace_ms=");
+                    Serial.println(OBSTACLE_DISCOVERY_HOLD_GRACE_MS);
+                }
+                else if (!discoveryBlocked &&
+                         now - discoveryHoldStartMs >=
+                             OBSTACLE_DISCOVERY_HOLD_GRACE_MS)
+                {
+                    discoveryBlocked = true;
+                    discoveryBlockedStation = unresolvedStation;
+                    Serial.print("[PATH] Perception hold expired at S");
+                    Serial.print(unresolvedStation /
+                                 COURSE_STATIONS_PER_SECTION);
+                    Serial.print(" station=");
+                    Serial.println(unresolvedStation %
+                                   COURSE_STATIONS_PER_SECTION);
                 }
             }
             else if (unresolvedForward <=
@@ -1801,6 +1878,18 @@ void obstacle_path_update(bool new_camera_frame)
                 safeSpeed = fminf(
                     safeSpeed,
                     OBSTACLE_DISCOVERY_SPEED_MM_S);
+        }
+
+        if (discoveryHolding &&
+            (unresolvedStation < 0 ||
+             unresolvedStation != discoveryHoldStation ||
+             unresolvedForward > OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM))
+        {
+            Serial.print("[PATH] Perception hold resolved at station=");
+            Serial.println(discoveryHoldStation);
+            discoveryHolding = false;
+            discoveryHoldStation = -1;
+            discoveryHoldStartMs = 0;
         }
     }
     set_speed(static_cast<int>(safeSpeed));
@@ -2236,6 +2325,11 @@ void obstacle_path_clear_observations()
     lastConfirmedSeatIndex = -1;
     extremeAdjacentReleasePending = false;
     deferredInjectionSeatIndex = -1;
+    discoveryBlocked = false;
+    discoveryBlockedStation = -1;
+    discoveryHolding = false;
+    discoveryHoldStation = -1;
+    discoveryHoldStartMs = 0;
     memset(
         plannedClearanceSnapshotValid,
         0,
@@ -2520,6 +2614,37 @@ bool obstacle_path_geometry_preflight()
         targetsOuterExtreme(moderateRed) ||
         !upcomingAdjacentStationUnresolved(6) ||
         upcomingAdjacentStationUnresolved(10) ||
+        fabsf(
+            validatedClearanceForSeat(6) -
+            OBSTACLE_OUTER_SAFE_CLEARANCE_MM) > 0.1f ||
+        fabsf(
+            optimizedClearanceForSeat(6) -
+            OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM) > 0.1f ||
+        fabsf(
+            optimizedClearanceForSeat(7) -
+            OBSTACLE_LAP1_CLEARANCE_MM) > 0.1f ||
+        !optimizedUsesOuterPlateau(6) ||
+        optimizedUsesOuterPlateau(7) ||
+        OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM <=
+            OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM ||
+        OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM >=
+            OBSTACLE_OUTER_SAFE_CLEARANCE_MM ||
+        OBSTACLE_OUTER_SAFE_CLEARANCE_MM <=
+            OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM ||
+        OBSTACLE_OUTER_SAFE_CLEARANCE_MM >=
+            OBSTACLE_LAP1_CLEARANCE_MM ||
+        OBSTACLE_OUTER_SAFE_EXIT_HOLD_WAYPOINTS != 1 ||
+        OBSTACLE_OUTER_SAFE_EXIT_HOLD_WAYPOINTS >=
+            OBSTACLE_PATH_TAPER_WAYPOINTS ||
+        OBSTACLE_OUTER_SAFE_APPROACH_LEAD_WAYPOINTS != 1 ||
+        OBSTACLE_OUTER_SAFE_APPROACH_LEAD_WAYPOINTS >=
+            OBSTACLE_PATH_TAPER_WAYPOINTS ||
+        OBSTACLE_DISCOVERY_HOLD_GRACE_MS <
+            4UL * OBSTACLE_CAMERA_INTERVAL_MS ||
+        OBSTACLE_DISCOVERY_HOLD_GRACE_MS > 1000UL ||
+        OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG <= 0.0f ||
+        OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG >=
+            OBSTACLE_LOOK_FOV_MARGIN_DEG ||
         fabsf(reducedOuterReversalMm - 610.0f) > 0.1f ||
         OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM <
             OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM ||

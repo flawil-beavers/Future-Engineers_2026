@@ -437,6 +437,28 @@ constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 // 20 mm in the approach where the green-left rear wheel touched in log_54 and
 // about 27 mm at the peak, while retaining estimated body-to-wall margin.
 constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
+// Safe lap-1 outer-extreme route while the following station is unresolved,
+// preserving the option of a rare opposing adjacent pillar. Logs 101-104
+// validated its 230 mm short plateau.
+constexpr auto OBSTACLE_OUTER_SAFE_CLEARANCE_MM = 230.0f;
+// Log_99 still approached the CCW red pillar within about 10 mm physically
+// (19 mm by side ToF) even though confirmation occurred before the avoidance
+// taper. Reach peak displacement one 50 mm waypoint earlier so the front
+// envelope is protected before the rear-axle centre reaches the pillar.
+constexpr auto OBSTACLE_OUTER_SAFE_APPROACH_LEAD_WAYPOINTS = 1;
+// Log_92 still measured only 11 mm of rear-wheel clearance: the closest point
+// occurred just after the rear axle passed the pillar. Keep the provisional
+// route at its peak for one more 50 mm waypoint before beginning the exit
+// taper. Together these form a short plateau around the complete vehicle pass.
+// Confirmed adjacent-pair and moderate 260 mm paths retain their old shapes.
+constexpr auto OBSTACLE_OUTER_SAFE_EXIT_HOLD_WAYPOINTS = 1;
+// Log_106 proved that reusing the 230 mm plateau on optimized laps prevented
+// contact but left only about 10 mm physical front-wheel clearance to the
+// outer wall, while retaining 108-138 mm ToF-estimated pillar clearance.
+// Move only isolated optimized outer routes 20 mm inward. This value happens
+// to equal the adjacent second clearance, so route construction must pass an
+// explicit plateau flag rather than infer the shape from clearance alone.
+constexpr auto OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM = 210.0f;
 // The first member of the worst adjacent outer-seat reversal needs more than
 // the former 160 mm reduced value. Log_84 measured -6 mm ToF wheel clearance
 // at 160 mm while about 242 mm remained to the opposite wall. Request 200 mm to
@@ -478,8 +500,15 @@ constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
 constexpr auto OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG = 2.0f;
 constexpr auto OBSTACLE_DISCOVERY_BEHIND_SEAT_MARGIN_MM = 180.0f;
 // A complete official pillar remained visible and stable at +/-26.6 degrees
-// in the full-sensor mode, with about 20 px clearance to the image edge.
+// in the full-sensor mode, with about 20 px clearance to the image edge. This
+// remains the acquisition window. Empty-seat evidence uses a separate inward
+// margin so NO_BLOB is never trusted at the acquisition edge. Log_89 showed
+// that 3 degrees left no two-frame overlap. Log_100 then left the second empty
+// seat within the 2-degree gate for only about one frame. A 1-degree margin
+// still stays inside the validated +/-26.6-degree complete-pillar view and
+// excludes the failed -28.8-degree acquisition case.
 constexpr auto OBSTACLE_DISCOVERY_FOV_FRACTION = 0.42f;
+constexpr auto OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG = 1.0f;
 // Normal asynchronous full-FOV completion takes about 80 ms, so two
 // consecutive usable views require at least about 160 ms while still rejecting
 // a single-frame dropout. Pillars use their separate two-vote geometry and
@@ -489,6 +518,11 @@ constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
 // Stop early enough that an unresolved near-side pillar cannot overlap the
 // chassis before the camera has produced a usable edge-of-view observation.
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
+// Keep processing frames while stopped at the hold line. Log_93 obtained its
+// first valid red vote in the same cycle that the former immediate abort ran;
+// 400 ms covers several normal ~80 ms camera frames without allowing motion
+// toward an unresolved station. The normal two-frame confirmation is retained.
+constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 400UL;
 // The drivetrain oscillates below its continuous controllable range at
 // 90 mm/s. Use the already validated test speed while approaching an unresolved
 // station; the final hold remains available if perception cannot resolve it.
@@ -578,14 +612,18 @@ constexpr auto OBSTACLE_LOOK_TARGET_GAIN = 1.0f;
 constexpr auto OBSTACLE_LOOK_FOV_MARGIN_DEG = 3.0f;
 // Once one side has been cleared, bias the Pure-Pursuit target beyond the only
 // unresolved seat's bearing. A 1.35 gain drives the logged 29.9-degree seat-6
-// edge miss to the existing 40-degree cap without widening camera acceptance.
+// edge miss toward the target-nudge cap without widening camera acceptance.
 // Both seats retain the gentler simultaneous wide-FOV rule while unresolved.
 constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_BEARING_DEG = 0.0f;
 constexpr auto OBSTACLE_LOOK_SINGLE_SEAT_TARGET_GAIN = 1.35f;
 // The green-right CCW detour left the next inside seat about 1.2 degrees beyond
 // the validated view at 248 mm. Allow a short additional target rotation while
 // retaining the existing slew limit and Pure Pursuit steering calculation.
-constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 40.0f;
+// Log_87 reached a 38.9 degree target nudge but left the remaining seat at
+// -28.8 degrees, outside the reliable complete-pillar region. Five additional
+// degrees bring it inside the clear-evidence gate while Pure Pursuit remains
+// the sole steering controller.
+constexpr auto OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG = 45.0f;
 constexpr auto OBSTACLE_LOOK_NUDGE_SLEW_DEG_S = 60.0f;
 
 // ToF locations in the robot frame: +X forward, +Y left. The documented

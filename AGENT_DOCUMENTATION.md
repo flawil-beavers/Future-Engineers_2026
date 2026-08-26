@@ -26,6 +26,237 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-26 - `log_105` optimized outer route hits the east wall
+
+The representative three-pillar `Y3` run is a physical failure even though the
+firmware eventually printed `PASS`. Lap 1 safely repeated the accepted live
+path: seat-6, seat-15, and seat-23 ToF pillar/wall clearance pairs were
+41/158, 72/155, and 161/280 mm. The optimized path then selected 260 mm for all
+three seats. During the lap-2 seat-6 red pass, the robot became stuck against
+the east outer wall. The user moved it away so it could continue, which makes
+all subsequent pose-dependent evidence and the final result invalid for route
+acceptance.
+
+The collision has independent telemetry confirmation. The right wall-side ToF
+minimum was 24 mm, corresponding to -11 mm after the 35 mm conservative wheel
+inset. Sampled odometry reported -49.4 mm to `outer_east`. Measured speed stayed
+at approximately 0-2 mm/s for several seconds while target speed remained
+175 mm/s and duty continued rising. The later jump in pose and speed is the
+manual intervention, not controller recovery. At the same time the pillar-side
+ToF estimated 117 mm clearance, showing that the route spent excessive space
+on the pillar side and ran out of wall margin. Lap-2 seat-6 PLAN clearance was
+only 78.8 mm to the outer wall, versus 88.1 mm for the physically successful
+230 mm lap-1 plateau.
+
+The evidence isolates the optimized route policy/shape rather than detection,
+speed, or the Pure Pursuit formula. The safest minimal change is to reuse the
+validated 230 mm one-waypoint approach-lead/one-waypoint exit-hold geometry for
+isolated outer-extreme pillars on laps 2-3. Keep the 260 mm legacy taper for
+moderate pillars such as seat 23, and keep the separately validated 200/210 mm
+extreme-adjacent policy. This uses an already physically successful outer route
+instead of inventing a new clearance. Do not run this layout again until the
+user approves implementation and the IDE-managed PlatformIO build passes. No
+firmware source was changed or uploaded in this analysis.
+
+The user approved and the correction is now implemented. A dedicated
+optimized clearance selector returns the 230 mm safe route for isolated outer
+extremes, the existing 200/210 mm values for confirmed extreme-adjacent pairs,
+and 260 mm for moderate pillars. The displacement builder recognizes every
+230 mm outer-safe route, not only an unresolved lap-1 route, and applies its
+one-waypoint approach lead and exit hold. Configuration names were generalized
+from `EXTREME_UNRESOLVED` to `OUTER_SAFE` to reflect the shared lap-1/later-lap
+geometry. Deterministic preflight asserts that optimized seat 6 selects 230 mm
+and moderate seat 7 selects 260 mm. Pure Pursuit, lookahead, speed, perception,
+adjacent geometry, and moderate geometry are unchanged.
+
+The IDE-managed `giga_r1_m7` build passed using 295584 bytes RAM and 364120
+bytes flash. Existing compiler warnings are unchanged. No firmware was
+uploaded. Next, upload and repeat the same three-pillar CCW `Y3` layout. Expect
+optimized messages of 230 mm for seats 6/15 and 260 mm for seat 23. Require no
+east-wall contact, nine complete passage reports, and a stop after lap 3.
+
+`log_106` exercises that build and confirms the intended 230/230/260 mm
+optimized selectors, nine complete pillar reports, and exactly three laps. The
+primary seat-6 wall regression is fixed in telemetry: lap-2 and lap-3
+pillar/east-wall ToF estimates were 138/37 and 108/39 mm, with corresponding
+positive odometry wall minima of 37.2/38.7 mm. This replaces `log_105`'s -11 mm
+ToF and -49.4 mm odometry wall collision estimates. Seat-15 optimized passes
+reported 178 mm pillar clearance with 69/67 mm inner-wall clearance; seat 23
+reported 162/153 mm pillar and 283/281 mm wall clearance. Maximum CTE was
+114.9 mm and maximum heading error was 59.9 degrees.
+
+Do not mark the complete reliability test accepted until the user confirms
+there was no physical contact. One additional anomaly needs that context:
+around 95.6-96.8 seconds, early on lap 3's clear starting straight, progress
+barely changed and the 600 ms status windows fell through measured ranges of
+7..101, 3..7, and 3..64 mm/s while target stayed 175 mm/s and duty increased.
+There was no perception hold, avoidance event, or commanded stop. The robot
+then recovered. Ask whether a physical snag or visible pause occurred. If no
+external cause is known, retain the route fix but repeat the same `Y3` layout
+once; diagnose drivetrain/power only if the pause repeats. No new firmware
+change is justified from this single event.
+
+The user observed about 10 mm physical front-wheel clearance to the outer wall
+at red seat 6 on both optimized laps, despite no wall contact. This overrides
+the 37/39 mm side-ToF wheel-inset estimates for whole-vehicle clearance and is
+below the approximately 30 mm robustness target. The same run retained very
+large seat-6 pillar-side ToF estimates of 138/108 mm, so the optimized route can
+move inward without threatening the pillar margin. The proposed single route
+change is 210 mm plus the existing short plateau for isolated outer optimized
+passes only. Lap-1 unresolved outer routes remain 230 mm, moderate routes 260
+mm, and adjacent extremes 200/210 mm without the plateau. Implementation needs
+an explicit optimized-outer constant or shape flag so the adjacent 210 mm case
+does not inherit the isolated plateau. Obtain user approval before changing it.
+
+The user also physically noticed the post-start pause in both laps 2 and 3.
+Log telemetry shows it recurring near path index 7 at approximately x=330-380,
+y=-990 on the starting straight. Lap 2 slowed to sampled 62..114 mm/s; lap 3
+progressed through 7..101, 3..7, and 3..64 mm/s windows before recovering.
+Throughout, target was 175 mm/s, steering approximately 2 degrees, duty rose,
+and no perception hold or obstacle event was active. It is not intentional
+corner slowdown. Because it recurs at essentially the same field location,
+first ask whether a mat seam, bump, line, cable, or other local resistance is
+present. If not, instrument or diagnose drivetrain/power behavior separately;
+do not try to cure it by changing the obstacle route or Pure Pursuit.
+
+The user approved the optimized route correction and reported no physical mat
+anomaly at the pause location. The battery was at a low state of charge, which
+is now the leading but unverified pause hypothesis. Do not change motor control
+from that hypothesis alone.
+
+Implementation adds `OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM=210` separately from
+the 230 mm unresolved lap-1 value. Optimized isolated outer seats select 210 mm
+and pass an explicit plateau flag into path displacement. This is intentionally
+not inferred from the numeric clearance because the extreme-adjacent second
+route also uses 210 mm but must retain its established non-plateau shape.
+Moderate optimized routes remain 260 mm and adjacent routes remain 200/210 mm.
+Preflight checks seat-6/seat-7 optimized selection, plateau classification, and
+the ordering 200 < 210 < 230 < 260. Pure Pursuit, speed, perception, and motor
+control are unchanged.
+
+The IDE-managed `giga_r1_m7` build passed using 295584 bytes RAM and 364216
+bytes flash. Existing warnings are unchanged; no firmware was uploaded. Next,
+fully charge the battery, upload, and repeat the same CCW three-pillar `Y3`
+layout. Expect lap-1 230/230/260 and optimized 210/210/260 messages. Require a
+physical front-wheel wall gap of roughly >=30 mm on optimized seat-6 passes,
+nine reports, three laps, and no post-start pause. A charged-battery recurrence
+of the pause blocks further route testing and calls for focused drivetrain
+power/speed instrumentation.
+
+`log_107` is the fully charged-battery A/B repeat. The route selectors were
+correct: 230/230/260 mm on lap 1 and 210/210/260 mm on optimized laps. It
+produced nine complete passage reports, completed exactly three laps, and
+reported `PASS`. Optimized seat-6 pillar/east-wall ToF pairs were 138/92 and
+94/119 mm, with odometry wall minima 88.8/117.1 mm. Seat-15 pillar/inner-wall
+ToF pairs were 136/111 and 150/93 mm; seat-23 pillar/wall pairs were 157/278 and
+163/278 mm. Maximum CTE was 98.7 mm and maximum heading error was 54.1 degrees.
+
+The charged run did not reproduce either starting-straight pause. At the same
+path-index-7 area, lap-2 and lap-3 measured ranges were 153..182 and 129..168
+mm/s, compared with 62..114 and 3..7 mm/s in low-battery `log_106`. Duty was
+also lower. This strongly supports low available battery power, not Pure
+Pursuit or obstacle routing, as the earlier cause. Treat this as an A/B
+correlation because battery voltage is not logged. Require a fully charged
+battery for subsequent multi-lap validation and add voltage instrumentation
+only if the pause recurs while charged.
+
+Physical route acceptance is still pending. Ask the user whether any contact
+occurred and the approximate front-wheel gap to the outer wall on laps 2/3.
+If it was >=30 mm, accept the 210 mm optimized isolated-outer route and the CCW
+representative three-lap layout; otherwise use the physical gap rather than the
+larger ToF estimates for the next route decision.
+
+The user confirmed approximately 30 mm physical front-wheel clearance to the
+outer wall and no meaningful contact. This meets the provisional robustness
+target and accepts `log_107`, the 210 mm optimized isolated-outer plateau, and
+the representative CCW three-pillar three-lap regression. The charged-battery
+A/B result also closes the immediate pause investigation: require a fully
+charged battery for multi-lap testing, and reopen drivetrain instrumentation
+only if a pause recurs under that condition.
+
+No code change or same-layout repeat is needed. The exact next test is the CW
+logical mirror with a charged battery and `Y-3`: red at CW section 1 station 0
+right (seat 6), green at CW section 2 station 1 left (seat 15), and red at CW
+section 3 station 2 left (seat 23). Reposition the pillars relative to CW travel;
+do not assume their present CCW physical locations are the same seats. Expect
+lap-1 230/230/260, optimized 210/210/260, nine passage reports, no pause or
+contact, and a controlled stop after lap 3.
+
+## 2026-08-26 - `log_104` accepts the representative three-pillar lap
+
+The repeated CCW layout passed physically and produced a complete log. The
+user reported success without contact or intervention. Red seat 6, green seat
+15, and red seat 23 were each injected exactly once at the expected 230, 230,
+and 260 mm clearances. All three passage windows completed, one lap completed,
+and the footer reported `PASS` with three injections. There was no perception
+hold expiry. Maximum CTE was 96.0 mm and maximum heading error was 43.8 degrees.
+
+The PLAN/ODOM/ToF pillar minima were respectively 78.5/-9.6/50 mm for seat 6,
+102.5/40.2/73 mm for seat 15, and 121.5/93.3/163 mm for seat 23. ToF-estimated
+opposite-wall clearances were 169, 165, and 271 mm. Seat 15's nearest planned
+wall feature was the inner north face and still retained 91.6 mm nominally and
+165 mm in the opposite-side ToF estimate. The negative seat-6 odometry capsule
+estimate again conflicts with both physical success and fresh ToF evidence; it
+is a conservative warning/model discrepancy rather than proof of contact.
+
+No controller change is warranted. The exact next test is the same physical
+layout for three CCW laps with `Y3`. This isolates optimized multi-pillar path
+validation from layout variation. Require one discovery/injection per seat in
+lap 1, one optimized-path build, 260 mm later-lap routes for all three isolated
+pillars, nine complete passage groups, no contact/intervention or perception
+hold expiry, and a controlled stop after lap 3. Save the complete USB log by
+waiting through red, then green, then LED off before removal. No firmware
+upload is needed.
+
+## 2026-08-26 - Main-loop and camera latency assessment
+
+The current continuous-DCMI camera path is sensor-rate limited, not blocked on
+frame capture in the main loop. Existing robot measurements show a stable
+79.62-79.63 ms DCMI completion interval (12.56 FPS), zero doubled intervals in
+the accepted continuous-capture runs, 71-77 us camera service, and approximately
+7.46-7.56 ms combined camera service plus vision processing. Earlier detailed
+measurements place vision alone around 6.5-7.5 ms and main-loop frame-ready
+service delay commonly around 0.1-1.1 ms. A newly completed frame therefore
+normally becomes a processed result roughly 7.6-8.7 ms after DCMI completion.
+Including one sensor frame period, acquisition-start to processed-result latency
+is approximately 87-88 ms; this estimate is not a rolling-shutter exposure-age
+measurement.
+
+Continuous acquisition has already removed the former snapshot stop/restart
+misses near 159.25 ms. The dominant interval between usable results is now the
+GC2145 timing profile. The accepted 24 MHz XCLK uses the input divide-by-two and
+PLL ratio 5, intentionally preserving the reliable downstream timing. PLL ratio
+6 shortened capture to about 68 ms but produced lighting bands and missing or
+partial pillars, so it must not be enabled without renewed exposure,
+anti-flicker, and multi-light validation.
+
+Vision currently classifies all 19,200 samples in a 160 x 120 grid. Every sample
+performs RGB565 expansion, integer RGB-to-HSV conversion (including divisions),
+four-colour classification, and ROI rejection; a second pass plus 8-neighbour
+flood fill extracts blobs. Obstacle navigation consumes red and green blobs;
+orange and blue are only printed by the legacy vision debug path. A dedicated
+obstacle-only red/green ROI processor could reduce the approximately 7 ms
+processing tail, but it would not improve the 79.62 ms sensor cadence. It
+requires equivalence tests at FOV edges and under competition lighting before
+use.
+
+The existing `[DEBUG]` loop timing is insufficient for a full loop budget. It
+records start-to-start periods in `last_loop_time`, mixes fast no-frame loops
+with camera-processing loops, reports only mean and maximum over 200 ms, and its
+own long telemetry line perturbs the sampled interval. There is no retained
+powered log in this checkout containing those loop fields. Do not claim a
+measured ordinary-loop duration from the current evidence. For a definitive
+profile, add low-overhead counters for complete loop duration and each top-level
+stage (serial, ToF, gyro, pose, mode/control, logger), split camera-frame from
+no-frame iterations, and report count/mean/max plus histogram percentiles at a
+sparse interval. Also timestamp DCMI completion, vision start/end, and obstacle
+decision completion so frame age is measured directly. Run stationary and one
+known-safe powered lap; profiling changes and any upload require user approval.
+
+No firmware source, build, or upload was performed in this assessment.
+
+---
+
 ## 2026-08-26 - `log_86` second 200/210 mm adjacent pass
 
 The unchanged CW seat-6 red/seat-9 green repeat completed without contact,
@@ -1496,13 +1727,286 @@ synthetic x/y pose; do not tune seat snapping from those events.
 
 The powered `log_87` miss occurred at the more extreme predicted seat-0 view
 of about -28.8 degrees/299 mm. This lies near/beyond the complete-pillar
-acquisition boundary and was not reached in `log_88`. Therefore do not alter
-red hue, saturation, area, height, or range thresholds. The next proposed code
-change should remain small: use a more central angular gate before a NO_BLOB
-frame can prove a seat clear, and modestly increase the existing discovery
-lookahead-target nudge cap so the last unresolved seat is brought inside that
-gate. This remains Pure Pursuit target shaping, not a steering overlay. Obtain
-user approval before implementing and separately before uploading.
+acquisition boundary and was not reached in `log_88`. Therefore red hue,
+saturation, area, height, and range thresholds remain unchanged. The user
+approved the small viewing-geometry fix: `seatComfortablyVisible()` now applies
+the existing 3 degree look-FOV margin, so a NO_BLOB frame can prove a seat
+clear only within about +/-24.4 degrees rather than +/-27.4. Coloured-blob
+acquisition still uses the full configured camera window. The discovery
+lookahead-target nudge cap is now 45 degrees rather than 40, enough to move the
+logged -28.8 degree view inside the central gate. The 340 mm hold, nudge slew,
+speed, path geometry, colour thresholds, and Pure Pursuit steering calculation
+are unchanged. This is target shaping, not a steering overlay.
+
+The IDE-managed `giga_r1_m7` build passed with 295576 bytes RAM and 363472
+bytes flash. No firmware was uploaded. Next, upload only with consent and run
+one CW lap with the same red seat-0 layout using `Y-1`. Expect one provisional
+200 mm lap-1 injection because the following station is unresolved at that
+time. Require confirmation, no contact/intervention, one complete passage
+report, and one completed lap. If confirmation still fails, the stricter clear
+gate must leave the station unresolved and the existing 340 mm hold must stop
+the robot before contact.
+
+`log_89.txt` did not reach the red seat-0 pillar, so it provides no obstacle
+clearance or acquisition result. It stopped safely at an empty S3 station 0
+with zero injections. The new target authority was exercised up to -43.5
+degrees. The remaining right seat then reached -24.8 degrees/264 mm, only 0.4
+degrees outside the +/-24.4 clear gate; at the next 200 ms status sample it was
+-25.1 degrees/221 mm, below the validated 230 mm range. Thus no two consecutive
+camera frames could prove it clear. The perception hold fired at 335 mm against
+the configured 340 mm threshold. Maximum CTE was 78.0 mm and maximum heading
+error was 20.2 degrees.
+
+The user approved separating the empty-clear margin from the 3 degree
+target-aiming margin. `OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG` is now 2.0,
+so `seatComfortablyVisible()` uses about +/-25.4 degrees; target aiming retains
+`OBSTACLE_LOOK_FOV_MARGIN_DEG=3.0` and the 45 degree cap. Camera acquisition is
+unchanged. At 175 mm/s, the logged 264-to-230 mm interval is about 194 ms or
+2.4 normal 79.6 ms frames, enough for the existing two-frame clear requirement,
+while the failed log_87 view at -28.8 degrees remains excluded. The
+IDE-managed `giga_r1_m7` build passed with 295576 bytes RAM and 363472 bytes
+flash. No firmware was uploaded. Repeat the same one-lap red seat-0 CW layout
+with `Y-1`; require confirmation and a safe pass, or a no-contact hold if it
+still cannot resolve.
+
+`log_90.txt` passed the firmware-side one-lap regression. The empty S3 station
+0 that blocked `log_89` now cleared. Red seat 0 confirmed at the edge-view
+approach, injected exactly once at the expected provisional 200 mm, and the
+robot completed one CW lap with continuous measured motion. The passage report
+gave PLAN pillar/wall minima 50.3/138.1 mm, ODOM pillar/wall minima -10.1/211.7
+mm, and side-ToF pillar/opposite-wall clearance estimates 20.0/221.0 mm. The
+negative ODOM value conflicts with the positive fresh ToF estimate and should
+not be interpreted as contact by itself. Maximum CTE was 76.5 mm and maximum
+heading error 32.3 degrees. The user subsequently confirmed about 20 mm
+physical clearance and no contact, matching the ToF estimate, so `log_90` is
+accepted.
+
+`log_91.txt` is the three-lap follow-up. It confirmed red seat 0 once at the
+edge-view approach, used the provisional 200 mm lap-1 path, built the optimized
+path exactly once with seat 0 at 260 mm, and stopped after lap 3. All passage
+windows completed and there was no measured-speed stall signature. Per-lap
+PLAN/ODOM/ToF pillar clearances were 50.3/-10.6/7.0 mm on lap 1,
+90.5/62.0/125.0 mm on lap 2, and 90.5/68.9/91.0 mm on lap 3. Corresponding ToF
+opposite-wall clearance estimates were 227, 115, and 118 mm. Maximum CTE was
+92.7 mm and maximum heading error 54.2 degrees. This validates later-lap route
+selection and per-lap logging, subject to the user's physical observation:
+lap 1's 7 mm ToF estimate is marginal, so ask whether `log_91` touched before
+accepting it or choosing the next layout. The user confirmed no contact and
+about 10 mm physical clearance on lap 1. This accepts the three-lap mechanism
+and optimized route, but the provisional 200 mm lap-1 path remains below the
+preferred roughly 30 mm robustness margin.
+
+Lap 1 retained 227 mm ToF clearance to the opposite wall. The user approved a
+new `OBSTACLE_EXTREME_UNRESOLVED_CLEARANCE_MM=220`, used only while an
+outer-extreme seat's following station is unresolved. Confirmed extreme
+adjacent pairs remain at the physically validated 200/210 mm after the first
+member is clear, and isolated later laps remain 260 mm. Because the second
+member's geometry is deferred until 100 mm past the first, the initial 220 mm
+route protects the first pass and then rebuilds to 200/210 if the rare adjacent
+layout is actually confirmed. Camera perception, speed, steering, and all
+other geometry are unchanged. Geometry preflight checks selector output and
+the strict ordering 200 < 220 < 260.
+
+The IDE-managed `giga_r1_m7` build passed with 295576 bytes RAM and 363504
+bytes flash. No firmware was uploaded. Next, repeat one CW lap—not three—in the
+same red seat-0 layout with `Y-1`. Require a 220 mm injection, no contact, and
+preferably about 20-30 mm or more physical/ToF pillar clearance. The unchanged
+260 mm later-lap route does not need another immediate repetition.
+
+`log_92.txt` completed the requested one-lap CW seat-0 test with one red
+confirmation, one 220 mm injection, and no contact, but the user observed only
+about 10 mm at the rear wheels after most of the robot had passed. The ToF
+passage report corroborates this: left raw minimum 46 mm minus the 35 mm wheel
+inset gives 11 mm pillar clearance. The route snapshot predicted 64.5 mm,
+sampled odometry predicted 2.5 mm, and the opposite-wall ToF estimate retained
+245 mm. Maximum CTE was 79.0 mm. Treat the physical and ToF agreement as the
+tuning evidence; the route prediction does not include tracking error and the
+odometry estimate is too uncertain to override a fresh side range.
+
+The implemented next change keeps the provisional 220 mm route at peak
+displacement for one additional 50 mm waypoint after the pillar, then uses the
+existing exit taper. This specifically protects the rear-wheel phase rather
+than increasing the complete detour. It applies only when an outer-extreme
+pillar uses the unresolved-next-station 220 mm policy. Confirmed adjacent-pair
+200/210 mm geometry, isolated later-lap 260 mm geometry, the approach taper,
+speed, perception, and Pure Pursuit steering are unchanged. Geometry preflight
+requires exactly one exit-hold waypoint and keeps it shorter than the taper.
+
+The IDE-managed `giga_r1_m7` build passed with 295576 bytes RAM and 363616
+bytes flash. No firmware was uploaded.
+
+Next, upload only with user consent and repeat the same one-lap CW red seat-0
+`Y-1` layout. Expect `clearance_mm=220`; require no contact and preferably
+20-30 mm or more physical rear-wheel/ToF clearance. Do not spend a three-lap
+run on this change because later-lap geometry is unchanged.
+
+The user ran this build twice. `log_93.txt` missed confirmation but identifies
+a precise timing race: the first production-valid red observation appeared at
+-26.8 degrees/190 mm and recorded `VOTE:0`, then the unresolved-station limit
+immediately aborted in the same control update. No second frame was allowed,
+although normal confirmation requires two votes. `log_94.txt` acquired its
+first vote earlier at -25.7 degrees/333 mm, confirmed on the following frame,
+injected the 220 mm route, and completed the lap. The user described that pass
+as perfect. Its PLAN/ODOM/ToF pillar minima were 64.5/14.1/44.0 mm and ToF
+opposite-wall clearance was 199 mm. This accepts the one-waypoint route exit
+hold; the remaining problem was perception-hold timing, not clearance.
+
+The implemented fix introduces a 400 ms stationary grace at the existing
+340 mm unresolved-station hold line. Entering it commands zero speed but does
+not expose `obstacle_path_perception_blocked()` until the grace expires, so
+normal camera processing can collect several ~80 ms frames. If a pillar
+confirms or the station clears, the hold state resets and motion resumes with
+the normal path. If it remains unresolved for 400 ms, the existing hard block
+and live-test abort occur. This preserves the two-frame vote, camera/FOV/blob
+thresholds, and safety distance; it never drives forward during the grace.
+Logs distinguish `Perception hold`, `Perception hold resolved`, and
+`Perception hold expired`.
+
+The IDE-managed `giga_r1_m7` build passed with 295584 bytes RAM and 363992
+bytes flash. No firmware was uploaded. Next, upload only with user consent and
+run the same one-lap CW red seat-0 layout twice. Both must confirm and pass. A
+late case should hold and resolve rather than expire; retain the already
+accepted roughly >=20-30 mm physical/ToF rear-wheel margin.
+
+`log_95.txt`, `log_96.txt`, and `log_97.txt` are three consecutive clean
+one-lap repetitions of that CW red seat-0 layout. All confirmed and injected
+seat 0 exactly once at 220 mm, completed the lap, and looked perfect to the
+user. ToF pillar/wall clearance pairs were 51/201, 52/198, and 46/202 mm.
+ODOM pillar minima were 13.8, 13.3, and 12.7 mm; PLAN remained 64.5 mm. Maximum
+CTE was 87.7-87.9 mm and maximum heading error 33.6-37.1 degrees. No run entered
+the perception hold because confirmation completed before the 340 mm line.
+Accept the provisional exit shape and normal acquisition. Keep the 400 ms
+fallback because these runs do not reproduce `log_93`'s late first vote.
+
+No code change is warranted from logs 95-97. The next test should add distinct
+coverage: mirror the single red outer-extreme case in CCW and run three laps
+with `Y3`. Place red at CCW seat 0. Require one 220 mm lap-1 injection, the
+validated-layout 260 mm route on laps 2-3, three complete passage reports, no
+contact/intervention, and a controlled stop after exactly lap 3. This closes
+the remaining one-complete-layout-per-direction prerequisite before broader
+multi-pillar reliability work.
+
+`log_98.txt` passed that three-lap CCW test. It confirmed and injected red seat
+0 once, built the 260 mm optimized route after lap 1, emitted three complete
+passage reports, and stopped after exactly three laps. The user judged it
+acceptable but saw a close initial approach and a long/wide avoidance,
+especially on later laps. Telemetry quantifies the tradeoff. Lap 1 at 220 mm
+reported PLAN/ODOM/ToF pillar minima 48.1/-30.8/19 mm and 196 mm ToF wall
+clearance. Laps 2/3 at 260 mm reported ToF pillar/wall pairs 96/94 and 109/92
+mm. Maximum CTE was 100.8 mm and maximum heading error 58.8 degrees, without a
+stall or abort.
+
+The 19 mm first-pass result is slightly below the preferred 20-30 mm robustness
+margin and has ample opposite-wall room. Therefore the provisional unresolved
+outer-extreme clearance is now 230 mm rather than 220 mm. Its 50 mm exit hold
+is unchanged. Do not shorten the 260 mm later-lap route from this one red test:
+it is also the established protection for green rear-wheel clearance, and its
+roughly 92-94 mm CCW wall margin remains safe. Revisit its duration during final
+speed optimization after representative multi-pillar layouts pass.
+
+The IDE-managed `giga_r1_m7` build passed with 295584 bytes RAM and 363992
+bytes flash. No firmware was uploaded.
+
+Next, upload only with user consent and repeat only one CCW lap with the same
+red seat-0 placement using `Y1`. Expect a 230 mm
+injection, no contact, and preferably >=25-30 mm physical/ToF clearance. Do not
+repeat three laps because the 260 mm optimized route was not changed.
+
+`log_99.txt` passed one CCW lap with the requested 230 mm injection, but the
+user still saw only about 10 mm at the initial approach and the side-ToF
+minimum remained 54 mm raw/19 mm wheel-clearance estimate. The opposite-wall
+ToF estimate was 189 mm. PLAN predicted 53.0 mm and ODOM -39.3 mm. Red was
+confirmed while the robot was still before the taper, so late detection does
+not explain the unchanged physical minimum; increasing 220 to 230 alone did
+not solve front-envelope tracking.
+
+The implemented adjustment extends only the provisional outer-extreme approach
+by one 50 mm waypoint and reaches peak displacement one waypoint earlier. In
+combination with the already accepted one-waypoint exit hold, this makes a
+short full-displacement plateau spanning the front-to-rear pass. It retains
+230 mm nominal clearance. Confirmed 200/210 mm adjacent-pair and 260 mm later-
+lap shapes, camera logic, speed, and Pure Pursuit steering remain unchanged.
+Geometry preflight requires one approach-lead and one exit-hold waypoint, both
+shorter than the eight-waypoint taper.
+
+`log_99` also exercises the 400 ms perception fallback for the first time. The
+next empty station reached `Perception hold at ... forward_mm=300`, resolved
+before expiry, and the robot resumed and completed the lap. Accept the bounded
+hold behavior; it preserved two-frame resolution without causing an abort.
+
+The IDE-managed `giga_r1_m7` build passed with 295584 bytes RAM and 363992
+bytes flash. No firmware was uploaded.
+
+Next, upload only with user consent and repeat the same one-lap CCW red seat-0
+`Y1` test. Require a 230 mm injection and at least about
+25-30 mm physical/ToF clearance during both the initial approach and rear-wheel
+exit. Laps 2-3 are unchanged and need not be repeated.
+
+The user made two attempts. `log_100.txt` stopped before red at empty S1
+station 0. The right seat reached 2 clear frames, but the left seat only briefly
+entered the trusted view at 25.3 degrees/275 mm and stayed at zero frames in
+the sampled telemetry. It then moved to 26.3 degrees/235 mm and outside the
+current +/-25.4-degree clear gate. The 400 ms hold correctly stopped forward
+motion but expired because stationary steering cannot rotate the camera and
+the remaining seat was already below the validated 230 mm range. Do not extend
+the grace timeout for this geometry failure.
+
+`log_101.txt` cleared the same empty station and completed the one-lap red test.
+The approach-lead change is successful: the user said clearance looked much
+better, and ToF estimated 64 mm to the pillar with 163 mm to the opposite wall,
+versus 19/189 mm in `log_99`. PLAN/ODOM pillar minima were 78.5/-14.8 mm. Accept
+the 230 mm short-plateau route.
+
+The implemented perception change reduces only
+`OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG` from 2.0 to 1.0, widening trusted
+empty-seat geometry from about +/-25.4 to +/-26.4 degrees. This remains just
+inside the camera's validated complete-pillar view of approximately +/-26.6
+degrees and excludes the known failed -28.8-degree view. Actual coloured-blob
+acquisition stays unchanged, as do both two-frame requirements, nudge control,
+speed, and Pure Pursuit. Geometry preflight enforces a positive clear margin
+smaller than the separate 3-degree target-aiming margin.
+
+The IDE-managed `giga_r1_m7` build passed with 295584 bytes RAM and 363992
+bytes flash. No firmware was uploaded.
+
+Next, upload only with user consent and run the same one-lap CCW red seat-0
+`Y1` layout once. Require empty S1 station 0 to resolve
+without hold expiry, one 230 mm red injection, and safe clearance. On success,
+move to representative multi-pillar testing rather than repeat this layout.
+
+`log_102.txt` passes the requested regression. Empty S1 station 0 cleared
+without entering the perception hold. Red seat 0 confirmed and injected once
+at 230 mm, all other stations cleared, and one CCW lap completed. PLAN/ODOM/ToF
+pillar minima were 78.5/-6.1/69 mm; opposite-wall ToF clearance was 164 mm.
+Maximum CTE was 93.6 mm and maximum heading error 51.6 degrees. Accept the
+1-degree empty-clear margin and the complete provisional red route. No code
+change or upload is needed for the next test.
+
+Exact next test: retain the validated CCW start and use `Y1` for one lap. Place
+red at S1 station 0 right (seat 6), green at S2 station 1 left (seat 15), and
+red at S3 station 2 left (seat 23). Leave every other station empty. These
+seats are in different sections and avoid adjacent-taper interaction while
+covering station 0/1/2, red/green, right/left, outer-extreme, and moderate
+routes. Expect exactly three injections: 230 mm at seats 6 and 15 while their
+following stations remain unresolved, and 260 mm at moderate seat 23. Require
+three complete passage reports, no contact/intervention or hold expiry, and a
+completed lap. Analyze each pillar/wall ToF pair independently.
+
+`log_103.txt` is truncated at about 17.4 seconds during the approach to S2
+station 0 because the user likely removed the USB drive before the asynchronous
+save completed. The user reports that the physical three-pillar run succeeded,
+but the file contains only seat 6. That red pillar confirmed and injected at
+230 mm; PLAN/ODOM/ToF pillar minima were 78.5/-15.6/68 mm and the ToF opposite-
+wall clearance was 159 mm. There is no seat-15 or seat-23 confirmation/passage
+report and no lap/result footer. Count this as a promising physical trial, not
+a complete telemetry acceptance. Do not tune code from the truncation.
+
+Next, repeat the exact same one-lap CCW seats 6/15/23 `Y1` layout without a
+firmware upload. After inserting the USB drive for saving, keep it connected
+while the RGB LED is red. Green is the successful-save indication; wait for
+green to appear and then turn off before removing the drive. Require all three
+injections, all three PLAN/ODOM/ToF passage groups, and the final completed-lap
+`PASS` footer before advancing.
 
 One policy detail exposed by the stationary log: seat 0 injected at 200 mm,
 not 260 mm, because it targets an outer extreme while its following adjacent
