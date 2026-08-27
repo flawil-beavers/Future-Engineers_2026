@@ -84,6 +84,14 @@ float get_total_distance_traveled();
 void position_reset(float x, float y, float heading);
 
 /**
+ * @brief Apply an external X/Y correction on top of dead reckoning.
+ *
+ * This intentionally does not change encoder/gyro integration state. It is
+ * used by trusted field-geometry observations such as a side-wall ToF fix.
+ */
+void position_apply_xy_correction(float dx_mm, float dy_mm);
+
+/**
  * @brief Print the current position to serial
  * Format: "POS: x=1234.5 y=567.8 h=45.3 c=12.3 dist=1234.5"
  */

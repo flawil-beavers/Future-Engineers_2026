@@ -126,6 +126,11 @@ public:
 private:
     VisionResult result;
 
+    // RGB565 has only 65,536 possible input values. Build the exact current
+    // RGB->HSV->colour result once at startup, then classify each sampled
+    // camera pixel with one indexed byte load instead of several divisions.
+    uint8_t colorLookup[65536];
+
     // We inspect every second pixel.
     static constexpr uint8_t PIXEL_STEP = 2;
 
@@ -146,9 +151,9 @@ private:
 // Regions of Interest
 // ============================================================
 
-// Red / green obstacle detection. The upper image contains greenish
-// background reflections under the track lighting; starting at Y=80 keeps
-// those regions disconnected from real blocks approaching from below.
+// Red / green obstacle detection. Keep the upper greenish competition-mat
+// reflections out of the connected-component map. Range is derived from the
+// block's foot (maxY), so clipping the top at this boundary is intentional.
 static constexpr uint16_t OBSTACLE_Y_MIN = 80;
 static constexpr uint16_t OBSTACLE_Y_MAX = 239;
 
@@ -171,6 +176,11 @@ static constexpr uint16_t LINE_Y_MAX = 239;
     HSV rgbToHSV(const RGB& rgb) const;
 
     ColorType classifyColor(const HSV& hsv) const;
+
+    uint16_t readRGB565Raw(
+        const uint8_t* buffer,
+        uint32_t pixelIndex
+    ) const;
 
     uint16_t minimumBlobSamples(ColorType color) const;
 

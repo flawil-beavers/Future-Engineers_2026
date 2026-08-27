@@ -34,8 +34,6 @@ float current_acceleration = 0;
 float commanded_acceleration = 0;
 float measured_acceleration = 0;
 float active_acceleration_limit = DEFAULT_ACCELERATION;
-static float soft_stop_deceleration = SOFT_STOP_DECELERATION_MMSS;
-static float soft_stop_jerk = DRIVE_ACCEL_RELEASE_JERK_MMSSS;
 DriveControlPhase drive_control_phase = DRIVE_CRUISING;
 static bool speed_measurement_ready = false;
 static float speed_measurement_dt = 0.05f;
@@ -75,6 +73,167 @@ float last_error = 0.0;
 static float hold_pid_integral = 0.0f;
 static DriveControlPhase last_applied_drive_phase = DRIVE_CRUISING;
 static unsigned long cruise_candidate_start_us = 0;
+
+namespace
+{
+struct NoProgressWatchdogState
+{
+  bool armed = false;
+  uint32_t window_start_us = 0;
+  float window_start_distance_mm = 0.0f;
+  int8_t command_direction = 0;
+};
+
+struct NoProgressWatchdogEvidence
+{
+  uint32_t elapsed_us = 0;
+  float directional_progress_mm = 0.0f;
+};
+
+NoProgressWatchdogState no_progress_watchdog;
+bool no_progress_watchdog_preflight_passed = false;
+
+void reset_no_progress_watchdog(
+    NoProgressWatchdogState &state,
+    uint32_t now_us,
+    float distance_mm)
+{
+  state.armed = false;
+  state.window_start_us = now_us;
+  state.window_start_distance_mm = distance_mm;
+  state.command_direction = 0;
+}
+
+bool update_no_progress_watchdog(
+    NoProgressWatchdogState &state,
+    bool drive_enabled,
+    int commanded_speed_mms,
+    float profile_speed_mms,
+    uint32_t now_us,
+    float distance_mm,
+    NoProgressWatchdogEvidence &evidence)
+{
+  evidence.elapsed_us = 0;
+  evidence.directional_progress_mm = 0.0f;
+
+  const bool profile_matches_command =
+      commanded_speed_mms * profile_speed_mms > 0.0f;
+  const bool motion_command_active =
+      drive_enabled &&
+      abs(commanded_speed_mms) >= STALL_COMMAND_MIN_SPEED_MMS &&
+      fabsf(profile_speed_mms) >= STALL_COMMAND_MIN_SPEED_MMS &&
+      profile_matches_command;
+  if (!motion_command_active)
+  {
+    reset_no_progress_watchdog(state, now_us, distance_mm);
+    return false;
+  }
+
+  const int8_t direction = commanded_speed_mms > 0 ? 1 : -1;
+  if (!state.armed || state.command_direction != direction)
+  {
+    state.armed = true;
+    state.window_start_us = now_us;
+    state.window_start_distance_mm = distance_mm;
+    state.command_direction = direction;
+    return false;
+  }
+
+  evidence.elapsed_us = now_us - state.window_start_us;
+  evidence.directional_progress_mm =
+      direction * (distance_mm - state.window_start_distance_mm);
+
+  if (evidence.directional_progress_mm >=
+      STALL_NO_PROGRESS_MIN_DISTANCE_MM)
+  {
+    state.window_start_us = now_us;
+    state.window_start_distance_mm = distance_mm;
+    return false;
+  }
+
+  return evidence.elapsed_us >= STALL_NO_PROGRESS_WINDOW_US;
+}
+
+bool no_progress_watchdog_preflight()
+{
+  NoProgressWatchdogEvidence evidence;
+
+  // A sustained motion command without progress must expire at the deadline.
+  NoProgressWatchdogState stalled;
+  if (update_no_progress_watchdog(
+          stalled, true, 175, 175.0f, 100U, 0.0f, evidence) ||
+      update_no_progress_watchdog(
+          stalled,
+          true,
+          175,
+          175.0f,
+          100U + STALL_NO_PROGRESS_WINDOW_US - 1U,
+          0.0f,
+          evidence) ||
+      !update_no_progress_watchdog(
+          stalled,
+          true,
+          175,
+          175.0f,
+          100U + STALL_NO_PROGRESS_WINDOW_US,
+          0.0f,
+          evidence))
+    return false;
+
+  // Meaningful forward progress resets the deadline.
+  NoProgressWatchdogState progressing;
+  if (update_no_progress_watchdog(
+          progressing, true, 175, 175.0f, 200U, 0.0f, evidence) ||
+      update_no_progress_watchdog(
+          progressing,
+          true,
+          175,
+          175.0f,
+          200U + STALL_NO_PROGRESS_WINDOW_US / 2U,
+          STALL_NO_PROGRESS_MIN_DISTANCE_MM,
+          evidence) ||
+      update_no_progress_watchdog(
+          progressing,
+          true,
+          175,
+          175.0f,
+          200U + STALL_NO_PROGRESS_WINDOW_US,
+          STALL_NO_PROGRESS_MIN_DISTANCE_MM,
+          evidence))
+    return false;
+
+  // A planned zero-speed hold disarms the timer rather than expiring it.
+  NoProgressWatchdogState stopped;
+  if (update_no_progress_watchdog(
+          stopped, true, 175, 175.0f, 300U, 0.0f, evidence) ||
+      update_no_progress_watchdog(
+          stopped,
+          true,
+          0,
+          0.0f,
+          300U + STALL_NO_PROGRESS_WINDOW_US * 2U,
+          0.0f,
+          evidence) ||
+      stopped.armed)
+    return false;
+
+  // Reverse encoder motion cannot satisfy a forward progress requirement.
+  NoProgressWatchdogState rebounding;
+  if (update_no_progress_watchdog(
+          rebounding, true, 175, 175.0f, 400U, 0.0f, evidence) ||
+      !update_no_progress_watchdog(
+          rebounding,
+          true,
+          175,
+          175.0f,
+          400U + STALL_NO_PROGRESS_WINDOW_US,
+          -STALL_NO_PROGRESS_MIN_DISTANCE_MM,
+          evidence))
+    return false;
+
+  return true;
+}
+} // namespace
 
 // Debug variables
 int dc_out = 0;
@@ -384,8 +543,17 @@ void drive_loop()
 
   if (dc_state == DC_ENABLED)
   {
+    // A resumed forward command must never inherit enough negative ramp
+    // acceleration to make the speed profile briefly reverse (and vice versa).
+    if (target_speed > 0 && current_speed <= 0.0f &&
+        current_acceleration < 0.0f)
+        current_acceleration = 0.0f;
+    else if (target_speed < 0 && current_speed >= 0.0f &&
+             current_acceleration > 0.0f)
+        current_acceleration = 0.0f;
+
     active_acceleration_limit = target_speed == 0
-        ? fminf(soft_stop_deceleration, acc)
+        ? fminf(SOFT_STOP_DECELERATION_MMSS, acc)
         : constrain(
               fabsf((float)target_speed) * PROFILE_ACCEL_PER_TARGET_SPEED,
               MIN_PROFILE_ACCELERATION_MMSS,
@@ -393,11 +561,8 @@ void drive_loop()
     const float speed_error = target_speed - current_speed;
     // Reduce acceleration early enough that it can reach zero at the target
     // under the gentler release jerk: delta_v = a^2 / (2 * jerk).
-    const float profile_jerk = target_speed == 0
-        ? soft_stop_jerk
-        : DRIVE_ACCEL_RELEASE_JERK_MMSSS;
     const float allowed_acceleration = sqrtf(
-        2.0f * profile_jerk * fabsf(speed_error));
+        2.0f * DRIVE_ACCEL_RELEASE_JERK_MMSSS * fabsf(speed_error));
     const float desired_acceleration = fabsf(speed_error) > 0.5f
         ? copysignf(
               fminf(active_acceleration_limit, allowed_acceleration),
@@ -406,19 +571,26 @@ void drive_loop()
     const bool releasing_acceleration =
         current_acceleration * desired_acceleration < 0.0f ||
         fabsf(desired_acceleration) < fabsf(current_acceleration);
-    const float active_jerk_limit = target_speed == 0
-        ? soft_stop_jerk
-        : (releasing_acceleration
-              ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
-              : DRIVE_JERK_LIMIT_MMSSS);
+    const float active_jerk_limit = releasing_acceleration
+        ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
+        : DRIVE_JERK_LIMIT_MMSSS;
     const float max_acceleration_change = active_jerk_limit * last_loop_time;
     current_acceleration += constrain(
         desired_acceleration - current_acceleration,
         -max_acceleration_change,
         max_acceleration_change);
 
-    const float next_speed =
+    float next_speed =
         current_speed + current_acceleration * last_loop_time;
+    const bool crossesForwardTarget =
+        target_speed > 0 && next_speed < 0.0f;
+    const bool crossesReverseTarget =
+        target_speed < 0 && next_speed > 0.0f;
+    const bool crossesZeroTarget = target_speed == 0 &&
+        ((current_speed > 0.0f && next_speed < 0.0f) ||
+         (current_speed < 0.0f && next_speed > 0.0f));
+    if (crossesForwardTarget || crossesReverseTarget || crossesZeroTarget)
+        next_speed = 0.0f;
     if ((speed_error > 0.0f && next_speed >= target_speed) ||
         (speed_error < 0.0f && next_speed <= target_speed) ||
         fabsf(speed_error) <= 0.5f)
@@ -446,12 +618,6 @@ void set_acceleration(int acceleration)
   acc = acceleration;
 }
 
-void set_soft_stop_profile(float deceleration_mmss, float jerk_mmsss)
-{
-  soft_stop_deceleration = fmaxf(1.0f, deceleration_mmss);
-  soft_stop_jerk = fmaxf(1.0f, jerk_mmsss);
-}
-
 void stop(bool hold)
 {
   last_speed = current_speed;
@@ -469,8 +635,6 @@ void stop(bool hold)
     drive_control_phase = DRIVE_CRUISING;
     last_applied_drive_phase = DRIVE_CRUISING;
     cruise_candidate_start_us = 0;
-    soft_stop_deceleration = SOFT_STOP_DECELERATION_MMSS;
-    soft_stop_jerk = DRIVE_ACCEL_RELEASE_JERK_MMSSS;
     target_distance = current_distance;
     set_dc(0);
   }
@@ -565,18 +729,94 @@ void check_stalling()
 {
   static unsigned long window_start_us = 0;
   static float window_start_distance = 0;
+  static unsigned long hold_overload_start_us = 0;
 
-  // Holding is intentionally stationary. A target of zero is a planned stop.
-  // Otherwise any real motor command must produce encoder movement, even when
-  // the requested driving speed is low.
-  const bool motor_should_move =
-      dc_state == DC_ENABLED &&
-      target_speed != 0 &&
-      fabsf(dc_current_dc) >= MOTOR_MIN_DC;
-
-  if (!motor_should_move)
+  if (dc_state == DC_HOLDING)
   {
-    window_start_us = 0;
+    const bool holding_at_limit =
+        fabsf(dc_current_dc) >=
+        HOLD_MAX_DC * HOLD_OVERLOAD_THRESHOLD;
+
+    if (!holding_at_limit)
+    {
+      hold_overload_start_us = 0;
+      return;
+    }
+
+    if (hold_overload_start_us == 0)
+    {
+      hold_overload_start_us = current_time;
+      return;
+    }
+
+    if (current_time - hold_overload_start_us >=
+        HOLD_OVERLOAD_WINDOW_US)
+    {
+      Serial.println(
+          "Holding overload: maximum holding effort exceeded for 2 seconds.");
+      hold_overload_start_us = 0;
+      mode_pause();
+    }
+    return;
+  }
+
+  hold_overload_start_us = 0;
+
+  if (!no_progress_watchdog_preflight_passed)
+  {
+    reset_no_progress_watchdog(
+        no_progress_watchdog,
+        current_time,
+        current_distance);
+    if (dc_state == DC_ENABLED && target_speed != 0)
+    {
+      Serial.println(
+          "Stall watchdog unavailable: startup preflight failed.");
+      mode_pause();
+    }
+    return;
+  }
+
+  NoProgressWatchdogEvidence no_progress_evidence;
+  if (update_no_progress_watchdog(
+          no_progress_watchdog,
+          dc_state == DC_ENABLED,
+          target_speed,
+          current_speed,
+          current_time,
+          current_distance,
+          no_progress_evidence))
+  {
+    Serial.print("Stall detected: commanded motion made only ");
+    Serial.print(no_progress_evidence.directional_progress_mm, 1);
+    Serial.print(" mm progress in ");
+    Serial.print(no_progress_evidence.elapsed_us / 1000U);
+    Serial.print(" ms. Target: ");
+    Serial.print(target_speed);
+    Serial.print(" mm/s, profile: ");
+    Serial.print(current_speed, 1);
+    Serial.print(" mm/s, measured: ");
+    Serial.print(measured_speed, 1);
+    Serial.print(" mm/s, DC: ");
+    Serial.println(dc_current_dc, 1);
+    reset_no_progress_watchdog(
+        no_progress_watchdog,
+        current_time,
+        current_distance);
+    mode_pause();
+    return;
+  }
+
+  // DC_HOLDING intentionally produces torque at almost zero speed. It needs a
+  // separate overload policy and must not be interpreted as a driving stall.
+  const bool high_drive_load =
+      dc_state == DC_ENABLED &&
+      fabs(dc_current_dc) >
+          MOTOR_MAX_DC * STALL_DC_THRESHOLD;
+
+  if (!high_drive_load)
+  {
+    window_start_us = current_time;
     window_start_distance = current_distance;
     return;
   }
@@ -593,23 +833,24 @@ void check_stalling()
   if (elapsed_us < STALL_DETECTION_WINDOW_US)
     return;
 
-  const float movement_mm =
-      fabsf(current_distance - window_start_distance);
-  if (movement_mm >= STALL_MIN_MOVEMENT_MM)
-  {
-    window_start_us = current_time;
-    window_start_distance = current_distance;
-    return;
-  }
+  const float elapsed_s = elapsed_us / 1000000.0f;
+  const float speed_mms =
+      fabsf(current_distance - window_start_distance) /
+      elapsed_s;
 
-  Serial.print("STALL: less than ");
-  Serial.print(STALL_MIN_MOVEMENT_MM, 1);
-  Serial.print(" mm movement in ");
-  Serial.print(STALL_DETECTION_WINDOW_US / 1000);
-  Serial.print(" ms, PWM=");
+  window_start_us = current_time;
+  window_start_distance = current_distance;
+
+  if (speed_mms >= STALL_SPEED_THRESHOLD_MMS)
+    return;
+
+  Serial.print("Stall detected over ");
+  Serial.print(elapsed_us / 1000);
+  Serial.print(" ms. Speed: ");
+  Serial.print(speed_mms, 2);
+  Serial.print(" mm/s, DC: ");
   Serial.println(dc_current_dc);
 
-  window_start_us = 0;
   mode_pause();
 }
 
@@ -760,4 +1001,13 @@ void motor_control_setup()
   // Initialize timing for the loop_updater and stall protection
   current_time = micros();
   last_time = current_time;
+
+  no_progress_watchdog_preflight_passed =
+      no_progress_watchdog_preflight();
+  reset_no_progress_watchdog(
+      no_progress_watchdog,
+      current_time,
+      current_distance);
+  Serial.print("[STALL] commanded-motion watchdog preflight: ");
+  Serial.println(no_progress_watchdog_preflight_passed ? "PASS" : "FAIL");
 }

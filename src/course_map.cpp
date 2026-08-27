@@ -43,22 +43,6 @@ void course_map_enter_section(
     Serial.println(originKnown ? "KNOWN" : "START_OFFSET");
 }
 
-void course_map_clear_obstacles(uint8_t section)
-{
-    if (section >= COURSE_SECTION_COUNT)
-        return;
-
-    for (uint8_t i = 0;
-         i < COURSE_MAX_OBSTACLES_PER_SECTION;
-         ++i)
-    {
-        courseSections[section].obstacles[i] = CourseObstacle();
-    }
-
-    Serial.print("[MAP] Cleared provisional obstacles in S");
-    Serial.println(section);
-}
-
 void course_map_record_obstacle(
     uint8_t section,
     uint8_t lap,
@@ -145,6 +129,84 @@ void course_map_record_obstacle(
     Serial.println(" already contains two obstacles");
 }
 
+void course_map_record_seat_obstacle(
+    uint8_t section,
+    uint8_t station,
+    uint8_t side,
+    ColorType color,
+    float xMm,
+    float yMm)
+{
+    if (section >= COURSE_SECTION_COUNT ||
+        station >= COURSE_STATIONS_PER_SECTION ||
+        side >= COURSE_SEATS_PER_STATION ||
+        (color != ColorType::RED && color != ColorType::GREEN))
+        return;
+
+    CourseSeat &seat = courseSections[section].seats[station][side];
+    seat.state = color == ColorType::RED
+                     ? COURSE_SEAT_RED
+                     : COURSE_SEAT_GREEN;
+    seat.xMm = xMm;
+    seat.yMm = yMm;
+    if (seat.observations < 255)
+        ++seat.observations;
+
+    // The official geometry permits one pillar position at a station. Once
+    // one side is confirmed, the opposite seat is known to be unoccupied.
+    CourseSeat &opposite =
+        courseSections[section].seats[station][side == 0 ? 1 : 0];
+    if (opposite.state == COURSE_SEAT_UNKNOWN)
+        opposite.state = COURSE_SEAT_CLEAR;
+
+    courseSections[section].visited = true;
+    courseSections[section].originKnown = true;
+
+    Serial.print("[MAP] Confirmed S");
+    Serial.print(section);
+    Serial.print(" station=");
+    Serial.print(station);
+    Serial.print(" side=");
+    Serial.print(side == 0 ? "RIGHT" : "LEFT");
+    Serial.print(" color=");
+    Serial.println(colorName(color));
+}
+
+void course_map_record_clear_station(
+    uint8_t section,
+    uint8_t station,
+    float rightXmm,
+    float rightYmm,
+    float leftXmm,
+    float leftYmm)
+{
+    if (section >= COURSE_SECTION_COUNT ||
+        station >= COURSE_STATIONS_PER_SECTION)
+        return;
+
+    CourseSeat &right = courseSections[section].seats[station][0];
+    CourseSeat &left = courseSections[section].seats[station][1];
+    if (right.state == COURSE_SEAT_UNKNOWN)
+        right.state = COURSE_SEAT_CLEAR;
+    if (left.state == COURSE_SEAT_UNKNOWN)
+        left.state = COURSE_SEAT_CLEAR;
+    right.xMm = rightXmm;
+    right.yMm = rightYmm;
+    left.xMm = leftXmm;
+    left.yMm = leftYmm;
+    if (right.observations < 255)
+        ++right.observations;
+    if (left.observations < 255)
+        ++left.observations;
+
+    courseSections[section].visited = true;
+    courseSections[section].originKnown = true;
+    Serial.print("[MAP] Clear S");
+    Serial.print(section);
+    Serial.print(" station=");
+    Serial.println(station);
+}
+
 const CourseSection &course_map_get_section(uint8_t section)
 {
     static CourseSection empty;
@@ -168,17 +230,6 @@ void course_map_record_successful_lane(
     Serial.println(lane < 0 ? "LEFT" : "RIGHT");
 }
 
-void course_map_mark_learning_complete(uint8_t section)
-{
-    if (section >= COURSE_SECTION_COUNT)
-        return;
-
-    courseSections[section].learningComplete = true;
-    Serial.print("[MAP] S");
-    Serial.print(section);
-    Serial.println(" learning complete");
-}
-
 void course_map_print()
 {
     Serial.println("===== COURSE MAP =====");
@@ -196,11 +247,6 @@ void course_map_print()
                 : (courseSection.successfulLane > 0
                        ? "RIGHT"
                        : "UNKNOWN"));
-        Serial.print("  learning=");
-        Serial.println(
-            courseSection.learningComplete
-                ? "COMPLETE"
-                : "INCOMPLETE");
 
         for (uint8_t i = 0; i < COURSE_MAX_OBSTACLES_PER_SECTION; ++i)
         {
@@ -217,5 +263,29 @@ void course_map_print()
             Serial.print(" seen=");
             Serial.println(stored.observations);
         }
+
+        Serial.print("  seats=");
+        for (uint8_t station = 0;
+             station < COURSE_STATIONS_PER_SECTION;
+             ++station)
+        {
+            for (uint8_t side = 0;
+                 side < COURSE_SEATS_PER_STATION;
+                 ++side)
+            {
+                const CourseSeatState state =
+                    courseSection.seats[station][side].state;
+                const char symbol =
+                    state == COURSE_SEAT_RED
+                        ? 'R'
+                        : (state == COURSE_SEAT_GREEN
+                               ? 'G'
+                               : (state == COURSE_SEAT_CLEAR ? '-' : '?'));
+                Serial.print(symbol);
+            }
+            if (station + 1 < COURSE_STATIONS_PER_SECTION)
+                Serial.print(' ');
+        }
+        Serial.println();
     }
 }

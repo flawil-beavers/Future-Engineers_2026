@@ -7,6 +7,7 @@
 #include "config.h"
 #include <Wire.h>
 #include "logger.h"
+#include "motor_control.h"
 #define Serial robot_logger
 
 
@@ -21,6 +22,7 @@ static Adafruit_BNO08x bno = Adafruit_BNO08x(BNO085_RST);
 static sh2_SensorValue_t sensor_value;
 static float current_degree = 0;
 static float current_heading = 0;
+static bool gyro_stream_healthy = false;
 
 /**
  * @brief The timing budget (refresh rate) of ToF sensors captured at startup.
@@ -31,13 +33,37 @@ uint32_t sensors_initial_tof_timing_budget = 0;
 // ToF sensors (on separate I2C buses)
 static VL53L4CX sensor_left(&Wire, -1);
 static VL53L4CX sensor_right(&Wire2, -1);
-static uint32_t tof_measurement_counts[TOF_COUNT] = {0, 0};
 
 // Distance readings in millimeters
 static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_raw_distances[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f};
 static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
+static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
+
+static bool restart_gyro_stream()
+{
+  // A standalone reset does not reliably return this BNO085/SPI combination
+  // to a state where sh2_setSensorConfig() can be written. Repeat the same
+  // transport and SH2 initialization sequence that is proven at startup.
+  // Never retain a drive command during the blocking hardware/transport
+  // restart. The main loop also stays suspended until a fresh quaternion.
+  stop(false);
+  gyro_stream_healthy = false;
+  sh2_close();
+  if (!bno.begin_SPI(BNO085_CS, BNO085_INT, &SPI1))
+    return false;
+  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR,
+                        GYRO_REPORT_INTERVAL_US))
+    return false;
+
+  // Consume boot notifications so they cannot trigger another recovery after
+  // the newly enabled report stream starts.
+  delay(50);
+  bno.getSensorEvent(&sensor_value);
+  bno.wasReset();
+  return true;
+}
 
 // ==========================================
 // SENSOR UPDATE FUNCTIONS
@@ -46,17 +72,50 @@ static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
 void update_gyro()
 {
   static unsigned long last_gyro_data_time = 0;
+  static unsigned long last_gyro_poll_time = 0;
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
+  static bool reset_recovery_pending = false;
+
+  const unsigned long now = millis();
+  const bool first_poll = last_gyro_poll_time == 0;
+  const unsigned long poll_gap_ms = first_poll ? 0 : now - last_gyro_poll_time;
+  last_gyro_poll_time = now;
+
+  if (first_poll)
+  {
+    // Give the initial report stream one timeout period to produce a sample.
+    last_gyro_data_time = now;
+  }
+  else if (poll_gap_ms > GYRO_REPORT_TIMEOUT_MS)
+  {
+    // A stale sample after a long main-loop pause is not evidence that the
+    // BNO085 stopped reporting. Start a fresh observation window instead of
+    // resetting the sensor (the old recovery did exactly that while the INT
+    // line was HIGH).
+    Serial.print("[GYRO] Main loop did not poll gyro for ");
+    Serial.print(poll_gap_ms);
+    Serial.println("ms; deferring sensor timeout check.");
+    last_gyro_data_time = now;
+  }
 
   // The BNO085 INT pin is active low. If HIGH, no data is ready.
   if (digitalRead(BNO085_INT) == HIGH)
   {
-    if (last_gyro_data_time != 0 && millis() - last_gyro_data_time > 200)
+    const unsigned long timeout_ms = reset_recovery_pending
+                                         ? GYRO_RESET_RECOVERY_TIMEOUT_MS
+                                         : GYRO_REPORT_TIMEOUT_MS;
+    if (now - last_gyro_data_time > timeout_ms)
     {
-      Serial.println("[GYRO] No data for 200ms, re-enabling reports...");
-      bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
+      // enableReport() cannot be sent directly while INT is HIGH. Reopen the
+      // complete SPI/SH2 transport, which performs a controlled reset first.
+      Serial.println("[GYRO] Sensor report timeout; restarting SPI/SH2...");
+      const bool restarted = restart_gyro_stream();
+      Serial.println(restarted
+                         ? "[GYRO] SPI/SH2 stream restarted."
+                         : "[GYRO] SPI/SH2 restart failed.");
       gyro_initialized = false;
+      reset_recovery_pending = true;
       last_gyro_data_time = millis();
     }
     return;
@@ -68,12 +127,15 @@ void update_gyro()
   // Check if sensor was reset
   if (bno.wasReset())
   {
-    Serial.println("BNO085 was reset! Reinitializing...");
+    Serial.println("BNO085 was reset! Restarting SPI/SH2...");
     gyro_initialized = false; // Reset local tracking on hardware reset
-    delay(10);
-    bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000);
-    delay(30);
-    return; // Drop this frame to let stream stabilize
+    const bool restarted = restart_gyro_stream();
+    Serial.println(restarted
+                       ? "[GYRO] SPI/SH2 stream restarted."
+                       : "[GYRO] SPI/SH2 restart failed.");
+    reset_recovery_pending = true;
+    last_gyro_data_time = millis();
+    return; // Drop this frame and re-baseline on the first new quaternion.
   }
 
   // Parse Game Rotation Vector (No Magnetometer = No Drift near motors)
@@ -81,7 +143,9 @@ void update_gyro()
   {
     if (sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR)
     {
-      last_gyro_data_time = millis();
+      last_gyro_data_time = now;
+      reset_recovery_pending = false;
+      gyro_stream_healthy = true;
       sh2_RotationVector_t rotationVector = sensor_value.un.gameRotationVector;
       float r = rotationVector.real;
       float i = rotationVector.i;
@@ -131,8 +195,14 @@ void update_gyro()
  */
 static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 {
-  const TofSensor sensor_index =
-      (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  TofDiagnosticSnapshot &diagnostic = tof_diagnostics[sensor_index];
+  // Build a complete local frame and publish it atomically at the end. A
+  // not-ready poll must not erase the candidates belonging to the last frame.
+  TofDiagnosticSnapshot frame = diagnostic;
+  frame.reported_object_count = 0;
+  frame.stored_object_count = 0;
+  frame.selected_object_index = -1;
   float min_accept_signal = 0.3f;
   float max_accept_sigma = nav_long_range_active ? 30.0f : 20.0f;
   float raw_measured_dist = -1.0f;
@@ -152,6 +222,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   int best_idx = -1;
   if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
   {
+    frame.reported_object_count = ranging_data.NumberOfObjectsFound;
     if (ranging_data.NumberOfObjectsFound > 0)
     {
       int16_t largest_valid_dist = -1;
@@ -162,6 +233,23 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
         int16_t dist = ranging_data.RangeData[i].RangeMilliMeter;
         float signal = ranging_data.RangeData[i].SignalRateRtnMegaCps / 65536.0;
         float sigma = ranging_data.RangeData[i].SigmaMilliMeter / 65536.0;
+        const bool hardware_valid =
+            status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
+            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE;
+        const bool filter_accepted =
+            hardware_valid && signal > min_accept_signal && sigma < max_accept_sigma;
+
+        if (frame.stored_object_count < TOF_DIAGNOSTIC_MAX_OBJECTS)
+        {
+          TofObjectDiagnostic &object =
+              frame.objects[frame.stored_object_count++];
+          object.distance_mm = dist;
+          object.signal_mcps = signal;
+          object.sigma_mm = sigma;
+          object.range_status = status;
+          object.hardware_valid = hardware_valid;
+          object.filter_accepted = filter_accepted;
+        }
 
         // Enhanced reliability check:
         // 1. Status must be valid or merged pulse.
@@ -169,8 +257,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
         // 3. Sigma (standard deviation) must be low enough (< 25mm) for a stable reading.
         // This filters out "ghost" readings that occur with black/distant targets
         // which currently cause the sensor to report ~400mm instead of 9999mm (out of range).
-        if (status == VL53L4CX_RANGESTATUS_RANGE_VALID ||
-            status == VL53L4CX_RANGESTATUS_RANGE_VALID_MERGED_PULSE)
+        if (hardware_valid)
         {
           // if (&sensor == &sensor_right) {
           //   Serial.print("                    ");
@@ -188,7 +275,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
           tof_sigmas[s_idx] = sigma;
           tof_raw_distances[s_idx] = (float)dist;
 
-          if (signal > min_accept_signal && sigma < max_accept_sigma)
+          if (filter_accepted)
           {
             if (dist > largest_valid_dist)
             {
@@ -230,11 +317,20 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   }
 
   sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
-  ++tof_measurement_counts[sensor_index];
   
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
   out_distance = measured_distance;
+  frame.filtered_distance_mm = measured_distance;
+  frame.selected_raw_distance_mm = raw_measured_dist;
+  frame.selected_signal_mcps = current_signal_rate;
+  frame.selected_sigma_mm = current_sigma;
+  frame.selected_object_index =
+      best_idx >= 0 && best_idx < frame.stored_object_count
+          ? static_cast<int8_t>(best_idx)
+          : -1;
+  frame.sequence = diagnostic.sequence + 1;
+  diagnostic = frame;
 
   // Update signal rate and sigma only if a valid measurement was found
   if (best_idx != -1) {
@@ -252,6 +348,15 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 
 void update_lasers()
 {
+  static uint32_t last_poll_us = 0;
+  const uint32_t now_us = micros();
+  if (last_poll_us != 0 &&
+      now_us - last_poll_us < TOF_READY_POLL_INTERVAL_US)
+  {
+    return;
+  }
+  last_poll_us = now_us;
+
   read_single_tof(sensor_left, tof_distances[TOF_LEFT]);
   read_single_tof(sensor_right, tof_distances[TOF_RIGHT]);
 }
@@ -260,11 +365,48 @@ void sensors_set_tof_timing_budget(uint32_t budget_us)
 {
   sensor_left.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
   sensor_right.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
+  sensor_left.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+      &tof_diagnostics[TOF_LEFT].timing_budget_us);
+  sensor_right.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+      &tof_diagnostics[TOF_RIGHT].timing_budget_us);
 }
 
-uint32_t get_tof_measurement_count(TofSensor sensor)
+static bool configure_tof_for_test(VL53L4CX &sensor, TofSensor side,
+                                   VL53L4CX_DistanceModes distance_mode,
+                                   uint32_t budget_us)
 {
-  return sensor < TOF_COUNT ? tof_measurement_counts[sensor] : 0;
+  VL53L4CX_Error status = sensor.VL53L4CX_StopMeasurement();
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_SetDistanceMode(distance_mode);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(budget_us);
+
+  VL53L4CX_DistanceModes actual_mode = distance_mode;
+  uint32_t actual_budget_us = 0;
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_GetDistanceMode(&actual_mode);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(
+        &actual_budget_us);
+  if (status == VL53L4CX_ERROR_NONE)
+    status = sensor.VL53L4CX_StartMeasurement();
+
+  if (status == VL53L4CX_ERROR_NONE) {
+    tof_diagnostics[side].distance_mode = actual_mode;
+    tof_diagnostics[side].timing_budget_us = actual_budget_us;
+    tof_distances[side] = -1.0f;
+  }
+  return status == VL53L4CX_ERROR_NONE;
+}
+
+bool sensors_configure_tof_for_test(VL53L4CX_DistanceModes distance_mode,
+                                    uint32_t budget_us)
+{
+  const bool left_ok = configure_tof_for_test(
+      sensor_left, TOF_LEFT, distance_mode, budget_us);
+  const bool right_ok = configure_tof_for_test(
+      sensor_right, TOF_RIGHT, distance_mode, budget_us);
+  return left_ok && right_ok;
 }
 
 /**
@@ -285,20 +427,38 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
     while (1) delay(10);
   }
   
-  uint32_t timing_budget_us = TOF_TIMING_BUDGET_US;
-  sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE);
-  if (sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(
-          timing_budget_us) != VL53L4CX_ERROR_NONE)
+  if (sensor.VL53L4CX_SetDistanceMode(TOF_DISTANCE_MODE) !=
+      VL53L4CX_ERROR_NONE)
   {
-    Serial.println("WARNING: ToF timing budget was rejected.");
+    Serial.print("WARNING: ");
+    Serial.print(name);
+    Serial.println(" rejected the configured distance mode");
   }
   Serial.print("nav_long_range_active: ");
   Serial.println(nav_long_range_active);
-  if (nav_long_range_active)
+  const uint32_t requested_timing_budget_us =
+      nav_long_range_active ? 300000UL : TOF_TIMING_BUDGET_US;
+  if (sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(
+          requested_timing_budget_us) != VL53L4CX_ERROR_NONE)
   {
-    timing_budget_us = 300000;
-    sensor.VL53L4CX_SetMeasurementTimingBudgetMicroSeconds(timing_budget_us);
+    Serial.print("WARNING: ");
+    Serial.print(name);
+    Serial.println(" rejected the requested timing budget");
   }
+
+  uint32_t timing_budget_us = 0;
+  VL53L4CX_DistanceModes distance_mode = VL53L4CX_DISTANCEMODE_MEDIUM;
+  sensor.VL53L4CX_GetDistanceMode(&distance_mode);
+  sensor.VL53L4CX_GetMeasurementTimingBudgetMicroSeconds(&timing_budget_us);
+  Serial.print(name);
+  Serial.print(" distance_mode: ");
+  Serial.println(static_cast<int>(distance_mode));
+  Serial.print(name);
+  Serial.print(" timing_budget_us: ");
+  Serial.println(timing_budget_us);
+  const TofSensor sensor_index = (&sensor == &sensor_left) ? TOF_LEFT : TOF_RIGHT;
+  tof_diagnostics[sensor_index].distance_mode = distance_mode;
+  tof_diagnostics[sensor_index].timing_budget_us = timing_budget_us;
   
 
   // Capture the initial budget (mode default) to restore to later
@@ -349,6 +509,16 @@ float get_tof_sigma(TofSensor sensor)
   return -1.0f;
 }
 
+bool get_tof_diagnostic_snapshot(TofSensor sensor,
+                                 TofDiagnosticSnapshot &snapshot)
+{
+  if (sensor >= TOF_COUNT ||
+      tof_diagnostics[sensor].sequence == 0)
+    return false;
+  snapshot = tof_diagnostics[sensor];
+  return true;
+}
+
 float get_angle()
 {
   return current_degree;
@@ -357,6 +527,11 @@ float get_angle()
 float get_heading()
 {
   return current_heading;
+}
+
+bool gyro_is_healthy()
+{
+  return gyro_stream_healthy;
 }
 
 void reset_VL53L4CX_via_I2C(TwoWire &wire)
@@ -419,7 +594,8 @@ void sensors_setup()
 
   // Enable Game Rotation Vector (ignores magnetometer interference from motors)
   // Frequency set to 10ms (100Hz) for better tracking during fast turns
-  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR, 10000))
+  if (!bno.enableReport(SH2_GAME_ROTATION_VECTOR,
+                        GYRO_REPORT_INTERVAL_US))
   {
     Serial.println("ERROR: Failed to enable game rotation vector");
     while (1)

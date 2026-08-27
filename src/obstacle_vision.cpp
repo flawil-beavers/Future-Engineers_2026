@@ -5,28 +5,131 @@
 
 #define Serial robot_logger
 
-bool updateCameraVision()
+namespace
 {
-    static uint32_t last_camera_update = 0;
-    if (millis() - last_camera_update < OBSTACLE_CAMERA_INTERVAL_MS)
-        return false;
+float calibration_reference_distance_mm = 0.0f;
+uint32_t red_calibration_samples = 0;
+uint32_t green_calibration_samples = 0;
+float red_focal_sum_px = 0.0f;
+float green_focal_sum_px = 0.0f;
+float red_range_error_sum_mm = 0.0f;
+float green_range_error_sum_mm = 0.0f;
+uint32_t camera_test_frames = 0;
+uint32_t camera_test_red_valid = 0;
+uint32_t camera_test_green_valid = 0;
 
-    last_camera_update = millis();
-    if (!camera.capture()) {
-        Serial.println("Camera capture failed.");
-        return false;
+void printCalibrationBlob(
+    const char *name,
+    const Blob &blob,
+    uint32_t &sample_count,
+    float &focal_sum_px,
+    float &range_error_sum_mm)
+{
+    if (!blob.found || blob.height() <= 0)
+        return;
+
+    const float bearing_deg = obstacle_camera_bearing_deg(&blob);
+    const bool edge_clipped = blob.minX <= 2 || blob.maxX >= 317;
+    const float runtime_range_mm =
+        obstacle_estimate_camera_range_mm(&blob);
+    const bool production_valid =
+        obstacle_blob_valid_for_acquisition(&blob);
+
+    Serial.print("[CAM CAL] color=");
+    Serial.print(name);
+    Serial.print(" x=");
+    Serial.print(blob.centerX);
+    Serial.print(" y=");
+    Serial.print(blob.centerY);
+    Serial.print(" w=");
+    Serial.print(blob.width());
+    Serial.print(" h=");
+    Serial.print(blob.height());
+    Serial.print(" area=");
+    Serial.print(blob.area);
+    Serial.print(" min_x=");
+    Serial.print(blob.minX);
+    Serial.print(" max_x=");
+    Serial.print(blob.maxX);
+    Serial.print(" min_y=");
+    Serial.print(blob.minY);
+    Serial.print(" max_y=");
+    Serial.print(blob.maxY);
+    Serial.print(" bearing_deg=");
+    Serial.print(bearing_deg, 1);
+    Serial.print(" range_est_mm=");
+    Serial.print(runtime_range_mm, 1);
+    Serial.print(" edge_clipped=");
+    Serial.print(edge_clipped ? "yes" : "no");
+    Serial.print(" production_valid=");
+    Serial.print(production_valid ? "yes" : "no");
+
+    if (calibration_reference_distance_mm > 0.0f && production_valid)
+    {
+        const float focal_sample_px =
+            calibration_reference_distance_mm *
+            static_cast<float>(blob.height()) /
+            OBSTACLE_PILLAR_HEIGHT_MM;
+        focal_sum_px += focal_sample_px;
+        const float range_error_mm =
+            runtime_range_mm - calibration_reference_distance_mm;
+        range_error_sum_mm += range_error_mm;
+        ++sample_count;
+
+        Serial.print(" ref_mm=");
+        Serial.print(calibration_reference_distance_mm, 0);
+        Serial.print(" focal_sample_px=");
+        Serial.print(focal_sample_px, 1);
+        Serial.print(" focal_avg_px=");
+        Serial.print(focal_sum_px / static_cast<float>(sample_count), 1);
+        Serial.print(" range_error_mm=");
+        Serial.print(range_error_mm, 1);
+        Serial.print(" range_error_avg_mm=");
+        Serial.print(
+            range_error_sum_mm / static_cast<float>(sample_count),
+            1);
+        Serial.print(" samples=");
+        Serial.print(sample_count);
+        Serial.print(" sample_accepted=yes");
+    }
+    else if (calibration_reference_distance_mm > 0.0f)
+    {
+        Serial.print(" sample_accepted=no");
     }
 
-    return vision.update(
+    Serial.println();
+}
+} // namespace
+
+bool updateCameraVision()
+{
+    // Polling is non-blocking. A completed frame is published only after DMA
+    // has switched to the other SDRAM buffer.
+    if (!camera.capture())
+        return false;
+
+    const bool updated = vision.update(
         camera.getBuffer(),
         camera.getWidth(),
         camera.getHeight());
+    if (updated)
+    {
+        const VisionResult &result = vision.getResult();
+        ++camera_test_frames;
+        camera_test_red_valid +=
+            obstacle_blob_valid_for_acquisition(&result.red) ? 1U : 0U;
+        camera_test_green_valid +=
+            obstacle_blob_valid_for_acquisition(&result.green) ? 1U : 0U;
+    }
+    return updated;
 }
 
 void printCameraCalibration()
 {
     static uint32_t last_print = 0;
-    if (millis() - last_print < 500)
+    // Keep test telemetry sparse: USB logging must not distort camera-service
+    // latency or compete with normal control-loop work.
+    if (millis() - last_print < 2000)
         return;
 
     last_print = millis();
@@ -39,12 +142,109 @@ void printCameraCalibration()
         x,
         y);
 
-    Serial.print("CENTER HSV -> H: ");
+    Serial.print("[CAM CAL] center_hsv_h=");
     Serial.print(hsv.h);
-    Serial.print(" S: ");
+    Serial.print(" s=");
     Serial.print(hsv.s);
-    Serial.print(" V: ");
+    Serial.print(" v=");
     Serial.println(hsv.v);
+
+    const VisionResult &result = vision.getResult();
+    Serial.print("[CAM PERF] source=");
+    Serial.print(camera.getWidth());
+    Serial.print("x");
+    Serial.print(camera.getHeight());
+    Serial.print(" async=");
+#if CAMERA_ASYNC_CAPTURE_ENABLED
+    Serial.print("yes");
+#else
+    Serial.print("no");
+#endif
+    Serial.print(" capture_mode=");
+#if CAMERA_ASYNC_CAPTURE_ENABLED && CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    Serial.print("continuous");
+#elif CAMERA_ASYNC_CAPTURE_ENABLED
+    Serial.print("snapshot");
+#else
+    Serial.print("blocking");
+#endif
+    Serial.print(" frame=");
+    Serial.print(camera.getCompletedFrameCount());
+    Serial.print(" test_frames=");
+    Serial.print(camera_test_frames);
+    Serial.print(" red_valid=");
+    Serial.print(camera_test_red_valid);
+    Serial.print(" green_valid=");
+    Serial.print(camera_test_green_valid);
+    Serial.print(" capture_ms=");
+    Serial.print(camera.getLastCaptureTimeUs() / 1000.0f, 2);
+    Serial.print(" ready_wait_ms=");
+    Serial.print(camera.getLastReadyWaitTimeUs() / 1000.0f, 3);
+    Serial.print(" frame_interval_ms=");
+    Serial.print(camera.getLastFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_min_ms=");
+    Serial.print(camera.getMinFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" interval_max_ms=");
+    Serial.print(camera.getMaxFrameIntervalUs() / 1000.0f, 2);
+    Serial.print(" missed_intervals=");
+    Serial.print(camera.getLongFrameIntervalCount());
+    Serial.print(" discarded_frames=");
+    Serial.print(camera.getDiscardedFrameCount());
+    Serial.print(" capture_errors=");
+    Serial.print(camera.getCaptureErrorCount());
+    Serial.print(" exposure_lines=");
+    Serial.print(camera.getExposureLines());
+    Serial.print(" service_us=");
+    Serial.print(camera.getLastServiceTimeUs());
+    Serial.print(" processing_ms=");
+    Serial.print(result.processingTimeUs / 1000.0f, 2);
+    Serial.print(" control_block_ms=");
+    Serial.println(
+        (camera.getLastServiceTimeUs() + result.processingTimeUs) /
+            1000.0f,
+        2);
+    if (!result.red.found && !result.green.found)
+    {
+        Serial.println("[CAM CAL] blob=NONE");
+        return;
+    }
+
+    printCalibrationBlob(
+        "RED",
+        result.red,
+        red_calibration_samples,
+        red_focal_sum_px,
+        red_range_error_sum_mm);
+    printCalibrationBlob(
+        "GREEN",
+        result.green,
+        green_calibration_samples,
+        green_focal_sum_px,
+        green_range_error_sum_mm);
+}
+
+void camera_calibration_set_reference_distance(float distance_mm)
+{
+    calibration_reference_distance_mm = distance_mm > 0.0f
+        ? distance_mm
+        : 0.0f;
+    red_calibration_samples = 0;
+    green_calibration_samples = 0;
+    red_focal_sum_px = 0.0f;
+    green_focal_sum_px = 0.0f;
+    red_range_error_sum_mm = 0.0f;
+    green_range_error_sum_mm = 0.0f;
+
+    Serial.print("[CAM CAL] Reference distance: ");
+    if (calibration_reference_distance_mm > 0.0f)
+    {
+        Serial.print(calibration_reference_distance_mm, 0);
+        Serial.println(" mm; sample averages reset");
+    }
+    else
+    {
+        Serial.println("not set; blob diagnostics only");
+    }
 }
 
 const Blob *getLargestObstacle()
@@ -67,4 +267,84 @@ const Blob *getLargestObstacle()
     return result.red.area >= result.green.area
         ? &result.red
         : &result.green;
+}
+
+const Blob *getLargestValidObstacle()
+{
+    const VisionResult &result = vision.getResult();
+    const Blob *red = obstacle_blob_valid_for_acquisition(&result.red)
+        ? &result.red
+        : nullptr;
+    const Blob *green = obstacle_blob_valid_for_acquisition(&result.green)
+        ? &result.green
+        : nullptr;
+
+    if (red == nullptr)
+        return green;
+    if (green == nullptr)
+        return red;
+    if (red->maxY != green->maxY)
+        return red->maxY > green->maxY ? red : green;
+    return red->area >= green->area ? red : green;
+}
+
+float obstacle_camera_bearing_deg(const Blob *obstacle)
+{
+    if (obstacle == nullptr || !obstacle->found)
+        return 0.0f;
+
+    // Image X grows to the right, while the path/global convention uses a
+    // positive bearing to the robot's left. Use the surveyed optical centre
+    // and focal length instead of assuming a centred, angle-linear image.
+    return atanf(
+               (OBSTACLE_CAMERA_PRINCIPAL_X_PX -
+                static_cast<float>(obstacle->centerX)) /
+               OBSTACLE_CAMERA_FOCAL_X_PX) *
+           180.0f / PI;
+}
+
+float obstacle_estimate_camera_forward_mm(const Blob *obstacle)
+{
+    if (obstacle == nullptr || !obstacle->found)
+        return 0.0f;
+
+    if (obstacle->minX <= 2 || obstacle->maxX >= 317)
+        return OBSTACLE_EDGE_CLIPPED_RANGE_MM;
+
+    const float horizontalOffset = fabsf(
+        static_cast<float>(obstacle->centerX) -
+        OBSTACLE_CAMERA_PRINCIPAL_X_PX);
+    const float correctedFootY =
+        static_cast<float>(obstacle->maxY) -
+        OBSTACLE_CAMERA_FOOT_EDGE_SLOPE * horizontalOffset;
+    const float ground_denominator =
+        correctedFootY -
+        OBSTACLE_CAMERA_GROUND_HORIZON_Y;
+    if (ground_denominator > 1.0f)
+    {
+        return OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX /
+               ground_denominator;
+    }
+
+    if (obstacle->height() <= 0)
+        return 0.0f;
+    return OBSTACLE_CAMERA_FOCAL_LENGTH_PX *
+           OBSTACLE_PILLAR_HEIGHT_MM /
+           static_cast<float>(obstacle->height());
+}
+
+float obstacle_estimate_camera_range_mm(const Blob *obstacle)
+{
+    const float forwardMm = obstacle_estimate_camera_forward_mm(obstacle);
+    if (forwardMm <= 0.0f)
+        return 0.0f;
+
+    // The ground-plane fit estimates forward depth. Convert it to distance
+    // along the bearing ray so obstacle_path.cpp can project off-centre
+    // pillars into the field and snap them to the correct known seat.
+    const float bearingRad = obstacle_camera_bearing_deg(obstacle) * PI / 180.0f;
+    const float bearingCos = cosf(bearingRad);
+    if (bearingCos <= 0.01f)
+        return 0.0f;
+    return forwardMm / bearingCos;
 }

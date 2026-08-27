@@ -1,4 +1,5 @@
 #include "vision.h"
+#include "config.h"
 
 Vision::Vision()
 {
@@ -8,6 +9,22 @@ Vision::Vision()
 void Vision::begin()
 {
     result.clear();
+
+    // Populate from the existing conversion and threshold functions so this
+    // is bit-for-bit equivalent to the former per-pixel classification.
+    for (uint32_t raw = 0; raw <= 0xFFFFU; ++raw)
+    {
+        RGB rgb;
+        const uint16_t rgb565 = static_cast<uint16_t>(raw);
+        const uint8_t r5 = (rgb565 >> 11) & 0x1F;
+        const uint8_t g6 = (rgb565 >> 5) & 0x3F;
+        const uint8_t b5 = rgb565 & 0x1F;
+        rgb.r = (r5 << 3) | (r5 >> 2);
+        rgb.g = (g6 << 2) | (g6 >> 4);
+        rgb.b = (b5 << 3) | (b5 >> 2);
+        colorLookup[raw] = static_cast<uint8_t>(
+            classifyColor(rgbToHSV(rgb)));
+    }
 }
 
 const VisionResult &Vision::getResult() const
@@ -51,6 +68,22 @@ RGB Vision::readRGB565(
     rgb.b = (b5 << 3) | (b5 >> 2);
 
     return rgb;
+}
+
+uint16_t Vision::readRGB565Raw(
+    const uint8_t *buffer,
+    uint32_t pixelIndex) const
+{
+    const uint32_t byteIndex = pixelIndex * 2;
+    if (RGB565_MSB_FIRST)
+    {
+        return
+            (static_cast<uint16_t>(buffer[byteIndex]) << 8) |
+            buffer[byteIndex + 1];
+    }
+    return
+        static_cast<uint16_t>(buffer[byteIndex]) |
+        (static_cast<uint16_t>(buffer[byteIndex + 1]) << 8);
 }
 
 // ============================================================
@@ -157,9 +190,10 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // RED
 
     if (
-        (hsv.h <= 18 || hsv.h >= 352) &&
-        hsv.s >= 175 &&
-        hsv.v >= 70)
+        (hsv.h <= VISION_RED_HUE_LOW_MAX ||
+         hsv.h >= VISION_RED_HUE_HIGH_MIN) &&
+        hsv.s >= VISION_RED_MIN_SATURATION &&
+        hsv.v >= VISION_RED_MIN_VALUE)
     {
         return ColorType::RED;
     }
@@ -167,8 +201,8 @@ ColorType Vision::classifyColor(const HSV &hsv) const
     // ORANGE
 
     if (
-        hsv.h >= 9 &&
-        hsv.h <= 35 &&
+        hsv.h >= VISION_ORANGE_HUE_MIN &&
+        hsv.h <= VISION_ORANGE_HUE_MAX &&
         hsv.s >= 90 &&
         hsv.v >= 60)
     {
@@ -423,7 +457,13 @@ void Vision::findLargestBlobs(
         static_cast<uint32_t>(sampleWidth) *
         sampleHeight;
 
-    for (uint32_t i = 0; i < samples; ++i)
+    // Both configured ROIs reject every colour above OBSTACLE_Y_MIN (80 is
+    // earlier than LINE_Y_MIN 115), and update() has already zeroed it.
+    const uint32_t firstActiveSample =
+        static_cast<uint32_t>(OBSTACLE_Y_MIN / PIXEL_STEP) *
+        sampleWidth;
+
+    for (uint32_t i = firstActiveSample; i < samples; ++i)
     {
         const ColorType color =
             static_cast<ColorType>(
@@ -474,6 +514,13 @@ bool Vision::update(
 
     result.clear();
 
+    const uint16_t firstActiveGridY =
+        OBSTACLE_Y_MIN / PIXEL_STEP;
+    memset(
+        colorMap,
+        static_cast<uint8_t>(ColorType::NONE),
+        static_cast<size_t>(firstActiveGridY) * sampleWidth);
+
     // ========================================================
     // STEP 1
     //
@@ -481,7 +528,7 @@ bool Vision::update(
     // ========================================================
 
     for (
-        uint16_t gridY = 0;
+        uint16_t gridY = firstActiveGridY;
         gridY < sampleHeight;
         ++gridY)
     {
@@ -517,16 +564,8 @@ bool Vision::update(
                     width +
                 sourceX;
 
-            const RGB rgb =
-                readRGB565(
-                    buffer,
-                    pixelIndex);
-
-            const HSV hsv =
-                rgbToHSV(rgb);
-
-            ColorType color =
-                classifyColor(hsv);
+            ColorType color = static_cast<ColorType>(
+                colorLookup[readRGB565Raw(buffer, pixelIndex)]);
 
             // ============================================================
             // Apply Regions of Interest

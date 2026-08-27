@@ -29,8 +29,7 @@ enum ObstacleAvoidanceState
     OA_IDLE,
     OA_TRACKING,
     OA_PASSING,
-    OA_RECOVERING,
-    OA_REALIGNING
+    OA_RECOVERING
 };
 
 
@@ -44,12 +43,47 @@ void printVisionDebug();
 
 void printCameraCalibration();
 
+/**
+ * @brief Set the measured camera-to-pillar distance used by calibration.
+ *        A value of zero keeps blob diagnostics active without calculating
+ *        focal-length samples.
+ */
+void camera_calibration_set_reference_distance(float distance_mm);
+
 
 // ==========================================
 // OBSTACLE DETECTION
 // ==========================================
 
 const Blob* getLargestObstacle();
+
+/**
+ * @brief Apply the production acquisition filters used before a new pillar
+ *        can affect steering or the known-geometry path.
+ */
+bool obstacle_blob_valid_for_acquisition(const Blob *obstacle);
+
+/** Camera bearing in robot coordinates: positive is left, negative is right. */
+float obstacle_camera_bearing_deg(const Blob *obstacle);
+
+/**
+ * @brief Return the best red/green blob after production validation.
+ *        Invalid edge lines and background regions cannot mask a valid pillar.
+ */
+const Blob* getLargestValidObstacle();
+
+/**
+ * @brief Estimate forward camera-to-block-foot depth in millimetres.
+ *        This is the calibrated ground-plane quantity before bearing is
+ *        applied.
+ */
+float obstacle_estimate_camera_forward_mm(const Blob *obstacle);
+
+/**
+ * @brief Estimate horizontal camera-to-block-foot ray range in millimetres.
+ *        Seat projection combines this range with camera bearing.
+ */
+float obstacle_estimate_camera_range_mm(const Blob *obstacle);
 
 void handleObstacleDetection();
 
@@ -89,6 +123,7 @@ void obstacle_challenge_update(
  * @brief Returns true while an obstacle challenge run is active.
  */
 bool obstacle_challenge_active();
+bool obstacle_challenge_complete();
 bool obstacle_parking_exit_active();
 
 /**

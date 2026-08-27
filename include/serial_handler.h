@@ -24,9 +24,11 @@
  *   m         : Select manual mode
  *   l         : Start Open Challenge mode
  *   O         : Start Obstacle Challenge mode
+ *   X1/X-1    : Empty-track path test, left/right turns
  *   z         : Stop the active mode
  *   b1/b0     : Start/stop Obstacle Bench mode
  *   c         : Start Camera Calibration mode
+ *   camdrive  : Pillar-touch reverse camera ground-plane calibration
  *   j         : Print learned obstacle course map
  *   u<dist>   : Set wall target distance (mm)
  *   i         : Print all serial commands

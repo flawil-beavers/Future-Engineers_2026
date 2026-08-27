@@ -5,7 +5,9 @@
 #include "sensors.h"
 #include "navigation_controller.h"
 #include "course_map.h"
+#include "obstacle_path.h"
 #include "logger.h"
+#include "position_estimator.h"
 
 #define Serial robot_logger
 
@@ -24,9 +26,6 @@ static float oa_base_heading = 0.0f;
 
 // Encoder distance at beginning of a state.
 static float oa_state_start_distance = 0.0f;
-// Kept across all avoidance states so "passed" is referenced to the first
-// stable sighting, not to whichever state happened to start most recently.
-static float oa_detection_start_distance = 0.0f;
 
 // Used to avoid immediately detecting the same obstacle again.
 static float oa_last_finish_distance = 0.0f;
@@ -37,11 +36,6 @@ static uint8_t oa_lost_frames = 0;
 static ColorType oa_candidate_color = ColorType::NONE;
 
 static float oa_last_camera_error = 0.0f;
-static int oa_max_seen_bottom_y = 0;
-static bool oa_pending_map_record = false;
-static float oa_pending_detection_distance = 0.0f;
-static int16_t oa_pending_image_x = 0;
-static int16_t oa_pending_bottom_y = 0;
 
 // ============================================================
 // OBSTACLE CHALLENGE STATE
@@ -49,34 +43,68 @@ static int16_t oa_pending_bottom_y = 0;
 
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
+static bool oc_finish_requested = false;
+static bool oc_complete = false;
 
 enum ParkingExitState : uint8_t
 {
     PARKING_EXIT_IDLE,
-    PARKING_EXIT_FIRST_ARC,
-    PARKING_EXIT_COUNTER_ARC,
-    PARKING_EXIT_STRAIGHTENING,
-    PARKING_EXIT_BLOCK_BACKUP,
-    PARKING_EXIT_BLOCK_BACKUP_BRAKING,
+    PARKING_EXIT_SEGMENT_SETTLE,
+    PARKING_EXIT_SEGMENT_DRIVE,
+    PARKING_EXIT_SEGMENT_BRAKE,
+    PARKING_EXIT_LOCALIZE_SETTLE,
+    PARKING_EXIT_LOCALIZE_DRIVE,
+    PARKING_EXIT_LOCALIZE_BRAKE,
     PARKING_EXIT_TEST_HOLD,
     PARKING_EXIT_DONE
 };
 
+struct ParkingExitSegment
+{
+    int8_t direction;
+    int8_t steeringRelativeToAway;
+    float distanceMm;
+};
+
+// Steering is expressed relative to the direction away from the outer wall,
+// so the same path mirrors automatically for CW and CCW starts.
+static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
+    OBSTACLE_PARKING_EXIT_SEGMENT_COUNT] = {
+    {-1, -1, 20.0f},
+    {+1, +1, 25.0f},
+    {-1, -1, 20.0f},
+    {+1, +1, 75.0f},
+    {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
+
 static ParkingExitState oc_parking_exit_state =
     PARKING_EXIT_IDLE;
 static float oc_parking_exit_state_distance = 0.0f;
+static float oc_parking_exit_run_start_distance = 0.0f;
 static float oc_parking_exit_start_heading = 0.0f;
+static float oc_parking_exit_start_left_mm = 0.0f;
+static float oc_parking_exit_start_right_mm = 0.0f;
 static int oc_parking_exit_steering = 0;
 static uint32_t oc_parking_exit_brake_start_ms = 0;
+static uint32_t oc_parking_exit_settle_start_ms = 0;
+static uint8_t oc_parking_exit_segment = 0;
+static bool oc_parking_field_pose_initialized = false;
+static TofSensor oc_parking_localization_sensor = TOF_RIGHT;
+static float oc_parking_localization_start_distance = 0.0f;
+static float oc_parking_localization_initial_piece_range = 0.0f;
+static float oc_parking_localization_last_piece_range = 0.0f;
+static float oc_parking_localization_wall_range = 0.0f;
+static PositionEstimate oc_parking_localization_last_piece_pose;
+static PositionEstimate oc_parking_localization_latest_wall_pose;
+static uint32_t oc_parking_localization_tof_sequence = 0;
+static uint8_t oc_parking_localization_wall_frames = 0;
+static bool oc_parking_localization_transition_found = false;
 
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
 static float oc_section_start_distance = 0.0f;
 static NavigationState oc_last_navigation_state = NAV_IDLE;
 static bool oc_corner_settling = false;
-static float oc_corner_settle_start_distance = 0.0f;
 static int oc_last_completed_turn = 0;
-static bool oc_start_section_complete = false;
 static bool oc_known_obstacle_used[
     COURSE_MAX_OBSTACLES_PER_SECTION] = {false, false};
 
@@ -157,9 +185,530 @@ static void resetParkingExit()
             ? PARKING_EXIT_IDLE
             : PARKING_EXIT_DONE;
     oc_parking_exit_state_distance = get_distance();
+    oc_parking_exit_run_start_distance = get_distance();
     oc_parking_exit_start_heading = get_angle();
+    oc_parking_exit_start_left_mm = 0.0f;
+    oc_parking_exit_start_right_mm = 0.0f;
     oc_parking_exit_steering = 0;
     oc_parking_exit_brake_start_ms = 0;
+    oc_parking_exit_settle_start_ms = 0;
+    oc_parking_exit_segment = 0;
+    oc_parking_field_pose_initialized = false;
+    oc_parking_localization_start_distance = get_distance();
+    oc_parking_localization_initial_piece_range = 0.0f;
+    oc_parking_localization_last_piece_range = 0.0f;
+    oc_parking_localization_wall_range = 0.0f;
+    oc_parking_localization_tof_sequence = 0;
+    oc_parking_localization_wall_frames = 0;
+    oc_parking_localization_transition_found = false;
+}
+
+static void initializeParkingFieldPose()
+{
+    const int8_t turnSign =
+        oc_parking_exit_steering > 0 ? -1 : 1;
+    const float gapMm =
+        OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM;
+    const float rearReferenceX =
+        turnSign > 0
+            ? OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM - gapMm
+            : OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM;
+    const float startX =
+        turnSign > 0
+            ? rearReferenceX +
+                OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM +
+                OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM
+            : rearReferenceX -
+                OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM -
+                OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM;
+    const float nominalStartY =
+        OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM -
+        OBSTACLE_WHEEL_OUTSIDE_WIDTH_MM * 0.5f;
+    const TofSensor outerWallSensor =
+        oc_parking_exit_steering > 0 ? TOF_LEFT : TOF_RIGHT;
+    const float outerWallRange = get_tof_distance(outerWallSensor);
+    const float outerWallSensorOffset =
+        outerWallSensor == TOF_LEFT
+            ? fabsf(OBSTACLE_TOF_LEFT_LOCAL_Y_MM)
+            : fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM);
+    const bool outerWallReferenceUsable =
+        outerWallRange > 0.0f &&
+        outerWallRange <= OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
+    const float startY =
+        outerWallReferenceUsable
+            ? OBSTACLE_SOUTH_OUTER_WALL_Y_MM +
+                  outerWallRange + outerWallSensorOffset
+            : nominalStartY;
+    const float startHeading = turnSign > 0 ? 0.0f : 180.0f;
+
+    position_reset(startX, startY, startHeading);
+    oc_parking_field_pose_initialized = true;
+
+    Serial.print("[PARK FIELD START] turn=");
+    Serial.print(turnSign > 0 ? "CCW" : "CW");
+    Serial.print(" fixed_line_x=");
+    Serial.print(OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM, 1);
+    Serial.print(" rear_axle_x_y_heading=");
+    Serial.print(startX, 1);
+    Serial.print("/");
+    Serial.print(startY, 1);
+    Serial.print("/");
+    Serial.print(startHeading, 1);
+    Serial.print(" start_y_source=");
+    Serial.print(outerWallReferenceUsable ? "outer_wall_tof" : "nominal");
+    Serial.print(" range_mm=");
+    Serial.println(outerWallRange, 1);
+}
+
+static void printParkingExitGeometry()
+{
+    Serial.print("[PARK EXIT] Geometry width_mm=");
+    Serial.print(OBSTACLE_PARKING_WIDTH_MM, 0);
+    Serial.print(" robot_length_mm=");
+
+    if (OBSTACLE_FINAL_ROBOT_LENGTH_MM > 0.0f)
+    {
+        Serial.print(OBSTACLE_FINAL_ROBOT_LENGTH_MM, 1);
+        Serial.print(" parking_length_mm=");
+        Serial.println(
+            OBSTACLE_FINAL_ROBOT_LENGTH_MM *
+                OBSTACLE_PARKING_LENGTH_FACTOR,
+            1);
+    }
+    else
+    {
+        Serial.println(
+            "UNSET parking_length=1.5*robot_length prototype_only=yes");
+    }
+
+    Serial.print("[PARK EXIT] Prototype footprint length/front/rear/width_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_FRONT_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM, 1);
+    Serial.print(" gap_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM, 1);
+    Serial.print(" rear_clearance_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM, 1);
+    Serial.print(" stage_segments=");
+    Serial.print(OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT);
+    Serial.print("/");
+    Serial.println(OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+}
+
+struct ParkingBeamFootprint
+{
+    float centerX;
+    float minimumX;
+    float maximumX;
+};
+
+static ParkingBeamFootprint parkingBeamFootprint(
+    TofSensor sensor,
+    float rangeMm,
+    const PositionEstimate &pose)
+{
+    const float localX =
+        sensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_X_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+    const float localY =
+        sensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+    const float headingRad = pose.heading_deg * PI / 180.0f;
+    const float sensorX =
+        pose.x_mm + cosf(headingRad) * localX -
+        sinf(headingRad) * localY;
+    const float rayHeadingRad =
+        headingRad + (sensor == TOF_LEFT ? 0.5f * PI : -0.5f * PI);
+    const float halfFovRad =
+        0.5f * OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG *
+        PI / 180.0f;
+    const float centerX =
+        sensorX + rangeMm * cosf(rayHeadingRad);
+    const float edgeX1 =
+        sensorX + rangeMm * cosf(rayHeadingRad - halfFovRad);
+    const float edgeX2 =
+        sensorX + rangeMm * cosf(rayHeadingRad + halfFovRad);
+    return {
+        centerX,
+        fminf(edgeX1, edgeX2),
+        fmaxf(edgeX1, edgeX2)};
+}
+
+static float expectedParkingOuterWallRange(
+    TofSensor sensor,
+    const PositionEstimate &pose)
+{
+    const float localX =
+        sensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_X_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+    const float localY =
+        sensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+    const float headingRad = pose.heading_deg * PI / 180.0f;
+    const float sensorY =
+        pose.y_mm + sinf(headingRad) * localX +
+        cosf(headingRad) * localY;
+    const float rayHeadingRad =
+        headingRad + (sensor == TOF_LEFT ? 0.5f * PI : -0.5f * PI);
+    const float rayY = sinf(rayHeadingRad);
+    if (fabsf(rayY) < 0.1f)
+        return -1.0f;
+
+    return (OBSTACLE_SOUTH_OUTER_WALL_Y_MM - sensorY) / rayY;
+}
+
+static void completeParkingExit(bool stagedTest)
+{
+    if (stagedTest || OBSTACLE_PARKING_EXIT_TEST_ONLY)
+    {
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            stagedTest
+                ? "[PARK EXIT] Staged test complete - drive motor locked off"
+                : "[PARK EXIT] Test complete - drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
+
+    oc_parking_exit_state = PARKING_EXIT_DONE;
+    navigation_enable();
+    oc_section_start_distance = get_distance();
+    oc_last_navigation_state = navigation_get_state();
+    oc_last_completed_turn = navigation_get_turn_count();
+
+    Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
+}
+
+static void finishParkingExit(bool stagedTest)
+{
+    const float finalHeadingError =
+        fabsf(get_angle() - oc_parking_exit_start_heading);
+    const float finalLeft = get_tof_distance(TOF_LEFT);
+    const float finalRight = get_tof_distance(TOF_RIGHT);
+    const float totalDistance =
+        distanceSince(oc_parking_exit_run_start_distance);
+
+    stop(false);
+    set_steering(0);
+
+    Serial.print("[PARK EXIT RESULT] completed_segments=");
+    Serial.print(oc_parking_exit_segment);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+    Serial.print(" travel_mm=");
+    Serial.print(totalDistance, 1);
+    Serial.print(" heading_error_deg=");
+    Serial.print(finalHeadingError, 1);
+    Serial.print(" tof_start_left_right_mm=");
+    Serial.print(oc_parking_exit_start_left_mm, 0);
+    Serial.print("/");
+    Serial.print(oc_parking_exit_start_right_mm, 0);
+    Serial.print(" tof_end_left_right_mm=");
+    Serial.print(finalLeft, 0);
+    Serial.print("/");
+    Serial.println(finalRight, 0);
+
+    // At the aligned exit pose, the outer-wall-side sensor is expected to sit
+    // over one magenta piece and face its exact 200 mm open end. Accept the
+    // resulting field reference only when the odometry-derived beam position
+    // is over that particular 20 mm piece.
+    const TofSensor referenceSensor =
+        oc_parking_exit_steering > 0
+            ? TOF_LEFT
+            : TOF_RIGHT;
+    const float referenceRange =
+        get_tof_distance(referenceSensor);
+    const float signedHeadingDelta =
+        get_angle() - oc_parking_exit_start_heading;
+    const float headingRad = signedHeadingDelta * PI / 180.0f;
+    const float awayAxisSign =
+        oc_parking_exit_steering < 0 ? 1.0f : -1.0f;
+    const float sensorLocalX =
+        referenceSensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_X_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+    const float sensorWallOffset =
+        referenceSensor == TOF_LEFT
+            ? fabsf(OBSTACLE_TOF_LEFT_LOCAL_Y_MM)
+            : fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM);
+    const bool rangeAndHeadingUsable =
+        referenceRange > 0.0f &&
+        referenceRange <=
+            OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM &&
+        finalHeadingError <=
+            OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG;
+    const float rearBeyondParkingEnd =
+        (referenceRange + sensorWallOffset) * cosf(headingRad) -
+        awayAxisSign * sensorLocalX * sinf(headingRad);
+    const float remainingToCenterline =
+        OBSTACLE_CORRIDOR_HALF_WIDTH_MM -
+        OBSTACLE_PARKING_WIDTH_MM -
+        rearBeyondParkingEnd;
+
+    PositionEstimate fieldPose = get_position_struct();
+    const float sensorLocalY =
+        referenceSensor == TOF_LEFT
+            ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM
+            : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+    const float fieldHeadingRad = fieldPose.heading_deg * PI / 180.0f;
+    const float sensorFieldX =
+        fieldPose.x_mm + cosf(fieldHeadingRad) * sensorLocalX -
+        sinf(fieldHeadingRad) * sensorLocalY;
+    const float sensorRayHeadingRad =
+        fieldHeadingRad +
+        (referenceSensor == TOF_LEFT ? 0.5f * PI : -0.5f * PI);
+    const float halfDetectionFovRad =
+        0.5f * OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG *
+        PI / 180.0f;
+    const float beamCenterFieldX =
+        sensorFieldX + referenceRange * cosf(sensorRayHeadingRad);
+    const float beamEdgeFieldX1 =
+        sensorFieldX + referenceRange *
+            cosf(sensorRayHeadingRad - halfDetectionFovRad);
+    const float beamEdgeFieldX2 =
+        sensorFieldX + referenceRange *
+            cosf(sensorRayHeadingRad + halfDetectionFovRad);
+    const float beamFootprintMinX =
+        fminf(beamEdgeFieldX1, beamEdgeFieldX2);
+    const float beamFootprintMaxX =
+        fmaxf(beamEdgeFieldX1, beamEdgeFieldX2);
+    const bool counterClockwiseExit = oc_parking_exit_steering < 0;
+    const float expectedPieceMaxX =
+        counterClockwiseExit
+            ? OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM
+            : OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
+                  OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM;
+    const float expectedPieceMinX =
+        expectedPieceMaxX - OBSTACLE_PARKING_LIMIT_THICKNESS_MM;
+    const bool beamOverExpectedPiece =
+        beamFootprintMaxX >= expectedPieceMinX -
+                                 OBSTACLE_PARKING_EXIT_BEAM_X_TOLERANCE_MM &&
+        beamFootprintMinX <= expectedPieceMaxX +
+                                 OBSTACLE_PARKING_EXIT_BEAM_X_TOLERANCE_MM;
+    const bool referenceUsable =
+        rangeAndHeadingUsable && beamOverExpectedPiece;
+    const float tofFieldY =
+        OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM +
+        rearBeyondParkingEnd;
+    const float tofCorrectionY = tofFieldY - fieldPose.y_mm;
+    const bool applyFieldY =
+        referenceUsable && oc_parking_field_pose_initialized;
+    if (applyFieldY)
+    {
+        position_apply_xy_correction(0.0f, tofCorrectionY);
+        fieldPose = get_position_struct();
+    }
+
+    Serial.print("[PARK EXIT TOF REF] sensor=");
+    Serial.print(referenceSensor == TOF_LEFT ? "L" : "R");
+    Serial.print(" filtered/raw_mm=");
+    Serial.print(referenceRange, 1);
+    Serial.print("/");
+    Serial.print(get_tof_raw_distance(referenceSensor), 1);
+    Serial.print(" signal_mcps=");
+    Serial.print(get_tof_signal_rate(referenceSensor), 2);
+    Serial.print(" sigma_mm=");
+    Serial.print(get_tof_sigma(referenceSensor), 1);
+    Serial.print(" rear_beyond_parking_end_mm=");
+    Serial.print(rearBeyondParkingEnd, 1);
+    Serial.print(" remaining_to_centerline_mm=");
+    Serial.print(remainingToCenterline, 1);
+    Serial.print(" beam_x_mm=");
+    Serial.print(beamCenterFieldX, 1);
+    Serial.print(" beam_footprint_x_mm=");
+    Serial.print(beamFootprintMinX, 1);
+    Serial.print("..");
+    Serial.print(beamFootprintMaxX, 1);
+    Serial.print(" expected_piece_x_mm=");
+    Serial.print(expectedPieceMinX, 1);
+    Serial.print("..");
+    Serial.print(expectedPieceMaxX, 1);
+    Serial.print(" beam_over_piece=");
+    Serial.print(beamOverExpectedPiece ? "yes" : "no");
+    Serial.print(" usable=");
+    Serial.print(referenceUsable ? "yes" : "no");
+    Serial.print(" apply_y=");
+    Serial.println(applyFieldY ? "yes" : "no");
+
+    Serial.print("[PARK EXIT FIELD POSE] x_y_heading=");
+    Serial.print(fieldPose.x_mm, 1);
+    Serial.print("/");
+    Serial.print(fieldPose.y_mm, 1);
+    Serial.print("/");
+    Serial.print(fieldPose.heading_deg, 1);
+    Serial.print(" tof_y_correction_mm=");
+    Serial.println(applyFieldY ? tofCorrectionY : 0.0f, 1);
+
+    if (
+        !stagedTest &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED &&
+        referenceUsable)
+    {
+        oc_parking_localization_sensor = referenceSensor;
+        oc_parking_localization_initial_piece_range = referenceRange;
+        oc_parking_localization_last_piece_range = referenceRange;
+        oc_parking_localization_last_piece_pose = fieldPose;
+        oc_parking_localization_wall_range = 0.0f;
+        oc_parking_localization_wall_frames = 0;
+        oc_parking_localization_transition_found = false;
+        TofDiagnosticSnapshot snapshot;
+        oc_parking_localization_tof_sequence =
+            get_tof_diagnostic_snapshot(referenceSensor, snapshot)
+                ? snapshot.sequence
+                : 0;
+        oc_parking_exit_settle_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_LOCALIZE_SETTLE;
+        Serial.print("[PARK LOCALIZE] Armed sensor=");
+        Serial.print(referenceSensor == TOF_LEFT ? "L" : "R");
+        Serial.print(" piece_range_mm=");
+        Serial.print(referenceRange, 1);
+        Serial.print(" direction=");
+        Serial.print(
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION < 0
+                ? "reverse"
+                : "forward");
+        Serial.print(" max_creep_mm=");
+        Serial.println(OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM, 1);
+        return;
+    }
+
+    completeParkingExit(stagedTest);
+}
+
+static void finishParkingEdgeLocalization()
+{
+    const float creepDistance =
+        distanceSince(oc_parking_localization_start_distance);
+    float xCorrection = 0.0f;
+    float yCorrection = 0.0f;
+    float predictedEdgeX = 0.0f;
+    float knownEdgeX = 0.0f;
+    float expectedWallRange = 0.0f;
+    bool applyX = false;
+    bool applyY = false;
+
+    if (oc_parking_localization_transition_found)
+    {
+        const PositionEstimate transitionPose =
+            oc_parking_localization_last_piece_pose;
+
+        const ParkingBeamFootprint footprint = parkingBeamFootprint(
+            oc_parking_localization_sensor,
+            oc_parking_localization_last_piece_range,
+            transitionPose);
+        const bool counterClockwiseExit = oc_parking_exit_steering < 0;
+        const bool reverseSearch =
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION < 0;
+        if (counterClockwiseExit && !reverseSearch)
+        {
+            predictedEdgeX = footprint.minimumX;
+            knownEdgeX = OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM;
+        }
+        else if (!counterClockwiseExit && !reverseSearch)
+        {
+            predictedEdgeX = footprint.maximumX;
+            knownEdgeX =
+                OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
+                OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM -
+                OBSTACLE_PARKING_LIMIT_THICKNESS_MM;
+        }
+        else if (counterClockwiseExit)
+        {
+            predictedEdgeX = footprint.maximumX;
+            knownEdgeX = OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM;
+        }
+        else
+        {
+            predictedEdgeX = footprint.minimumX;
+            knownEdgeX =
+                OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
+                OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM;
+        }
+        xCorrection = knownEdgeX - predictedEdgeX;
+        applyX =
+            fabsf(xCorrection) <=
+            OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM;
+
+        const PositionEstimate wallPose =
+            oc_parking_localization_latest_wall_pose;
+        expectedWallRange = expectedParkingOuterWallRange(
+            oc_parking_localization_sensor, wallPose);
+        const float headingRad = wallPose.heading_deg * PI / 180.0f;
+        const float sensorLocalX =
+            oc_parking_localization_sensor == TOF_LEFT
+                ? OBSTACLE_TOF_LEFT_LOCAL_X_MM
+                : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+        const float sensorLocalY =
+            oc_parking_localization_sensor == TOF_LEFT
+                ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM
+                : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+        const float sensorY =
+            wallPose.y_mm + sinf(headingRad) * sensorLocalX +
+            cosf(headingRad) * sensorLocalY;
+        const float rayHeadingRad =
+            headingRad +
+            (oc_parking_localization_sensor == TOF_LEFT
+                 ? 0.5f * PI
+                 : -0.5f * PI);
+        const float predictedWallY =
+            sensorY + oc_parking_localization_wall_range *
+                          sinf(rayHeadingRad);
+        yCorrection =
+            OBSTACLE_SOUTH_OUTER_WALL_Y_MM - predictedWallY;
+        applyY =
+            fabsf(yCorrection) <=
+            OBSTACLE_PARKING_EXIT_MAX_Y_CORRECTION_MM;
+
+        position_apply_xy_correction(
+            applyX ? xCorrection : 0.0f,
+            applyY ? yCorrection : 0.0f);
+    }
+
+    const PositionEstimate finalPose = get_position_struct();
+    Serial.print("[PARK LOCALIZE RESULT] transition=");
+    Serial.print(
+        oc_parking_localization_transition_found ? "yes" : "no_max_distance");
+    Serial.print(" creep_mm=");
+    Serial.print(creepDistance, 1);
+    Serial.print(" piece_range_mm=");
+    Serial.print(oc_parking_localization_last_piece_range, 1);
+    Serial.print(" wall_range_mm=");
+    Serial.print(oc_parking_localization_wall_range, 1);
+    Serial.print(" expected_wall_range_mm=");
+    Serial.print(expectedWallRange, 1);
+    Serial.print(" wall_residual_mm=");
+    Serial.print(
+        oc_parking_localization_wall_range - expectedWallRange,
+        1);
+    Serial.print(" predicted/known_edge_x_mm=");
+    Serial.print(predictedEdgeX, 1);
+    Serial.print("/");
+    Serial.print(knownEdgeX, 1);
+    Serial.print(" x_correction_mm=");
+    Serial.print(xCorrection, 1);
+    Serial.print(" apply_x=");
+    Serial.print(applyX ? "yes" : "no");
+    Serial.print(" wall_y_correction_mm=");
+    Serial.print(yCorrection, 1);
+    Serial.print(" apply_y=");
+    Serial.println(applyY ? "yes" : "no");
+
+    Serial.print("[PARK LOCALIZE POSE] x_y_heading=");
+    Serial.print(finalPose.x_mm, 1);
+    Serial.print("/");
+    Serial.print(finalPose.y_mm, 1);
+    Serial.print("/");
+    Serial.println(finalPose.heading_deg, 1);
+
+    completeParkingExit(false);
 }
 
 static bool updateParkingExit()
@@ -176,92 +725,156 @@ static bool updateParkingExit()
         return true;
     }
 
-
-    if (oc_parking_exit_state == PARKING_EXIT_BLOCK_BACKUP)
+    if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_SETTLE)
     {
+        if (dc_state != DC_DISABLED)
+            stop(false);
         servo_disabled = false;
         set_steering(0);
-        set_speed(-OBSTACLE_START_BLOCK_BACKUP_SPEED);
+        steer(0);
 
-        if (distanceSince(oc_parking_exit_state_distance) >=
-            OBSTACLE_START_BLOCK_BACKUP_MM)
+        if (
+            millis() - oc_parking_exit_settle_start_ms <
+                OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS)
         {
-            set_speed(0);
+            return true;
+        }
+
+        oc_parking_localization_start_distance = get_distance();
+        oc_parking_exit_state = PARKING_EXIT_LOCALIZE_DRIVE;
+        Serial.println("[PARK LOCALIZE] Straight edge search started");
+        return true;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_DRIVE)
+    {
+        set_speed(
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION *
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED);
+        set_steering(0);
+
+        TofDiagnosticSnapshot snapshot;
+        if (
+            get_tof_diagnostic_snapshot(
+                oc_parking_localization_sensor, snapshot) &&
+            snapshot.sequence != oc_parking_localization_tof_sequence)
+        {
+            oc_parking_localization_tof_sequence = snapshot.sequence;
+            const float rawRange = snapshot.selected_raw_distance_mm;
+            const PositionEstimate samplePose = get_position_struct();
+            const float markerRangeMaximum = fminf(
+                OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM,
+                oc_parking_localization_initial_piece_range +
+                    OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM);
+            const float expectedWallRange =
+                expectedParkingOuterWallRange(
+                    oc_parking_localization_sensor, samplePose);
+            const bool wallRangeConsistent =
+                rawRange >=
+                    OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM &&
+                rawRange <=
+                    OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM &&
+                expectedWallRange > 0.0f &&
+                fabsf(rawRange - expectedWallRange) <=
+                    OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM;
+            if (
+                rawRange > 0.0f &&
+                rawRange <= markerRangeMaximum)
+            {
+                oc_parking_localization_last_piece_range = rawRange;
+                oc_parking_localization_last_piece_pose =
+                    samplePose;
+                oc_parking_localization_wall_frames = 0;
+            }
+            else if (wallRangeConsistent)
+            {
+                // Confirm a sequence, then localize from its newest sample.
+                // The first in-range return can still contain the fading edge
+                // of the magenta piece even though it passes the residual gate.
+                oc_parking_localization_latest_wall_pose = samplePose;
+                oc_parking_localization_wall_range = rawRange;
+                ++oc_parking_localization_wall_frames;
+            }
+            else
+            {
+                // Intermediate oblique returns are neither the short magenta
+                // end nor a wall range consistent with the current pose.
+                oc_parking_localization_wall_frames = 0;
+            }
+        }
+
+        const float creepDistance =
+            distanceSince(oc_parking_localization_start_distance);
+        oc_parking_localization_transition_found =
+            oc_parking_localization_wall_frames >=
+            OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
+        const bool distanceLimitReached =
+            creepDistance >=
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM;
+        if (
+            oc_parking_localization_transition_found ||
+            distanceLimitReached)
+        {
+            stop(true);
             oc_parking_exit_brake_start_ms = millis();
-            oc_parking_exit_state =
-                PARKING_EXIT_BLOCK_BACKUP_BRAKING;
-            Serial.println("[PARK EXIT] Start block backup complete");
+            oc_parking_exit_state = PARKING_EXIT_LOCALIZE_BRAKE;
         }
         return true;
     }
 
-    if (oc_parking_exit_state == PARKING_EXIT_BLOCK_BACKUP_BRAKING)
+    if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_BRAKE)
     {
-        set_steering(0);
-        set_speed(0);
-        if (millis() - oc_parking_exit_brake_start_ms <
-            OBSTACLE_START_BLOCK_BACKUP_BRAKE_MS)
-            return true;
-
-        stop(false);
-        oc_parking_exit_state = PARKING_EXIT_DONE;
-        navigation_enable();
-        oc_section_start_distance = get_distance();
-        oc_last_navigation_state = navigation_get_state();
-        oc_last_completed_turn = navigation_get_turn_count();
-        Serial.println(
-            "[PARK EXIT] Backup complete - normal Obstacle navigation");
-        return false;
-    }
-
-    if (oc_parking_exit_state == PARKING_EXIT_STRAIGHTENING)
-    {
-        // Do not cut motor power at full speed. Centre the wheels immediately
-        // and let the speed controller ramp its target to zero first.
-        set_steering(0);
-        steer(0);
-        set_speed(0);
-
-        const uint32_t brakeTimeMs =
-            oc_parking_exit_steering < 0
-                ? OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS
-                : OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS;
-
         if (
             millis() - oc_parking_exit_brake_start_ms <
-                brakeTimeMs)
+                OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS)
         {
             return true;
         }
-
-        const float finalHeadingError =
-            fabsf(get_angle() - oc_parking_exit_start_heading);
 
         stop(false);
+        finishParkingEdgeLocalization();
+        return true;
+    }
 
-        Serial.print("[PARK EXIT] Stopped heading_error=");
-        Serial.println(finalHeadingError, 1);
-
-        if (OBSTACLE_PARKING_EXIT_TEST_ONLY)
+    if (oc_parking_exit_state == PARKING_EXIT_SEGMENT_BRAKE)
+    {
+        if (
+            millis() - oc_parking_exit_brake_start_ms <
+                OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS)
         {
-            oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
-            Serial.println(
-                "[PARK EXIT] Test complete - drive motor locked off");
-            robot_logger.write_to_usb();
             return true;
         }
 
+        const float actualDistance =
+            distanceSince(oc_parking_exit_state_distance);
+        const ParkingExitSegment &completed =
+            PARKING_EXIT_SEGMENTS[oc_parking_exit_segment];
 
-        // Always move 100 mm backwards after the S-shaped parking exit. The
-        // car is now in the middle of the corridor, away from the two parking
-        // boundaries at the outer wall. This creates a repeatable start pose
-        // and enough forward camera distance for a sign at the first seat.
-        oc_parking_exit_state_distance = get_distance();
-        oc_parking_exit_state = PARKING_EXIT_BLOCK_BACKUP;
-        servo_disabled = false;
-        Serial.print("[PARK EXIT] Reverse ");
-        Serial.print(OBSTACLE_START_BLOCK_BACKUP_MM, 0);
-        Serial.println(" mm for start-section visibility");
+        stop(false);
+        Serial.print("[PARK EXIT] Segment ");
+        Serial.print(oc_parking_exit_segment + 1);
+        Serial.print(" stopped target_mm=");
+        Serial.print(completed.distanceMm, 1);
+        Serial.print(" actual_mm=");
+        Serial.print(actualDistance, 1);
+        Serial.print(" heading_delta_deg=");
+        Serial.println(
+            get_angle() - oc_parking_exit_start_heading,
+            1);
+
+        ++oc_parking_exit_segment;
+        if (
+            oc_parking_exit_segment >=
+                OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT)
+        {
+            finishParkingExit(
+                oc_parking_exit_segment <
+                    OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+            return true;
+        }
+
+        oc_parking_exit_settle_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
         return true;
     }
 
@@ -293,103 +906,108 @@ static bool updateParkingExit()
         }
 
         oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_run_start_distance = get_distance();
         oc_parking_exit_start_heading = get_angle();
-        oc_parking_exit_state = PARKING_EXIT_FIRST_ARC;
+        oc_parking_exit_start_left_mm = left;
+        oc_parking_exit_start_right_mm = right;
+        initializeParkingFieldPose();
+        oc_parking_exit_segment = 0;
+        oc_parking_exit_settle_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
 
         Serial.print("[PARK EXIT] Start wall left=");
         Serial.print(left, 0);
         Serial.print(" right=");
         Serial.println(right, 0);
-        Serial.print("[PARK EXIT] First arc, steering=");
+        Serial.print("[PARK EXIT] Away steering=");
         Serial.println(oc_parking_exit_steering);
     }
 
-    const float stateDistance =
-        distanceSince(oc_parking_exit_state_distance);
+    const ParkingExitSegment &segment =
+        PARKING_EXIT_SEGMENTS[oc_parking_exit_segment];
+    const int segmentSteering =
+        segment.steeringRelativeToAway *
+        oc_parking_exit_steering;
 
-    if (oc_parking_exit_state == PARKING_EXIT_FIRST_ARC)
+    if (oc_parking_exit_state == PARKING_EXIT_SEGMENT_SETTLE)
     {
-        set_speed(OBSTACLE_PARKING_EXIT_SPEED);
-        set_steering(oc_parking_exit_steering);
+        if (dc_state != DC_DISABLED)
+            stop(false);
+        servo_disabled = false;
+        set_steering(segmentSteering);
+        steer(segmentSteering);
 
-        const float firstArcTarget =
-            oc_parking_exit_steering < 0
-                ? OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM
-                : OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM;
-
-        if (stateDistance >= firstArcTarget)
+        if (
+            millis() - oc_parking_exit_settle_start_ms <
+                OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS)
         {
-            const float firstArcHeading =
-                fabsf(
-                    get_angle() -
-                    oc_parking_exit_start_heading);
-
-            Serial.print("[PARK EXIT] First distance=");
-            Serial.print(stateDistance, 0);
-            Serial.print(" heading=");
-            Serial.println(firstArcHeading, 1);
-
-            oc_parking_exit_state_distance = get_distance();
-            oc_parking_exit_state = PARKING_EXIT_COUNTER_ARC;
-            Serial.println("[PARK EXIT] Counter arc");
+            return true;
         }
 
+        oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_DRIVE;
+        Serial.print("[PARK EXIT] Segment ");
+        Serial.print(oc_parking_exit_segment + 1);
+        Serial.print(" direction=");
+        Serial.print(segment.direction < 0 ? "reverse" : "forward");
+        Serial.print(" steering=");
+        Serial.print(segmentSteering);
+        Serial.print(" target_mm=");
+        Serial.println(segment.distanceMm, 1);
         return true;
     }
 
+    set_speed(
+        segment.direction *
+        OBSTACLE_PARKING_EXIT_SPEED);
+    set_steering(segmentSteering);
+
+    const float stateDistance =
+        distanceSince(oc_parking_exit_state_distance);
+    const bool finalSegment =
+        oc_parking_exit_segment + 1 ==
+        OBSTACLE_PARKING_EXIT_SEGMENT_COUNT;
     const float headingError =
         fabsf(get_angle() - oc_parking_exit_start_heading);
-
-    float counterSteering =
-        static_cast<float>(OBSTACLE_PARKING_EXIT_STEERING);
-    int counterSpeed =
-        OBSTACLE_PARKING_EXIT_COUNTER_SPEED;
-
-    if (
-        headingError <
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG)
-    {
-        counterSteering = clampValue(
-            OBSTACLE_PARKING_EXIT_STEERING *
-                headingError /
-                OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG,
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING,
-            static_cast<float>(
-                OBSTACLE_PARKING_EXIT_STEERING));
-        counterSpeed =
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED;
-    }
-
-    set_speed(counterSpeed);
-    set_steering(
-        oc_parking_exit_steering < 0
-            ? static_cast<int>(counterSteering)
-            : -static_cast<int>(counterSteering));
-
-    const bool parallelAgain =
-        stateDistance >=
-            OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM &&
+    const bool finalAligned =
+        finalSegment &&
+        stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM &&
         headingError <=
-            OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG;
-    const bool safetyDistanceReached =
-        stateDistance >=
-            OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM;
+            OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG;
+    const bool finalLimitReached =
+        finalSegment &&
+        stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM;
+    const bool regularTargetReached =
+        !finalSegment &&
+        stateDistance >= segment.distanceMm;
 
-    if (parallelAgain || safetyDistanceReached)
+    if (regularTargetReached || finalAligned || finalLimitReached)
     {
-        set_steering(0);
-        // Apply the straight-ahead command immediately. stop(false) disables
-        // the servo, so waiting for the next drive_loop() would leave the
-        // wheels at the counter-steering angle during measurement.
-        steer(0);
+        if (finalSegment)
+        {
+            Serial.print("[PARK EXIT] Final alignment distance_mm=");
+            Serial.print(stateDistance, 1);
+            Serial.print(" heading_error_deg=");
+            Serial.print(headingError, 1);
+            Serial.print(" aligned=");
+            Serial.println(finalAligned ? "yes" : "no_max_distance");
 
-        Serial.print("[PARK EXIT] Counter distance=");
-        Serial.print(stateDistance, 0);
-        Serial.print(" heading_error=");
-        Serial.println(headingError, 1);
+            // Remove the full-lock curvature before holding the encoder
+            // position. In log_123 the alignment trigger occurred at 1.6
+            // degrees, but leaving the wheels at full lock during the final
+            // 2 mm of settling changed the stopped heading to -2.3 degrees.
+            // Commanding the servo directly here lets it begin centring before
+            // stop(true) disables further steering updates.
+            servo_disabled = false;
+            set_steering(0);
+            steer(0);
+        }
 
+        // The short first movements have little room for an uncontrolled
+        // coast. Hold the encoder position briefly, then release the motor.
+        stop(true);
         oc_parking_exit_brake_start_ms = millis();
-        oc_parking_exit_state = PARKING_EXIT_STRAIGHTENING;
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_BRAKE;
         return true;
     }
 
@@ -437,10 +1055,6 @@ static bool updateLearnedLanePlan()
     if (oc_current_lap == 0)
         return false;
 
-    if (oc_current_section == 0 &&
-        !oc_start_section_complete)
-        return false;
-
     const CourseObstacle *current[
         COURSE_MAX_OBSTACLES_PER_SECTION] = {nullptr, nullptr};
     const uint8_t currentCount =
@@ -448,67 +1062,87 @@ static bool updateLearnedLanePlan()
             oc_current_section,
             current);
 
-    const CourseSection &learnedSection =
-        course_map_get_section(oc_current_section);
-    if (!learnedSection.learningComplete)
-        return false;
-
-    WallSide desiredWall = SIDE_UNKNOWN;
-
     if (currentCount == 0)
     {
-        // This is a confirmed empty section, not a failed observation. Use
-        // the inner lane until it is time to prepare for the next section.
-        desiredWall = navigation_get_course_wall();
+        const CourseSection &section =
+            course_map_get_section(oc_current_section);
+        WallSide guessedWall = SIDE_UNKNOWN;
+
+        if (section.successfulLane < 0)
+            guessedWall = SIDE_LEFT;
+        else if (section.successfulLane > 0)
+            guessedWall = SIDE_RIGHT;
+        else
+        {
+            guessedWall =
+                navigation_get_following_wall();
+            if (guessedWall == SIDE_UNKNOWN)
+                guessedWall = SIDE_LEFT;
+        }
+
+        navigation_select_wall(
+            guessedWall,
+            OBSTACLE_PLANNED_LANE_WALL_MM);
+
+        static int lastGuessSection = -1;
+        if (lastGuessSection != oc_current_section)
+        {
+            lastGuessSection = oc_current_section;
+            Serial.print("[MAP] EXCEPTION: guessing S");
+            Serial.print(oc_current_section);
+            Serial.print(" from traversed lane ");
+            Serial.println(
+                guessedWall == SIDE_LEFT
+                    ? "LEFT"
+                    : "RIGHT");
+        }
+        return true;
     }
+
+    ColorType desiredColor = ColorType::NONE;
     const float sectionDistance = obstacleSectionDistance();
 
     if (currentCount > 0)
     {
-        ColorType desiredColor = current[0]->color;
+        desiredColor = current[0]->color;
 
         if (currentCount == 2 &&
             sectionDistance >=
-                current[0]->firstDetectionDistanceMm +
-                    OBSTACLE_PLANNED_SWITCH_AFTER_MM)
+                (oc_current_section == 0
+                     ? OBSTACLE_START_SECTION_SWITCH_MM
+                     : current[0]->firstDetectionDistanceMm +
+                           OBSTACLE_PLANNED_SWITCH_AFTER_MM))
         {
             desiredColor = current[1]->color;
         }
-        desiredWall = wallForColor(desiredColor);
-    }
 
-    // Enter the corner already on the lane needed by the next section. The
-    // learned first-lap corner position is a stable reference, unlike a
-    // camera trigger that changes when a pillar is clipped at the image edge.
-    const float learnedLength =
-        navigation_get_learned_straight_mm(oc_current_section);
-    if (learnedLength > 0.0f &&
-        sectionDistance >= fmaxf(
-            0.0f,
-            learnedLength - OBSTACLE_PLANNED_NEXT_SECTION_MM))
-    {
-        const uint8_t nextSection =
-            (oc_current_section + 1) % COURSE_SECTION_COUNT;
-        const CourseObstacle *next[
-            COURSE_MAX_OBSTACLES_PER_SECTION] = {nullptr, nullptr};
-        const uint8_t nextCount =
-            sortedKnownObstacles(nextSection, next);
-        const CourseSection &nextLearned =
-            course_map_get_section(nextSection);
-        if (nextLearned.learningComplete)
+        const CourseObstacle *last =
+            current[currentCount - 1];
+        if (sectionDistance >=
+                (oc_current_section == 0
+                     ? OBSTACLE_START_SECTION_NEXT_PLAN_MM
+                     : last->firstDetectionDistanceMm +
+                           OBSTACLE_PLANNED_NEXT_SECTION_MM))
         {
-            desiredWall = nextCount > 0
-                ? wallForColor(next[0]->color)
-                : navigation_get_course_wall();
+            const CourseObstacle *next[
+                COURSE_MAX_OBSTACLES_PER_SECTION] =
+                    {nullptr, nullptr};
+            const uint8_t nextCount =
+                sortedKnownObstacles(
+                    (oc_current_section + 1) %
+                        COURSE_SECTION_COUNT,
+                    next);
+            if (nextCount > 0)
+                desiredColor = next[0]->color;
         }
     }
 
-    if (desiredWall == SIDE_UNKNOWN)
-        desiredWall = navigation_get_course_wall();
-    if (desiredWall != SIDE_UNKNOWN)
+    if (desiredColor != ColorType::NONE)
+    {
         navigation_select_wall(
-            desiredWall,
+            wallForColor(desiredColor),
             OBSTACLE_PLANNED_LANE_WALL_MM);
+    }
 
     return true;
 }
@@ -518,25 +1152,9 @@ static void updateCourseProgress()
     const NavigationState navigationState =
         navigation_get_state();
 
-    const bool sectionJustReachedCorner =
-        oc_last_navigation_state == NAV_FOLLOWING &&
-        navigationState == NAV_TURNING;
-
-    if (sectionJustReachedCorner)
-    {
-        const bool completeNormalLearningSection =
-            oc_current_lap == 0 && oc_current_section != 0;
-        const bool completeStartLearningSection =
-            oc_current_section == 0 &&
-            !oc_start_section_complete &&
-            navigation_get_turn_count() >= 5;
-        if (completeNormalLearningSection ||
-            completeStartLearningSection)
-            course_map_mark_learning_complete(oc_current_section);
-    }
-
     if (oc_current_lap == 0 &&
-        sectionJustReachedCorner)
+        oc_last_navigation_state == NAV_FOLLOWING &&
+        navigationState == NAV_TURNING)
     {
         const WallSide wall =
             navigation_get_following_wall();
@@ -546,16 +1164,6 @@ static void updateCourseProgress()
                 oc_current_section,
                 wall == SIDE_LEFT ? -1 : 1);
         }
-    }
-
-    if (oc_current_section == 0 &&
-        !oc_start_section_complete &&
-        sectionJustReachedCorner &&
-        navigation_get_turn_count() >= 5)
-    {
-        oc_start_section_complete = true;
-        Serial.println(
-            "[MAP] Start section fully learned on second pass");
     }
 
     // A new straight section starts only after the gyro-controlled 90 degree
@@ -574,25 +1182,13 @@ static void updateCourseProgress()
             static_cast<uint8_t>(
                 navigation_get_turn_count() /
                 COURSE_SECTION_COUNT);
-        // The learning lap backs up 400 mm after the corner. Store pillar
-        // positions relative to the geometric 90-degree corner exit so the
-        // same positions remain valid on the faster later laps.
-        oc_section_start_distance =
-            navigation_get_section_origin_distance();
-        oc_corner_settle_start_distance = get_distance();
+        oc_section_start_distance = get_distance();
         oc_corner_settling = true;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
              ++i)
         {
             oc_known_obstacle_used[i] = false;
-        }
-
-        if (oc_current_section == 0 && completedTurns == 4)
-        {
-            course_map_clear_obstacles(0);
-            Serial.println(
-                "[MAP] Start section second-pass learning begins");
         }
 
         course_map_enter_section(
@@ -800,7 +1396,7 @@ void handleObstacleDetection()
 // VALIDATE OBSTACLE
 // ============================================================
 
-static bool validObstacle(
+bool obstacle_blob_valid_for_acquisition(
     const Blob *obstacle)
 {
     if (obstacle == nullptr)
@@ -847,6 +1443,11 @@ static bool validObstacle(
         return false;
     }
 
+    if (obstacle->minY > OBSTACLE_MAX_TOP_Y)
+    {
+        return false;
+    }
+
     if (
         obstacle->centerX < OBSTACLE_START_MIN_X ||
         obstacle->centerX > OBSTACLE_START_MAX_X ||
@@ -870,7 +1471,7 @@ static bool validObstacle(
 static bool validTrackedObstacle(
     const Blob *obstacle)
 {
-    if (validObstacle(obstacle))
+    if (obstacle_blob_valid_for_acquisition(obstacle))
     {
         return true;
     }
@@ -945,58 +1546,6 @@ static const Blob *getTrackedObstacle()
     return nullptr;
 }
 
-static int obstacleTargetX(ColorType color);
-
-static void updateActiveObstacleObservation(
-    bool newCameraFrame)
-{
-    if (!newCameraFrame || oa_state == OA_IDLE)
-        return;
-
-    const Blob *obstacle = getTrackedObstacle();
-    if (validTrackedObstacle(obstacle))
-    {
-        oa_lost_frames = 0;
-        if (obstacle->maxY > oa_max_seen_bottom_y)
-            oa_max_seen_bottom_y = obstacle->maxY;
-        oa_last_camera_error =
-            obstacle->centerX - obstacleTargetX(oa_color);
-    }
-    else if (oa_lost_frames < 255)
-    {
-        ++oa_lost_frames;
-    }
-}
-
-static float obstaclePassWallDistance()
-{
-    return get_tof_distance(
-        oa_color == ColorType::GREEN
-            ? TOF_LEFT
-            : TOF_RIGHT);
-}
-
-static bool obstacleCenterVisible(float &centerError)
-{
-    const float left = get_tof_distance(TOF_LEFT);
-    const float right = get_tof_distance(TOF_RIGHT);
-    const bool leftValid =
-        left > 0.0f && left <= TOF_MAX_RELIABLE_DISTANCE_MM;
-    const bool rightValid =
-        right > 0.0f && right <= TOF_MAX_RELIABLE_DISTANCE_MM;
-
-    if (leftValid && rightValid)
-        centerError = (right - left) * 0.5f;
-    else if (leftValid)
-        centerError = OBSTACLE_CORRIDOR_CENTER_TOF_MM - left;
-    else if (rightValid)
-        centerError = right - OBSTACLE_CORRIDOR_CENTER_TOF_MM;
-    else
-        return false;
-
-    return true;
-}
-
 // ============================================================
 // TARGET X POSITION
 //
@@ -1042,70 +1591,6 @@ static int obstacleAvoidDirection(
     }
 
     return -1;
-}
-
-static bool handoffToNextObstacle(bool newCameraFrame)
-{
-    if (!newCameraFrame ||
-        distanceSince(oa_detection_start_distance) <
-            OBSTACLE_NEXT_BLOCK_HANDOFF_MIN_TOTAL_MM)
-        return false;
-
-    const Blob *next = getLargestObstacle();
-    if (!validObstacle(next) ||
-        next->maxY > OBSTACLE_NEXT_BLOCK_HANDOFF_MAX_BOTTOM_Y)
-    {
-        oa_candidate_color = ColorType::NONE;
-        oa_confirm_frames = 0;
-        return false;
-    }
-
-    if (next->color != oa_candidate_color)
-    {
-        oa_candidate_color = next->color;
-        oa_confirm_frames = 1;
-        return false;
-    }
-    if (oa_confirm_frames < 255)
-        ++oa_confirm_frames;
-    if (oa_confirm_frames < OBSTACLE_CONFIRM_FRAMES)
-        return false;
-
-    // RECOVERING is entered only after the former pillar is confirmed behind
-    // the car. Store it before immediately giving the second official pillar
-    // priority over finishing the centre-return manoeuvre.
-    if (oa_pending_map_record)
-    {
-        course_map_record_obstacle(
-            oc_current_section,
-            oc_current_lap,
-            oa_color,
-            oa_pending_detection_distance,
-            oa_pending_image_x,
-            oa_pending_bottom_y);
-        oa_pending_map_record = false;
-        Serial.println("[MAP] Successful avoidance stored before next block");
-    }
-
-    oa_color = next->color;
-    oa_pending_map_record = true;
-    oa_pending_detection_distance = obstacleSectionDistance();
-    oa_pending_image_x = next->centerX;
-    oa_pending_bottom_y = next->maxY;
-    oa_base_heading = navigation_get_target_heading();
-    oa_last_camera_error = next->centerX - obstacleTargetX(oa_color);
-    oa_max_seen_bottom_y = next->maxY;
-    oa_lost_frames = 0;
-    oa_confirm_frames = 0;
-    oa_candidate_color = ColorType::NONE;
-    oa_state_start_distance = get_distance();
-    oa_detection_start_distance = oa_state_start_distance;
-    oa_state = OA_TRACKING;
-
-    Serial.print("[OA] NEXT TRACKING ");
-    Serial.println(
-        oa_color == ColorType::RED ? "RED" : "GREEN");
-    return true;
 }
 
 static int expectedKnownObstacleIndex(
@@ -1199,9 +1684,6 @@ obstacle_avoidance_state_string(
     case OA_RECOVERING:
         return "RECOVERING";
 
-    case OA_REALIGNING:
-        return "REALIGNING";
-
     default:
         return "UNKNOWN";
     }
@@ -1222,7 +1704,6 @@ void obstacle_avoidance_reset()
     oa_base_heading = 0;
 
     oa_state_start_distance = 0;
-    oa_detection_start_distance = 0;
 
     oa_last_finish_distance = 0;
 
@@ -1235,11 +1716,6 @@ void obstacle_avoidance_reset()
     oa_candidate_color = ColorType::NONE;
 
     oa_last_camera_error = 0;
-    oa_max_seen_bottom_y = 0;
-    oa_pending_map_record = false;
-    oa_pending_detection_distance = 0.0f;
-    oa_pending_image_x = 0;
-    oa_pending_bottom_y = 0;
 }
 
 // ============================================================
@@ -1311,7 +1787,7 @@ bool obstacle_avoidance_update(
 
         if (
             !memoryConfirmed &&
-            !validObstacle(obstacle))
+            !obstacle_blob_valid_for_acquisition(obstacle))
         {
             oa_confirm_frames = 0;
             oa_candidate_color = ColorType::NONE;
@@ -1355,12 +1831,13 @@ bool obstacle_avoidance_update(
             obstacle->color;
         oa_candidate_color = ColorType::NONE;
 
-        // Keep the observation pending. It becomes part of the learned map
-        // only after PASSING and RECOVERING have both completed.
-        oa_pending_map_record = true;
-        oa_pending_detection_distance = obstacleSectionDistance();
-        oa_pending_image_x = obstacle->centerX;
-        oa_pending_bottom_y = obstacle->maxY;
+        course_map_record_obstacle(
+            oc_current_section,
+            oc_current_lap,
+            oa_color,
+            obstacleSectionDistance(),
+            obstacle->centerX,
+            obstacle->maxY);
 
         // Save the exact heading target of the normal
         // wall follower before taking over steering.
@@ -1372,14 +1849,11 @@ bool obstacle_avoidance_update(
             obstacle->centerX -
             obstacleTargetX(
                 oa_color);
-        oa_max_seen_bottom_y = obstacle->maxY;
 
         oa_lost_frames = 0;
 
         oa_state_start_distance =
             get_distance();
-        oa_detection_start_distance =
-            oa_state_start_distance;
 
         oa_state =
             OA_TRACKING;
@@ -1401,38 +1875,50 @@ bool obstacle_avoidance_update(
         return true;
     }
 
-    updateActiveObstacleObservation(newCameraFrame);
-
     // ========================================================
-    // TRACKING: move onto the rule-required pass side.
+    // TRACKING
+    //
+    // Camera error + gyro heading correction.
     // ========================================================
 
     if (oa_state == OA_TRACKING)
     {
-        const int direction = obstacleAvoidDirection(oa_color);
-        const float desiredShiftHeading =
-            oa_base_heading -
-            direction * OBSTACLE_SHIFT_HEADING_DEG;
-        const float shiftHeadingError =
-            get_angle() - desiredShiftHeading;
-        const float shiftDistance =
-            distanceSince(oa_state_start_distance);
-        const bool shiftedFarEnough =
-            shiftDistance >= OBSTACLE_SHIFT_MIN_DISTANCE_MM;
-        const float passWallDistance = obstaclePassWallDistance();
-        const bool passLaneReached =
-            passWallDistance > 0.0f &&
-            passWallDistance <= OBSTACLE_PASS_LANE_WALL_MM;
-        const bool shiftDistanceLimit =
-            shiftDistance >= OBSTACLE_SHIFT_MAX_DISTANCE_MM;
+        const Blob *obstacle =
+            getTrackedObstacle();
 
-        // Camera x/size is not a safe lateral-distance measurement when the
-        // pillar is clipped at an image edge. Use the wall on the prescribed
-        // pass side, with an encoder limit as sensor fallback.
-        if ((oc_bench_test &&
-             oa_lost_frames >= OBSTACLE_LOST_FRAMES) ||
-            (shiftedFarEnough &&
-             (passLaneReached || shiftDistanceLimit)))
+        // Only count lost frames when a genuinely new
+        // camera image has been processed.
+
+        if (newCameraFrame)
+        {
+            if (
+                validTrackedObstacle(
+                    obstacle))
+            {
+                oa_lost_frames = 0;
+
+                oa_last_camera_error =
+                    obstacle->centerX -
+                    obstacleTargetX(
+                        oa_color);
+            }
+            else
+            {
+                if (
+                    oa_lost_frames <
+                    255)
+                {
+                    ++oa_lost_frames;
+                }
+            }
+        }
+
+        // Object disappeared for several camera frames:
+        // assume the vehicle has reached/passed its side.
+
+        if (
+            oa_lost_frames >=
+            OBSTACLE_LOST_FRAMES)
         {
             if (oc_bench_test)
             {
@@ -1443,54 +1929,27 @@ bool obstacle_avoidance_update(
                 return true;
             }
 
-            oa_state = OA_PASSING;
+            oa_state =
+                OA_PASSING;
 
             oa_state_start_distance =
                 get_distance();
 
-            Serial.print("[OA] TRACKING -> PASSING wall=");
-            Serial.print(passWallDistance, 0);
-            Serial.print(" shift=");
-            Serial.println(shiftDistance, 0);
+            Serial.println(
+                "[OA] TRACKING -> PASSING");
 
             return true;
         }
 
-        float steering =
-            OBSTACLE_SHIFT_HEADING_KP * shiftHeadingError;
-
-        steering = applyWallGuard(steering);
-
-        steering =
-            clampValue(
-                steering,
-                -OBSTACLE_SHIFT_MAX_STEERING,
-                OBSTACLE_SHIFT_MAX_STEERING);
-
-        set_steering(
-            static_cast<int>(
-                steering));
-
-        setAvoidanceSpeed(
-            OBSTACLE_AVOID_SPEED);
-
-        return true;
-    }
-
-    // ========================================================
-    // PASSING
-    //
-    // Return parallel to the grid, then remain beside the pillar until it is
-    // genuinely behind the camera/car.
-    // ========================================================
-
-    if (oa_state == OA_PASSING)
-    {
         const float headingError =
             get_angle() -
             oa_base_heading;
 
-        float steering = OBSTACLE_RECOVER_KP * headingError;
+        float steering =
+            OBSTACLE_CAMERA_KP *
+                oa_last_camera_error +
+            OBSTACLE_HEADING_KP *
+                headingError;
 
         steering = applyWallGuard(steering);
 
@@ -1507,30 +1966,56 @@ bool obstacle_avoidance_update(
         setAvoidanceSpeed(
             OBSTACLE_AVOID_SPEED);
 
-        const float totalDistance =
-            distanceSince(oa_detection_start_distance);
-        const bool passedByVision =
-            oa_max_seen_bottom_y >= OBSTACLE_PASS_CLOSE_BOTTOM_Y &&
-            oa_lost_frames >= OBSTACLE_LOST_FRAMES &&
-            totalDistance >= OBSTACLE_PASS_VISION_MIN_TOTAL_MM;
-        const bool passedByDistance =
-            totalDistance >= OBSTACLE_PASS_DISTANCE_TOTAL_MM;
+        return true;
+    }
 
-        if (!oc_bench_test &&
-            fabsf(headingError) <= OBSTACLE_PASS_HEADING_TOLERANCE_DEG &&
-            (passedByVision || passedByDistance))
+    // ========================================================
+    // PASSING
+    //
+    // Continue around the obstacle after it leaves the camera.
+    // ========================================================
+
+    if (oa_state == OA_PASSING)
+    {
+        const int direction =
+            obstacleAvoidDirection(
+                oa_color);
+
+        const float headingError =
+            get_angle() -
+            oa_base_heading;
+
+        float steering =
+            direction *
+                OBSTACLE_PASS_STEERING +
+            OBSTACLE_HEADING_KP *
+                headingError;
+
+        steering = applyWallGuard(steering);
+
+        steering =
+            clampValue(
+                steering,
+                -OBSTACLE_MAX_STEERING,
+                OBSTACLE_MAX_STEERING);
+
+        set_steering(
+            static_cast<int>(
+                steering));
+
+        setAvoidanceSpeed(
+            OBSTACLE_AVOID_SPEED);
+
+        if (
+            distanceSince(
+                oa_state_start_distance) >=
+            OBSTACLE_PASS_DISTANCE_MM)
         {
             oa_state =
                 OA_RECOVERING;
 
-            oa_state_start_distance = get_distance();
-
-            Serial.print("[OA] PASSING -> RECOVERING total=");
-            Serial.print(totalDistance, 0);
-            Serial.print(" max_bottom=");
-            Serial.print(oa_max_seen_bottom_y);
-            Serial.print(" lost=");
-            Serial.println(oa_lost_frames);
+            Serial.println(
+                "[OA] PASSING -> RECOVERING");
         }
 
         return true;
@@ -1539,23 +2024,17 @@ bool obstacle_avoidance_update(
     // ========================================================
     // RECOVERING
     //
-    // Actively return from the pass lane toward the corridor centre.
+    // Return to the original gyro heading.
     // ========================================================
 
     if (oa_state == OA_RECOVERING)
     {
-        if (handoffToNextObstacle(newCameraFrame))
-            return true;
-
-        const int direction = obstacleAvoidDirection(oa_color);
-        const float desiredCenterHeading =
-            oa_base_heading +
-            direction * OBSTACLE_CENTER_HEADING_DEG;
         const float headingError =
-            get_angle() - desiredCenterHeading;
+            get_angle() -
+            oa_base_heading;
 
         float steering =
-            OBSTACLE_CENTER_KP *
+            OBSTACLE_RECOVER_KP *
             headingError;
 
         steering = applyWallGuard(steering);
@@ -1563,8 +2042,8 @@ bool obstacle_avoidance_update(
         steering =
             clampValue(
                 steering,
-                -OBSTACLE_CENTER_MAX_STEERING,
-                OBSTACLE_CENTER_MAX_STEERING);
+                -OBSTACLE_RECOVER_MAX_STEERING,
+                OBSTACLE_RECOVER_MAX_STEERING);
 
         set_steering(
             static_cast<int>(
@@ -1573,80 +2052,10 @@ bool obstacle_avoidance_update(
         setAvoidanceSpeed(
             OBSTACLE_RECOVER_SPEED);
 
-        const float recoveryDistance =
-            distanceSince(oa_state_start_distance);
-        float centerError = 0.0f;
-        const bool centerVisible =
-            obstacleCenterVisible(centerError);
-        const bool recoveryCentered =
-            recoveryDistance >= OBSTACLE_CENTER_MIN_DISTANCE_MM &&
-            centerVisible &&
-            fabsf(centerError) <=
-                OBSTACLE_CENTER_TOF_TOLERANCE_MM;
-        const bool recoveryDistanceLimit =
-            recoveryDistance >= OBSTACLE_CENTER_MAX_DISTANCE_MM;
-
-        if (recoveryCentered || recoveryDistanceLimit)
-        {
-            oa_state = OA_REALIGNING;
-            oa_state_start_distance = get_distance();
-            Serial.print("[OA] RECOVERING -> REALIGNING center_error=");
-            if (centerVisible)
-                Serial.print(centerError, 0);
-            else
-                Serial.print("NA");
-            Serial.print(" distance=");
-            Serial.println(recoveryDistance, 0);
-        }
-
-        return true;
-    }
-
-    // ========================================================
-    // REALIGNING: finish the centre return on the grid heading.
-    // ========================================================
-
-    if (oa_state == OA_REALIGNING)
-    {
-        if (handoffToNextObstacle(newCameraFrame))
-            return true;
-
-        const float headingError =
-            get_angle() - oa_base_heading;
-        float steering =
-            OBSTACLE_RECOVER_KP * headingError;
-        steering = applyWallGuard(steering);
-        steering = clampValue(
-            steering,
-            -OBSTACLE_RECOVER_MAX_STEERING,
-            OBSTACLE_RECOVER_MAX_STEERING);
-        set_steering(static_cast<int>(steering));
-        setAvoidanceSpeed(OBSTACLE_RECOVER_SPEED);
-
-        const float realignDistance =
-            distanceSince(oa_state_start_distance);
-        const bool realigned =
-            realignDistance >= OBSTACLE_REALIGN_MIN_DISTANCE_MM &&
+        if (
             fabsf(headingError) <=
-                OBSTACLE_REALIGN_TOLERANCE_DEG;
-        const bool realignLimit =
-            realignDistance >= OBSTACLE_REALIGN_MAX_DISTANCE_MM;
-
-        if (realigned || realignLimit)
+            OBSTACLE_RECOVER_TOLERANCE_DEG)
         {
-            if (oa_pending_map_record)
-            {
-                course_map_record_obstacle(
-                    oc_current_section,
-                    oc_current_lap,
-                    oa_color,
-                    oa_pending_detection_distance,
-                    oa_pending_image_x,
-                    oa_pending_bottom_y);
-                oa_pending_map_record = false;
-                Serial.println("[MAP] Successful avoidance stored");
-            }
-
             oa_last_finish_distance =
                 get_distance();
 
@@ -1695,6 +2104,9 @@ void obstacle_challenge_setup()
 
     resetParkingExit();
     obstacle_avoidance_reset();
+    obstacle_path_reset();
+    oc_finish_requested = false;
+    oc_complete = false;
 
     Serial.println(
         "===== OBSTACLE CHALLENGE READY =====");
@@ -1707,6 +2119,11 @@ void obstacle_challenge_setup()
 bool obstacle_challenge_active()
 {
     return oc_was_enabled;
+}
+
+bool obstacle_challenge_complete()
+{
+    return oc_complete;
 }
 
 bool obstacle_parking_exit_active()
@@ -1777,6 +2194,9 @@ void obstacle_challenge_update(
         oc_was_enabled =
             false;
         resetParkingExit();
+        obstacle_path_reset();
+        oc_finish_requested = false;
+        oc_complete = false;
 
         return;
     }
@@ -1799,7 +2219,10 @@ void obstacle_challenge_update(
         }
 
         obstacle_avoidance_reset();
+        obstacle_path_reset();
         course_map_reset();
+        oc_finish_requested = false;
+        oc_complete = false;
 
         oc_current_section = 0;
         oc_current_lap = 0;
@@ -1809,8 +2232,6 @@ void obstacle_challenge_update(
         oc_last_completed_turn =
             navigation_get_turn_count();
         oc_corner_settling = false;
-        oc_corner_settle_start_distance = get_distance();
-        oc_start_section_complete = false;
         for (uint8_t i = 0;
              i < COURSE_MAX_OBSTACLES_PER_SECTION;
              ++i)
@@ -1827,6 +2248,7 @@ void obstacle_challenge_update(
 
         Serial.println(
             "[OC] New obstacle run");
+        printParkingExitGeometry();
     }
 
     // This path exists only in the Obstacle Challenge. While it owns the
@@ -1836,130 +2258,50 @@ void obstacle_challenge_update(
         return;
     }
 
-    updateCourseProgress();
-    const bool learnedLaneActive =
-        updateLearnedLanePlan();
-
-    // Let the gyro follower align the car just after a corner, while vision
-    // already looks ahead. A confirmed sign at the beginning of the new
-    // section must be allowed to take control before the normal settle
-    // distance has elapsed.
-    if (
-        oc_corner_settling &&
-        navigation_get_state() == NAV_FOLLOWING)
+    // The parking lot is mounted against the outer wall. The existing exit
+    // turns away from that wall, which also reveals the required direction
+    // around the inner field. Without a parking exit, use the explicit
+    // pre-round fallback in config.h.
+    if (!obstacle_path_started())
     {
-        const float settleDistance =
-            distanceSince(oc_corner_settle_start_distance);
-        const float headingError =
-            fabsf(
-                get_angle() -
-                navigation_get_target_heading());
-        float centerError = 0.0f;
-        const bool centerVisible =
-            obstacleCenterVisible(centerError);
-        const bool centeredForLearning =
-            centerVisible &&
-            fabsf(centerError) <=
-                OBSTACLE_CORRIDOR_CENTER_TOLERANCE_MM;
+        const int8_t turnSign =
+            OBSTACLE_PARKING_EXIT_ENABLED
+                ? (oc_parking_exit_steering > 0 ? -1 : 1)
+                : OBSTACLE_DEFAULT_TURN_SIGN;
+        const float firstCornerDistance =
+            turnSign > 0
+                ? OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM
+                : OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM;
+        obstacle_path_start(
+            turnSign,
+            false,
+            firstCornerDistance);
+    }
 
-        // Vision may already see the next sign, but an Ackermann car must
-        // first be nearly parallel to the new section. Otherwise a sign seen
-        // far to one side during the turn commands a large, wrong arc.
-        const bool alignedForEarlyTakeover =
-            headingError <=
-                OBSTACLE_CORNER_EARLY_TAKEOVER_HEADING_DEG &&
-            (learnedLaneActive || centeredForLearning);
-
-        const bool obstacleNeedsControl =
-            !learnedLaneActive &&
-            alignedForEarlyTakeover &&
-            obstacle_avoidance_update(
-                enabled,
-                newCameraFrame);
-
-        if (obstacleNeedsControl)
-        {
-            oc_corner_settling = false;
-            Serial.println(
-                "[OC] Early obstacle during corner exit");
-            return;
-        }
-
-        navigation_update(enabled);
-
-        if (
-            (settleDistance >=
-                 OBSTACLE_CORNER_SETTLE_MIN_DISTANCE_MM &&
-             headingError <=
-                 OBSTACLE_CORNER_SETTLE_HEADING_DEG &&
-             (learnedLaneActive || centeredForLearning)) ||
-            settleDistance >=
-                OBSTACLE_CORNER_SETTLE_MAX_DISTANCE_MM)
-        {
-            oc_corner_settling = false;
-            navigation_rearm_after_obstacle();
-
-            Serial.print("[OC] Section aligned distance=");
-            Serial.print(settleDistance, 0);
-            Serial.print(" heading_error=");
-            Serial.print(headingError, 1);
-            Serial.print(" center_error=");
-            if (centerVisible)
-                Serial.println(centerError, 0);
-            else
-                Serial.println("NA");
-        }
-
+    if (!obstacle_path_complete())
+    {
+        obstacle_path_update(newCameraFrame);
         return;
     }
 
-    // ========================================================
-    // ALL STRAIGHT SECTIONS
-    //
-    // Detection is active immediately because the official starting zone is
-    // random and a relevant sign can appear before the first corner.
-    // ========================================================
-
-    // --------------------------------------------------------
-    // The Wall Follower is currently executing a corner,
-    // stopping, or in another non-straight state.
-    //
-    // Camera obstacle avoidance must NOT interfere.
-    // --------------------------------------------------------
-
-    if (
-        navigation_get_state() !=
-        NAV_FOLLOWING)
+    // End-of-run parking is intentionally not guessed here: the repository
+    // only contains the start parking exit. Stop safely in the start section
+    // until a separately calibrated parking state machine is supplied.
+    set_steering(0);
+    set_speed(0);
+    if (!oc_finish_requested)
     {
-        navigation_update(
-            enabled);
-
-        return;
+        oc_finish_requested = true;
+        Serial.println(
+            "[OC] Three laps complete; final parking is not implemented");
     }
-
-    // --------------------------------------------------------
-    // Straight section:
-    // obstacle avoidance gets first priority.
-    // --------------------------------------------------------
-
-    const bool startSectionLearning =
-        oc_current_section == 0 &&
-        !oc_start_section_complete;
-    const bool avoiding =
-        (oc_current_lap == 0 || startSectionLearning)
-            ? obstacle_avoidance_update(
-                  enabled,
-                  newCameraFrame)
-            : false;
-
-    // --------------------------------------------------------
-    // No obstacle:
-    // run the unchanged Open Challenge navigation.
-    // --------------------------------------------------------
-
-    if (!avoiding)
+    if (!oc_complete &&
+        fabsf(current_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS &&
+        fabsf(measured_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS)
     {
-        navigation_update(
-            enabled);
+        stop(false);
+        oc_complete = true;
+        robot_logger.write_to_usb();
+        Serial.println("[OC] Controlled stop complete");
     }
 }

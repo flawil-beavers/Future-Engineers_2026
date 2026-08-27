@@ -4,6 +4,7 @@
  */
 
 #include "mode_manager.h"
+#include "config.h"
 #include "motor_control.h"
 #include "turn_radius_calibration.h"
 #include "servo_center_calibration.h"
@@ -11,8 +12,12 @@
 #include "motor_min_calibration.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path_test.h"
+#include "obstacle_live_test.h"
+#include "obstacle_seat_test.h"
 #include "sensors.h"
 #include "position_estimator.h"
+#include "camera_distance_calibration.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -66,6 +71,18 @@ static void stop_mode(RobotMode mode)
         navigation_set_obstacle_mode(false);
         break;
 
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_stop();
+        break;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        obstacle_live_test_stop();
+        break;
+
+    case MODE_OBSTACLE_SEAT_TEST:
+        obstacle_seat_test_stop();
+        break;
+
     case MODE_OBSTACLE_BENCH:
         obstacle_bench_test_set(false);
         navigation_set_obstacle_mode(false);
@@ -74,6 +91,10 @@ static void stop_mode(RobotMode mode)
     case MODE_CAMERA_CALIBRATION:
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_CAMERA_DISTANCE_CAL:
+        camera_distance_cal_stop();
         break;
 
     case MODE_TURN_RADIUS_CAL:
@@ -127,6 +148,24 @@ static bool start_mode(RobotMode mode)
         navigation_enable();
         break;
 
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_start();
+        break;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        if (!obstacle_camera_setup())
+            return false;
+        obstacle_live_test_start();
+        break;
+
+    case MODE_OBSTACLE_SEAT_TEST:
+        if (!obstacle_camera_setup())
+            return false;
+        obstacle_seat_test_start();
+        if (!obstacle_seat_test_preflight_passed())
+            return false;
+        break;
+
     case MODE_OBSTACLE_BENCH:
         if (!obstacle_camera_setup())
             return false;
@@ -139,6 +178,14 @@ static bool start_mode(RobotMode mode)
             return false;
         stop(false);
         set_steering(0);
+        break;
+
+    case MODE_CAMERA_DISTANCE_CAL:
+        if (!obstacle_camera_setup())
+            return false;
+        camera_distance_cal_start();
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_FAILED)
+            return false;
         break;
 
     case MODE_TURN_RADIUS_CAL:
@@ -180,6 +227,25 @@ void mode_switch(RobotMode new_mode)
         Serial.println("Mode switched to: NONE");
         return;
     }
+
+#if CAMERA_ASYNC_STATIONARY_AUTOSTART
+    // Development-only exception: run camera calibration while leaving the
+    // motor system disabled. This does not bypass the switch for any mode that
+    // can request motion.
+    if (new_mode == MODE_CAMERA_CALIBRATION)
+    {
+        pending_mode = MODE_NONE;
+        stop(false);
+        if (!start_mode(new_mode))
+        {
+            Serial.println("Could not start stationary camera mode.");
+            return;
+        }
+        current_mode = new_mode;
+        Serial.println("Stationary camera mode auto-started; motors remain disabled.");
+        return;
+    }
+#endif
 
     if (!system_enabled) {
         pending_mode = new_mode;
@@ -227,10 +293,33 @@ static ModeResult update_active_mode()
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
-        return navigation_is_complete()
+        return obstacle_challenge_complete()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
     }
+
+    case MODE_OBSTACLE_PATH_TEST:
+        obstacle_path_test_update();
+        drive_loop();
+        if (!obstacle_path_test_finished())
+            return MODE_RESULT_RUNNING;
+        return obstacle_path_test_passed()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_FAILED;
+
+    case MODE_OBSTACLE_LIVE_TEST:
+        obstacle_live_test_update(updateCameraVision());
+        drive_loop();
+        if (!obstacle_live_test_finished())
+            return MODE_RESULT_RUNNING;
+        return obstacle_live_test_passed()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_FAILED;
+
+    case MODE_OBSTACLE_SEAT_TEST:
+        obstacle_seat_test_update(updateCameraVision());
+        drive_loop();
+        return MODE_RESULT_RUNNING;
 
     case MODE_OBSTACLE_BENCH:
         obstacle_challenge_update(
@@ -243,6 +332,15 @@ static ModeResult update_active_mode()
         if (updateCameraVision())
             printCameraCalibration();
         drive_loop();
+        return MODE_RESULT_RUNNING;
+
+    case MODE_CAMERA_DISTANCE_CAL:
+        camera_distance_cal_update(updateCameraVision());
+        drive_loop();
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_DONE)
+            return MODE_RESULT_COMPLETED;
+        if (camera_distance_cal_state == CAMERA_DISTANCE_CAL_FAILED)
+            return MODE_RESULT_FAILED;
         return MODE_RESULT_RUNNING;
 
     case MODE_TURN_RADIUS_CAL:
@@ -312,12 +410,22 @@ void mode_update()
 void mode_pause()
 {
     if (current_mode != MODE_NONE) {
-        pending_mode = current_mode;
+        const RobotMode paused_mode = current_mode;
+        // A camera-distance calibration can only start while the pillar is
+        // touching the configured robot-front plane. After any movement, a
+        // generic resume would establish a false distance origin.
+        pending_mode = paused_mode == MODE_CAMERA_DISTANCE_CAL
+            ? MODE_NONE
+            : paused_mode;
         stop_mode(current_mode);
         current_mode = MODE_NONE;
 
-        Serial.print("Paused. Pending mode: ");
-        Serial.println(mode_name(pending_mode));
+        if (paused_mode == MODE_CAMERA_DISTANCE_CAL)
+            Serial.println("Camera calibration cancelled; return to pillar contact and send camdrive again.");
+        else {
+            Serial.print("Paused. Pending mode: ");
+            Serial.println(mode_name(pending_mode));
+        }
     }
 
     system_disable();
@@ -365,8 +473,12 @@ const char* mode_name(RobotMode mode)
     case MODE_HOLD:               return "HOLD";
     case MODE_OPEN_CHALLENGE:     return "OPEN_CHALLENGE";
     case MODE_OBSTACLE_CHALLENGE: return "OBSTACLE_CHALLENGE";
+    case MODE_OBSTACLE_PATH_TEST: return "OBSTACLE_PATH_TEST";
+    case MODE_OBSTACLE_LIVE_TEST: return "OBSTACLE_LIVE_TEST";
+    case MODE_OBSTACLE_SEAT_TEST: return "OBSTACLE_SEAT_TEST";
     case MODE_OBSTACLE_BENCH:     return "OBSTACLE_BENCH";
     case MODE_CAMERA_CALIBRATION:  return "CAMERA_CALIBRATION";
+    case MODE_CAMERA_DISTANCE_CAL: return "CAMERA_DISTANCE_CAL";
     case MODE_TURN_RADIUS_CAL:    return "TURN_RADIUS_CAL";
     case MODE_SERVO_CENTER_CAL:   return "SERVO_CENTER_CAL";
     case MODE_PID_AUTOTUNE:       return "PID_AUTOTUNE";

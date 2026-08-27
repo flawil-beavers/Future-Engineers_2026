@@ -21,6 +21,7 @@
  *   m      : MANUAL mode
  *   l      : OPEN CHALLENGE mode
  *   O      : OBSTACLE CHALLENGE mode
+ *   X1/-1  : EMPTY-TRACK PATH TEST left/right
  *   b1/b0  : OBSTACLE BENCH mode on/off
  *   c      : CAMERA CALIBRATION mode
  *   C      : TURN RADIUS CALIBRATION mode
@@ -39,12 +40,18 @@
 #include "sensors.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path_test.h"
+#include "obstacle_live_test.h"
+#include "obstacle_seat_test.h"
 #include "course_map.h"
 #include "calibration.h"
 #include "position_estimator.h"
 #include "pid_autotune.h"
 #include "mode_manager.h"
 #include "logger.h"
+#include "tof_diagnostic_test.h"
+#include "tof_pose_diagnostic.h"
+#include "camera_distance_calibration.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -216,6 +223,85 @@ static bool handle_pid_command(const char *message)
   return true;
 }
 
+static bool handle_seat_command(const char *message)
+{
+  if (strncmp(message, "seat", 4) != 0 ||
+      (message[4] != '\0' && message[4] != ' '))
+    return false;
+
+  if (strcmp(message, "seat show") == 0) {
+    if (current_mode != MODE_OBSTACLE_SEAT_TEST)
+      Serial.println("Start the stationary seat test with S1 or S-1 first.");
+    else
+      obstacle_seat_test_show();
+    return true;
+  }
+  if (strcmp(message, "seat clear") == 0) {
+    if (current_mode != MODE_OBSTACLE_SEAT_TEST)
+      Serial.println("No stationary seat test is active.");
+    else
+      obstacle_seat_test_clear();
+    return true;
+  }
+
+  int section = -1;
+  int station = -1;
+  char side = '?';
+  int range = -1;
+  char extra = '\0';
+  const int fields = sscanf(
+      message,
+      "seat expect %d %d %c %d %c",
+      &section,
+      &station,
+      &side,
+      &range,
+      &extra);
+  bool accepted = false;
+  if (fields == 4 && current_mode == MODE_OBSTACLE_SEAT_TEST) {
+    accepted = obstacle_seat_test_expect(
+        static_cast<uint8_t>(section),
+        static_cast<uint8_t>(station),
+        side,
+        static_cast<float>(range));
+  }
+  if (!accepted) {
+    Serial.print("[SEAT CMD] rejected fields="); Serial.print(fields);
+    Serial.print(" mode="); Serial.print(mode_name(current_mode));
+    Serial.print(" section="); Serial.print(section);
+    Serial.print(" station="); Serial.print(station);
+    Serial.print(" side="); Serial.print(side);
+    Serial.print(" range="); Serial.println(range);
+    Serial.println("Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>");
+  }
+  return true;
+}
+
+static bool handle_camera_drive_command(const char *message)
+{
+  if (strncmp(message, "camdrive", 8) != 0 ||
+      (message[8] != '\0' && message[8] != ' '))
+    return false;
+
+  float travel_mm = CAMERA_DRIVE_CAL_DEFAULT_TRAVEL_MM;
+  char extra = '\0';
+  if (strcmp(message, "camdrive") != 0 &&
+      sscanf(message, "camdrive %f %c", &travel_mm, &extra) != 1)
+  {
+    Serial.println("Usage: camdrive [reverse-distance-mm]");
+    Serial.println("Place the pillar touching the robot front before starting.");
+    return true;
+  }
+
+  if (!camera_distance_cal_configure(travel_mm))
+  {
+    Serial.println("Reverse distance must be 250..1800 mm.");
+    return true;
+  }
+  select_temporary_mode(MODE_CAMERA_DISTANCE_CAL);
+  return true;
+}
+
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
@@ -224,8 +310,17 @@ static void print_serial_command_info()
   Serial.println("m          : Select MANUAL mode");
   Serial.println("l          : Start OPEN CHALLENGE mode");
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
+  Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
+  Serial.println("X0         : Stop EMPTY-TRACK path test");
+  Serial.println("Y1 / Y-1   : One-lap LIVE obstacle path test (left/right)");
+  Serial.println("Y0         : Stop LIVE obstacle path test");
+  Serial.println("S1 / S-1   : Stationary seat-snap test (left/right geometry)");
+  Serial.println("S0         : Stop and clear stationary seat-snap test");
+  Serial.println("seat expect <section> <station> <L|R> <range_mm>");
+  Serial.println("seat clear / seat show : Reset or inspect seat-test state");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
-  Serial.println("c          : Start CAMERA CALIBRATION mode");
+  Serial.println("c<mm>      : CAMERA CALIBRATION at measured pillar distance");
+  Serial.println("camdrive [reverse-mm] : Pillar-touch reverse camera calibration");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
   Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
   Serial.println("y          : Start PID AUTOTUNE mode");
@@ -238,6 +333,8 @@ static void print_serial_command_info()
   Serial.println("u<distance>: Set navigation wall distance in mm");
   Serial.println("f / o      : General debug ON / OFF");
   Serial.println("n / g / v  : Print encoder / gyro / ToF data");
+  Serial.println("tof help   : Stationary black/white ToF diagnostic test");
+  Serial.println("tofpose help : Motor-locked production pose-correction test");
   Serial.println("t          : Print estimated position");
   Serial.println("j          : Print learned obstacle course map");
   Serial.println("k          : Print calibration data");
@@ -300,19 +397,39 @@ void processMessage()
     message[index++] = currentChar;
   }
 
+  // Terminals commonly send CRLF. The ring-buffer framing consumes LF but
+  // leaves CR in the message, which makes strict multi-word parsers see an
+  // unexpected extra argument. Remove trailing line/field whitespace before
+  // dispatch while preserving whitespace inside commands.
+  while (index > 0 &&
+         (message[index - 1] == '\r' ||
+          message[index - 1] == ' ' ||
+          message[index - 1] == '\t'))
+  {
+    --index;
+  }
   message[index] = '\0'; // Null-terminate
 
   // A complete command proves that a laptop terminal is connected. Allow its
   // response to be printed in full, then restore safe unplugging for any mode.
   robot_logger.allow_blocking_terminal_output();
   parseMessage(message);
-  if (current_mode != MODE_NONE || pending_mode != MODE_NONE)
+  if (current_mode != MODE_NONE || pending_mode != MODE_NONE ||
+      tof_pose_diagnostic_active())
     robot_logger.protect_from_terminal_disconnect();
 }
 
 void parseMessage(char *msg)
 {
   if (handle_pid_command(msg))
+    return;
+  if (handle_seat_command(msg))
+    return;
+  if (handle_camera_drive_command(msg))
+    return;
+  if (tof_diagnostic_handle_command(msg))
+    return;
+  if (tof_pose_diagnostic_handle_command(msg))
     return;
 
   char cmd[3]; // Command character
@@ -470,13 +587,94 @@ void parseMessage(char *msg)
     break;
 
   case 'c':
-    // Start stationary live camera-colour calibration mode.
-    select_temporary_mode(MODE_CAMERA_CALIBRATION);
+    // Stationary live camera calibration. Supplying the measured
+    // camera-to-pillar distance enables focal-length samples and averages.
+    if (value < 0 || value > 2000)
+    {
+      Serial.println("Usage: c<distance_mm>, for example c250 (c0 = diagnostics only)");
+    }
+    else
+    {
+      camera_calibration_set_reference_distance(static_cast<float>(value));
+      select_temporary_mode(MODE_CAMERA_CALIBRATION);
+    }
     break;
 
   case 'O':
     // Start Obstacle Challenge.
     select_temporary_mode(MODE_OBSTACLE_CHALLENGE);
+    break;
+
+  case 'X':
+    // Isolated one-lap Pure Pursuit test. Camera steering and ToF pose
+    // correction are disabled; ToF remains active only as a safety stop.
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_PATH_TEST ||
+          pending_mode == MODE_OBSTACLE_PATH_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No empty-track path test is active.");
+    }
+    else if (value == 1 || value == -1)
+    {
+      obstacle_path_test_set_turn_sign(value);
+      select_temporary_mode(MODE_OBSTACLE_PATH_TEST);
+    }
+    else
+    {
+      Serial.println("Usage: X1 (left/CCW), X-1 (right/CW), X0 (stop)");
+    }
+    break;
+
+  case 'Y':
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
+          pending_mode == MODE_OBSTACLE_LIVE_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No live obstacle path test is active.");
+    }
+    else if (value == 1 || value == -1 || value == 3 || value == -3)
+    {
+      if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
+          pending_mode == MODE_OBSTACLE_LIVE_TEST)
+        mode_stop_all();
+      obstacle_live_test_set_turn_sign(value);
+      obstacle_live_test_set_lap_target(abs(value) == 3 ? 3 : 1);
+      select_temporary_mode(MODE_OBSTACLE_LIVE_TEST);
+    }
+    else
+    {
+      Serial.println(
+          "Usage: Y1/Y-1 (one lap), Y3/Y-3 (three laps), Y0 (stop)");
+    }
+    break;
+
+  case 'S':
+    if (value == 0)
+    {
+      if (current_mode == MODE_OBSTACLE_SEAT_TEST ||
+          pending_mode == MODE_OBSTACLE_SEAT_TEST)
+        mode_stop_all();
+      else
+        Serial.println("No stationary seat test is active.");
+    }
+    else if (value == 1 || value == -1)
+    {
+      // Restart even when switching directly between S1 and S-1; mode_switch
+      // intentionally treats selecting the current enum as a no-op.
+      if (current_mode == MODE_OBSTACLE_SEAT_TEST ||
+          pending_mode == MODE_OBSTACLE_SEAT_TEST)
+        mode_stop_all();
+      obstacle_seat_test_set_turn_sign(value);
+      select_temporary_mode(MODE_OBSTACLE_SEAT_TEST);
+    }
+    else
+    {
+      Serial.println("Usage: S1 (left/CCW), S-1 (right/CW), S0 (stop)");
+    }
     break;
 
   case 'j':
