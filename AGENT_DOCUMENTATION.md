@@ -33,6 +33,34 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Parking-start scope and temporary-file convention
+
+Current obstacle development supports only the higher-scoring legal start
+from inside the parking lot. The alternative middle-zone start is deferred to
+an optional end-stage bonus after the complete parking-lot-start sequence is
+reliable in both directions. Do not generalize the parking-exit implementation
+for both start classes during the current phase.
+
+The robot's final length is still undecided. Because the rules define the
+parking-space length as `1.5 * robot length`, do not freeze marker separation,
+longitudinal start coordinates, exit distances, or final-parking geometry from
+the present prototype dimensions. Keep those values parameterized and perform
+the exact placement/exit characterization after the mechanical length is
+finalized. Both official driving directions remain required: the front axle
+must point toward the next corner in the chosen direction.
+
+Repository-task temporary/generated working files belong under the gitignored
+`local_workspace/` directory. `AGENTS.md` now records this as a mandatory
+workspace convention; do not create a separate repository `tmp/` tree.
+
+Exact next step while the length remains open: inspect the existing parking
+exit for geometry that can be expressed relative to robot dimensions and
+parking-marker observations, then implement an isolated, non-lap exit test
+without baking in a final parking length. Ask the user before choosing any
+length-dependent clearance or longitudinal placement.
+
+---
+
 ## 2026-08-27 - Loop/camera optimization integration gate
 
 The former obstacle test plan accumulated completed log narratives, tuning

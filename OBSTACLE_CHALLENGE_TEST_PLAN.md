@@ -86,8 +86,16 @@ the field is ready.
 
 ## Unparking, localization, and parking-marker robustness
 
-- [ ] Define and document every supported initial parking orientation and
-      position allowed by the rules.
+- [x] Limit the current implementation to starts completely inside the
+      parking lot, with the front axle pointing in the official driving
+      direction. Middle-zone starts are intentionally deferred as an optional
+      end-stage bonus.
+- [ ] Finalize the robot length before fixing parking-lot geometry. The
+      competition parking-space length is `1.5 * robot length`, so tests and
+      route constants must not assume a final marker separation yet.
+- [ ] Define and document robust initial positions and tolerances within the
+      parking lot for both CW and CCW driving directions after the robot length
+      is fixed.
 - [ ] Implement a safe unpark path that leaves the parking area without
       touching the magenta parking pieces or field walls.
 - [ ] Establish the robot's field pose after unparking rather than assuming the
@@ -194,3 +202,12 @@ Start after unparking/localization and the three-lap obstacle route are reliable
       pillar layouts, and realistic lighting/battery variation in the final set.
 - [ ] Confirm every accepted run stops fully inside the parking area after
       exactly three laps.
+
+## Optional end-stage bonus
+
+Start only after the parking-lot-start end-to-end sequence is accepted.
+
+- [ ] Add support for the alternative legal start in the middle zone above
+      the parking lot.
+- [ ] Validate the middle-zone start in CW and CCW without regressing the
+      parking-lot start.

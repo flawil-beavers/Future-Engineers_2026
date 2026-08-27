@@ -8,6 +8,12 @@
   substantial session. Keep mandatory agent instructions in this file and
   project history in `AGENT_DOCUMENTATION.md`.
 
+## Temporary files
+
+- Store repository-task temporary and generated working files under
+  `local_workspace/`, which is intentionally gitignored. Do not create a
+  separate `tmp/` working tree in the repository.
+
 ## PlatformIO builds
 
 - Always build and compile this project with the PlatformIO Core installation managed by the IDE on the current machine.
