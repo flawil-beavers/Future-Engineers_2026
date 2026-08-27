@@ -33,6 +33,24 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Pure-pursuit integrated into main and reviewed
+
+Local `main` now contains the exact source tree from `pure-pursuit` commit
+`57612568c64348654329ed6e366275f3e6af47aa` via merge commit `dcc3d70`; the
+`pure-pursuit` branch itself was not changed. The IDE-managed `giga_r1_m7`
+build passed with 361224 bytes RAM and 371488 bytes flash. Static review found
+no new compile or control-flow blocker, but the parking exit intentionally
+remains in test-only mode: reverse edge localization is not physically tested,
+the start-section discovery connector and final parking are still missing, and
+the final robot-length correction remains unset. Do not disable the test-only
+lockout before those items are resolved. The Python swept-path model could not
+be rerun on this workstation because no Python launcher is installed; its
+latest checked-in handoff reports all 16 scenarios passing. Next, physically
+validate the reverse localization without pillars in both directions, then
+implement and test the direction-specific low-speed discovery connector.
+
+---
+
 ## 2026-08-27 - Reverse parking-edge localization prepared
 
 `D:\log_134.txt` physically passed the mirrored CW forward-edge-search run
