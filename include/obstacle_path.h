@@ -143,7 +143,8 @@ void obstacle_path_start(
     bool test_mode = false,
     float first_corner_distance_mm = 500.0f,
     uint8_t lap_target = 0,
-    float speed_cap_mm_s = 0.0f);
+    float speed_cap_mm_s = 0.0f,
+    bool parking_entry_discovery = false);
 void obstacle_path_update(bool new_camera_frame);
 bool obstacle_path_started();
 bool obstacle_path_complete();

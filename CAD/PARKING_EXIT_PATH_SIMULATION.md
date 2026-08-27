@@ -267,3 +267,26 @@ and the minimum x edge of the footprint. X and wall-derived y corrections are
 each bounded to 25 mm. The swept model includes the complete 60 mm reverse and
 passes all 16 gap/placement/heading tolerance cases. The movement must still
 be physically accepted in both directions before joining the lap.
+
+After logs 136 and 137 physically accepted that reverse, the model was extended
+with a test-only starting-section discovery path. It does not assume that the
+parking section is empty: under Figure 8e only the outer member of each seat
+pair is known clear, while the inner member remains unknown.
+
+The parking position is asymmetric along the 1000 mm straight, so two entry
+paths are required:
+
+- CCW reverses straight until the corrected rear-axle field coordinate reaches
+  approximately `x=60 mm`, then follows a 40 mm reverse arc toward S0 station 2.
+- CW reverses straight until approximately `x=520 mm`, then follows the mirrored
+  40 mm reverse arc toward S0 station 1.
+
+The arc radius is 109 mm and is sampled as Pure Pursuit waypoints; firmware
+commands negative speed rather than using a steering override. Both complete
+exit-plus-discovery envelopes pass all 16 gap, placement, and heading tolerance
+cases. At the final pose the relevant inner seat is inside the calibrated
+camera angle and 230--600 mm range. The first powered version stops there,
+waits up to 1200 ms for two clear frames or colour votes, logs
+`CLEAR`, `RED`, `GREEN`, or `UNKNOWN`, and locks the motor. A colour-dependent
+forward join is intentionally deferred until this scan motion and observation
+are physically validated.

@@ -33,6 +33,99 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Log 139 overran the entry scan arc
+
+`D:\\log_139.txt` was physically contact-free, but the CCW parking-entry
+discovery still failed. The path was planned for 384.3 mm; the robot reached
+404.4 mm and logged `Scan path overrun` with 20.1 degrees heading error. The
+heading error at the overrun indicates that the reverse arc was commanded, but
+the user could not see a distinct arc. After the stop, the reported pose
+heading returned near 1 degree and the target inner-seat bearing was 38.8
+degrees at 493 mm, so the camera could not resolve the station. Raw red blobs
+were present but were not accepted as a pillar.
+
+Measured conclusion: the run is safe but does not validate the scan pose. Do
+not add a pillar yet. The next implementation decision is whether to make the
+40 mm, 109 mm-radius arc more visible (for example, a tighter radius with the
+same travel) or to improve stop timing; this requires an explicit geometry
+choice before changing firmware. Until then, repeat only after that change and
+require `Scan pose reached`, heading error <=5 degrees, an in-angle target, and
+`result=CLEAR`.
+
+---
+
+## 2026-08-27 - Log 138 rejects position-only scan completion
+
+`log_138.txt` completed the CCW unpark and longer reverse without physical
+contact, but it is not a perception pass. Parking localization used three
+wall frames and applied bounded corrections, ending at
+`(417.6,-1218.6,359.4 degrees)`. The entry path armed for 397.6 mm and the
+correct S0 station 2. It then stopped at `(38.0,-1220.1,1.0 degrees)` and
+reported `UNKNOWN`; the inner seat was still 42.4 degrees off-axis at 463 mm.
+Several small green background blobs appeared in raw vision output but were
+correctly not confirmed as a legal seat pillar.
+
+The robot stayed almost parallel instead of completing the planned roughly
+21-degree reverse scan arc. Nearest-geometric-waypoint progress allowed the
+short arc endpoint to become closest while the robot remained on the straight,
+and the 18 mm position-only completion test then stopped it early. Entry
+progress now follows absolute encoder travel along the sampled path. Successful
+completion additionally requires rear-axle position within 18 mm and heading
+within 5 degrees. Travel beyond the planned path plus 20 mm causes a bounded
+failure stop and cannot report a resolved station. No avoidance or lap join is
+enabled.
+
+Next, rebuild and repeat the same field-clear CCW setup. Require the scan-pose
+line to include heading error within 5 degrees, target bearing inside the
+trusted camera angle, `result=CLEAR`, no contact, and the final test lock.
+The IDE-managed `giga_r1_m7` build passed with 361880 bytes RAM and 375520
+bytes flash; existing warnings are unchanged. No firmware was uploaded.
+
+---
+
+## 2026-08-27 - Reverse localization accepted; Pure Pursuit entry scan prepared
+
+`log_136.txt` completed the CCW reverse edge search and `log_137.txt` completed
+the CW version; the user reported no contact in either direction. CCW reversed
+40.9 mm and applied bounded corrections from a 253 mm wall sample against a
+270.6 mm prediction. Its later stationary raw value was 262 mm, so wall
+confirmation was increased from two to three fresh frames. CW reversed 29.7 mm
+and used 237 mm against a 244.8 mm prediction. `log_135.txt` is not an accepted
+side: its initial right range was 526 mm, field-y initialization fell back to
+nominal, and the run stalled in segment 1 before the user disabled it.
+
+The first parking-section discovery implementation now preserves the corrected
+post-exit pose while building the normal canonical field loop and all 24 seat
+coordinates. For the three stations in section 0 it pre-marks only the
+smaller-y outer seat clear, matching the rule that parking-section signs move
+to the positions closer to the inner wall. The relevant first unknown station
+is S0 station 2 for CCW and S0 station 1 for CW.
+
+A separate finite reverse path is sampled for the entry phase and controlled
+with the same Pure Pursuit curvature equation as normal driving. CCW targets
+field x=60 before a 40 mm reverse scan arc; CW targets x=520 before the mirrored
+arc. Speed is 60 mm/s, lookahead 70 mm, and nominal arc radius 109 mm. Offline
+swept-envelope validation passes 16/16 scenarios in each direction. The scan
+bypasses only the normal cyclic-forward relevance test while active; blob
+geometry, acquisition validity, range estimation, seat snapping, two votes,
+and per-seat clear evidence remain unchanged.
+
+At the scan pose the robot stops and observes for at most 1200 ms. It prints a
+`[PARK ENTRY RESULT]` of `CLEAR`, `RED`, `GREEN`, or `UNKNOWN` and retains a
+test-only motor lock. It does not yet join the lap or attempt a colour-specific
+pass. A missing parking-end reference, failed edge transition, or rejected x/y
+correction now prevents the discovery path from arming and locks the motor.
+The IDE-managed build passed with 361872 bytes RAM and 375184 bytes flash;
+existing warnings are unchanged. No firmware was uploaded.
+
+Exact next test: upload only with user consent, use the accepted parking setup
+with no pillars, and run one direction. Require three-frame parking-wall
+confirmation, no contact during the longer reverse and short arc, the expected
+S0 station, `result=CLEAR`, and the final test lock. Analyze that log before an
+official pillar is placed at the target inner seat.
+
+---
+
 ## 2026-08-27 - Reverse parking-edge localization prepared
 
 `D:\log_134.txt` physically passed the mirrored CW forward-edge-search run

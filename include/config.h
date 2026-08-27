@@ -340,7 +340,7 @@ constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 200;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM = 190.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM = 400.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES = 2;
+constexpr auto OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES = 3;
 constexpr auto OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM = 25.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM = 25.0f;
@@ -349,6 +349,25 @@ static_assert(
     OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == -1 ||
         OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == 1,
     "Parking-edge localization direction must be reverse or forward");
+
+// Test-only Pure-Pursuit discovery movement after the reverse edge reference.
+// The parking section's outer-row seats are known empty by rule; this path
+// rotates the forward camera toward the first upcoming inner-row seat. The
+// fixed parking position is asymmetric along the straight, so the two travel
+// directions use different field-x positions before the mirrored scan arc.
+constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
+constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = true;
+constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 40.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM = 109.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_SPEED_MM_S = 60.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_LOOKAHEAD_MM = 70.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM = 18.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG = 5.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1200UL;
+constexpr auto OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS = 32;
 static_assert(
     OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM <
             OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM &&

@@ -317,6 +317,21 @@ SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
     (-1, 0, 60.0),
 )
 
+# Direction-specific test-only discovery envelopes. The firmware stops the
+# first straight segment when the corrected field x reaches 60 mm (CCW) or
+# 520 mm (CW); these nominal controls reproduce those endpoints from the
+# selected prototype start. The simulation's +y always points away from the
+# outer wall, so its CW local frame is reflected; the physical firmware mirrors
+# the steering even though the local swept-envelope control retains +50.
+CCW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
+    (-1, 0, 400.0),
+    (-1, +50, 40.0),
+)
+CW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
+    (-1, 0, 260.0),
+    (-1, +50, 40.0),
+)
+
 
 def build_segments(start, controls=SELECTED_CONTROLS):
     pose = start
@@ -450,10 +465,19 @@ def report_selected():
           f"{localized_pose.heading_deg:.1f}deg)")
     print("  exit_plus_reverse_tolerance_scenarios="
           f"{reverse_passed}/{reverse_total}")
+    ccw_segments = build_segments(start, CCW_ENTRY_DISCOVERY_CONTROLS)
+    ccw_passed, ccw_total = validate_segments(start, ccw_segments)
+    cw_segments = build_segments(start, CW_ENTRY_DISCOVERY_CONTROLS)
+    cw_passed, cw_total = validate_segments(start, cw_segments)
+    print(f"  ccw_entry_discovery_tolerance_scenarios="
+          f"{ccw_passed}/{ccw_total}")
+    print(f"  cw_entry_discovery_tolerance_scenarios="
+          f"{cw_passed}/{cw_total}")
     output = Path(__file__).with_name("parking_exit_path.svg")
     write_svg(start, output)
     print(f"  diagram={output}")
-    return passed == total and reverse_passed == reverse_total
+    return (passed == total and reverse_passed == reverse_total and
+            ccw_passed == ccw_total and cw_passed == cw_total)
 
 
 def search_alternatives():

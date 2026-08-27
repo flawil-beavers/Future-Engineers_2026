@@ -61,6 +61,7 @@ PathPoint baselinePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint livePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint smoothingBuffer[OBSTACLE_MAX_PATH_WAYPOINTS];
+PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
 DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
 ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
@@ -95,6 +96,16 @@ ObstacleObservationResult lastDiscoveryObservation;
 ObstacleTofCorrectionResult lastTofCorrectionResult;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
+uint8_t parkingEntryLength = 0;
+uint8_t parkingEntryProgress = 0;
+int8_t parkingEntryTargetStation = -1;
+bool parkingEntryActive = false;
+bool parkingEntryObserving = false;
+bool parkingEntryTestHold = false;
+uint32_t parkingEntryObserveStartMs = 0;
+bool parkingEntryUsbWritten = false;
+float parkingEntryStartEncoderDistance = 0.0f;
+bool parkingEntryPathFailed = false;
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -617,6 +628,90 @@ float targetLateralForSeat(const CandidateSeat &seat, float clearanceMm)
     // In path-local coordinates positive is left. Red is passed on its right
     // and green on its left.
     return seat.lateralMm + (seat.red ? -clearanceMm : clearanceMm);
+}
+
+void prepareParkingSectionInnerSeats()
+{
+    // Rules 2026 Figure 8e moves every sign in the parking section to the
+    // position closer to the inner wall. In the canonical south section that
+    // is the member with the larger field-y coordinate. Mark only its paired
+    // outer seat as known clear; the inner seat still needs camera evidence.
+    for (uint8_t station = 0; station < COURSE_STATIONS_PER_SECTION; ++station)
+    {
+        const uint8_t firstSeat = station * COURSE_SEATS_PER_STATION;
+        const uint8_t outerSide =
+            seats[firstSeat].y < seats[firstSeat + 1].y ? 0 : 1;
+        DiscoveryStation &coverage = discoveryStations[station];
+        coverage.seatObservedClear[outerSide] = true;
+        coverage.clearFrames[outerSide] = OBSTACLE_DISCOVERY_CLEAR_FRAMES;
+    }
+}
+
+void appendParkingEntryPoint(
+    float x,
+    float y,
+    float headingDeg,
+    float distanceMm)
+{
+    if (parkingEntryLength >= OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS)
+        return;
+    PathPoint &point = parkingEntryPath[parkingEntryLength++];
+    point.x = x;
+    point.y = y;
+    point.headingDeg = headingDeg;
+    point.distanceMm = distanceMm;
+    point.speedMmS = OBSTACLE_PARKING_ENTRY_SPEED_MM_S;
+}
+
+void buildParkingEntryPath(const PositionEstimate &start)
+{
+    parkingEntryLength = 0;
+    parkingEntryProgress = 0;
+    float x = start.x_mm;
+    float y = start.y_mm;
+    float heading = start.heading_deg * PI / 180.0f;
+    float distance = 0.0f;
+    appendParkingEntryPoint(x, y, start.heading_deg, distance);
+
+    const float arcStartX = routeTurnSign > 0
+        ? OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM
+        : OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM;
+    const float headingX = cosf(heading);
+    float straight = fabsf(headingX) > 0.5f
+        ? (x - arcStartX) / headingX
+        : 0.0f;
+    straight = clampFloat(straight, 0.0f, 450.0f);
+    float remaining = straight;
+    while (remaining > 0.1f)
+    {
+        const float step = fminf(20.0f, remaining);
+        x -= step * cosf(heading);
+        y -= step * sinf(heading);
+        distance += step;
+        appendParkingEntryPoint(
+            x, y, heading * 180.0f / PI, distance);
+        remaining -= step;
+    }
+
+    // Signed path curvature is opposite the desired yaw because the vehicle
+    // traverses this arc in reverse. Pure Pursuit sees targets behind the rear
+    // axle and therefore requests the corresponding mirrored steering sign.
+    const float curvature =
+        -routeTurnSign / OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM;
+    remaining = OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM;
+    while (remaining > 0.1f)
+    {
+        const float step = fminf(10.0f, remaining);
+        const float signedStep = -step;
+        const float nextHeading = heading + curvature * signedStep;
+        x += (sinf(nextHeading) - sinf(heading)) / curvature;
+        y += (-cosf(nextHeading) + cosf(heading)) / curvature;
+        heading = nextHeading;
+        distance += step;
+        appendParkingEntryPoint(
+            x, y, heading * 180.0f / PI, distance);
+        remaining -= step;
+    }
 }
 
 struct WallSegment
@@ -1512,6 +1607,168 @@ void updateDiscoveryCoverage(
     }
 }
 
+void updateParkingEntryDiscovery(bool newCameraFrame)
+{
+    if (parkingEntryTestHold)
+    {
+        stop(false);
+        set_steering(0);
+        return;
+    }
+
+    const PositionEstimate pose = get_position_struct();
+    if (newCameraFrame)
+    {
+        const ObstacleObservationResult observation =
+            obstacle_path_observe(getLargestValidObstacle());
+        lastDiscoveryObservation = observation;
+        updateDiscoveryCoverage(observation, pose);
+    }
+
+    if (parkingEntryObserving)
+    {
+        stop(false);
+        set_steering(0);
+        const bool resolved =
+            !parkingEntryPathFailed &&
+            parkingEntryTargetStation >= 0 &&
+            stationResolved(static_cast<uint8_t>(parkingEntryTargetStation));
+        const bool timedOut =
+            millis() - parkingEntryObserveStartMs >=
+            OBSTACLE_PARKING_ENTRY_OBSERVE_MS;
+        if (!resolved && !timedOut)
+            return;
+
+        const uint8_t firstSeat = static_cast<uint8_t>(
+            parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
+        const CandidateSeat &first = seats[firstSeat];
+        const CandidateSeat &second = seats[firstSeat + 1];
+        Serial.print("[PARK ENTRY RESULT] resolved=");
+        Serial.print(resolved ? "yes" : "no_timeout");
+        Serial.print(" station=");
+        Serial.print(parkingEntryTargetStation);
+        Serial.print(" result=");
+        if (first.confirmed)
+        {
+            Serial.print(first.red ? "RED" : "GREEN");
+            Serial.print(" seat=");
+            Serial.print(firstSeat);
+        }
+        else if (second.confirmed)
+        {
+            Serial.print(second.red ? "RED" : "GREEN");
+            Serial.print(" seat=");
+            Serial.print(firstSeat + 1);
+        }
+        else
+        {
+            Serial.print(resolved ? "CLEAR" : "UNKNOWN");
+        }
+        Serial.print(" pose_x_y_heading=");
+        Serial.print(pose.x_mm, 1);
+        Serial.print("/");
+        Serial.print(pose.y_mm, 1);
+        Serial.print("/");
+        Serial.print(pose.heading_deg, 1);
+        float targetBearing = 0.0f;
+        float targetRange = -1.0f;
+        const uint8_t innerSeat =
+            first.y > second.y ? firstSeat : firstSeat + 1;
+        seatCameraGeometry(innerSeat, pose, targetBearing, targetRange);
+        Serial.print(" target_inner_seat=");
+        Serial.print(innerSeat);
+        Serial.print(" bearing_range_deg_mm=");
+        Serial.print(targetBearing, 1);
+        Serial.print("/");
+        Serial.println(targetRange, 1);
+        parkingEntryActive = false;
+        parkingEntryObserving = false;
+        parkingEntryTestHold =
+            OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY;
+        if (parkingEntryTestHold)
+        {
+            Serial.println(
+                "[PARK ENTRY] Test complete - drive motor locked off");
+            if (!parkingEntryUsbWritten)
+            {
+                robot_logger.write_to_usb();
+                parkingEntryUsbWritten = true;
+            }
+        }
+        return;
+    }
+
+    const float entryTravel = fabsf(
+        get_distance() - parkingEntryStartEncoderDistance);
+    while (parkingEntryProgress + 1 < parkingEntryLength &&
+           parkingEntryPath[parkingEntryProgress + 1].distanceMm <=
+               entryTravel)
+    {
+        ++parkingEntryProgress;
+    }
+
+    const PathPoint &finish = parkingEntryPath[parkingEntryLength - 1];
+    const float plannedTravel = finish.distanceMm;
+    const float finishError = hypotf(
+        pose.x_mm - finish.x, pose.y_mm - finish.y);
+    const float finishHeadingError = fabsf(
+        wrap180(pose.heading_deg - finish.headingDeg));
+    const bool pathReached =
+        entryTravel >=
+            plannedTravel - OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM &&
+        finishError <= OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM &&
+        finishHeadingError <= OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG;
+    const bool travelLimitReached =
+        entryTravel >=
+            plannedTravel + OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM;
+    if (pathReached || travelLimitReached)
+    {
+        stop(true);
+        set_steering(0);
+        parkingEntryPathFailed = !pathReached;
+        parkingEntryObserving = true;
+        parkingEntryObserveStartMs = millis();
+        Serial.print(
+            pathReached
+                ? "[PARK ENTRY] Scan pose reached error_mm="
+                : "[PARK ENTRY] Scan path overrun error_mm=");
+        Serial.print(finishError, 1);
+        Serial.print(" heading_error_deg=");
+        Serial.print(finishHeadingError, 1);
+        Serial.print(" travel/planned_mm=");
+        Serial.print(entryTravel, 1);
+        Serial.print("/");
+        Serial.print(plannedTravel, 1);
+        Serial.print(" target_station=");
+        Serial.println(parkingEntryTargetStation);
+        return;
+    }
+
+    uint8_t targetIndex = parkingEntryProgress;
+    float lookahead = 0.0f;
+    while (targetIndex + 1 < parkingEntryLength &&
+           lookahead < OBSTACLE_PARKING_ENTRY_LOOKAHEAD_MM)
+    {
+        const PathPoint &a = parkingEntryPath[targetIndex];
+        const PathPoint &b = parkingEntryPath[targetIndex + 1];
+        lookahead += hypotf(b.x - a.x, b.y - a.y);
+        ++targetIndex;
+    }
+    const PathPoint &target = parkingEntryPath[targetIndex];
+    const float dx = target.x - pose.x_mm;
+    const float dy = target.y - pose.y_mm;
+    const float heading = pose.heading_deg * PI / 180.0f;
+    const float localY = -dx * sinf(heading) + dy * cosf(heading);
+    const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
+    const float curvature = 2.0f * localY / targetDistanceSquared;
+    const float steering = clampFloat(
+        -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI,
+        -OBSTACLE_MAX_PURSUIT_STEERING_DEG,
+        OBSTACLE_MAX_PURSUIT_STEERING_DEG);
+    set_steering(static_cast<int>(steering));
+    set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
+}
+
 ObstacleTofCorrectionResult applyTofCorrectionAt(
     const PositionEstimate &pose,
     float pathDistance)
@@ -1694,6 +1951,16 @@ void obstacle_path_reset()
     deferredInjectionSeatIndex = -1;
     lastDiscoveryNudgeUpdateMs = 0;
     lastDiscoveryObservation = ObstacleObservationResult();
+    parkingEntryLength = 0;
+    parkingEntryProgress = 0;
+    parkingEntryTargetStation = -1;
+    parkingEntryActive = false;
+    parkingEntryObserving = false;
+    parkingEntryTestHold = false;
+    parkingEntryObserveStartMs = 0;
+    parkingEntryUsbWritten = false;
+    parkingEntryStartEncoderDistance = get_distance();
+    parkingEntryPathFailed = false;
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     lastTofCorrectionResult = ObstacleTofCorrectionResult{};
     memset(seats, 0, sizeof(seats));
@@ -1709,7 +1976,8 @@ void obstacle_path_start(
     bool test_mode,
     float first_corner_distance_mm,
     uint8_t lap_target,
-    float speed_cap_mm_s)
+    float speed_cap_mm_s,
+    bool parking_entry_discovery)
 {
     obstacle_path_reset();
     runtimeTestMode = test_mode;
@@ -1725,6 +1993,7 @@ void obstacle_path_start(
         50.0f,
         OBSTACLE_STRAIGHT_LENGTH_MM - 50.0f);
     PositionEstimate anchor;
+    const PositionEstimate measuredEntryPose = get_position_struct();
     if (runtimeTestMode)
     {
         // Bench/empty-track tests remain portable: their path begins wherever
@@ -1739,11 +2008,13 @@ void obstacle_path_start(
         anchor = nominalFieldStartPose(
             routeTurnSign,
             firstCornerDistanceMm);
-        position_reset(
-            anchor.x_mm,
-            anchor.y_mm,
-            anchor.heading_deg);
-        anchor = get_position_struct();
+        if (!parking_entry_discovery)
+        {
+            position_reset(
+                anchor.x_mm,
+                anchor.y_mm,
+                anchor.heading_deg);
+        }
 
         Serial.print("[FIELD] Nominal exit pose x=");
         Serial.print(anchor.x_mm, 1);
@@ -1775,6 +2046,36 @@ void obstacle_path_start(
     memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
     initializeSeats();
+    if (parking_entry_discovery)
+    {
+        prepareParkingSectionInnerSeats();
+        parkingEntryTargetStation = routeTurnSign > 0 ? 2 : 1;
+        discoveryScanStation = parkingEntryTargetStation;
+        const uint8_t targetFirstSeat = static_cast<uint8_t>(
+            parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
+        discoveryScanSide =
+            seats[targetFirstSeat].y > seats[targetFirstSeat + 1].y ? 0 : 1;
+        buildParkingEntryPath(measuredEntryPose);
+        parkingEntryActive = parkingEntryLength >= 2;
+        Serial.print("[PARK ENTRY] Pure Pursuit discovery armed turn=");
+        Serial.print(routeTurnSign > 0 ? "CCW" : "CW");
+        Serial.print(" target=S0 station=");
+        Serial.print(parkingEntryTargetStation);
+        Serial.print(" points=");
+        Serial.print(parkingEntryLength);
+        Serial.print(" reverse_mm=");
+        Serial.print(
+            parkingEntryLength > 0
+                ? parkingEntryPath[parkingEntryLength - 1].distanceMm
+                : 0.0f,
+            1);
+        Serial.print(" start_x_y_heading=");
+        Serial.print(measuredEntryPose.x_mm, 1);
+        Serial.print("/");
+        Serial.print(measuredEntryPose.y_mm, 1);
+        Serial.print("/");
+        Serial.println(measuredEntryPose.heading_deg, 1);
+    }
     recomputeSpeedProfile(baselinePath);
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
@@ -1793,6 +2094,12 @@ void obstacle_path_update(bool new_camera_frame)
 {
     if (!running || finished)
         return;
+
+    if (parkingEntryActive || parkingEntryObserving || parkingEntryTestHold)
+    {
+        updateParkingEntryDiscovery(new_camera_frame);
+        return;
+    }
 
     const PathPoint *path =
         optimizedBuilt ? optimizedPath : livePath;
@@ -1819,7 +2126,7 @@ void obstacle_path_update(bool new_camera_frame)
     // recorded, so this delays only geometry activation, not perception.
     activateDeferredInjection(baselinePath[progressIndex].distanceMm);
 
-    if (!runtimeTestMode)
+    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving)
     {
         const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
             pose,
@@ -1839,7 +2146,7 @@ void obstacle_path_update(bool new_camera_frame)
         lookahead *= OBSTACLE_LOOKAHEAD_CORNER_SCALE;
 
     PathPoint target = findLookahead(path, pose, lookahead);
-    if (!runtimeTestMode)
+    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving)
         applyDiscoveryTargetNudge(target, pose);
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
@@ -2125,7 +2432,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
-    if (!runtimeTestMode)
+    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving)
     {
         // Permit any upcoming station within the calibrated camera horizon.
         // The seat snap still rejects a noisy estimate elsewhere on the field,

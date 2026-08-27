@@ -367,7 +367,9 @@ static float expectedParkingOuterWallRange(
 
 static void completeParkingExit(bool stagedTest)
 {
-    if (stagedTest || OBSTACLE_PARKING_EXIT_TEST_ONLY)
+    if (stagedTest ||
+        (OBSTACLE_PARKING_EXIT_TEST_ONLY &&
+         !OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED))
     {
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
@@ -379,12 +381,16 @@ static void completeParkingExit(bool stagedTest)
     }
 
     oc_parking_exit_state = PARKING_EXIT_DONE;
-    navigation_enable();
+    if (!OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED)
+        navigation_enable();
     oc_section_start_distance = get_distance();
     oc_last_navigation_state = navigation_get_state();
     oc_last_completed_turn = navigation_get_turn_count();
 
-    Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
+    Serial.println(
+        OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED
+            ? "[PARK EXIT] Complete - parking-entry discovery next"
+            : "[PARK EXIT] Complete - normal Obstacle navigation");
 }
 
 static void finishParkingExit(bool stagedTest)
@@ -580,6 +586,17 @@ static void finishParkingExit(bool stagedTest)
         return;
     }
 
+    if (!stagedTest && OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED)
+    {
+        stop(false);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            "[PARK ENTRY] Not armed - no usable parking-end reference; "
+            "drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
+
     completeParkingExit(stagedTest);
 }
 
@@ -707,6 +724,18 @@ static void finishParkingEdgeLocalization()
     Serial.print(finalPose.y_mm, 1);
     Serial.print("/");
     Serial.println(finalPose.heading_deg, 1);
+
+    if (OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
+        (!oc_parking_localization_transition_found || !applyX || !applyY))
+    {
+        stop(false);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            "[PARK ENTRY] Not armed - parking localization invalid; "
+            "drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
 
     completeParkingExit(false);
 }
@@ -2275,7 +2304,11 @@ void obstacle_challenge_update(
         obstacle_path_start(
             turnSign,
             false,
-            firstCornerDistance);
+            firstCornerDistance,
+            0,
+            0.0f,
+            OBSTACLE_PARKING_EXIT_ENABLED &&
+                OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED);
     }
 
     if (!obstacle_path_complete())

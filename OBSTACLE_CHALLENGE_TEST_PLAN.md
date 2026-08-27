@@ -215,10 +215,30 @@ the field is ready.
       reverse. Reference the opposite edge of the same magenta piece and keep
       the lap lockout enabled. The swept model passes all 16 existing
       gap/placement/heading tolerance cases through the full 60 mm reverse.
-- [ ] Physically validate the reverse edge search in CCW and CW with no
-      pillars. Require no contact, `direction=reverse`, `transition=yes`, a
-      pose-consistent wall sequence, bounded x/y corrections, and the test-only
-      motor lock before implementing the starting-section discovery connector.
+- [x] Physically validate the reverse edge search in both directions with no
+      contact. `log_136` passed CCW and `log_137` passed CW. `log_135` was an
+      invalid initial attempt with no usable wall-side start range and a stall;
+      it is not one of the two accepted runs.
+- [x] Implement the test-only direction-specific reverse Pure Pursuit scan.
+      Pre-mark only the parking section's rule-guaranteed outer seats clear,
+      preserve the measured field pose, and require camera resolution of the
+      first upcoming inner seat. Both direction envelopes pass 16/16 modeled
+      tolerance cases.
+- [ ] Physically validate the entry scan with the field clear in one direction.
+      Require no contact, the expected target (`CCW: S0 station 2`, `CW: S0
+      station 1`), a reached scan pose, `result=CLEAR`, and the test-only motor
+      lock. `log_138` was physically contact-free but failed this criterion:
+      nearest-waypoint progress skipped the short scan arc, leaving 42.4
+      degrees target bearing and `result=UNKNOWN`. Repeat after the
+      encoder-distance progress and final-heading fix. `log_139` was also
+      contact-free, but still ended in `Scan path overrun`: travel 404.4/384.3
+      mm and heading error 20.1 degrees. The user did not see a distinct arc;
+      treat this as a failed scan-pose validation until the arc is made more
+      visible or the stop timing is corrected.
+- [ ] Repeat the accepted scan with one official pillar in that same inner
+      seat. Require the correct seat and colour after two votes, no contact,
+      and no `UNKNOWN` timeout. Test the opposite colour separately only if the
+      first result and geometry are credible.
 - [ ] Before implementing that join, handle the legal signs in the parking
       section: the rules move them to the seats nearer the inner wall rather
       than removing them. Resolve the first relevant inner seat before
