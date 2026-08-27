@@ -43,6 +43,25 @@ this file; seat numbering and clearance interpretation remain in their focused
 documents. Future routine successes should be summarized in no more than two
 or three sentences unless they establish new engineering knowledge.
 
+The remaining work is now ordered by dependency. After the integrated camera
+regression, implement reliable unparking and post-unpark field localization,
+then validate normal laps with the magenta parking pieces installed. ToF cannot
+be made physically blind to those pieces; instead, preserve raw ranges for
+collision safety while rejecting returns geometrically consistent with a known
+parking piece from wall-based localization corrections. Validate this before
+speed or final parking work.
+
+After baseline route coverage, investigate a deterministic constrained path
+optimizer for laps 2-3 using the complete lap-1 seat map. Its objective is a
+short route with low curvature, subject to robot-envelope, pillar, wall,
+tracking-error, steering, curvature, and continuity constraints, with the
+current safe route as fallback. Speed must then depend on route curvature. Lap
+1 may accelerate only outside upcoming camera decision zones and must slow in
+time for reliable two-frame seat detection; laps 2-3 may use higher caps because
+the layout is known. Final parking depends on maintained field localization and
+direct localization of both magenta parking pieces. End-to-end acceptance comes
+last: unpark, localize, three laps, and park.
+
 The five accepted optimizations have now been selectively ported into the
 current `pure-pursuit` workspace without copying the stale obstacle-path state
 from the performance worktree. `Vision` builds an exact 65,536-byte RGB565
@@ -100,6 +119,42 @@ of near-maximum duty. It must exclude target-speed-zero braking/perception
 holds and log its evidence before pausing. Add deterministic logic coverage
 and obtain agreement on a safe physical stall-validation setup; do not
 deliberately drive into a hard field wall.
+
+The approved watchdog correction is implemented in `motor_control.cpp` while
+retaining the former fast >99%-duty/100 ms protection. The new independent
+watchdog arms only when `DC_ENABLED`, target speed and the ramped profile have
+the same direction, and both are at least 80 mm/s. It requires at least 10 mm
+of signed encoder progress per 1.0-second window; reverse rebound does not
+count. A trigger logs progress, elapsed time, target, profile, measured speed,
+and duty, then calls `mode_pause()` for an immediate de-energized stop.
+Target/profile zero, acceleration below the arming speed, direction changes,
+and position holding reset or bypass the watchdog, so perception holds and
+planned braking cannot trigger it.
+
+A startup preflight deterministically checks no-progress expiry, progress
+reset, target-zero disarming, and reverse-motion rejection. A failed preflight
+prevents commanded driving and pauses the mode. The IDE-managed `giga_r1_m7`
+build passed with 361144 bytes RAM and 365704 bytes flash; existing warnings
+are unchanged and no firmware was uploaded. Next, upload only with consent,
+require `[STALL] commanded-motion watchdog preflight: PASS` at startup, and
+agree on a non-destructive physical stall setup before deliberately testing
+the trigger. Do not use a competition-field wall.
+
+`log_114` contains `[STALL] commanded-motion watchdog preflight: PASS` and no
+false stall during the lifted manual-drive check. Since the drive motor cannot
+be isolated safely, do not induce a physical stall; accept the deterministic
+trigger coverage and free-wheel non-trigger test, and use only a future
+incidental stall as physical trigger evidence.
+
+The user's post-save `[GYRO] Main loop did not poll gyro for ...` messages do
+not indicate a BNO085 outage. The same messages in `log_111` occur immediately
+after `SYSTEM DISABLED`, when the asynchronous USB logger performs mount,
+write, `fflush`, close, and verification operations that can block one loop
+iteration for roughly 250-400 ms. `update_gyro()` deliberately recognizes a
+host-loop gap, resets its observation window, and avoids falsely restarting
+the sensor. This occurs with motors disabled and needs no gyro or controller
+change; preserve the message because it distinguishes host blocking from a
+real `[GYRO] Sensor report timeout`.
 
 The separate task `Profile robot loop timing` produced accepted stationary
 changes in branch `perf/loop-camera-optimization` and worktree

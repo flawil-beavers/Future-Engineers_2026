@@ -145,6 +145,14 @@ constexpr auto STATUS_PRINT_INTERVAL_US = 200000; // Print status every 200ms
 constexpr auto STALL_SPEED_THRESHOLD_MMS = 1.0f; // Trigger stall if speed < 1.0 mm/s while demanding high torque
 constexpr auto STALL_DC_THRESHOLD = 0.99; // Trigger at 99% of max DC
 constexpr unsigned long STALL_DETECTION_WINDOW_US = 100000;
+// The fast detector above catches a hard stall only after the controller has
+// reached virtually maximum duty. Also stop when a real motion command makes
+// less than 10 mm of encoder progress in one second, regardless of duty. Both
+// target and ramped profile must be active, so acceleration startup, planned
+// braking, perception holds, and position holding do not arm this watchdog.
+constexpr float STALL_COMMAND_MIN_SPEED_MMS = 80.0f;
+constexpr float STALL_NO_PROGRESS_MIN_DISTANCE_MM = 10.0f;
+constexpr unsigned long STALL_NO_PROGRESS_WINDOW_US = 1000000UL;
 constexpr float HOLD_MAX_DC = 110.0f;
 constexpr float HOLD_OVERLOAD_THRESHOLD = 0.95f;
 constexpr unsigned long HOLD_OVERLOAD_WINDOW_US = 2000000;

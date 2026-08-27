@@ -68,19 +68,45 @@ the field is ready.
 
 ## Next: repair the driving-stall safety watchdog
 
-- [ ] Do not run another powered route test until the stall watchdog is fixed.
-- [ ] Preserve the existing fast maximum-duty overload response, but add a
+- [x] Do not run another powered route test until the stall watchdog is fixed.
+- [x] Preserve the existing fast maximum-duty overload response, but add a
       sustained commanded-motion/no-progress timeout that does not require
       99% motor duty.
-- [ ] Ensure planned stops and perception holds, where target speed is zero,
+- [x] Ensure planned stops and perception holds, where target speed is zero,
       cannot trigger the driving-stall watchdog.
-- [ ] Log the target/profile speed, duty, elapsed time, and measured progress
+- [x] Log the target/profile speed, duty, elapsed time, and measured progress
       when the watchdog pauses the mode.
-- [ ] Add deterministic logic coverage and build with the IDE-managed
+- [x] Add deterministic logic coverage and build with the IDE-managed
       PlatformIO installation.
-- [ ] Agree on a safe physical validation method before deliberately inducing
-      a stall; do not use a hard competition-field wall as the test fixture.
-- [ ] After the watchdog passes, continue with remaining route coverage.
+- [x] Because the drivetrain cannot be disconnected safely, do not induce a
+      physical stall. Accept the deterministic trigger preflight plus the
+      lifted free-wheel no-false-trigger check; never use a hard field wall.
+- [x] Continue with remaining work after the watchdog preflight and lifted test
+      pass; retain the first incidental real stall as trigger confirmation.
+
+## Unparking, localization, and parking-marker robustness
+
+- [ ] Define and document every supported initial parking orientation and
+      position allowed by the rules.
+- [ ] Implement a safe unpark path that leaves the parking area without
+      touching the magenta parking pieces or field walls.
+- [ ] Establish the robot's field pose after unparking rather than assuming the
+      rear axle reached one exact position.
+- [ ] Quantify post-unpark position and heading error for every supported start.
+- [ ] Require localization accuracy sufficient to join the normal Pure Pursuit
+      lap without an abrupt steering correction or wall approach.
+- [ ] Run normal obstacle laps with both magenta parking pieces installed in
+      their competition positions.
+- [ ] Record camera and both raw ToF observations while passing the parking
+      pieces and determine exactly when they can be confused with field walls.
+- [ ] Add localization gating so a ToF return consistent with a known parking
+      piece cannot produce a false wall correction or false field position.
+      Keep the raw range available for collision safety; do not blindly disable
+      the ToF sensor in that area.
+- [ ] Validate the gating from both directions and from plausible localization
+      error bounds, including partial/edge views of a parking piece.
+- [ ] Complete unpark, localization, and three laps with the parking pieces on
+      the field without contact or a false localization jump.
 
 ## Remaining route coverage
 
@@ -89,14 +115,11 @@ the field is ready.
       user before spending more tuning time on it.
 - [ ] Test the maximum pillar count allowed by the rules in CW for three laps.
 - [ ] Test the maximum pillar count allowed by the rules in CCW for three laps.
-- [ ] Cover remaining supported starting and parking-exit configurations.
+- [ ] Cover every supported unparking orientation and resulting lap entry.
 - [ ] Ensure the reliability set represents stations 0, 1, and 2 on both sides.
 - [ ] Exercise bright, dim, shadowed, and edge-clipped pillar views.
 - [ ] Confirm normal operation at a moderately discharged battery level; do not
       begin a multi-lap acceptance run with a nearly empty battery.
-- [ ] Complete ten consecutive full runs without wrong-side passing, moved
-      pillars, wall/pillar contact, intervention, or lap-count errors.
-- [ ] Confirm every accepted run stops under control after exactly three laps.
 
 ## Clearance telemetry follow-up
 
@@ -107,25 +130,67 @@ the field is ready.
 - [ ] Preserve practical safety margin to both pillar and wall; do not tighten
       accepted paths merely because one run had excess space.
 
-## Final speed optimization
+## Route and speed optimization
 
-Start only after the reliability checklist passes at 175 mm/s.
+Start only after the integrated firmware, field localization, parking-marker
+handling, and representative routes work reliably at 175 mm/s.
 
-- [ ] Increase the speed cap in small steps.
-- [ ] At each step, repeat one representative three-lap CW layout.
-- [ ] At each step, repeat one representative three-lap CCW layout.
-- [ ] Move corner slowdown/tuning here; tune curvature speed only after the
-      straight-line cap is selected.
-- [ ] Verify smooth corner deceleration and acceleration without stopping.
-- [ ] Retain camera reliability, tracking accuracy, and pillar/wall clearance.
-- [ ] Stop increasing speed when any safety or reliability margin degrades.
+- [ ] Define hard constraints for route optimization: robot envelope, pillar
+      movement circles, field walls/corners, tracking-error allowance, minimum
+      clearance, steering limit, and maximum curvature/curvature change.
+- [ ] Evaluate and choose an algorithm for laps 2-3 that uses the complete
+      lap-1 seat map to minimize path length and curvature while respecting all
+      hard constraints. Compare at least constrained spline/Bezier smoothing
+      and sampled candidate-path optimization before implementing one.
+- [ ] Make the optimizer deterministic and bounded in memory/runtime, with a
+      validated fallback to the current safe optimized route if it cannot find
+      a feasible path.
+- [ ] Add offline/preflight geometry checks for collision clearance, path
+      continuity, curvature, steering feasibility, and lap-seam continuity.
+- [ ] Use the optimized short/smooth route only on laps 2 and 3, after lap 1
+      has resolved the complete pillar layout.
+- [ ] Generate a curvature-based speed profile along every route, with smooth
+      acceleration/deceleration limits instead of speed steps.
+- [ ] On lap 1, distinguish discovery zones from already-resolved or
+      camera-irrelevant path sections.
+- [ ] Slow lap 1 early enough for reliable two-frame seat detection and retain
+      the bounded unresolved-seat hold.
+- [ ] Increase lap-1 speed only where the camera is not needed for upcoming
+      seat decisions and enough distance remains to slow for the next station.
+- [ ] Permit higher lap-2/3 speed than lap 1 because the seat map is known,
+      while still reducing speed according to curvature and clearance margin.
+- [ ] Increase straight and lap-2/3 speed caps in small steps; do not tune all
+      caps, curvature gain, and route geometry in the same test.
+- [ ] At each accepted step, repeat representative three-lap CW and CCW layouts
+      and compare lap times, maximum curvature, tracking error, and minimum
+      physical/ToF clearance.
+- [ ] Verify smooth corner deceleration and acceleration without stopping and
+      no missed seat decisions on lap 1.
+- [ ] Stop increasing speed when camera reliability, tracking accuracy, motor
+      control, or pillar/wall safety margin degrades.
 
 ## Final parking
 
-Start after the three-lap obstacle run is reliable at the selected speed.
+Start after unparking/localization and the three-lap obstacle route are reliable.
 
-- [ ] Implement correct parking-gap detection and approach.
+- [ ] Determine the parking-place pose from field localization plus direct
+      detection of both magenta parking pieces; do not depend on odometry alone.
+- [ ] Track localization uncertainty through all three laps and decide when a
+      final wall/parking-feature correction is required before parking.
+- [ ] Select and approach the correct parking gap after completing lap 3.
 - [ ] Reverse without touching either magenta boundary.
 - [ ] Finish fully inside the parking rectangle.
 - [ ] Keep the difference between the two side distances at or below 20 mm.
 - [ ] Validate parking after both CW and CCW obstacle runs.
+
+## Final end-to-end reliability
+
+- [ ] Run the complete sequence: parked start, unpark, localize, three obstacle
+      laps with optimized lap-2/3 routes and speeds, then park.
+- [ ] Complete ten consecutive full runs without wrong-side passing, missed or
+      moved pillars, false parking-piece wall corrections, wall/pillar/parking
+      contact, intervention, localization jumps, or lap-count errors.
+- [ ] Cover CW and CCW, supported start configurations, representative legal
+      pillar layouts, and realistic lighting/battery variation in the final set.
+- [ ] Confirm every accepted run stops fully inside the parking area after
+      exactly three laps.
