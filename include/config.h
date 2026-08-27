@@ -308,11 +308,47 @@ constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_FRONT_MM = 125.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM = 40.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM = 135.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM = 247.5f;
-constexpr auto OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM = 45.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 140.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 180.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
+// A short side-ToF return after alignment is expected to be the exact 200 mm
+// open end of the adjacent magenta parking piece, not the more distant outer
+// field wall. Both mirrored exits have validated this geometry. Apply it only
+// when the estimated sensor beam lies over the expected 20 mm magenta piece;
+// the tolerance matches the measured parking-piece placement accuracy.
+constexpr auto OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM = 180.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_BEAM_X_TOLERANCE_MM = 5.0f;
+// ST documents an approximately 22-degree detection volume at a 100 mm
+// target (18 degrees at 1000 mm). Parking-end references are only 40-70 mm
+// away, so use the documented near-target value for the horizontal footprint.
+constexpr auto OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG = 22.0f;
+static_assert(
+    OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG > 0.0f &&
+        OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG < 90.0f,
+    "Parking-exit ToF detection FoV must be a plausible full angle");
+// After the five validated manoeuvre segments, reverse straight until the
+// outer-wall-side ToF crosses the opposite edge of the magenta piece and sees
+// the black wall. Reversing leaves more approach distance for starting-section
+// discovery. This isolated test-stage motion is bounded and cannot start the
+// lap until its swept path has also passed the physical test.
+constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
+constexpr int8_t OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 60.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 200;
+constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM = 190.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM = 400.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES = 2;
+constexpr auto OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM = 50.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM = 25.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM = 25.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_MAX_Y_CORRECTION_MM = 25.0f;
+static_assert(
+    OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == -1 ||
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == 1,
+    "Parking-edge localization direction must be reverse or forward");
 static_assert(
     OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM <
             OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM &&
@@ -458,6 +494,25 @@ constexpr auto OBSTACLE_FIELD_ORIGIN_Y_MM = 0.0f;
 constexpr auto OBSTACLE_CENTERLINE_HALF_EXTENT_MM =
     OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f +
     OBSTACLE_CORNER_RADIUS_MM;
+
+// Rules Figure 4: within the selected starting section, the right magenta
+// parking limitation is fixed immediately to the left of the right-hand
+// dotted section boundary. Only the left limitation moves to create the
+// 1.5*robot-length gap. The canonical frame treats the randomly selected
+// starting section as the south section, so that dotted boundary is x=+500.
+constexpr auto OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM =
+    OBSTACLE_STRAIGHT_LENGTH_MM * 0.5f;
+constexpr auto OBSTACLE_PARKING_LIMIT_THICKNESS_MM = 20.0f;
+constexpr auto OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM =
+    OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM -
+    OBSTACLE_PARKING_LIMIT_THICKNESS_MM;
+constexpr auto OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM =
+    -OBSTACLE_CENTERLINE_HALF_EXTENT_MM -
+    OBSTACLE_CORRIDOR_HALF_WIDTH_MM +
+    OBSTACLE_PARKING_WIDTH_MM;
+constexpr auto OBSTACLE_SOUTH_OUTER_WALL_Y_MM =
+    -OBSTACLE_CENTERLINE_HALF_EXTENT_MM -
+    OBSTACLE_CORRIDOR_HALF_WIDTH_MM;
 
 // If the parking exit is disabled, the code cannot infer which way around
 // the field the car was placed. Set +1 for left/CCW corners or -1 for

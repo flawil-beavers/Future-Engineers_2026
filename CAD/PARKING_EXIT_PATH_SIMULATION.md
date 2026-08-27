@@ -28,6 +28,15 @@ The opposite driving direction uses the same geometry mirrored laterally. In
 firmware, mirroring is achieved by reversing the sign of every nonzero
 steering command.
 
+The simulation uses parking-local coordinates, but production localization
+transforms them into the canonical field frame according to Rules Figures 3
+and 4. The randomly selected starting section is treated as the canonical
+south section. Its straight runs from `x=-500` to `x=+500`; the right magenta
+piece is fixed immediately left of the `x=+500` dotted boundary, spanning
+`x=480..500`. The variable left piece is placed one parking-gap length farther
+left. The open ends of both pieces are at canonical `y=-1300`, 200 mm inward
+from the outer wall at `y=-1500`.
+
 ## 3. Prototype geometry
 
 | Input | Value |
@@ -124,10 +133,13 @@ firmware-sized segments.
 
 ## 7. Selected prototype path
 
-The selected start has 45 mm between the robot's rearmost point and the rear
-magenta block's inside face. With the nominal 247.5 mm gap, this leaves 37.5 mm
+The selected start has 50 mm between the robot's rearmost point and the rear
+magenta block's inside face. With the nominal 247.5 mm gap, this leaves 32.5 mm
 in front. The side of the straight robot is placed at the parking opening, as
 far from the black wall as possible while remaining inside the parking lot.
+This is 5 mm farther forward than the first successful tests, giving the first
+reverse movement more physical and placement-error clearance. The revised
+start still passes all 16 modeled tolerance combinations.
 
 Controls below are relative to the outer wall:
 
@@ -188,6 +200,13 @@ combines former segments 5-7 into one continuous final arc. This reduces two
 unnecessary stops and lets the gyro finish parallel outside the parking lot.
 It is not physically accepted until the new five-segment isolated test passes.
 
+`log_122.txt` physically accepts the five-segment route from the former 45 mm
+rear-clearance placement. Segment 5 aligned successfully after 162.6 mm and
+the final logged heading error after braking was 0.9 degrees. The complete exit
+had no contact or intervention. Its right ToF ended at 69 mm while the sensor
+was positioned over the adjacent magenta piece, making the exact 200 mm open
+end a useful candidate field reference.
+
 ## 9. Running and updating the simulation
 
 The script uses only the Python standard library:
@@ -207,3 +226,44 @@ Re-run and physically revalidate the path whenever any of these changes:
 Before final competition acceptance, replace the approximate footprint with
 measurements from commanded `-50`, `0`, and `+50` overhead photographs and
 validate the complete path in both mirrored directions.
+
+## 10. Rules-aware post-exit pose
+
+The fixed right piece makes the parked start coordinate known even though the
+parking lot is not centred on the straight. With the 247.5 mm prototype gap and
+50 mm rear clearance, the canonical rear-axle starts are:
+
+- CCW/east: `(322.5, -1362.5, 0 degrees)`.
+- CW/west: `(390.0, -1362.5, 180 degrees)`.
+
+Encoder/gyro odometry carries the along-straight `x` coordinate through the
+five-segment exit. At the aligned end, the outer-wall-side ToF measures the
+exact `y=-1300` parking-piece end. Firmware heading-compensates that range and
+corrects only field `y`; it retains odometry `x`. Before applying that
+correction, it transforms the sensor's documented 22-degree near-range
+detection footprint into field `x` from the estimated rear-axle pose, heading,
+calibrated sensor origin, and measured range. The CCW/right-sensor footprint
+must intersect the fixed piece at `x=480..500`; the CW/left-sensor footprint
+must intersect the moving piece at `x=212.5..232.5`. Both checks allow 5 mm
+for the measured placement tolerance. A short return whose footprint misses
+the expected interval is logged but cannot alter the pose. This avoids the invalid old
+assumption that every exit starts at the midpoint of the 1000 mm straight.
+The full corrected pose is logged before any Pure Pursuit join is enabled.
+
+The active x-localization implementation retains the ruler-validated 50 mm
+rear placement for departure safety. After final alignment and the magenta-end
+y reference, the robot centres its steering and reverses at 60 mm/s for at
+most 60 mm. This crosses the opposite edge of the same magenta piece and also
+leaves additional forward approach distance for the later starting-section
+discovery connector. Only returns no more than 50 mm beyond the initial
+magenta range can update the last marker observation. Intermediate oblique
+returns are ignored. Two fresh raw ranges in `190..400 mm` must also agree
+within 25 mm with the wall distance predicted from the current field pose.
+
+Because the crossing direction changed, the referenced edges also change. A
+CCW reverse uses the fixed piece's `x=480` edge and the maximum x edge of the
+ToF footprint. A CW reverse uses the moving piece's `x=232.5` prototype edge
+and the minimum x edge of the footprint. X and wall-derived y corrections are
+each bounded to 25 mm. The swept model includes the complete 60 mm reverse and
+passes all 16 gap/placement/heading tolerance cases. The movement must still
+be physically accepted in both directions before joining the lap.

@@ -129,21 +129,110 @@ the field is ready.
       passes all 16 gap/placement/heading tolerance combinations.
 - [x] Build the five-segment isolated firmware with the IDE-managed PlatformIO
       installation; no firmware was uploaded.
-- [ ] Test the five-segment isolated exit. Segment 5 may stop after 120 mm once
+- [x] Test the five-segment isolated exit. Segment 5 may stop after 120 mm once
       gyro heading error is within 2 degrees and is bounded at 180 mm. Require
-      `aligned=yes`, no contact/intervention, and positive clearance.
-- [ ] Repeat the complete isolated exit in the same direction and require no
-      contact plus final heading error within 2 degrees.
-- [ ] Mirror the complete isolated exit in the opposite official direction
+      `aligned=yes`, no contact/intervention, and positive clearance. `log_122`
+      passed after 162.6 mm with 0.9 degrees final error.
+- [x] Move the nominal start 5 mm forward: use 50 mm from the rearmost robot
+      point to the rear marker and 32.5 mm nominal front clearance. The updated
+      model still passes all 16 tolerance combinations.
+- [x] Add diagnostic-only post-exit logging for the outer-wall-side ToF when it
+      faces the exact 200 mm end of a magenta piece. Log filtered/raw range,
+      signal, sigma, inferred rear-axle distance beyond the parking end, and
+      remaining distance to the field centreline; do not apply a pose reset yet.
+- [x] Build the revised firmware without uploading.
+- [x] Fix the post-alignment drift exposed by `log_123`: centre the steering
+      immediately at the gyro trigger before engaging the encoder-position
+      hold. The ToF sample itself was strong, but 2.3 degrees stopped heading
+      made the diagnostic correctly report `usable=no`.
+- [x] Build the steering-centering fix without uploading.
+- [x] Repeat the complete isolated exit in the same direction from the new
+      50/32.5 mm placement. Require no contact, final error within 2 degrees,
+      and a usable `[PARK EXIT TOF REF]` result consistent with the observed
+      magenta-piece end. `log_125` passed with 0.4 degrees stopped error and a
+      63 mm right-ToF reference estimating 98.3 mm beyond the parking end.
+- [x] Mirror the complete isolated exit in the opposite official direction
       from the same proportional gap and placement tolerances. Require no
       contact and final heading error within 2 degrees before connecting either
-      exit to field localization.
+      exit to field localization. `log_126` passed with 0.9 degrees final error
+      and a usable 44 mm left-ToF parking-end reference.
 - [ ] Repeat and accept the isolated exit with the finalized robot length and
       official marker separation before allowing it to join the lap route.
 - [ ] Implement and physically validate the safe multi-point unpark path at
       low speed without touching either magenta piece or a field wall.
 - [ ] Establish the robot's field pose after unparking rather than assuming the
       rear axle reached one exact position.
+- [x] Replace the incorrect midpoint assumption with Rules Figure 4 geometry:
+      the right magenta piece is fixed immediately left of the right dotted
+      section boundary and the left piece moves according to robot length.
+- [x] Initialize the canonical parked pose from that fixed boundary, integrate
+      encoder/gyro odometry through the exit, and apply only the validated ToF
+      correction normal to the exact 200 mm parking-piece end.
+- [x] Gate that ToF correction by the odometry-derived sensor-beam position:
+      accept it only over the expected 20 mm parking-limit piece, with 5 mm
+      placement tolerance, so an unrelated short return cannot move the pose.
+- [ ] Run the unchanged isolated exit once in each direction and verify
+      `[PARK FIELD START]`, `[PARK EXIT TOF REF] beam_over_piece=yes`
+      plus `usable=yes apply_y=yes`, and
+      `[PARK EXIT FIELD POSE]` against the physical placement before building a
+      Pure Pursuit connector to the normal field route. `log_127` and
+      `log_128` completed and aligned without physical contact, but both
+      correctly left
+      `apply_y=no`: the current gate tests only the centre ray, whereas the
+      measured returns came from the finite ToF field of view.
+- [x] Replace the centre-ray check with the documented 22-degree near-range
+      ToF detection footprint and require that footprint to intersect only the
+      expected piece. Replaying logs 127/128 predicts intersections in both
+      directions; the firmware builds successfully without an upload.
+- [x] Repeat the unchanged isolated exit once in each direction. Require no
+      contact, `beam_over_piece=yes usable=yes apply_y=yes`, and plausible
+      corrected field poses before implementing the Pure Pursuit connector.
+      `log_129` (CCW) and `log_130` (CW) passed all firmware criteria, and the
+      user confirmed no physical contact in either run.
+- [ ] Remove the exact parked-pose assumption. At minimum initialize lateral
+      `y` from the near outer-wall ToF. Select and validate one longitudinal
+      strategy: a visually indicated safe start band plus post-exit magenta-edge
+      localization (preferred), close-range camera localization, or added
+      front/rear ranging hardware.
+- [x] Implement the ruler-assisted version of the preferred strategy: retain
+      the validated 50 mm rear placement, initialize start `y` from the near
+      wall ToF, and add a test-only 60 mm/s straight edge search after the
+      five-segment exit. Reject x/y corrections larger than 25 mm.
+- [x] Build the isolated edge-localization firmware without uploading.
+- [ ] Test the new post-exit creep in one direction only. Require no contact,
+      `transition=yes`, both
+      corrections applied within 25 mm, a plausible final pose, and the usual
+      test-only motor lock. Logs 131/132 exposed premature acceptance of
+      195/210 mm edge returns; repeat after the corrected wall-consistency gate.
+- [x] Preserve only genuinely short magenta samples, ignore intermediate
+      oblique returns, require two wall readings within 25 mm of the
+      pose-predicted wall distance, and increase the hard creep bound to 60 mm
+      so the full ToF cone can clear the magenta piece. Build without upload.
+- [x] Use the newest sample in the confirmed wall-frame sequence for the y
+      correction. `log_133` showed that using the first qualifying 239 mm
+      transition sample discarded a later stable 259 mm wall return.
+- [x] Replace the forward edge search with the user's proposed bounded straight
+      reverse. Reference the opposite edge of the same magenta piece and keep
+      the lap lockout enabled. The swept model passes all 16 existing
+      gap/placement/heading tolerance cases through the full 60 mm reverse.
+- [ ] Physically validate the reverse edge search in CCW and CW with no
+      pillars. Require no contact, `direction=reverse`, `transition=yes`, a
+      pose-consistent wall sequence, bounded x/y corrections, and the test-only
+      motor lock before implementing the starting-section discovery connector.
+- [ ] Before implementing that join, handle the legal signs in the parking
+      section: the rules move them to the seats nearer the inner wall rather
+      than removing them. Resolve the first relevant inner seat before
+      committing to its red/green passing side.
+- [ ] Compare two low-speed discovery connectors in the swept-envelope model:
+      a cautious outer-side turn that brings the first inner seat into view,
+      and a straight reverse that retains the forward camera view. Do not
+      physically reverse after the exit until the complete robot envelope has
+      positive clearance from both open magenta ends. An outer-wall ToF range
+      alone does not prove this clearance.
+- [ ] If using the current five-segment path, keep initial longitudinal
+      placement inside its modeled safe band. The current model passes all 16
+      tolerance cases at nominal 45 and 50 mm rear clearance, but not across
+      the complete possible parking-gap range.
 - [ ] Quantify post-unpark position and heading error for every supported start.
 - [ ] Require localization accuracy sufficient to join the normal Pure Pursuit
       lap without an abrupt steering correction or wall approach.

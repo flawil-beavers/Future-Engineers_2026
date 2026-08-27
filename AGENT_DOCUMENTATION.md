@@ -33,6 +33,241 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Reverse parking-edge localization prepared
+
+`D:\log_134.txt` physically passed the mirrored CW forward-edge-search run
+without contact. The five exit segments aligned within 1.9 degrees and the
+pink-end reference was usable. Edge search transitioned after 29.2 mm, but its
+newest accepted wall sample was 219 mm against a 236.9 mm prediction. The
+17.9 mm residual passed the current gate, although it still looks like a
+transitional return rather than a settled black-wall measurement. This
+reinforces the user's proposal to cross the other magenta edge instead of
+continuing forward.
+
+The isolated localization movement now reverses straight at 60 mm/s for no
+more than 60 mm after the unchanged five-segment exit. CCW uses the fixed
+piece's opposite `x=480` edge and the ToF footprint maximum; CW uses the moving
+prototype piece's opposite `x=232.5` edge and the footprint minimum. The
+existing two-frame wall consistency gate, newest-sample correction, 25 mm
+correction bounds, and test-only motor lock remain active. The offline swept
+model now includes this reverse and passes all 16 existing
+gap/placement/heading tolerance scenarios.
+
+The IDE-managed `giga_r1_m7` build passed with 361224 bytes RAM and 371496
+bytes flash; existing warnings are unchanged.
+
+This short reverse improves parking-edge localization and leaves somewhat more
+approach distance, but it does not by itself make every legal starting-section
+inner seat visible. The nearest relevant seat can remain over 40 degrees off
+the camera axis. Do not enable the lap immediately after the reverse. First
+physically validate the reverse in both directions with no pillars; then add a
+direction-specific low-speed discovery connector which resolves the upcoming
+inner-row seat before choosing the red/green side. The other sections already
+use the normal full six-seat discovery logic. No firmware was uploaded.
+
+---
+
+## 2026-08-27 - Corrected CCW edge search passes gates; start-section sign needs discovery
+
+`D:\log_133.txt` completed the corrected 60 mm parking-edge search in CCW
+without a reported contact and reached the test-only motor lock. It preserved
+the last genuine 67 mm magenta return, rejected intermediate returns, and
+accepted two pose-consistent wall frames after 29.0 mm. The result applied
+`x=-5.9 mm` and `y=-21.1 mm`, producing pose
+`(497.0,-1225.0,358.2 degrees)`. The accepted 239 mm wall return was only
+21.2 mm from the 260.2 mm prediction and therefore passed the present 25 mm
+gate, but the stationary raw return later became 259 mm. Treat the y
+correction as technically gated but not yet a precise wall measurement; before
+the pose feeds the lap, retain the newest confirmed wall sample rather than
+saving the first qualifying frame. This was implemented without changing the
+two-frame confirmation count, residual gate, motion, or correction bounds.
+
+The rules do not remove signs from the parking section. After placing the
+parking lot, every sign in that section is shifted to the seat nearer the inner
+wall. With the current canonical CCW geometry, the parking-end station's legal
+inner seat is approximately `(500,-900)`, while log 133 ended around
+`(497,-1225)` facing east. A sign there is about 325 mm laterally left of the
+robot and outside the forward camera view. The normal lap connector must not
+assume that the starting section is clear or commit to a red/green passing side
+before this station is resolved.
+
+Straight reversing while retaining the forward camera could eventually make
+that seat visible, but it needs roughly 0.5--0.65 m to bring the whole pillar
+inside the currently trusted/full camera angle. The present post-exit body
+pose has only a small modeled margin past the open ends of the magenta pieces;
+an outer-wall ToF measurement does not prove rear-corner clearance from those
+ends. Do not add or physically test that reverse until its complete swept body
+envelope is checked. Compare it against a cautious outer-side discovery
+connector that turns enough to view the inner seat while preserving a route
+that remains recoverable for either pillar colour. Ask the user before choosing
+between these materially different manoeuvres.
+
+Exact next powered validation remains the corrected edge search in the mirrored
+CW direction, with no pillars and no lap join. No firmware was uploaded during
+this investigation. The IDE-managed `giga_r1_m7` build passed with 361224
+bytes RAM and 371464 bytes flash; existing warnings are unchanged.
+
+---
+
+## 2026-08-27 - Edge localization rejects transitional returns correctly
+
+`log_131.txt` (CW) and `log_132.txt` (CCW) both completed the added creep and
+test lock, with no contact reported. They did not validate black-wall
+localization. CW accepted a 195 mm transitional return after 19.5 mm, although
+the accepted pose predicted roughly 239 mm to the wall; it applied an
+unreliable -15.3 mm x correction and correctly rejected a -43.5 mm y
+correction. CCW accepted 210 mm after 27.5 mm while the pose predicted roughly
+268 mm; its +3.4 mm x correction was applied, and the -57.9 mm y correction
+was rejected. The existing 25 mm y bound therefore prevented bad wall fixes,
+but the fixed 190 mm threshold and classification of every <=180 mm sample as
+magenta were insufficient.
+
+The next firmware keeps only ranges up to 50 mm beyond the initially accepted
+magenta-end range as marker observations. Longer intermediate/oblique returns
+cannot move the marker edge. A wall candidate must be in 190..400 mm and agree
+within 25 mm with the central-ray wall distance predicted from current pose;
+two fresh frames remain mandatory. X is now calculated at the last genuine
+magenta pose rather than the midpoint to a premature wall observation. The
+creep hard limit is 60 mm because at a 240-270 mm wall distance the 22-degree
+cone is roughly 47-52 mm wide and can continue overlapping a 20 mm pink piece
+after its centre has passed it.
+
+The IDE-managed `giga_r1_m7` build passed with 361224 bytes RAM and 371464
+bytes flash; existing warnings are unchanged. No firmware was uploaded. Next,
+repeat CW only with the same ruler placement and no pillars. Require two
+pose-consistent wall frames, both bounded corrections, no contact, and a final
+test lock before mirroring or joining Pure Pursuit.
+
+---
+
+## 2026-08-27 - Ruler-assisted active parking-edge localization implemented
+
+The user will retain ruler placement for the current prototype, so departure
+safety still uses the validated nominal 50 mm rear clearance. Firmware no
+longer assumes the nominal lateral coordinate: once the near ToF identifies
+the outer-wall side, `initializeParkingFieldPose()` calculates rear-axle y as
+canonical outer-wall y plus measured range plus the 35 mm sensor offset. The
+chosen range and `start_y_source` are logged.
+
+After the unchanged five-segment exit aligns and accepts its magenta-end
+reference, a new isolated state-machine phase centres steering, settles for
+200 ms, and creeps straight at 60 mm/s. It watches fresh ToF frame sequence
+numbers rather than counting the same sample repeatedly. The last <=180 mm
+magenta sample and first two raw wall samples in `190..400 mm` bracket the
+transition; motion stops at confirmation or a hard 30 mm travel limit. The
+known fixed edge is x=500 for CCW and the known moving-piece outer edge is
+x=212.5 for the current CW prototype. The cone edge at the transition produces
+an x correction, while the wall range produces y. Each correction is applied
+only if its magnitude is <=25 mm. Logs are `[PARK LOCALIZE]`,
+`[PARK LOCALIZE RESULT]`, and `[PARK LOCALIZE POSE]`.
+
+This is deliberately still guarded by `OBSTACLE_PARKING_EXIT_TEST_ONLY=true`:
+it cannot start the lap after the new movement. The IDE-managed `giga_r1_m7`
+build passed with 361216 bytes RAM and 370944 bytes flash; existing warnings
+are unchanged. No firmware was uploaded. Next, perform one same-placement
+isolated test in one direction. Require no contact, a short transition before
+30 mm, corrections within their bounds, and final motor lock. Review that log
+before running the mirrored direction or implementing a Pure Pursuit join.
+
+---
+
+## 2026-08-27 - Cone-gated parking pose passes; start-x remains unobservable
+
+`log_129.txt` passed the CCW firmware criteria: final heading error was 1.8
+degrees, the right-ToF footprint `x=496.3..518.4` intersected the fixed
+`480..500` piece, and the 58 mm return applied a +7.6 mm field-y correction.
+The resulting pose was `(470.2,-1205.8,358.2)`. `log_130.txt` passed the CW
+criteria: final error 0.2 degrees, left-ToF footprint `198.4..216.3`
+intersected the variable `212.5..232.5` piece, and the 47 mm return applied a
++4.8 mm y correction. Its pose was `(247.1,-1217.8,180.1)`. Both logged
+`beam_over_piece=yes usable=yes apply_y=yes`. The user confirmed that both
+specific runs completed without physical contact. The cone-gated post-exit
+field-y reference is therefore accepted in both directions.
+
+The parked pose is not fully observable from the current stationary sensors.
+The near side ToF identifies direction and can calculate rear-axle `y` from
+the known outer wall, but neither side-facing ToF measures longitudinal `x`
+between the two magenta pieces. The camera faces the forward piece, but its
+aperture is at the current foremost coordinate and the nominal face is only
+about 32.5 mm away, outside the existing pillar-distance calibration and
+requiring a dedicated close-range magenta test.
+
+A direct sweep of the tracked footprint model shows why software localization
+alone cannot permit arbitrary placement with the current fixed manoeuvre. The
+five-segment route passes all 16 existing gap/pose/heading tolerance cases at
+nominal rear clearances of 45 and 50 mm. It passes only 8/16 at 40 mm, 12/16 at
+55 mm, and progressively fewer outside that region. Therefore the simplest
+recommended approach is: put visible marks on the robot for a broad accepted
+45-50 mm rear-clearance band (no ruler needed); initialize `y` from the outer
+wall ToF; execute the validated exit; then determine `x` from the known
+magenta-piece edge as the side-ToF footprint leaves it, and refresh `y` from
+the outer-wall return. Gyro supplies heading, with consecutive wall ranges
+available as an optional heading-consistency check. This avoids a general
+particle filter and does not require exact operator measurement, while still
+respecting the route's collision envelope.
+
+Other viable choices are a dedicated close-range magenta camera observation
+before moving, front/rear ranging hardware for arbitrary placement, or a small
+post-exit map-matching search over possible start-x hypotheses. Camera and
+map-matching still need a safe initial placement band unless the unpark route
+itself becomes adaptive. Contact/stall homing against a magenta piece is not a
+safe competition strategy. Await the user's choice before implementing the
+localization architecture.
+
+---
+
+## 2026-08-27 - Parking-end ToF beam gate ready for physical validation
+
+`log_127.txt` and `log_128.txt` completed the CW and CCW exit state machines
+with final heading errors of 1.5 and 0.1 degrees. The user confirmed that both
+exits made no contact with either magenta piece or the wall. Their strong,
+short ToF returns
+were intentionally rejected by the new centre-ray gate. CW reported the left
+sensor at `x=201.8` against the variable piece at `212.5..232.5`; CCW reported
+the right sensor at `x=507.5` against the fixed piece at `480..500`. Both
+therefore logged `beam_over_piece=no usable=no apply_y=no`; no erroneous pose
+correction was applied.
+
+This does not show that the returns came from another object. The VL53L4CX has
+a finite optical field of view, while the implemented gate treated it as an
+infinitely thin centre ray. At the logged 57 and 68 mm ranges, the piece edges
+were only 10.7 and 7.5 mm from the respective centre rays, consistent with an
+edge return inside the sensor cone plus the measured placement tolerance. The
+implementation now transforms both horizontal edges of the documented
+22-degree near-range detection cone into field coordinates and requires that
+footprint to intersect the expected 20 mm piece. It does not merely increase a
+fixed centre-ray tolerance. Replaying the two end poses predicts CW footprint
+`x=192..214` intersecting `212.5..232.5`, and CCW footprint `x=495..521`
+intersecting `480..500`. Logs now include both the centre endpoint as
+`beam_x_mm` and the interval as `beam_footprint_x_mm`. The IDE-managed
+`giga_r1_m7` build passed with 361168 bytes RAM and 368856 bytes flash;
+existing warnings are unchanged and no firmware was uploaded. Repeat both
+isolated directions before enabling a Pure Pursuit connector.
+
+The visible stop between forward segments 4 and 5 is intentional in the
+current validated manoeuvre. Every segment uses a 300 ms encoder-position hold
+followed by a 400 ms steering-settle period. Segments 4 and 5 are both forward,
+but steering changes directly from full lock away from the wall to full lock
+toward it; moving during that servo sweep would create a path not covered by
+the swept-footprint validation. This pause may be optimized later only after a
+continuous steering-transition path is modeled and physically validated.
+
+The rules-aware field-pose correction requires more than a short ToF range and
+an aligned robot. For CCW the right-sensor footprint must intersect the fixed
+`x=480..500` piece; for CW the left-sensor footprint must intersect the
+variable `x=212.5..232.5` piece. Both intervals allow the user's measured
++/-5 mm placement tolerance. `usable=yes` and `apply_y=yes` are impossible
+unless this geometry gate passes. The exit path and test-only lockout are
+unchanged. No firmware was uploaded. Next, after user-controlled upload,
+repeat the isolated exit in both directions. A
+CCW run should start at `(322.5,-1362.5,0)` and report a beam over
+`480..500`; a CW run should start at `(390.0,-1362.5,180)` and report a beam
+over `212.5..232.5`. Require no contact, final heading error <=2 degrees,
+`beam_over_piece=yes usable=yes apply_y=yes`, and a physically plausible
+`[PARK EXIT FIELD POSE]`. Do not join the lap until both pass.
+
+---
+
 ## 2026-08-27 - Prototype footprint photos and staged multi-point unpark
 
 The user supplied three square-ish top-down photographs in the gitignored
@@ -154,6 +389,120 @@ The IDE-managed `giga_r1_m7` build passed with 361160 bytes RAM and 366992
 bytes flash; existing warnings are unchanged. The generated SVG parses as
 valid XML. No firmware was uploaded. The next action is now the user-controlled
 upload and same-direction isolated five-segment test described above.
+
+`log_122.txt` accepts that five-segment same-direction exit physically. The
+first four actual travels were 21.8, 28.2, 22.0, and 79.5 mm. The continuous
+fifth arc started from about 75.4 degrees, reached `aligned=yes` after 162.6 mm,
+and settled at 0.9 degrees final heading error. The robot cleared both pieces
+and the wall without contact or intervention. The final right ToF was 69 mm,
+compared with 109 mm at the parked start.
+
+The user observed that the robot should begin slightly farther forward than
+the middle to give its first reverse move more room. The nominal placement is
+now shifted 5 mm forward: 50 mm from the robot's rearmost point to the rear
+magenta inside face and 32.5 mm from its foremost point to the front face in
+the 247.5 mm gap. This is deliberately a small change because placement
+accuracy itself is about +/-5 mm. The updated five-segment path still passes
+all 16 modeled tolerance cases, and the SVG was regenerated from that pose.
+
+The user's ToF observation is geometrically useful. At the aligned exit the
+outer-wall-side sensor lies over the adjacent magenta piece and faces its exact
+200 mm open end. Firmware now logs a diagnostic-only `[PARK EXIT TOF REF]`
+record containing filtered/raw range, signal, sigma, and a heading-compensated
+estimate of how far the rear axle is beyond that end. It also reports remaining
+distance from that estimate to the 500 mm corridor centreline. The calculation
+uses the measured sensor origin at local x=40 mm and lateral offset=35 mm. A
+range above 180 mm or final heading error above 2 degrees is marked unusable.
+No position reset is applied yet: the beam-to-piece assumption must first be
+confirmed in both mirrored directions.
+
+The IDE-managed build passed at 361160 bytes RAM and 367656 bytes flash; no
+firmware was uploaded. Next, perform one same-direction isolated exit from the
+new 50/32.5 mm placement. Require safe clearance, `aligned=yes`, and a usable
+ToF reference whose inferred geometry agrees with the physical pose. If it
+passes, repeat mirrored; only then apply this observation to the production
+field pose and join the Pure Pursuit lap.
+
+`log_123.txt` again completed the five-segment exit without a reported motion
+failure. It triggered final alignment at 163.1 mm and 1.6 degrees, but travelled
+about 2 mm farther while the wheels remained at full lock and settled at -2.3
+degrees. The ToF evidence itself was high quality: right filtered/raw 77/77 mm,
+16.00 Mcps signal, and 1.2 mm sigma. It implied the rear axle was 113.5 mm
+beyond the parking-piece end and 186.5 mm short of the centreline. The
+diagnostic correctly returned `usable=no` solely because stopped heading error
+exceeded 2 degrees; it did not apply a pose correction.
+
+The final-segment transition now commands steering zero directly before
+calling `stop(true)`. This removes full-lock curvature while the encoder hold
+absorbs the final settling motion; intermediate segment behaviour is unchanged.
+The IDE-managed build passed with 361160 bytes RAM and 367672 bytes flash.
+No firmware was uploaded. Repeat the same isolated 50/32.5 mm placement and
+require stopped heading <=2 degrees plus `[PARK EXIT TOF REF] ... usable=yes`.
+
+`log_125.txt` accepts the steering-centering correction and the same-direction
+ToF reference. The fifth segment triggered at 164.8 mm/1.9 degrees and settled
+after only another 0.3 mm at -0.4 degrees, eliminating the full-lock drift from
+`log_123`. The right ToF returned filtered/raw 63/63 mm, 18.02 Mcps signal, and
+1.2 mm sigma. It estimated the rear axle 98.3 mm beyond the exact parking end
+and 201.7 mm short of the centreline, reported `usable=yes`, and still applied
+no localization correction. No firmware change or upload is required next.
+
+Next, mirror the isolated test physically: point the robot in the opposite
+official driving direction, keep the 247.5 mm gap, use 50 mm behind the robot
+and 32.5 mm in front relative to that new direction, and keep its inner side at
+the 200 mm opening. The same firmware should identify the left wall, invert
+every steering command, finish within 2 degrees, and report a usable left-ToF
+parking-end reference. Require no contact or intervention before allowing the
+reference to influence production field localization.
+
+`log_126.txt` accepts the fully mirrored five-segment exit and left-ToF
+reference. It correctly identified the left wall, inverted every steering
+command, aligned after 143.6 mm, and settled at 0.9 degrees final error. The
+left ToF returned filtered/raw 44/44 mm, 17.24 Mcps signal, and 1.1 mm sigma;
+it inferred 79.6 mm beyond the parking end and 220.4 mm remaining to the
+centreline with `usable=yes`. No contact or intervention was reported. The
+shorter final arc than the right-wall case is consistent with the measured
+left/right full-lock asymmetry; gyro termination handled it correctly.
+
+Both directions now validate the side-ToF method for the coordinate normal to
+the parking-piece end. The right-wall exit estimated 201.7 mm to centreline and
+the mirrored left-wall exit 220.4 mm, so production joining should use the
+measured value rather than one fixed post-exit distance. Do not yet infer the
+coordinate along the straight from the ToF range alone: the range fixes
+distance normal to the 200 mm end face, while the beam merely constrains its
+along-straight coordinate to the 20 mm magenta-piece width. Confirm the field
+coordinate of that piece (including whether the parking gap is centred along
+the 1000 mm straight) before applying a complete field pose.
+
+The rules resolve that coordinate. Figures 3 and 4 do not centre the parking
+gap: the right magenta limitation is fixed beside the right-hand dotted
+boundary of the selected straight, and the left limitation moves to make
+`1.5 * robot length`. Figure 8d randomizes which of the four sections is the
+starting/parking section, not the gap's position within that section. Because
+the field is rotationally symmetric, firmware continues to treat the selected
+section as canonical south. The right dotted boundary is canonical x=+500; as
+drawn, the 20 mm fixed piece occupies x=480..500, and the piece ends are at
+y=-1300 relative to the outer wall at y=-1500.
+
+The old `nominalFieldStartPose()` midpoint reset must not be used after the
+parking exit. The isolated firmware now initializes the real parked rear-axle
+pose when the nearer wall establishes direction. For the 247.5 mm gap, 50 mm
+rear clearance, 40 mm rear overhang, and 125 mm straight wheel width, the
+canonical starts are `(322.5,-1362.5,0)` for CCW/east and
+`(390.0,-1362.5,180)` for CW/west. Encoder/gyro odometry then carries x and
+heading through the exit. A usable parking-end ToF measurement corrects only y
+to `-1300 + rear_beyond_end`; it cannot observe exact along-face x. New logs
+are `[PARK FIELD START]`, `[PARK EXIT TOF REF] ... apply_y=yes`, and
+`[PARK EXIT FIELD POSE]`.
+
+This pose correction is currently safe to test because
+`OBSTACLE_PARKING_EXIT_TEST_ONLY` remains true: it changes localization and
+logging but cannot start the lap or alter the validated exit controls. The
+IDE-managed build passed with 361168 bytes RAM and 368224 bytes flash; no
+firmware was uploaded. Next, repeat one isolated exit in each direction and
+validate the logged field poses. Only then replace the production midpoint
+reset and construct a Pure Pursuit connector from the measured exit pose to the
+correct point on the canonical lap route.
 
 ---
 

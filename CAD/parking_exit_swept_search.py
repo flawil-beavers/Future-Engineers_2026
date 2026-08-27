@@ -310,6 +310,13 @@ SELECTED_CONTROLS = (
     (+1, +50, 140.0),
 )
 
+# Test-only straight reverse after the five exit segments. Firmware may stop
+# sooner when two wall frames confirm that the side-ToF cone has crossed the
+# opposite magenta-piece edge.
+SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
+    (-1, 0, 60.0),
+)
+
 
 def build_segments(start, controls=SELECTED_CONTROLS):
     pose = start
@@ -344,7 +351,7 @@ def svg_polygon(points, tx, ty, **attrs):
 
 
 def write_svg(start, output_path):
-    path, endpoints = sampled_path(start)
+    path, endpoints = sampled_path(start, SELECTED_WITH_REVERSE_LOCALIZATION)
     x_min, x_max = -35.0, 370.0
     y_min, y_max = -10.0, 370.0
     width, height = 850.0, 800.0
@@ -356,10 +363,11 @@ def write_svg(start, output_path):
     out = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 800" '
         'role="img" aria-labelledby="title desc">',
-        '<title id="title">Five-segment parking exit path</title>',
+        '<title id="title">Parking exit and reverse localization path</title>',
         '<desc id="desc">Top-down geometry of the two magenta parking pieces, '
         'outer wall, rear-axle path, and robot footprint at the start, after '
-        'segment four, and parallel outside the parking lot.</desc>',
+        'segment four, parallel outside the parking lot, and after the bounded '
+        'reverse localization movement.</desc>',
         '<rect width="850" height="800" fill="#ffffff"/>',
         f'<line x1="{tx(x_min):.1f}" y1="{ty(0):.1f}" '
         f'x2="{tx(x_max):.1f}" y2="{ty(0):.1f}" stroke="#111827" '
@@ -386,7 +394,8 @@ def write_svg(start, output_path):
 
     shown = (("Start", start, 0),
              ("After segment 4", endpoints[3], -50),
-             ("Parallel outside", endpoints[4], +50))
+             ("Parallel outside", endpoints[4], +50),
+             ("Reverse localization limit", endpoints[5], 0))
     for label, pose, steering in shown:
         for poly in robot_polygons(pose, steering, 0.0):
             out.append(svg_polygon(poly, tx, ty, fill="#22c55e",
@@ -421,7 +430,7 @@ def write_svg(start, output_path):
 
 
 def report_selected():
-    start = Pose(ROBOT_REAR_MM + 45.0, PARKING_DEPTH_MM - 62.5, 0.0)
+    start = Pose(ROBOT_REAR_MM + 50.0, PARKING_DEPTH_MM - 62.5, 0.0)
     segments = build_segments(start)
     print("selected five-segment candidate")
     print(f"  start rear_axle=({start.x:.1f},{start.y:.1f})")
@@ -431,10 +440,20 @@ def report_selected():
               f"({pose.x:.1f},{pose.y:.1f},{pose.heading_deg:.1f}deg)")
     passed, total = validate_segments(start, segments)
     print(f"  tolerance_scenarios={passed}/{total}")
+    localized_segments = build_segments(
+        start, SELECTED_WITH_REVERSE_LOCALIZATION)
+    localized_pose = localized_segments[-1][3]
+    reverse_passed, reverse_total = validate_segments(
+        start, localized_segments)
+    print("  reverse localization limit -> "
+          f"({localized_pose.x:.1f},{localized_pose.y:.1f},"
+          f"{localized_pose.heading_deg:.1f}deg)")
+    print("  exit_plus_reverse_tolerance_scenarios="
+          f"{reverse_passed}/{reverse_total}")
     output = Path(__file__).with_name("parking_exit_path.svg")
     write_svg(start, output)
     print(f"  diagram={output}")
-    return passed == total
+    return passed == total and reverse_passed == reverse_total
 
 
 def search_alternatives():
