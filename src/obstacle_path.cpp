@@ -505,11 +505,36 @@ bool nearCorner(float pathDistance)
 
 void recomputeSpeedProfile(PathPoint *path)
 {
+    constexpr float minimumSegmentMm = 1.0f;
     for (uint16_t i = 0; i < pathLength; ++i)
     {
-        const PathPoint &before = path[(i + pathLength - 1) % pathLength];
         const PathPoint &at = path[i];
-        const PathPoint &after = path[(i + 1) % pathLength];
+        uint16_t beforeIndex = i;
+        uint16_t afterIndex = i;
+
+        // A closed path intentionally ends at the same physical location as
+        // waypoint zero. Skip coincident cyclic neighbours so atan2(0, 0)
+        // cannot create a false curvature spike at the lap seam.
+        for (uint16_t step = 0; step + 1 < pathLength; ++step)
+        {
+            beforeIndex =
+                (beforeIndex + pathLength - 1) % pathLength;
+            if (hypotf(
+                    at.x - path[beforeIndex].x,
+                    at.y - path[beforeIndex].y) >= minimumSegmentMm)
+                break;
+        }
+        for (uint16_t step = 0; step + 1 < pathLength; ++step)
+        {
+            afterIndex = (afterIndex + 1) % pathLength;
+            if (hypotf(
+                    path[afterIndex].x - at.x,
+                    path[afterIndex].y - at.y) >= minimumSegmentMm)
+                break;
+        }
+
+        const PathPoint &before = path[beforeIndex];
+        const PathPoint &after = path[afterIndex];
         const float h1 = atan2f(at.y - before.y, at.x - before.x);
         const float h2 = atan2f(after.y - at.y, after.x - at.x);
         const float segment =
@@ -2029,7 +2054,12 @@ bool obstacle_path_geometry_valid()
         baselinePath[pathLength - 1].x - baselinePath[0].x,
         baselinePath[pathLength - 1].y - baselinePath[0].y);
     return fabsf(loopLengthMm - expectedLength) <= 1.0f &&
-           closureError <= 1.0f;
+           closureError <= 1.0f &&
+           fabsf(
+               baselinePath[0].speedMmS - OBSTACLE_PATH_MAX_SPEED) <= 0.1f &&
+           fabsf(
+               baselinePath[pathLength - 1].speedMmS -
+               OBSTACLE_PATH_MAX_SPEED) <= 0.1f;
 }
 
 ObstacleObservationResult obstacle_path_observe(const Blob *blob)

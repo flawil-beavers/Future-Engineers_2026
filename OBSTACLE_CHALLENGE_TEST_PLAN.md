@@ -982,6 +982,80 @@ charged battery. Expect lap-1 230/230/260 mm, optimized 210/210/260 mm, nine
 complete passage reports, no pause/contact/intervention, at least roughly
 30 mm physical wall and pillar gaps, and a controlled stop after lap 3.
 
+Two new files were present. `log_108` is an incomplete CCW run manually paused
+after lap 2 and is not the requested CW acceptance run. `log_109` is the
+complete CW mirror. It selected the expected lap-1 230/230/260 mm and optimized
+210/210/260 mm routes, emitted all nine passage reports, and stopped after lap
+3 with `PASS`. Optimized seat-6 pillar/wall ToF pairs were 99/152 and 106/145
+mm; seat 15 gave 156/105 and 146/117 mm; seat 23 gave 131/294 and 135/292 mm.
+Maximum CTE was 96.4 mm and maximum heading error 46.8 degrees. Physical
+contact and visible minimum gaps still require user confirmation.
+
+The user confirmed no contact and that all physical gaps looked good. Accept
+the CW obstacle geometry and clearance policy. The repeated seam slowdown is
+the only reason `log_109` is not yet a complete reliability pass.
+
+The charged battery did not eliminate the slowdown. On lap 3, near path index
+7, measured speed fell through 55..121 and 13..55 mm/s while target speed
+remained 175 mm/s and duty rose; it then recovered. The same event occurs about
+330-360 mm after the lap boundary in both CW and CCW, which corresponds to
+opposite physical directions and rules out one local mat defect.
+
+Code analysis identifies a deterministic lap-seam trigger. Path construction
+closes the loop by appending a final waypoint at the same location as waypoint
+0. `recomputeSpeedProfile()` calculates heading with the zero-length closing
+segment; `atan2(0,0)` supplies an artificial direction and produces a curvature
+spike. Logs confirm that every non-final lap boundary briefly commands the
+minimum 135 mm/s and then 175 mm/s on the straight. The motor controller can
+respond with a delayed speed undershoot several waypoints later. This is not an
+intentional corner slowdown.
+
+Before more powered reliability testing, make the curvature calculation skip
+coincident neighbours when selecting the previous and next segments, and add a
+preflight assertion that the baseline start/end seam receives straight-line
+speed rather than the 135 mm/s minimum. Do not tune PID gains, feedforward, or
+obstacle paths simultaneously. Build, then repeat the same CW `Y-3` layout once
+with a charged battery. Obtain user approval before implementation.
+
+The user approved and the seam fix is implemented. `recomputeSpeedProfile()`
+now walks past any cyclic neighbour within 1 mm of the current waypoint before
+calculating incoming and outgoing headings. The coincident closing/starting
+points therefore use the real straight segments on either side instead of
+`atan2(0,0)`. Baseline geometry validation now also requires both seam endpoint
+speeds to equal the straight-path maximum. No waypoint, obstacle displacement,
+Pure Pursuit calculation, speed cap, PID gain, or feedforward value changed.
+The IDE-managed `giga_r1_m7` build passed using 295584 bytes RAM and 364424
+bytes flash. No firmware was uploaded.
+
+Next, upload and repeat the identical charged-battery CW three-pillar `Y-3`
+run once. At the lap-1 and lap-2 boundaries, telemetry should remain
+`target=175..175` after wrapping instead of containing `135..175`. Require no
+delayed slowdown around index 7, all nine passage reports, no contact, and a
+controlled stop after lap 3. One successful repeat is sufficient because the
+obstacle geometry itself is already accepted.
+
+Do not combine the pending seam regression with the separate loop/camera
+optimization. If this seam-only run passes, selectively port the accepted
+performance changes from `perf/loop-camera-optimization` before beginning the
+broader full-field reliability suite. Do not merge its whole dirty worktree.
+Validate the port first with stationary red/green edge views and then one
+already-safe 175 mm/s obstacle lap.
+
+`log_110` passes the seam-only regression. Both continuing lap boundaries
+reported `target=175..175`, with no former `135..175` dip. At the index-7
+region, lap-2 and lap-3 measured ranges were 99..153 and 119..166 mm/s rather
+than the prior 13..55 mm/s near-stop. The run produced nine passage reports,
+completed exactly three laps, and reported `PASS`; maximum CTE was 98.2 mm and
+maximum heading error was 47.6 degrees. Accept the seam fix. Do not spend
+another powered run on it.
+
+Next, selectively port the accepted loop/camera optimization into this current
+Pure Pursuit workspace. Keep all current obstacle-path, seam, configuration,
+test-plan, and documentation changes; do not merge the old dirty worktree.
+After building, first validate stationary official red/green pillars at central
+and edge views, then run one already-safe 175 mm/s obstacle lap before resuming
+the full-field reliability checklist.
+
 ## 5. Full-field reliability regression
 
 - [ ] Cover clockwise and counterclockwise three-lap runs.
