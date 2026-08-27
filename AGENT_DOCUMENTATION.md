@@ -33,6 +33,55 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Final-parking rules and geometry design established
+
+The current official WRO 2026 rules and 11 August international Q&A were
+rechecked before designing final parking. Full points require the complete
+vehicle projection inside the `200 mm`-deep, `1.5 * robot length` gap, parallel
+to the outer wall with no more than `20 mm` wheel-distance difference; touching
+a magenta limit ends the round with no parking points. After three laps the
+prescribed sign-passing side no longer applies, but signs still cannot be
+moved. The Q&A permits the opposite parking orientation and prohibits changing
+the robot size. The WRO Switzerland task page currently points to the
+international rules, and its FAQ contains no parking-specific override.
+
+For the current `165 mm` length and `125 mm` straight-wheel width, the centred
+prototype target has `41.25 mm` longitudinal clearance at each end and
+`37.5 mm` lateral clearance. Its parking-local rear-axle pose is
+`(81.25,100,0 degrees)`, mirrored in the canonical field to
+`(313.75,-1400,0 degrees)` for east/CCW orientation and
+`(398.75,-1400,180 degrees)` for west/CW orientation. A 2-degree error across
+the 100 mm wheelbase creates only `3.49 mm` wall-distance difference and safely
+fits the 20 mm rule gate.
+
+Do not implement final parking by blindly reversing the current exit. Its
+parked local pose `(90,137.5,0 degrees)` puts the 125 mm straight footprint
+exactly on the open `y=200` boundary, leaving zero nominal scoring margin. A
+same-model cross-check of the existing five controls passed `16/16` tolerance
+cases only at that zero-margin y; it passed `13/16` at `y=132.5` (5 mm nominal
+margin) and `0/16` at the centred `y=100`. Ackermann reversibility remains a
+valid method, but a new swept search must begin at the fully contained target,
+find a collision-free exit, and reverse that newly calculated control list.
+
+The selected architecture is documented in `CAD/PARKING_ENTRY_DESIGN.md` and
+the ordered gates are reflected in `OBSTACLE_CHALLENGE_TEST_PLAN.md`. After lap
+three, use a low-speed connector which respects the known inner-row pillar map,
+scan both magenta pieces with fresh raw outer-side ToF frames, recover absolute
+x from the fixed piece and y from the outer wall, verify the measured gap, and
+only then enter using the generated bounded multi-point state machine. Final
+acceptance requires both markers, consistent gap, heading within 2 degrees,
+the complete uncertainty-inflated footprint strictly inside, centred steering,
+and a permanent motor hold. Any failed gate stops outside the bay.
+
+No production firmware was changed. Exact next steps are to measure the final
+straight and full-lock projections, physically accept reverse exit localization
+and the missing discovery connector, then extend the swept model for the
+centred target before adding a test-only parking state machine. Python remains
+unavailable on this workstation, so no checked-in Python search was run during
+this design session.
+
+---
+
 ## 2026-08-27 - Pure-pursuit integrated into main and reviewed
 
 Local `main` now contains the exact source tree from `pure-pursuit` commit

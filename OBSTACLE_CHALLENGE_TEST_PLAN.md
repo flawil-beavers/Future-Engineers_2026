@@ -324,15 +324,30 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
-- [ ] Determine the parking-place pose from field localization plus direct
-      detection of both magenta parking pieces; do not depend on odometry alone.
-- [ ] Track localization uncertainty through all three laps and decide when a
-      final wall/parking-feature correction is required before parking.
-- [ ] Select and approach the correct parking gap after completing lap 3.
-- [ ] Reverse without touching either magenta boundary.
-- [ ] Finish fully inside the parking rectangle.
-- [ ] Keep the difference between the two side distances at or below 20 mm.
-- [ ] Validate parking after both CW and CCW obstacle runs.
+- [ ] Measure the final front/rear projection, straight-wheel width, full-lock
+      swept outline, and robot length. Recompute the `1.5 * length` gap and the
+      centred rear-axle target from those measurements.
+- [ ] Extend the parking swept-envelope model from the fully contained target
+      outward. Do not reverse the current exit unchanged: its parked pose has
+      zero nominal margin at the open boundary, and a centred target failed all
+      16 current-path tolerance cases.
+- [ ] Require positive wall/marker clearance and strict final containment for
+      every gap/placement/heading tolerance case in both mirrored directions.
+- [ ] Track localization uncertainty through all three laps, then approach the
+      outer scan line using the known start-section pillar map.
+- [ ] Directly scan both magenta pieces with fresh raw side-ToF frames, recover
+      the fixed field edge and outer-wall reference, and verify the measured
+      inside-face gap against `1.5 * measured robot length`. Do not depend on
+      odometry alone and do not enter the bay if either piece is unresolved.
+- [ ] Implement the calculated path behind an isolated test-only segment gate,
+      with the existing steer-settle, bounded-distance, brake, gyro-health, and
+      motor-lock safety pattern.
+- [ ] Validate one parking segment at a time without pillars, then repeat with
+      every legal starting-section pillar placement without moving a sign.
+- [ ] Finish with steering centred, complete projection strictly inside the
+      detected rectangle, heading error at most 2 degrees, and permanent motor
+      hold. This is stricter than the rule's 20 mm wheel-distance difference.
+- [ ] Validate complete final parking after both CW and CCW three-lap runs.
 
 ## Final end-to-end reliability
 
