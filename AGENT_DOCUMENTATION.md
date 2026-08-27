@@ -33,6 +33,130 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Prototype footprint photos and staged multi-point unpark
+
+The user supplied three square-ish top-down photographs in the gitignored
+`local_workspace/`: `PXL_20260827_113122609.MP.jpg` shows straight steering,
+and the other two show manually pushed near-left and near-right lock. They are
+useful temporary engineering evidence because they show that the robot does
+not occupy the corners of its 165-by-135 mm bounding box and that the front
+wheel envelope caused the failed forward-first exit. They are not final
+calibration records: the steering was not driven to exact commanded lock, the
+rear-axle midpoint is not marked, and the chassis may still change. Keep the
+originals in `local_workspace`; after the mechanics are final, retake matched
+overhead images at commanded `-50`, `0`, and `+50` with a fixed scale, rear
+axle mark, and unambiguous robot-left/right labels. Only selected annotated
+final images should later be committed under the project's documentation.
+
+The refined swept-footprint search models the current chassis, wheel regions,
+Ackermann front-wheel angles, 109 mm full-lock rear-axle radius, the minimum
+242.5 mm marker gap, approximately +/-5 mm placement tolerance, and about
+5 mm additional modeled clearance. A robust mirrored candidate starts with
+45 mm between the robot's rearmost point and the rear marker inside face, with
+the robot's inner edge at the parking lot's 200 mm open boundary. Its control
+segments are: reverse/toward-wall 20 mm; forward/away 25 mm;
+reverse/toward-wall 20 mm; forward/away 75 mm; forward/toward-wall 60 mm;
+forward/straight 25 mm; forward/toward-wall 80 mm. Steering lock is 50 and
+the low test speed is 80 mm/s. Mirroring means inverting every nonzero steering
+command. The result passed the modeled minimum/maximum gap and +/-1 degree
+initial-heading cases, but the residual physical margin is small and the
+manually positioned photos do not justify executing it all at once.
+
+The obsolete forward-first two-arc firmware has therefore been replaced by a
+small data-driven multi-point state machine. It settles the servo before each
+segment, uses a brief encoder-position hold instead of allowing an uncontrolled
+coast at a direction change, logs each segment's target/actual travel and
+heading, and mirrors itself from the nearer-wall ToF result. The development
+gate `OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT` is currently `1`, so the next
+firmware runs only the initial 20 mm reverse/toward-wall segment, releases and
+locks off the drive, saves the log, and cannot execute the remaining route or
+start the lap. The IDE-managed build passed at 361160 bytes RAM and 366776
+bytes flash; existing warnings are unchanged. No firmware was uploaded.
+
+Exact next test: use the current 165 mm prototype and set the parking-marker
+inside-face gap to 247.5 mm. Place the robot straight with 45 mm from its
+rearmost point to the rear marker's inside face, leaving nominally 37.5 mm from
+its foremost point to the front marker. Place the side of the straight robot
+at the 200 mm open boundary, as far from the black wall as possible while fully
+inside the parking lot. Repeat the same direction as the failed front-right
+wheel test. After user-controlled upload, start the isolated obstacle mode and
+keep the disable switch reachable. It must reverse only about 20 mm, turn the
+nose outward, stop, and save. Reject contact or intervention. Before enabling
+segment 2, compare logged `target_mm=20.0` with `actual_mm`; unexpected travel
+or an observed clearance below roughly 15 mm requires stopping-distance or
+model correction.
+
+`log_117.txt` accepts this first staged test. It identified the right wall at
+108 mm, selected away steering `-50`, then executed reverse steering `+50`.
+The 20.0 mm target stopped at 22.3 mm with a 10.4-degree heading change; the
+right ToF changed from 108 to 119 mm, and the user observed no contact. The
+2.3 mm excess is acceptable for advancing one stage, but it must remain in the
+physical-path evidence rather than being assumed away.
+
+The exact offline program is now tracked as
+`CAD/parking_exit_swept_search.py`, with its coordinate system, multi-polygon
+footprint, Ackermann primitives, separating-axis collision checks, Hybrid-A*
+search, tolerances, selected path, limitations, and physical-validation
+workflow documented in `CAD/PARKING_EXIT_PATH_SIMULATION.md`. The original
+working copy was moved out of `local_workspace`; the three approximate-lock
+photographs remain there as temporary source evidence.
+
+Next, change only `OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT` from 1 to 2 and
+build without uploading. After separate upload consent, repeat the identical
+247.5 mm gap and initial pose. It should reproduce segment 1, then drive
+forward 25 mm at full lock away from the wall and stop. Require no contact,
+positive observed clearance, and plausible actual travel/heading for both
+segments before enabling the second reverse movement.
+
+The user subsequently enabled the route incrementally but did not test every
+possible segment-count increase separately. `log_120.txt` ran the current
+`7/7` configuration and physically exited the parking lot without touching a
+marker or wall. Actual segment travels were 24.0, 28.6, 20.5, 78.1, 59.5,
+25.0, and 80.2 mm. The clearance geometry is therefore accepted provisionally
+for this start direction and prototype placement.
+
+Do not connect this result to the lap yet. Final heading error was 7.7 degrees;
+the last 80.2 mm toward-wall arc changed heading by only about 37.4 degrees,
+leaving the robot visibly outside but not parallel to its start heading. The
+next code change should retain the proven 80 mm final arc as a minimum, then
+continue the same curvature until gyro heading error is at most 2 degrees,
+with a conservative maximum around 110 mm to prevent an unbounded turn. After
+one same-direction isolated regression passes, run the fully mirrored exit.
+Only then proceed to post-unpark field localization. The logged `travel_mm=226`
+is net encoder displacement because the manoeuvre reverses; the sum of segment
+travel magnitudes is approximately 316 mm.
+
+The user requested simplifying the route because the robot is sufficiently
+outside after segment 4 to align in one continuous fifth movement. The swept
+model previously applied its general footprint margin around the 200 mm open
+ends of the magenta pieces, effectively making them longer. That is now
+corrected: the black wall and broad marker faces retain 5 mm clearance, while
+the marker open ends remain at exactly 200 mm. Placement is checked explicitly
+at +/-5 mm instead of being represented by extra marker length.
+
+The revised route retains the proven first four controls and replaces former
+segments 5-7 with one forward full-lock arc toward the wall. Its geometric
+parallel distance is 140 mm. All 16 combinations of 242.5/252.5 mm gap,
++/-5 mm x/y placement, and +/-1 degree heading pass collision checking. The
+firmware now has five segments. The last segment ignores fixed-distance
+completion: after 120 mm it stops when gyro error is at most 2 degrees, with a
+hard 180 mm bound. The route and physical footprints are drawn in
+`CAD/parking_exit_path.svg` and embedded in
+`CAD/PARKING_EXIT_PATH_SIMULATION.md`.
+
+Next, build without uploading. After explicit upload consent, repeat the same
+247.5 mm-gap isolated test and require five segment reports, final
+`aligned=yes`, no contact/intervention, and final heading error at most 2
+degrees. Do not connect to the lap before this same-direction test and the
+mirrored-direction test pass.
+
+The IDE-managed `giga_r1_m7` build passed with 361160 bytes RAM and 366992
+bytes flash; existing warnings are unchanged. The generated SVG parses as
+valid XML. No firmware was uploaded. The next action is now the user-controlled
+upload and same-direction isolated five-segment test described above.
+
+---
+
 ## 2026-08-27 - Parking-start scope and temporary-file convention
 
 Current obstacle development supports only the higher-scoring legal start
@@ -58,6 +182,120 @@ exit for geometry that can be expressed relative to robot dimensions and
 parking-marker observations, then implement an isolated, non-lap exit test
 without baking in a final parking length. Ask the user before choosing any
 length-dependent clearance or longitudinal placement.
+
+That preparation is now implemented. `OBSTACLE_PARKING_EXIT_TEST_ONLY` is
+enabled, so command `O` plus the physical enable switch executes only the
+existing two-arc exit, ramps to a stop, locks the drive motor off, and writes
+the log; it cannot silently continue into the obstacle lap. Configuration now
+records the official 200 mm width and 1.5 length factor while leaving
+`OBSTACLE_FINAL_ROBOT_LENGTH_MM` at zero. Startup therefore prints the length
+and parking length as `UNSET` and labels the geometry `prototype_only=yes`.
+No arbitrary chassis length or final marker separation was selected.
+
+The result line now records total encoder travel, final heading error, and
+left/right ToF at the start and end. The existing steering, first-arc,
+counter-arc, speed, and brake calibrations are unchanged. They can be
+characterized with the current prototype by physically setting the marker
+inside-face separation to 1.5 times its measured current projection length,
+but clearance acceptance must be repeated after the mechanical length is
+final. For the calibrated lateral start, centre the robot longitudinally and
+keep its inner side just inside the parking lot's 200 mm open boundary rather
+than centring it across the 200 mm width.
+
+The IDE-managed `giga_r1_m7` build passed with 361160 bytes RAM and 366200
+bytes flash. Existing warnings are unchanged. No firmware was uploaded. Next,
+obtain upload consent and run one prototype-only exit in a chosen direction;
+require no marker/wall contact and retain the saved `[PARK EXIT RESULT]` line.
+Then repeat in the opposite direction before making any trajectory change.
+
+`log_115` rejects the existing forward-first exit in the official proportional
+gap. With the current robot approximately 155 mm long, the inside-face marker
+spacing was approximately 232.5 mm, leaving only 77.5 mm total longitudinal
+slack, or about 38.75 mm at each end when centred. The robot started CCW with
+right-side wall range 108 mm, travelled only 34 mm into the `-40` first arc,
+reached 9.4 degrees, and touched the front magenta block. The commanded-motion
+watchdog then correctly stopped it after measuring only 3.3 mm progress in one
+second at a 120 mm/s target. The counter-arc and result logger were never
+reached.
+
+The local `main` branch does not contain a different initial unparking path.
+Its `IDLE`, forward first arc, counter-arc, distances (239/250 mm), steering
+(40), and speeds are the same as the rejected path. Its only extra parking
+states occur after the S-shaped exit and reverse 200 mm for start-section
+visibility; they cannot prevent the initial front-block collision. Therefore
+the historical success on `main` came from its larger physical parking gap,
+not from reusable close-gap logic. Do not merge or copy those post-exit states
+as a fix for `log_115`.
+
+No further powered attempt should use the forward-first path in a 1.5-times
+gap. The next engineering step is an offline swept-envelope design for a
+low-speed multi-point parallel-parking exit, parameterized by robot length,
+front/rear overhang, width, marker size, and calibrated steering radii. Only
+after both magenta blocks and the outer wall have positive modeled clearance
+should the isolated firmware be changed and tested. The approximate 155 mm
+length is prototype evidence, not a finalized mechanical constant.
+
+The user subsequently measured 125 mm from the rear-axle centre to the
+foremost point, 40 mm to the rearmost point, and 135 mm maximum width at full
+steering lock; the steering envelope is slightly asymmetric. Those overhangs
+sum to 165 mm, which conflicts with the earlier approximate 155 mm overall
+length and must be resolved by one direct foremost-to-rearmost measurement
+before geometry is implemented. The failed test used a 230 mm inside-face
+marker gap and the contacted object was the forward magenta parking block. If
+165 mm is correct, the official 1.5-times gap is 247.5 mm, not 230 or 232.5 mm.
+Even centred, that supplies only 41.25 mm at each end and does not make the
+239/250 mm forward-first arc safe.
+
+Do not lengthen the front merely to obtain a larger official parking gap. An
+added front length `d` increases a centred end gap by only `0.25*d` while the
+front swept envelope itself grows by approximately `d`, normally worsening
+the forward-block conflict. A short front addition may still be justified for
+camera protection or packaging, but its purpose and final dimensions must be
+decided mechanically before recalculating the unpark path. Preserve the
+already validated camera yaw, roll, and pitch unless a specific visibility or
+occlusion problem requires a change; moving or pitching it requires geometry
+updates and camera recalibration.
+
+The prototype geometry is now confirmed as 165 mm overall length, measured
+from the same rear-axle reference used for the 125 mm front and 40 mm rear
+overhangs. Use a conservative symmetric 135 mm full steering width for the
+first swept-envelope model; the user rechecked the Ackermann asymmetry and
+found both sides extend approximately equally. Robot placement and both
+magenta-piece positions are repeatable to approximately +/-5 mm. The official
+inside-face parking gap for this prototype is therefore 247.5 mm nominal and
+must be checked over 242.5-252.5 mm in the model.
+
+One start-pose detail remains intentionally unresolved: the user said the
+robot will be placed at the "outermost position", which could mean closest to
+the outer field wall or farthest outward toward the parking lot's 200 mm open
+boundary. These yield materially different wall and marker swept clearances.
+Ask which boundary the robot is placed against before selecting or testing a
+parking-exit trajectory; do not infer it from the word "outermost".
+
+The user confirmed the second interpretation: place the robot as far from the
+outer black wall as possible while its complete projection remains inside the
+parking lot. Model the nominal inner edge at the 200 mm open boundary and the
+worst-case start 5 mm farther toward the black wall. Longitudinal position is
+also selectable and should be optimized rather than forced to the centre.
+
+An initial Hybrid-A* feasibility search was added only under the gitignored
+`local_workspace/`. With the robot conservatively treated as a solid
+165-by-135 mm rectangle, 5 mm inflated safety envelope, minimum 242.5 mm gap,
+109 mm full-steering rear-axle radius, and the confirmed outer/open-boundary
+start, it found no exit for rear clearances from 5 through 75 mm. Even a
+nominal zero-margin 247.5 mm-gap search found no path. This is not yet proof
+that the real robot cannot exit: the top photo shows that the camera nose,
+chassis, and wheel regions do not fill the bounding-box corners, and those
+empty corners matter in a close parallel-parking manoeuvre. Do not port a
+trajectory to firmware from the rectangle search.
+
+The next required geometry is a conservative top-down footprint outline, not
+another overall width. Record the outer outline relative to the rear-axle
+midpoint for straight, full-left, and full-right steering, or obtain a square
+top-down photograph over graph paper with a scale. Also record which physical
+part contacted the forward magenta block in `log_115`. Use that outline in the
+swept collision model before deciding whether the current chassis can exit a
+1.5-times gap or needs a mechanical change.
 
 ---
 
@@ -89,6 +327,12 @@ time for reliable two-frame seat detection; laps 2-3 may use higher caps because
 the layout is known. Final parking depends on maintained field localization and
 direct localization of both magenta parking pieces. End-to-end acceptance comes
 last: unpark, localize, three laps, and park.
+
+Run telemetry must also persist comparable timing data in the USB log. Measure
+active run time from the accepted start/enable event through controlled finish
+or abort, excluding pre-start setup and post-run USB saving. Save each lap split
+and total time together with completion/abort status, and retain this definition
+for all later route and speed comparisons.
 
 The five accepted optimizations have now been selectively ported into the
 current `pure-pursuit` workspace without copying the stale obstacle-path state

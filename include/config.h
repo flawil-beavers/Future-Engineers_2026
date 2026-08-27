@@ -267,29 +267,58 @@ constexpr bool OBSTACLE_PARKING_EXIT_ENABLED = true;
 
 // Development mode: execute only the parking exit and stop afterwards.
 // Set to false once the isolated manoeuvre has been tuned successfully.
-constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = false;
+constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = true;
 
-// The parking lot is 200 mm wide and the Obstacle track is 1000 mm wide.
-// With the inner edge of the 120 mm wide car placed at the parking lot's open
-// edge, its centre starts about 140 mm from the outer wall. The first three
-// tests ended 60-80 mm beyond the track centre, so the outward arc is reduced.
-// The counter-arc is gyro-terminated because the left/right steering radii and
-// servo transition distances are not identical in practice.
-constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 40;
-constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 120;
-constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_SPEED = 80;
-// Separate calibration is intentional: the measured Ackermann radii and the
-// servo linkage are not perfectly symmetric.
-constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM = 239.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM = 250.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM = 180.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM = 400.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG = 30.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED = 50;
-constexpr auto OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING = 8.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG = 2.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS = 450;
-constexpr auto OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS = 250;
+// The rules define the parking-space length as 1.5 times the robot length.
+// The mechanical length is intentionally left unset while the chassis design
+// is still being decided. A value of 0 means "unknown" and prevents logs from
+// presenting the current prototype setup as final competition geometry.
+constexpr auto OBSTACLE_FINAL_ROBOT_LENGTH_MM = 0.0f;
+constexpr auto OBSTACLE_PARKING_LENGTH_FACTOR = 1.5f;
+constexpr auto OBSTACLE_PARKING_WIDTH_MM = 200.0f;
+static_assert(
+    OBSTACLE_FINAL_ROBOT_LENGTH_MM >= 0.0f,
+    "Robot length must be zero (unset) or a positive millimetre value");
+static_assert(
+    OBSTACLE_PARKING_LENGTH_FACTOR > 1.0f,
+    "Parking length factor must leave space beyond the robot length");
+
+// Prototype-only multi-point exit. The former forward-first two-arc exit hit
+// the front parking marker in the proportional gap and must not be restored.
+// These values come from the current 165 mm footprint model and must be
+// revalidated after any chassis, wheel-envelope, or steering change.
+constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 50;
+constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 80;
+constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 400;
+constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 300;
+constexpr auto OBSTACLE_PARKING_EXIT_SEGMENT_COUNT = 5;
+
+// Safety gate for powered development. A value below SEGMENT_COUNT stops and
+// saves the log after that many segments. Increase it only after reviewing the
+// preceding stage's actual travel and physical clearance.
+constexpr auto OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT = 5;
+static_assert(
+    OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT >= 1 &&
+        OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT <=
+            OBSTACLE_PARKING_EXIT_SEGMENT_COUNT,
+    "Parking exit segment limit must select one or more valid segments");
+
+constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM = 165.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_FRONT_MM = 125.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM = 40.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM = 135.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM = 247.5f;
+constexpr auto OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM = 45.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 140.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 180.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
+static_assert(
+    OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM <
+            OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM &&
+        OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM <
+            OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM,
+    "Final parking alignment bounds must surround the modeled distance");
 constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 
 // Calibrated route phase after the parking manoeuvre: distance from the rear

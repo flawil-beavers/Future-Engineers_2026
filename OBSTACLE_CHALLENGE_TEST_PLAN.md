@@ -90,14 +90,58 @@ the field is ready.
       parking lot, with the front axle pointing in the official driving
       direction. Middle-zone starts are intentionally deferred as an optional
       end-stage bonus.
+- [x] Prepare an isolated parking-exit build that stops, locks the drive motor
+      off, and saves start/end ToF, travel, and heading diagnostics instead of
+      joining the obstacle lap. An unset final length is labelled
+      `prototype_only` in the log.
+- [x] Characterize the existing exit in the proportional prototype gap. It was
+      rejected after the front-right wheel contacted the forward magenta
+      marker after only 34 mm of its first forward arc.
+- [x] Replace the forward-first two-arc exit with a length-aware multi-point
+      manoeuvre for the official `1.5 * robot length` gap. Check the complete
+      swept robot envelope against both magenta blocks and the outer wall
+      offline before the next powered test; do not assume the larger gap in
+      which the old manoeuvre worked.
+- [x] Confirm the current prototype envelope inputs: 165 mm length, 125 mm
+      front and 40 mm rear overhang from the rear axle, conservative symmetric
+      135 mm full-steering width, and approximately +/-5 mm placement error.
 - [ ] Finalize the robot length before fixing parking-lot geometry. The
       competition parking-space length is `1.5 * robot length`, so tests and
       route constants must not assume a final marker separation yet.
 - [ ] Define and document robust initial positions and tolerances within the
       parking lot for both CW and CCW driving directions after the robot length
       is fixed.
-- [ ] Implement a safe unpark path that leaves the parking area without
-      touching the magenta parking pieces or field walls.
+- [x] Upload the staged multi-point diagnostic only with consent. Place the
+      current robot with 45 mm rear clearance, its inner edge at the 200 mm
+      parking opening, and a 247.5 mm inside-face marker gap. Run only segment
+      1: reverse 20 mm at full steering toward the wall, then stop and save.
+- [x] Accept segment 1 only if it has no contact, the observed clearance stays
+      positive, and logged actual travel is close enough to 20 mm to preserve
+      the modeled tolerance. `log_117` measured 22.3 mm and 10.4 degrees with
+      no observed contact.
+- [x] Increase the staged segment limit incrementally and validate the complete
+      seven-segment path. The user skipped some individual one-segment
+      increments, but `log_120` completed all seven without contact or
+      intervention.
+- [x] Replace former segments 5-7 with one continuous full-lock alignment arc
+      after segment 4. The revised model keeps the parking pieces at their exact
+      200 mm length, retains 5 mm on their broad faces and the outer wall, and
+      passes all 16 gap/placement/heading tolerance combinations.
+- [x] Build the five-segment isolated firmware with the IDE-managed PlatformIO
+      installation; no firmware was uploaded.
+- [ ] Test the five-segment isolated exit. Segment 5 may stop after 120 mm once
+      gyro heading error is within 2 degrees and is bounded at 180 mm. Require
+      `aligned=yes`, no contact/intervention, and positive clearance.
+- [ ] Repeat the complete isolated exit in the same direction and require no
+      contact plus final heading error within 2 degrees.
+- [ ] Mirror the complete isolated exit in the opposite official direction
+      from the same proportional gap and placement tolerances. Require no
+      contact and final heading error within 2 degrees before connecting either
+      exit to field localization.
+- [ ] Repeat and accept the isolated exit with the finalized robot length and
+      official marker separation before allowing it to join the lap route.
+- [ ] Implement and physically validate the safe multi-point unpark path at
+      low speed without touching either magenta piece or a field wall.
 - [ ] Establish the robot's field pose after unparking rather than assuming the
       rear axle reached one exact position.
 - [ ] Quantify post-unpark position and heading error for every supported start.
@@ -128,6 +172,16 @@ the field is ready.
 - [ ] Exercise bright, dim, shadowed, and edge-clipped pillar views.
 - [ ] Confirm normal operation at a moderately discharged battery level; do not
       begin a multi-lap acceptance run with a nearly empty battery.
+
+## Run timing telemetry
+
+- [ ] Save elapsed active run time in the USB log, measured from the accepted
+      start/enable event until controlled completion or abort; exclude setup
+      waiting and the later USB file-save interval.
+- [ ] Save lap-1, lap-2, and lap-3 split times as well as total run time.
+- [ ] Include completion/abort status with the saved time so failed and
+      manually interrupted runs cannot be mistaken for valid timing results.
+- [ ] Use the same timing definition when comparing route and speed changes.
 
 ## Clearance telemetry follow-up
 
@@ -211,3 +265,18 @@ Start only after the parking-lot-start end-to-end sequence is accepted.
       the parking lot.
 - [ ] Validate the middle-zone start in CW and CCW without regressing the
       parking-lot start.
+
+## Build-system maintenance
+
+- [ ] Split the shared `include/config.h` into focused configuration headers
+      (such as hardware, motor, sensors, camera, parking exit, obstacle
+      navigation, and modes), and make each translation unit include only the
+      configuration it consumes so routine tuning changes trigger smaller
+      incremental rebuilds.
+- [ ] Remove configuration includes from public headers where practical; in
+      particular, move `FullFovGC2145::getClockFrequency()` out of
+      `include/camera.h` so camera configuration does not propagate through
+      that header.
+- [ ] Verify with the IDE-managed PlatformIO Core that changing the parking
+      exit segment limit rebuilds only its actual consumers while the complete
+      `giga_r1_m7` firmware still compiles successfully.

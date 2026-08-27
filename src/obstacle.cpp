@@ -48,19 +48,41 @@ static bool oc_complete = false;
 enum ParkingExitState : uint8_t
 {
     PARKING_EXIT_IDLE,
-    PARKING_EXIT_FIRST_ARC,
-    PARKING_EXIT_COUNTER_ARC,
-    PARKING_EXIT_STRAIGHTENING,
+    PARKING_EXIT_SEGMENT_SETTLE,
+    PARKING_EXIT_SEGMENT_DRIVE,
+    PARKING_EXIT_SEGMENT_BRAKE,
     PARKING_EXIT_TEST_HOLD,
     PARKING_EXIT_DONE
 };
 
+struct ParkingExitSegment
+{
+    int8_t direction;
+    int8_t steeringRelativeToAway;
+    float distanceMm;
+};
+
+// Steering is expressed relative to the direction away from the outer wall,
+// so the same path mirrors automatically for CW and CCW starts.
+static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
+    OBSTACLE_PARKING_EXIT_SEGMENT_COUNT] = {
+    {-1, -1, 20.0f},
+    {+1, +1, 25.0f},
+    {-1, -1, 20.0f},
+    {+1, +1, 75.0f},
+    {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
+
 static ParkingExitState oc_parking_exit_state =
     PARKING_EXIT_IDLE;
 static float oc_parking_exit_state_distance = 0.0f;
+static float oc_parking_exit_run_start_distance = 0.0f;
 static float oc_parking_exit_start_heading = 0.0f;
+static float oc_parking_exit_start_left_mm = 0.0f;
+static float oc_parking_exit_start_right_mm = 0.0f;
 static int oc_parking_exit_steering = 0;
 static uint32_t oc_parking_exit_brake_start_ms = 0;
+static uint32_t oc_parking_exit_settle_start_ms = 0;
+static uint8_t oc_parking_exit_segment = 0;
 
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
@@ -148,9 +170,102 @@ static void resetParkingExit()
             ? PARKING_EXIT_IDLE
             : PARKING_EXIT_DONE;
     oc_parking_exit_state_distance = get_distance();
+    oc_parking_exit_run_start_distance = get_distance();
     oc_parking_exit_start_heading = get_angle();
+    oc_parking_exit_start_left_mm = 0.0f;
+    oc_parking_exit_start_right_mm = 0.0f;
     oc_parking_exit_steering = 0;
     oc_parking_exit_brake_start_ms = 0;
+    oc_parking_exit_settle_start_ms = 0;
+    oc_parking_exit_segment = 0;
+}
+
+static void printParkingExitGeometry()
+{
+    Serial.print("[PARK EXIT] Geometry width_mm=");
+    Serial.print(OBSTACLE_PARKING_WIDTH_MM, 0);
+    Serial.print(" robot_length_mm=");
+
+    if (OBSTACLE_FINAL_ROBOT_LENGTH_MM > 0.0f)
+    {
+        Serial.print(OBSTACLE_FINAL_ROBOT_LENGTH_MM, 1);
+        Serial.print(" parking_length_mm=");
+        Serial.println(
+            OBSTACLE_FINAL_ROBOT_LENGTH_MM *
+                OBSTACLE_PARKING_LENGTH_FACTOR,
+            1);
+    }
+    else
+    {
+        Serial.println(
+            "UNSET parking_length=1.5*robot_length prototype_only=yes");
+    }
+
+    Serial.print("[PARK EXIT] Prototype footprint length/front/rear/width_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_FRONT_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM, 1);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM, 1);
+    Serial.print(" gap_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM, 1);
+    Serial.print(" rear_clearance_mm=");
+    Serial.print(OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM, 1);
+    Serial.print(" stage_segments=");
+    Serial.print(OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT);
+    Serial.print("/");
+    Serial.println(OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+}
+
+static void finishParkingExit(bool stagedTest)
+{
+    const float finalHeadingError =
+        fabsf(get_angle() - oc_parking_exit_start_heading);
+    const float finalLeft = get_tof_distance(TOF_LEFT);
+    const float finalRight = get_tof_distance(TOF_RIGHT);
+    const float totalDistance =
+        distanceSince(oc_parking_exit_run_start_distance);
+
+    stop(false);
+    set_steering(0);
+
+    Serial.print("[PARK EXIT RESULT] completed_segments=");
+    Serial.print(oc_parking_exit_segment);
+    Serial.print("/");
+    Serial.print(OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+    Serial.print(" travel_mm=");
+    Serial.print(totalDistance, 1);
+    Serial.print(" heading_error_deg=");
+    Serial.print(finalHeadingError, 1);
+    Serial.print(" tof_start_left_right_mm=");
+    Serial.print(oc_parking_exit_start_left_mm, 0);
+    Serial.print("/");
+    Serial.print(oc_parking_exit_start_right_mm, 0);
+    Serial.print(" tof_end_left_right_mm=");
+    Serial.print(finalLeft, 0);
+    Serial.print("/");
+    Serial.println(finalRight, 0);
+
+    if (stagedTest || OBSTACLE_PARKING_EXIT_TEST_ONLY)
+    {
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            stagedTest
+                ? "[PARK EXIT] Staged test complete - drive motor locked off"
+                : "[PARK EXIT] Test complete - drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
+
+    oc_parking_exit_state = PARKING_EXIT_DONE;
+    navigation_enable();
+    oc_section_start_distance = get_distance();
+    oc_last_navigation_state = navigation_get_state();
+    oc_last_completed_turn = navigation_get_turn_count();
+
+    Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
 }
 
 static bool updateParkingExit()
@@ -167,51 +282,46 @@ static bool updateParkingExit()
         return true;
     }
 
-    if (oc_parking_exit_state == PARKING_EXIT_STRAIGHTENING)
+    if (oc_parking_exit_state == PARKING_EXIT_SEGMENT_BRAKE)
     {
-        // Do not cut motor power at full speed. Centre the wheels immediately
-        // and let the speed controller ramp its target to zero first.
-        set_steering(0);
-        steer(0);
-        set_speed(0);
-
-        const uint32_t brakeTimeMs =
-            oc_parking_exit_steering < 0
-                ? OBSTACLE_PARKING_EXIT_BRAKE_TIME_NEGATIVE_MS
-                : OBSTACLE_PARKING_EXIT_BRAKE_TIME_POSITIVE_MS;
-
         if (
             millis() - oc_parking_exit_brake_start_ms <
-                brakeTimeMs)
+                OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS)
         {
             return true;
         }
 
-        const float finalHeadingError =
-            fabsf(get_angle() - oc_parking_exit_start_heading);
+        const float actualDistance =
+            distanceSince(oc_parking_exit_state_distance);
+        const ParkingExitSegment &completed =
+            PARKING_EXIT_SEGMENTS[oc_parking_exit_segment];
 
         stop(false);
+        Serial.print("[PARK EXIT] Segment ");
+        Serial.print(oc_parking_exit_segment + 1);
+        Serial.print(" stopped target_mm=");
+        Serial.print(completed.distanceMm, 1);
+        Serial.print(" actual_mm=");
+        Serial.print(actualDistance, 1);
+        Serial.print(" heading_delta_deg=");
+        Serial.println(
+            get_angle() - oc_parking_exit_start_heading,
+            1);
 
-        Serial.print("[PARK EXIT] Stopped heading_error=");
-        Serial.println(finalHeadingError, 1);
-
-        if (OBSTACLE_PARKING_EXIT_TEST_ONLY)
+        ++oc_parking_exit_segment;
+        if (
+            oc_parking_exit_segment >=
+                OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT)
         {
-            oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
-            Serial.println(
-                "[PARK EXIT] Test complete - drive motor locked off");
-            robot_logger.write_to_usb();
+            finishParkingExit(
+                oc_parking_exit_segment <
+                    OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
             return true;
         }
 
-        oc_parking_exit_state = PARKING_EXIT_DONE;
-        navigation_enable();
-        oc_section_start_distance = get_distance();
-        oc_last_navigation_state = navigation_get_state();
-        oc_last_completed_turn = navigation_get_turn_count();
-
-        Serial.println("[PARK EXIT] Complete - normal Obstacle navigation");
-        return false;
+        oc_parking_exit_settle_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
+        return true;
     }
 
     if (oc_parking_exit_state == PARKING_EXIT_IDLE)
@@ -242,103 +352,97 @@ static bool updateParkingExit()
         }
 
         oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_run_start_distance = get_distance();
         oc_parking_exit_start_heading = get_angle();
-        oc_parking_exit_state = PARKING_EXIT_FIRST_ARC;
+        oc_parking_exit_start_left_mm = left;
+        oc_parking_exit_start_right_mm = right;
+        oc_parking_exit_segment = 0;
+        oc_parking_exit_settle_start_ms = millis();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
 
         Serial.print("[PARK EXIT] Start wall left=");
         Serial.print(left, 0);
         Serial.print(" right=");
         Serial.println(right, 0);
-        Serial.print("[PARK EXIT] First arc, steering=");
+        Serial.print("[PARK EXIT] Away steering=");
         Serial.println(oc_parking_exit_steering);
     }
 
-    const float stateDistance =
-        distanceSince(oc_parking_exit_state_distance);
+    const ParkingExitSegment &segment =
+        PARKING_EXIT_SEGMENTS[oc_parking_exit_segment];
+    const int segmentSteering =
+        segment.steeringRelativeToAway *
+        oc_parking_exit_steering;
 
-    if (oc_parking_exit_state == PARKING_EXIT_FIRST_ARC)
+    if (oc_parking_exit_state == PARKING_EXIT_SEGMENT_SETTLE)
     {
-        set_speed(OBSTACLE_PARKING_EXIT_SPEED);
-        set_steering(oc_parking_exit_steering);
+        if (dc_state != DC_DISABLED)
+            stop(false);
+        servo_disabled = false;
+        set_steering(segmentSteering);
+        steer(segmentSteering);
 
-        const float firstArcTarget =
-            oc_parking_exit_steering < 0
-                ? OBSTACLE_PARKING_EXIT_FIRST_ARC_NEGATIVE_MM
-                : OBSTACLE_PARKING_EXIT_FIRST_ARC_POSITIVE_MM;
-
-        if (stateDistance >= firstArcTarget)
+        if (
+            millis() - oc_parking_exit_settle_start_ms <
+                OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS)
         {
-            const float firstArcHeading =
-                fabsf(
-                    get_angle() -
-                    oc_parking_exit_start_heading);
-
-            Serial.print("[PARK EXIT] First distance=");
-            Serial.print(stateDistance, 0);
-            Serial.print(" heading=");
-            Serial.println(firstArcHeading, 1);
-
-            oc_parking_exit_state_distance = get_distance();
-            oc_parking_exit_state = PARKING_EXIT_COUNTER_ARC;
-            Serial.println("[PARK EXIT] Counter arc");
+            return true;
         }
 
+        oc_parking_exit_state_distance = get_distance();
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_DRIVE;
+        Serial.print("[PARK EXIT] Segment ");
+        Serial.print(oc_parking_exit_segment + 1);
+        Serial.print(" direction=");
+        Serial.print(segment.direction < 0 ? "reverse" : "forward");
+        Serial.print(" steering=");
+        Serial.print(segmentSteering);
+        Serial.print(" target_mm=");
+        Serial.println(segment.distanceMm, 1);
         return true;
     }
 
+    set_speed(
+        segment.direction *
+        OBSTACLE_PARKING_EXIT_SPEED);
+    set_steering(segmentSteering);
+
+    const float stateDistance =
+        distanceSince(oc_parking_exit_state_distance);
+    const bool finalSegment =
+        oc_parking_exit_segment + 1 ==
+        OBSTACLE_PARKING_EXIT_SEGMENT_COUNT;
     const float headingError =
         fabsf(get_angle() - oc_parking_exit_start_heading);
-
-    float counterSteering =
-        static_cast<float>(OBSTACLE_PARKING_EXIT_STEERING);
-    int counterSpeed =
-        OBSTACLE_PARKING_EXIT_COUNTER_SPEED;
-
-    if (
-        headingError <
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG)
-    {
-        counterSteering = clampValue(
-            OBSTACLE_PARKING_EXIT_STEERING *
-                headingError /
-                OBSTACLE_PARKING_EXIT_FINE_ALIGN_START_DEG,
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_MIN_STEERING,
-            static_cast<float>(
-                OBSTACLE_PARKING_EXIT_STEERING));
-        counterSpeed =
-            OBSTACLE_PARKING_EXIT_FINE_ALIGN_SPEED;
-    }
-
-    set_speed(counterSpeed);
-    set_steering(
-        oc_parking_exit_steering < 0
-            ? static_cast<int>(counterSteering)
-            : -static_cast<int>(counterSteering));
-
-    const bool parallelAgain =
-        stateDistance >=
-            OBSTACLE_PARKING_EXIT_COUNTER_MIN_MM &&
+    const bool finalAligned =
+        finalSegment &&
+        stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM &&
         headingError <=
-            OBSTACLE_PARKING_EXIT_HEADING_TOLERANCE_DEG;
-    const bool safetyDistanceReached =
-        stateDistance >=
-            OBSTACLE_PARKING_EXIT_COUNTER_MAX_MM;
+            OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG;
+    const bool finalLimitReached =
+        finalSegment &&
+        stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM;
+    const bool regularTargetReached =
+        !finalSegment &&
+        stateDistance >= segment.distanceMm;
 
-    if (parallelAgain || safetyDistanceReached)
+    if (regularTargetReached || finalAligned || finalLimitReached)
     {
-        set_steering(0);
-        // Apply the straight-ahead command immediately. stop(false) disables
-        // the servo, so waiting for the next drive_loop() would leave the
-        // wheels at the counter-steering angle during measurement.
-        steer(0);
+        if (finalSegment)
+        {
+            Serial.print("[PARK EXIT] Final alignment distance_mm=");
+            Serial.print(stateDistance, 1);
+            Serial.print(" heading_error_deg=");
+            Serial.print(headingError, 1);
+            Serial.print(" aligned=");
+            Serial.println(finalAligned ? "yes" : "no_max_distance");
+        }
 
-        Serial.print("[PARK EXIT] Counter distance=");
-        Serial.print(stateDistance, 0);
-        Serial.print(" heading_error=");
-        Serial.println(headingError, 1);
-
+        // The short first movements have little room for an uncontrolled
+        // coast. Hold the encoder position briefly, then release the motor.
+        stop(true);
         oc_parking_exit_brake_start_ms = millis();
-        oc_parking_exit_state = PARKING_EXIT_STRAIGHTENING;
+        oc_parking_exit_state = PARKING_EXIT_SEGMENT_BRAKE;
         return true;
     }
 
@@ -1579,6 +1683,7 @@ void obstacle_challenge_update(
 
         Serial.println(
             "[OC] New obstacle run");
+        printParkingExitGeometry();
     }
 
     // This path exists only in the Obstacle Challenge. While it owns the
