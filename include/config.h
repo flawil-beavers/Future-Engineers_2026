@@ -161,6 +161,10 @@ constexpr auto ENABLE_DEBOUNCE_TIME_US = 100000; // 100ms debounce
 #define TOF_DISTANCE_MODE VL53L4CX_DISTANCEMODE_MEDIUM
 constexpr auto TOF_I2C_CLOCK = 400000; // 400kHz I2C clock (standard for VL53L4CX)
 constexpr auto TOF_TIMING_BUDGET_US = 30000UL; // Normal 30ms budget; explicitly applied during sensor initialization
+// GetMeasurementDataReady() itself is an I2C transaction. Polling both 30 ms
+// sensors on every sub-millisecond control iteration wastes bus and CPU time;
+// 1 ms polling retains at most 1 ms of fresh-sample service latency.
+constexpr auto TOF_READY_POLL_INTERVAL_US = 1000UL;
 constexpr auto TOF_MAX_RELIABLE_DISTANCE_MM = 600.0f; // Max distance for reliable wall detection (mm)
 constexpr auto TOF_MAX_LONG_DISTANCE_MM = 4000.0f; // Max distance for long-range discovery (mm)
 constexpr auto TOF_OUT_OF_RANGE_MM = 9999.0f; // Value returned when no object is detected or beyond reliable range (mm)
@@ -715,4 +719,9 @@ constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
 #define CAMERA_SENSOR_XCLK_HZ 24000000UL
 #define CAMERA_GC2145_PLL_MODE1 0x1F
 #define CAMERA_GC2145_PLL_DIVX4 0x05
+// Preserve the complete 1616 x 1208 readout and its horizontal timing. The
+// stock profile adds 50 vertical blanking lines even though the measured 1080
+// line exposure fits inside the active window; remove only those idle lines.
+#define CAMERA_GC2145_HBLANK 0x011C
+#define CAMERA_GC2145_VBLANK 0x0000
 #define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION

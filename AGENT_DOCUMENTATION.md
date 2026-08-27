@@ -23,10 +23,83 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 - Preserve still-relevant earlier entries; consolidate them only when their
   conclusions have been superseded and state what replaced them.
 - Never store credentials, personal access tokens, or large raw logs here.
+- Keep routine successful-run documentation brief: normally two or three
+  sentences stating the test, outcome, and next step. Add detailed analysis
+  only when a failure, code change, new measured limit, safety issue, or
+  reusable engineering conclusion materially changes the project state.
+- Keep `OBSTACLE_CHALLENGE_TEST_PLAN.md` as an ordered checkbox list, not a log
+  narrative. Put durable reasoning and important evidence here, and leave raw
+  measurements in the USB logs or focused technical documents.
 
 ---
 
 ## 2026-08-27 - Loop/camera optimization integration gate
+
+The former obstacle test plan accumulated completed log narratives, tuning
+rationale, and calculations alongside its remaining actions. It has been
+replaced by a compact ordered checklist that retains the meaningful completed
+milestones and current pending gates. Durable engineering history remains in
+this file; seat numbering and clearance interpretation remain in their focused
+documents. Future routine successes should be summarized in no more than two
+or three sentences unless they establish new engineering knowledge.
+
+The five accepted optimizations have now been selectively ported into the
+current `pure-pursuit` workspace without copying the stale obstacle-path state
+from the performance worktree. `Vision` builds an exact 65,536-byte RGB565
+classification lookup and skips the image rows above y=80; ToF ready checks
+are limited to one poll per millisecond; the GC2145 retains HBLANK `0x011C`
+and uses VBLANK `0x0000`; and camera ready-wait telemetry clamps signed
+timestamp underflow to zero. The rejected HBLANK `0x008E` profile was not
+ported. Current obstacle geometry, perception holds, discovery limits, seam
+handling, Pure Pursuit, PID, and speed settings are unchanged.
+
+The IDE-managed `giga_r1_m7` build passed using 361128 bytes RAM (69.0%) and
+364568 bytes flash (46.4%). This is the expected roughly 65.5 KiB RAM increase
+and leaves about 162 KiB RAM. Existing compiler warnings are unchanged. No
+firmware was uploaded. Next, upload only with user consent and repeat the
+accepted stationary camera-equivalence checks with official red and green
+pillars at centre and validated edge views. Require stable correct colour,
+usable geometry, and no new edge-only misses. If that passes, run one
+already-safe 175 mm/s obstacle lap and inspect injection timing, ToF freshness,
+CTE, heading error, and physical clearance before starting broader reliability.
+
+`log_111` passes the post-port stationary camera gate: red and green were
+production-valid at centre and both approximately +/-26-degree edge views,
+with no edge clipping, capture errors, missed intervals, or false clear-field
+pillar. Frame interval stayed at 76.48-76.50 ms and sampled processing/control
+block time was 1.20-2.28/1.27-2.35 ms. Next run one known-safe 175 mm/s
+obstacle lap on the integrated firmware; no camera change is warranted.
+
+`log_113` passes the post-port moving gate physically and in telemetry. It
+completed one CW lap with red seat 6 at 230 mm, green seat 14 at 260 mm, and
+red seat 23 at 260 mm; all three had complete fresh-ToF reports and the user
+reported flawless motion. ToF pillar/opposite-wall clearance estimates were
+75/177, 131/325, and 149/279 mm; the footer reported `PASS`, maximum CTE
+100.1 mm, and maximum heading error 43.5 degrees. The green was physically at
+seat 14 rather than the previously requested seat 15, but this still closes
+the loop/camera regression because colour acquisition, route injection, ToF
+service, and a complete moving lap all succeeded.
+
+`log_112` exposes a separate safety defect after the robot was placed for the
+opposite direction but commanded `RIGHT/CW`. From about 7.2 to 12.6 seconds it
+made essentially no forward progress while requesting 175 mm/s; duty rose from
+about 115 to 144 and the robot continued pushing the wall until the user used
+the switch. `check_stalling()` currently arms only when absolute duty exceeds
+99% of `MOTOR_MAX_DC`, i.e. greater than 198 of 200. The normal speed loop
+never reached that threshold, so its 100 ms stall window was continually
+reset. Cross-track stayed below the 300 mm abort because encoder odometry also
+stopped, and a raw side-ToF stop is intentionally unavailable because a side
+sensor cannot distinguish legal pillars from walls. A relative gyro/odometry
+reset also cannot infer that the robot was initially facing the wrong physical
+direction.
+
+Treat this as a real watchdog design gap, not a camera-optimization regression.
+Before any further powered route test, retain the existing fast high-duty
+protection and add a slower commanded-motion/no-progress watchdog independent
+of near-maximum duty. It must exclude target-speed-zero braking/perception
+holds and log its evidence before pausing. Add deterministic logic coverage
+and obtain agreement on a safe physical stall-validation setup; do not
+deliberately drive into a hard field wall.
 
 The separate task `Profile robot loop timing` produced accepted stationary
 changes in branch `perf/loop-camera-optimization` and worktree

@@ -54,6 +54,10 @@ int FullFovGC2145::setResolution(int32_t resolution)
     // an explicit compile-time test profile.
     result |= writeRegister(0xF7, CAMERA_GC2145_PLL_MODE1);
     result |= writeRegister(0xF8, 0x80 | CAMERA_GC2145_PLL_DIVX4);
+    result |= writeRegister(0x05, CAMERA_GC2145_HBLANK >> 8);
+    result |= writeRegister(0x06, CAMERA_GC2145_HBLANK & 0xFF);
+    result |= writeRegister(0x07, CAMERA_GC2145_VBLANK >> 8);
+    result |= writeRegister(0x08, CAMERA_GC2145_VBLANK & 0xFF);
     // AEC anti-flicker is expressed in line clocks. Scale the documented
     // 0x0168 default with the PLL ratio (DIVX4 / 5) so 50 Hz lighting does not
     // produce alternating dark horizontal bands at faster profiles.
@@ -145,7 +149,11 @@ bool CameraSystem::capture()
     lastCaptureTimeUs = previousFrameCompletedUs == 0
         ? frameCompletedUs - captureStartedUs
         : frameCompletedUs - previousFrameCompletedUs;
-    lastReadyWaitTimeUs = serviceStartedUs - frameCompletedUs;
+    const int32_t readyWaitUs =
+        static_cast<int32_t>(serviceStartedUs - frameCompletedUs);
+    lastReadyWaitTimeUs = readyWaitUs > 0
+        ? static_cast<uint32_t>(readyWaitUs)
+        : 0U;
     lastFrameIntervalUs = previousFrameCompletedUs == 0
         ? 0
         : frameCompletedUs - previousFrameCompletedUs;
@@ -170,7 +178,11 @@ bool CameraSystem::capture()
     if (frameCompletedUs == 0)
         frameCompletedUs = serviceStartedUs;
     lastCaptureTimeUs = frameCompletedUs - captureStartedUs;
-    lastReadyWaitTimeUs = serviceStartedUs - frameCompletedUs;
+    const int32_t readyWaitUs =
+        static_cast<int32_t>(serviceStartedUs - frameCompletedUs);
+    lastReadyWaitTimeUs = readyWaitUs > 0
+        ? static_cast<uint32_t>(readyWaitUs)
+        : 0U;
     lastFrameIntervalUs = previousFrameCompletedUs == 0
         ? 0
         : frameCompletedUs - previousFrameCompletedUs;

@@ -348,6 +348,15 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
 
 void update_lasers()
 {
+  static uint32_t last_poll_us = 0;
+  const uint32_t now_us = micros();
+  if (last_poll_us != 0 &&
+      now_us - last_poll_us < TOF_READY_POLL_INTERVAL_US)
+  {
+    return;
+  }
+  last_poll_us = now_us;
+
   read_single_tof(sensor_left, tof_distances[TOF_LEFT]);
   read_single_tof(sensor_right, tof_distances[TOF_RIGHT]);
 }
