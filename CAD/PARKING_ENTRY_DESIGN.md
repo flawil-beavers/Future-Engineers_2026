@@ -2,7 +2,7 @@
 
 **Project:** WRO Future Engineers 2026 robot  
 **Date:** August 2026  
-**Status:** Rules-backed design; no final-parking firmware implemented
+**Status:** Model-validated entry and staged firmware implemented; physical validation pending
 
 ## 1. Scope and authoritative rules
 
@@ -103,67 +103,12 @@ In the canonical south-section field frame this mirrors to:
 | East / CCW orientation | `(313.75, -1400.0, 0 degrees)` |
 | West / CW orientation | `(398.75, -1400.0, 180 degrees)` |
 
-These coordinates are calculated from the prototype length. They must be
-recomputed from the final directly measured robot projection before firmware
-acceptance.
+These coordinates use the confirmed 165 mm robot projection.
 
 The 20 mm rule limit is loose compared with the existing exit heading gate.
 For the 100 mm wheelbase, a 2 degree heading error produces only
 `100 * sin(2 degrees) = 3.49 mm` wheel-distance difference. Retaining the
 existing 2 degree gyro gate therefore provides substantial parallelism margin.
-
-### Mechanical length trade-off
-
-Making the robot permanently longer increases the rule-defined gap, but only
-half of that increase becomes additional free space:
-
-- parking gap: `G = 1.5L`;
-- total free longitudinal space: `G - L = 0.5L`;
-- centred clearance at each end: `C = 0.25L`;
-- required length for a chosen centred clearance: `L = 4C`.
-
-| Robot length | Parking gap | Total free space | Centred end clearance |
-|---:|---:|---:|---:|
-| 165 mm | 247.5 mm | 82.5 mm | 41.25 mm |
-| 180 mm | 270 mm | 90 mm | 45 mm |
-| 200 mm | 300 mm | 100 mm | 50 mm |
-| 220 mm | 330 mm | 110 mm | 55 mm |
-| 240 mm | 360 mm | 120 mm | 60 mm |
-| 300 mm | 450 mm | 150 mm | 75 mm |
-
-The rules allow at most `300 x 200 mm`, but maximum length is not automatically
-best: a longer projection also sweeps farther around every corner, changes
-pillar-clearance timing, adds mass and braking error, and requires completely
-new exit and entry validation. Length does not improve the 200 mm lateral
-parking depth.
-
-If a permanent extension is considered, the present model favours the rear.
-The front overhang is already 125 mm and the rejected original exit contacted
-the forward magenta piece. A same-controls comparison, including the bounded
-60 mm localization reverse and the existing 16 tolerance cases, produced:
-
-| Variant | Length | Existing path cases |
-|---|---:|---:|
-| Current 125 mm front / 40 mm rear | 165 mm | 16 / 16 |
-| Rear increased to 55 mm | 180 mm | 15 / 16 |
-| Rear increased to 75 mm | 200 mm | 13 / 16 |
-| Rear increased to 95 mm | 220 mm | 12 / 16 |
-| Front increased to 140 mm | 180 mm | 13 / 16 |
-| Front increased to 160 mm | 200 mm | 5 / 16 |
-
-The table is reproduced by `parking_length_trade_study.py`; it imports the
-unchanged exit model rather than maintaining a second collision implementation.
-
-This does not validate an extension; every changed geometry fails at least one
-case on the current path. It only shows that rear extension damages the known
-trajectory less than an equal front extension. A reasonable first mechanical
-candidate is therefore `L = 200 mm` by adding a rigid 35 mm rear extension,
-giving 50 mm nominal centred clearance at both ends. It must be a permanent,
-structural part of the measured vehicle, remain fixed for the whole round, and
-stay within the 200 mm width. Obtain written organizer confirmation before
-changing the chassis solely to influence the calculated parking gap, because
-the rules state `length of the robot` but do not further define how a narrow
-extension is accepted for that measurement.
 
 ## 3. Why the current exit cannot simply be reversed
 
@@ -289,6 +234,25 @@ straight footprint remains strictly inside all four parking boundaries. The
 number of segments and their distances must come from that search; they must
 not be copied from the exit table merely for symmetry.
 
+The dedicated search now produces this entry from capture pose
+`(270.26, 274.60, 0 degrees)` to the centred target
+`(81.25, 100.00, 0 degrees)`:
+
+| Segment | Drive | Steering | Distance |
+|---:|---|---:|---:|
+| 1 | reverse | 0 | 20 mm |
+| 2 | reverse | +50 | 120 mm |
+| 3 | reverse | 0 | 80 mm |
+| 4 | reverse | -50 | 65 mm |
+| 5 | forward | +50 | 20 mm |
+| 6 | reverse | -50 | 35 mm |
+| 7 | forward | 0 | 25 mm |
+
+For CW, steering signs mirror while drive directions and distances remain the
+same. `parking_entry_swept_search.py` checks all 16 combinations of gap
+`242.5/252.5 mm`, capture translation `+/-5 mm`, and heading `+/-1 degree`;
+all 16 pass the swept collision and final-containment gates.
+
 ### Phase F - execute and verify
 
 A suitable firmware state machine is:
@@ -321,33 +285,32 @@ do not use contact with a marker or wall as localization.
 
 1. Directly measure final front overhang, rear overhang, straight-wheel
    projection width, and full-lock swept outline.
-2. Confirm with the organizer how robot length is measured if a permanent rear
-   extension is considered. Compare the unchanged 165 mm robot with the first
-   200 mm rear-extension candidate before building anything.
-3. Finish and physically validate reverse exit localization in both directions.
-4. Complete the missing start-section discovery connector and validate normal
+2. Finish and physically validate reverse exit localization in both directions.
+3. Complete the missing start-section discovery connector and validate normal
    three-lap runs with the parking pieces installed.
-5. Extend the swept search for the fully contained target and require every
+4. Extend the swept search for the fully contained target and require every
    tolerance case to pass in both mirrors.
-6. Simulate all four combinations of driving direction and parking approach:
+5. Simulate all four combinations of driving direction and parking approach:
    CCW-forward, CCW-opposite, CW-reverse, and CW-after-turnaround. Select by
    worst-case clearance and reliability, not by one convenient field setup.
-7. Implement only the dual-marker scan and verify its logged edge order, gap,
+6. Implement only the dual-marker scan and verify its logged edge order, gap,
    field pose, and uncertainty without entering the bay.
-8. Add the generated parking segments behind a test-only segment limit.
-9. Validate one segment at a time, first with no pillars and then with every
+7. Add the generated parking segments behind a test-only segment limit.
+8. Validate one segment at a time, first with no pillars and then with every
    legal starting-section pillar placement.
-10. Accept final parking only after repeated full-inside, no-contact results in
+9. Accept final parking only after repeated full-inside, no-contact results in
    both CW and CCW runs.
 
 For a fully reproducible calculation, provide a scaled top-down outline at
-steering `-50`, `0`, and `+50`; exact front/rear axle offsets; extension width,
-mass, and mounting position; measured left/right forward and reverse radii;
+steering `-50`, `0`, and `+50`; exact front/rear axle offsets; measured
+left/right forward and reverse radii;
 braking overshoot at the intended parking speeds; ToF raw logs over both
 magenta pieces; and end-of-third-lap logs for CW and CCW with the parking pieces
 installed. With those inputs, search robot lengths in fixed increments and
 rank them by minimum swept clearance, final containment margin, segment count,
 path length, and measured stopping uncertainty.
 
-No powered parking firmware should be added before steps 1-5 have produced the
-required measurements and collision-free path.
+The firmware exists behind `OBSTACLE_FINAL_PARKING_ENTRY_ARMED=false`. Do not
+arm it before the connector, dual-marker scan, and capture pose pass physically
+in both directions. Then raise the test segment limit one reviewed segment at a
+time; do not jump directly to unrestricted entry.

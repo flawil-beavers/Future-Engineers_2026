@@ -324,24 +324,29 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
+- [ ] Immediate full isolated practice: remove all obstacle pillars, keep
+      `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=true`, CCW turn sign `+1`, and
+      segment limit `7`. Place the rear axle at canonical
+      `(-500,-1000,0 degrees)`, centred across the lane on the boundary from
+      the last corner to the parking straight. Require both
+      markers, valid gap/pose corrections, all seven segments, strict final
+      containment, no contact, and final motor hold.
+
 - [ ] Cover all four possible physical starting-section/parking-lot rotations.
       Canonical rotation may share geometry, but test both real direction cases:
       parking ahead after the current CCW wrap and behind after the CW wrap.
 - [ ] Keep obeying red/green pass sides through the official third lap. Once
       the complete vehicle has left the last corner, parking-route signs may be
       passed on either side but must still not be touched or moved.
-- [ ] Measure the final front/rear projection, straight-wheel width, full-lock
-      swept outline, and robot length. Recompute the `1.5 * length` gap and the
-      centred rear-axle target from those measurements.
-- [ ] Before any mechanical extension, obtain organizer confirmation of its
-      treatment in robot-length measurement. Compare the unchanged 165 mm body
-      with a rigid 35 mm rear extension (200 mm total); do not lengthen the
-      already collision-critical front as the first candidate.
-- [ ] Extend the parking swept-envelope model from the fully contained target
+- [x] Confirm the 125 mm front, 40 mm rear, 165 mm length, 125 mm
+      straight-wheel width, approximately 135 mm steering envelope, and
+      approximately 109 mm full-lock radius. The resulting gap is 247.5 mm and
+      the centred local rear-axle target is `(81.25,100,0 degrees)`.
+- [x] Extend the parking swept-envelope model from the fully contained target
       outward. Do not reverse the current exit unchanged: its parked pose has
       zero nominal margin at the open boundary, and a centred target failed all
       16 current-path tolerance cases.
-- [ ] Require positive wall/marker clearance and strict final containment for
+- [x] Require positive wall/marker clearance and strict final containment for
       every gap/placement/heading tolerance case in both mirrored directions.
 - [ ] Track localization uncertainty through all three laps, then approach the
       outer scan line using the known start-section pillar map.
@@ -349,9 +354,16 @@ Start after unparking/localization and the three-lap obstacle route are reliable
       the fixed field edge and outer-wall reference, and verify the measured
       inside-face gap against `1.5 * measured robot length`. Do not depend on
       odometry alone and do not enter the bay if either piece is unresolved.
-- [ ] Implement the calculated path behind an isolated test-only segment gate,
+- [x] Implement the calculated path behind an isolated test-only segment gate,
       with the existing steer-settle, bounded-distance, brake, gyro-health, and
       motor-lock safety pattern.
+- [ ] With `OBSTACLE_FINAL_PARKING_ENTRY_ARMED=false`, validate the complete
+      connector and dual-marker scan first. Require both inside edges, a gap
+      within 15 mm of 247.5 mm, pose corrections within 25 mm, and capture
+      error within +/-5 mm and +/-1 degree in both CCW and CW.
+- [ ] After the capture gate passes in both directions, set
+      `OBSTACLE_FINAL_PARKING_ENTRY_ARMED=true` and raise
+      `OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT` one segment per reviewed run.
 - [ ] Validate one parking segment at a time without pillars, then repeat with
       every legal starting-section pillar placement without moving a sign.
 - [ ] Finish with steering centred, complete projection strictly inside the

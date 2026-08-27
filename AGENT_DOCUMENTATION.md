@@ -33,7 +33,46 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
-## 2026-08-27 - Parking rotations, final-section signs, and length trade study
+## 2026-08-27 - Final-parking controller implemented behind physical gates
+
+The robot remains unchanged at the confirmed `165 mm` length (`125 mm` front
+and `40 mm` rear of the rear axle). The rule-defined bay is `247.5 x 200 mm`; the centred
+rear-axle target is parking-local `(81.25,100,0 degrees)`, with `41.25 mm`
+longitudinal and `37.5 mm` lateral nominal clearance.
+
+`CAD/parking_entry_swept_search.py` searches from that contained target outward
+with added search clearance, reverses the result for entry, and passes all
+`16/16` combinations of `242.5/252.5 mm` gap, `+/-5 mm` capture translation,
+and `+/-1 degree` capture heading. The resulting seven entry controls are
+`R0/20, R+50/120, R0/80, R-50/65, F+50/20, R-50/35, F0/25` in local parking
+coordinates. The nominal capture pose is `(270.26,274.60,0 degrees)`.
+
+`src/final_parking.cpp` handles the conservative three-lap handoff for both
+mirrors, takes an inner-safe `y=-1120 mm` connector past the parking pieces,
+shifts outside only after `x=550`, scans west from `x=900`, requires both
+magenta pieces and the intervening wall, corrects x from the fixed inside face
+and y from the outer wall, returns to the mirrored capture pose, runs bounded
+segments, and verifies the full final footprint plus heading. Every geometry,
+gyro, distance, marker-order, gap, correction, capture, segment-pose, and final
+containment failure stops the motor.
+
+No firmware was uploaded and no commit was created. For the requested
+parking-only run, `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=true` bypasses the
+exit and all laps, selects CCW, and initializes the rear axle at canonical
+`(-500,-1000,0 degrees)`: centred across the lane and exactly on the boundary
+between the last corner and the parking straight. Run with no obstacle pillars.
+The controller must perform its full
+approach, outer shift, westbound two-marker scan, pose correction, capture, all
+seven searched entry segments, strict footprint/heading/speed verification,
+and final motor hold. Practice mode deliberately bypasses the production
+`ENTRY_ARMED` gate; the seven-segment test limit remains active. Approach,
+scan, capture, and every individual segment also have independent timeouts so
+an encoder stall cannot command motion indefinitely. The IDE-managed practice
+build passed with 361240 bytes RAM and 371208 bytes flash.
+
+---
+
+## 2026-08-27 - Parking rotations and final-section signs
 
 Rules Figures 8d/8e and Appendix A were visually rechecked. Two coin tosses can
 place the starting section and its parking lot on any of the four physical
@@ -52,32 +91,17 @@ handoff initially, but make the CCW-forward and CW-reverse approaches explicit.
 Do not introduce an earlier transition until the full footprint plus pose
 uncertainty can be proven beyond the corner boundary.
 
-Length trade-off is now quantified. For robot length `L`, the gap is `1.5L`,
-total longitudinal slack is `0.5L`, and centred end clearance is only `0.25L`.
-The current 165 mm gives 41.25 mm per end; 200 mm gives 50 mm; 240 mm gives
-60 mm. The 300 mm rule maximum is not an automatic optimum because swept
-envelope, pillar timing, mass, and braking worsen. A same-controls model check
-showed the current 16/16 exit/localization cases fall to 13/16 for a 35 mm rear
-extension to 200 mm total, but only 5/16 for an equal front extension. Rear is
-therefore the first candidate, not a validated change. Any extension requires
-a new exit/entry search and written organizer confirmation of how a permanent
-extension counts toward robot length; changing size during the round is
-explicitly forbidden.
-
 The IDE-managed PlatformIO Python executable successfully reran
 `CAD/parking_exit_swept_search.py`: the unchanged five-segment path and its
 60 mm reverse-localization limit both still pass 16/16 checked scenarios, and
 the generated SVG was unchanged. `CAD/PARKING_ENTRY_DESIGN.md` now records the
-four rotations, two direction cases, sign-rule boundary, length table, first
-200 mm rear-extension candidate, required measurements, and optimizer inputs.
+four rotations, two direction cases, sign-rule boundary, required measurements,
+and optimizer inputs for the unchanged 165 mm robot.
 No firmware or geometry constant was changed.
 
-Exact next action: obtain organizer clarification before extending the robot,
-then provide scaled `-50/0/+50` outlines, exact front/rear offsets, proposed
-extension shape/mass, measured forward/reverse radii and braking overshoot,
-dual-marker ToF scans, and CW/CCW third-lap end logs. Compare the unmodified
-165 mm robot against the 200 mm rear candidate with newly searched paths; do
-not select a length from gap arithmetic alone.
+Exact next action: use the confirmed 165 mm geometry to search a dedicated
+fully-contained entry path, then validate the dual-marker ToF scan and the
+direction-specific CCW/CW approach before any powered entry test.
 
 ---
 
