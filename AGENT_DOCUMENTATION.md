@@ -33,6 +33,54 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-27 - Parking rotations, final-section signs, and length trade study
+
+Rules Figures 8d/8e and Appendix A were visually rechecked. Two coin tosses can
+place the starting section and its parking lot on any of the four physical
+straights. Within that straight the bay is not at either of two arbitrary
+offsets: the right piece is fixed at the right dotted boundary and the left
+piece moves for `1.5 * robot length`. Canonical rotation still needs two real
+handoffs at the current path wrap near x=0: CCW/east has the bay ahead at
+positive x, while CW/west has already passed it and must approach it in reverse
+or via a separately modelled legal turnaround.
+
+The third lap is officially complete when the complete vehicle projection has
+left the last corner section. Only after that point may the remaining
+start-section signs be passed on either side; none may be moved. The current
+progress-wrap completion happens later and is conservative. Keep that safer
+handoff initially, but make the CCW-forward and CW-reverse approaches explicit.
+Do not introduce an earlier transition until the full footprint plus pose
+uncertainty can be proven beyond the corner boundary.
+
+Length trade-off is now quantified. For robot length `L`, the gap is `1.5L`,
+total longitudinal slack is `0.5L`, and centred end clearance is only `0.25L`.
+The current 165 mm gives 41.25 mm per end; 200 mm gives 50 mm; 240 mm gives
+60 mm. The 300 mm rule maximum is not an automatic optimum because swept
+envelope, pillar timing, mass, and braking worsen. A same-controls model check
+showed the current 16/16 exit/localization cases fall to 13/16 for a 35 mm rear
+extension to 200 mm total, but only 5/16 for an equal front extension. Rear is
+therefore the first candidate, not a validated change. Any extension requires
+a new exit/entry search and written organizer confirmation of how a permanent
+extension counts toward robot length; changing size during the round is
+explicitly forbidden.
+
+The IDE-managed PlatformIO Python executable successfully reran
+`CAD/parking_exit_swept_search.py`: the unchanged five-segment path and its
+60 mm reverse-localization limit both still pass 16/16 checked scenarios, and
+the generated SVG was unchanged. `CAD/PARKING_ENTRY_DESIGN.md` now records the
+four rotations, two direction cases, sign-rule boundary, length table, first
+200 mm rear-extension candidate, required measurements, and optimizer inputs.
+No firmware or geometry constant was changed.
+
+Exact next action: obtain organizer clarification before extending the robot,
+then provide scaled `-50/0/+50` outlines, exact front/rear offsets, proposed
+extension shape/mass, measured forward/reverse radii and braking overshoot,
+dual-marker ToF scans, and CW/CCW third-lap end logs. Compare the unmodified
+165 mm robot against the 200 mm rear candidate with newly searched paths; do
+not select a length from gap arithmetic alone.
+
+---
+
 ## 2026-08-27 - Final-parking rules and geometry design established
 
 The current official WRO 2026 rules and 11 August international Q&A were

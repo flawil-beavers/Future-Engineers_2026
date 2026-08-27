@@ -324,9 +324,19 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
+- [ ] Cover all four possible physical starting-section/parking-lot rotations.
+      Canonical rotation may share geometry, but test both real direction cases:
+      parking ahead after the current CCW wrap and behind after the CW wrap.
+- [ ] Keep obeying red/green pass sides through the official third lap. Once
+      the complete vehicle has left the last corner, parking-route signs may be
+      passed on either side but must still not be touched or moved.
 - [ ] Measure the final front/rear projection, straight-wheel width, full-lock
       swept outline, and robot length. Recompute the `1.5 * length` gap and the
       centred rear-axle target from those measurements.
+- [ ] Before any mechanical extension, obtain organizer confirmation of its
+      treatment in robot-length measurement. Compare the unchanged 165 mm body
+      with a rigid 35 mm rear extension (200 mm total); do not lengthen the
+      already collision-critical front as the first candidate.
 - [ ] Extend the parking swept-envelope model from the fully contained target
       outward. Do not reverse the current exit unchanged: its parked pose has
       zero nominal margin at the open boundary, and a centred target failed all
