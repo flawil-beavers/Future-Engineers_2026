@@ -33,6 +33,28 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28: log 227 validates log-221 fix and complete 7.16 V parking flow
+
+Log 227 confirms the revised M7 image with
+`approach/verify_target_mm=62.0/65.0`. At a reported 7.16 V, rear positioning
+moved from 46.3 to 60.7 mm using 15.7 mm encoder travel. The settled result had
+4.3 mm canonical target error and 1.4 mm motion-agreement error, so it passed
+the unchanged safety gates. All five exit segments completed; segment 5 aligned
+at 172.1 mm and the stopped result had 0.7 degree heading error. Parking-edge
+localization crossed after 47.0 mm, applied -9.7/-9.1 mm x/y corrections, and
+retained a plausible wall residual. Green station 2 / seat 5 was resolved,
+avoidance was injected, and the diagnostic ended with its intended motor lock.
+No watchdog stall or abnormal motor event occurred.
+
+This accepts the log-221 approach-bias fix and the low-speed motor tuning
+together at the lowest tested pack voltage. Retain the 120-PWM/200 Hz carrier,
+low-speed Ki=0.250, 10-PWM full-lock steering feedforward, 62 mm correction
+approach, and unchanged 65 +/-5 mm final verification. Remaining validation is
+the separately tracked mirrored parked direction and any optional 100 mm/s
+matrix coverage; neither blocks acceptance of the low-speed unparking fix.
+
+---
+
 ## 2026-08-28: log 226 passes complete flow at 7.2 V but still uses old M7 image
 
 Log 226 completed rear positioning, all five exit segments, parking-edge
