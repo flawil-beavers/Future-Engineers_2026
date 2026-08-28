@@ -95,6 +95,20 @@ constexpr float DRIVE_ACCEL_RELEASE_JERK_MMSSS = 500.0f;
 constexpr float CRUISE_ACCEL_THRESHOLD_MMSS = 20.0f;
 constexpr float CRUISE_SPEED_ERROR_MMS = 30.0f;
 constexpr unsigned long CRUISE_ENTRY_DWELL_US = 300000;
+// When a settled low-speed profile remains far ahead of measured speed, add
+// bounded proportional load compensation. This covers full-steering tire
+// scrub and other sustained loads without changing normal low-error tracking.
+constexpr float LOW_SPEED_LOAD_COMP_MAX_PROFILE_MMS = 120.0f;
+constexpr float LOW_SPEED_LOAD_COMP_ACTIVATION_ERROR_MMS = 20.0f;
+constexpr float LOW_SPEED_LOAD_COMP_KP_DC_PER_MMS = 0.50f;
+constexpr float LOW_SPEED_LOAD_COMP_MAX_DC = 30.0f;
+static_assert(
+    LOW_SPEED_LOAD_COMP_MAX_PROFILE_MMS > 0.0f &&
+        LOW_SPEED_LOAD_COMP_ACTIVATION_ERROR_MMS >= 0.0f &&
+        LOW_SPEED_LOAD_COMP_KP_DC_PER_MMS >= 0.0f &&
+        LOW_SPEED_LOAD_COMP_MAX_DC >= 0.0f &&
+        LOW_SPEED_LOAD_COMP_MAX_DC <= MOTOR_MAX_DC - MOTOR_STATIC_FF_DC,
+    "Low-speed load compensation must remain within the motor PWM budget");
 constexpr unsigned long SPEED_MEASUREMENT_WINDOW_US = 50000;
 constexpr float SPEED_FILTER_ALPHA = 0.60f;
 constexpr float LOW_SPEED_FILTER_ALPHA = 0.60f;
@@ -338,7 +352,10 @@ constexpr auto OBSTACLE_PARKING_REAR_TOF_SETTLE_MS = 200UL;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_SETTLE_MS = 1000UL;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_CONFIRM_FRAMES = 3;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_DISCARD_FRAMES = 3;
-constexpr auto OBSTACLE_PARKING_REAR_TOF_TIMEOUT_MS = 1000UL;
+// The robot remains stopped throughout acquisition. One second was rejected by
+// log 182 after a transient run of out-of-range frames terminated an otherwise
+// valid parked start. Allow the rear sensor time to reacquire the magenta piece.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_TIMEOUT_MS = 3000UL;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM =
     OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM -
     OBSTACLE_REAR_TOF_BEHIND_AXLE_MM;
@@ -357,7 +374,7 @@ static_assert(
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM,
     "Rear-ToF target must leave positive clearance at both parking limits");
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 140.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 150.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 180.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
 // A short side-ToF return after alignment is expected to be the exact 200 mm
@@ -383,7 +400,7 @@ static_assert(
 constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
 constexpr int8_t OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 60.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 70.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 200;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM = 190.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM = 400.0f;
@@ -406,18 +423,45 @@ constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
 constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = true;
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
-constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 40.0f;
-// This is the measured full-lock rear-axle radius. A smaller requested radius
-// is not physically achievable; reverse Pure Pursuit must use the correct
-// steering sign to follow it.
+// A 40 mm arc left the official green inner pillar clipped near image x=11
+// in repeated CCW runs; acquisition is calibrated only from x=30. The extra
+// 15 mm at the measured radius rotates the camera about 7.9 degrees farther
+// while retaining the same settled full-lock controller.
+constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 55.0f;
+// This is the measured full-lock rear-axle radius. The entry controller stops
+// at the arc start, settles the steering at full lock, and then traverses the
+// modeled arc so servo lag cannot erase this short heading change.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM = 109.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SPEED_MM_S = 60.0f;
-constexpr auto OBSTACLE_PARKING_ENTRY_LOOKAHEAD_MM = 70.0f;
+// Hold the localized heading on the long reverse approach beside the parking
+// barrier. Reverse steering has the opposite yaw response from forward.
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP = 3.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA = 0.20f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG = 8.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_FADE_MM = 40.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_CORRECTION_START_DEG = 0.4f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG = 12.0f;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_STRAIGHT_STEER_SETTLE_MS = 200UL;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG = 2.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM = 18.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG = 5.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1200UL;
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS = 32;
+static_assert(
+    OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA <= 1.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG <
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_FADE_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_CORRECTION_START_DEG > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG <
+            OBSTACLE_PARKING_EXIT_STEERING &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG > 0.0f,
+    "Parking-entry heading hold must remain bounded below full lock");
 static_assert(
     OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM <
             OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM &&
@@ -679,6 +723,11 @@ constexpr auto OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG = 1.0f;
 // a single-frame dropout. Pillars use their separate two-vote geometry and
 // colour confirmation and can override an earlier clear observation.
 constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
+// Parking-entry observation is already stationary and has a 1200 ms timeout.
+// Log 190 saw only floor-shaped green fragments, then declared the occupied
+// target clear after two pillar-dropout frames. Give the official pillar more
+// frames to appear without weakening its separate two-vote confirmation.
+constexpr auto OBSTACLE_PARKING_ENTRY_CLEAR_FRAMES = 5;
 constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
 // Stop early enough that an unresolved near-side pillar cannot overlap the
 // chassis before the camera has produced a usable edge-of-view observation.

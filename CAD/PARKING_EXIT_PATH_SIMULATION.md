@@ -253,7 +253,7 @@ The full corrected pose is logged before any Pure Pursuit join is enabled.
 The active x-localization implementation retains the ruler-validated 50 mm
 rear placement for departure safety. After final alignment and the magenta-end
 y reference, the robot centres its steering and reverses at 60 mm/s for at
-most 60 mm. This crosses the opposite edge of the same magenta piece and also
+most 70 mm. This crosses the opposite edge of the same magenta piece and also
 leaves additional forward approach distance for the later starting-section
 discovery connector. Only returns no more than 50 mm beyond the initial
 magenta range can update the last marker observation. Intermediate oblique
@@ -277,9 +277,9 @@ The parking position is asymmetric along the 1000 mm straight, so two entry
 paths are required:
 
 - CCW reverses straight until the corrected rear-axle field coordinate reaches
-  approximately `x=60 mm`, then follows a 40 mm reverse arc toward S0 station 2.
+  approximately `x=60 mm`, then follows a 55 mm reverse arc toward S0 station 2.
 - CW reverses straight until approximately `x=520 mm`, then follows the mirrored
-  40 mm reverse arc toward S0 station 1.
+  55 mm reverse arc toward S0 station 1.
 
 The arc radius is 109 mm and is sampled as Pure Pursuit waypoints; firmware
 commands negative speed rather than using a steering override. Both complete

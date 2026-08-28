@@ -88,6 +88,7 @@ extern float last_speed;
 // Debug variables
 extern int dc_out;
 extern float pid_before_checking;
+extern float low_speed_load_compensation_dc;
 
 // Enable switch state management
 extern bool system_enabled;           // Whether system is currently running

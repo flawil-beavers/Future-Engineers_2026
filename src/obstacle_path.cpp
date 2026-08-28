@@ -57,6 +57,14 @@ struct DiscoveryStation
     bool observedClear = false;
 };
 
+enum ParkingEntryDrivePhase : uint8_t
+{
+    PARKING_ENTRY_STRAIGHT_STEER_SETTLE,
+    PARKING_ENTRY_REVERSE_STRAIGHT,
+    PARKING_ENTRY_ARC_STEER_SETTLE,
+    PARKING_ENTRY_REVERSE_ARC
+};
+
 PathPoint baselinePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint livePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
@@ -106,6 +114,15 @@ uint32_t parkingEntryObserveStartMs = 0;
 bool parkingEntryUsbWritten = false;
 float parkingEntryStartEncoderDistance = 0.0f;
 bool parkingEntryPathFailed = false;
+bool parkingEntryControlLogged = false;
+ParkingEntryDrivePhase parkingEntryDrivePhase =
+    PARKING_ENTRY_STRAIGHT_STEER_SETTLE;
+uint32_t parkingEntrySteerSettleStartMs = 0;
+float parkingEntryStraightHeadingDeg = 0.0f;
+float parkingEntryStraightControlStartDistance = 0.0f;
+float parkingEntryStraightMaxHeadingErrorDeg = 0.0f;
+float parkingEntryStraightFilteredHeadingErrorDeg = 0.0f;
+bool parkingEntryStraightControlLogged = false;
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -1569,10 +1586,15 @@ void updateDiscoveryCoverage(
 
             const uint8_t seatIndex =
                 station * COURSE_SEATS_PER_STATION + side;
+            const bool deferParkingTargetClear =
+                parkingEntryActive && !parkingEntryObserving &&
+                parkingEntryTargetStation >= 0 &&
+                station ==
+                    static_cast<uint8_t>(parkingEntryTargetStation);
             const bool comfortablyVisible =
                 seatComfortablyVisible(seatIndex, pose);
             const bool clearEvidence =
-                comfortablyVisible &&
+                !deferParkingTargetClear && comfortablyVisible &&
                 observationAllowsSeatClear(observation, seatIndex, pose);
             if (clearEvidence)
                 coverage.lastClearEvidenceMask |=
@@ -1585,8 +1607,13 @@ void updateDiscoveryCoverage(
 
             if (coverage.clearFrames[side] < 255)
                 ++coverage.clearFrames[side];
-            if (coverage.clearFrames[side] >=
-                OBSTACLE_DISCOVERY_CLEAR_FRAMES)
+            const uint8_t requiredClearFrames =
+                parkingEntryObserving &&
+                    parkingEntryTargetStation >= 0 &&
+                    station == static_cast<uint8_t>(parkingEntryTargetStation)
+                ? OBSTACLE_PARKING_ENTRY_CLEAR_FRAMES
+                : OBSTACLE_DISCOVERY_CLEAR_FRAMES;
+            if (coverage.clearFrames[side] >= requiredClearFrames)
                 coverage.seatObservedClear[side] = true;
         }
 
@@ -1709,6 +1736,84 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
 
     const PathPoint &finish = parkingEntryPath[parkingEntryLength - 1];
     const float plannedTravel = finish.distanceMm;
+    const float arcStartTravel = fmaxf(
+        0.0f,
+        plannedTravel - OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM);
+
+    if (parkingEntryDrivePhase == PARKING_ENTRY_STRAIGHT_STEER_SETTLE)
+    {
+        stop(false);
+        servo_disabled = false;
+        const int preloadSteering = static_cast<int>(roundf(
+            -routeTurnSign *
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG));
+        set_steering(preloadSteering);
+        steer(preloadSteering);
+        if (
+            millis() - parkingEntrySteerSettleStartMs <
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_STEER_SETTLE_MS)
+        {
+            return;
+        }
+        parkingEntryStraightControlStartDistance = get_distance();
+        parkingEntryDrivePhase = PARKING_ENTRY_REVERSE_STRAIGHT;
+        Serial.print(
+            "[PARK ENTRY] Straight steering settle complete preload=");
+        Serial.println(preloadSteering);
+        return;
+    }
+
+    if (parkingEntryDrivePhase == PARKING_ENTRY_REVERSE_STRAIGHT &&
+        entryTravel >= arcStartTravel)
+    {
+        stop(false);
+        servo_disabled = false;
+        const int arcSteering =
+            routeTurnSign * OBSTACLE_PARKING_EXIT_STEERING;
+        set_steering(arcSteering);
+        steer(arcSteering);
+        parkingEntrySteerSettleStartMs = millis();
+        parkingEntryDrivePhase = PARKING_ENTRY_ARC_STEER_SETTLE;
+        Serial.print("[PARK ENTRY] Arc steering settle travel/planned_mm=");
+        Serial.print(entryTravel, 1);
+        Serial.print("/");
+        Serial.print(plannedTravel, 1);
+        Serial.print(" steering=");
+        Serial.print(arcSteering);
+        Serial.print(" straight_max_heading_error_deg=");
+        Serial.println(parkingEntryStraightMaxHeadingErrorDeg, 1);
+        return;
+    }
+
+    if (parkingEntryDrivePhase == PARKING_ENTRY_ARC_STEER_SETTLE)
+    {
+        stop(false);
+        servo_disabled = false;
+        const int arcSteering =
+            routeTurnSign * OBSTACLE_PARKING_EXIT_STEERING;
+        set_steering(arcSteering);
+        steer(arcSteering);
+        if (millis() - parkingEntrySteerSettleStartMs <
+            OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS)
+            return;
+
+        parkingEntryDrivePhase = PARKING_ENTRY_REVERSE_ARC;
+        set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
+        if (!parkingEntryControlLogged)
+        {
+            parkingEntryControlLogged = true;
+            Serial.print("[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=");
+            Serial.print(entryTravel, 1);
+            Serial.print(" steering=");
+            Serial.print(arcSteering);
+            Serial.print(" arc_mm/radius_mm=");
+            Serial.print(OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM, 1);
+            Serial.print("/");
+            Serial.println(OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM, 1);
+        }
+        return;
+    }
+
     const float finishError = hypotf(
         pose.x_mm - finish.x, pose.y_mm - finish.y);
     const float finishHeadingError = fabsf(
@@ -1744,32 +1849,83 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         return;
     }
 
-    uint8_t targetIndex = parkingEntryProgress;
-    float lookahead = 0.0f;
-    while (targetIndex + 1 < parkingEntryLength &&
-           lookahead < OBSTACLE_PARKING_ENTRY_LOOKAHEAD_MM)
+    int steering = 0;
+    if (parkingEntryDrivePhase == PARKING_ENTRY_REVERSE_ARC)
     {
-        const PathPoint &a = parkingEntryPath[targetIndex];
-        const PathPoint &b = parkingEntryPath[targetIndex + 1];
-        lookahead += hypotf(b.x - a.x, b.y - a.y);
-        ++targetIndex;
+        steering = routeTurnSign * OBSTACLE_PARKING_EXIT_STEERING;
     }
-    const PathPoint &target = parkingEntryPath[targetIndex];
-    const float dx = target.x - pose.x_mm;
-    const float dy = target.y - pose.y_mm;
-    const float heading = pose.heading_deg * PI / 180.0f;
-    const float localY = -dx * sinf(heading) + dy * cosf(heading);
-    const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
-    const float curvature = 2.0f * localY / targetDistanceSquared;
-    // This path is traversed in reverse. A target on the vehicle's local-left
-    // side therefore needs positive steering to rotate the chassis left while
-    // backing up. The normal forward-path sign would mirror the requested arc
-    // and left log_139 almost straight despite the curved final waypoints.
-    const float steering = clampFloat(
-        atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI,
-        -OBSTACLE_MAX_PURSUIT_STEERING_DEG,
-        OBSTACLE_MAX_PURSUIT_STEERING_DEG);
-    set_steering(static_cast<int>(steering));
+    else
+    {
+        const float headingError = wrap180(
+            pose.heading_deg - parkingEntryStraightHeadingDeg);
+        parkingEntryStraightFilteredHeadingErrorDeg +=
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA *
+            (headingError - parkingEntryStraightFilteredHeadingErrorDeg);
+        parkingEntryStraightMaxHeadingErrorDeg = fmaxf(
+            parkingEntryStraightMaxHeadingErrorDeg,
+            fabsf(headingError));
+        if (
+            fabsf(headingError) >
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG)
+        {
+            stop(false);
+            set_steering(0);
+            parkingEntryActive = false;
+            parkingEntryPathFailed = true;
+            parkingEntryTestHold = true;
+            Serial.print(
+                "[PARK ENTRY] Straight heading abort error/limit_deg=");
+            Serial.print(headingError, 1);
+            Serial.print("/");
+            Serial.print(
+                OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG,
+                1);
+            Serial.println(" - drive motor locked off");
+            if (!parkingEntryUsbWritten)
+            {
+                robot_logger.write_to_usb();
+                parkingEntryUsbWritten = true;
+            }
+            return;
+        }
+
+        const float straightControlTravel = fabsf(
+            get_distance() - parkingEntryStraightControlStartDistance);
+        const float feedforwardScale = clampFloat(
+            1.0f - straightControlTravel /
+                OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_FADE_MM,
+            0.0f,
+            1.0f);
+        const float feedforward =
+            -routeTurnSign *
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG *
+            feedforwardScale;
+        float correction = feedforward;
+        if (
+            fabsf(parkingEntryStraightFilteredHeadingErrorDeg) >=
+            OBSTACLE_PARKING_ENTRY_STRAIGHT_CORRECTION_START_DEG)
+        {
+            correction = clampFloat(
+                feedforward -
+                    OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP *
+                        parkingEntryStraightFilteredHeadingErrorDeg,
+                -OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG,
+                OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG);
+        }
+        steering = static_cast<int>(roundf(correction));
+        if (!parkingEntryStraightControlLogged && fabsf(headingError) >= 0.5f)
+        {
+            parkingEntryStraightControlLogged = true;
+            Serial.print(
+                "[PARK ENTRY CONTROL] phase=REVERSE_STRAIGHT heading_target/error_deg=");
+            Serial.print(parkingEntryStraightHeadingDeg, 1);
+            Serial.print("/");
+            Serial.print(headingError, 1);
+            Serial.print(" steering=");
+            Serial.println(steering);
+        }
+    }
+    set_steering(steering);
     set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
 }
 
@@ -1965,6 +2121,14 @@ void obstacle_path_reset()
     parkingEntryUsbWritten = false;
     parkingEntryStartEncoderDistance = get_distance();
     parkingEntryPathFailed = false;
+    parkingEntryControlLogged = false;
+    parkingEntryDrivePhase = PARKING_ENTRY_STRAIGHT_STEER_SETTLE;
+    parkingEntrySteerSettleStartMs = 0;
+    parkingEntryStraightHeadingDeg = 0.0f;
+    parkingEntryStraightControlStartDistance = 0.0f;
+    parkingEntryStraightMaxHeadingErrorDeg = 0.0f;
+    parkingEntryStraightFilteredHeadingErrorDeg = 0.0f;
+    parkingEntryStraightControlLogged = false;
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     lastTofCorrectionResult = ObstacleTofCorrectionResult{};
     memset(seats, 0, sizeof(seats));
@@ -2060,6 +2224,9 @@ void obstacle_path_start(
         discoveryScanSide =
             seats[targetFirstSeat].y > seats[targetFirstSeat + 1].y ? 0 : 1;
         buildParkingEntryPath(measuredEntryPose);
+        parkingEntryStraightHeadingDeg = measuredEntryPose.heading_deg;
+        parkingEntryDrivePhase = PARKING_ENTRY_STRAIGHT_STEER_SETTLE;
+        parkingEntrySteerSettleStartMs = millis();
         parkingEntryActive = parkingEntryLength >= 2;
         Serial.print("[PARK ENTRY] Pure Pursuit discovery armed turn=");
         Serial.print(routeTurnSign > 0 ? "CCW" : "CW");

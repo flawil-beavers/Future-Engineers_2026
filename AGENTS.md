@@ -18,9 +18,20 @@
 
 - Always build and compile this project with the PlatformIO Core installation managed by the IDE on the current machine.
 - Build only the environments affected by a change:
-  - M7-only changes: `giga_r1_m7`.
-  - M4-only changes: `giga_r1_m4`.
-  - Shared interfaces, configuration, or cross-core changes: both environments.
+  - M7-only changes: build `giga_r1_m7` only. Do not build `giga_r1_m4`.
+  - M4-only changes: build `giga_r1_m4` only. Do not build `giga_r1_m7`.
+  - Shared interfaces or cross-core changes: both environments.
+- Do not compile both cores merely as a general verification step. Compile the
+  unchanged core only when the change affects code, constants, or interfaces
+  that it actually consumes, or otherwise changes cross-core compatibility.
+- `include/config.h` is included by both cores, but an edit to that file does
+  not automatically require both builds. Inspect which constants changed and
+  where they are used:
+  - M7-only parking, navigation, camera, motor, or obstacle constants require
+    only `giga_r1_m7`.
+  - M4 rear-ToF constants used by `src/m4/rear_tof_m4.cpp` require
+    `giga_r1_m4`; also build M7 only if the same change affects its consumers.
+  - Constants or protocol assumptions consumed by both cores require both.
 - Resolve the executable without hard-coded usernames or home-directory paths:
   - Windows PowerShell: `$pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'; & $pio run --environment <required-environment>`
   - macOS/Linux: `$HOME/.platformio/penv/bin/platformio run --environment <required-environment>`

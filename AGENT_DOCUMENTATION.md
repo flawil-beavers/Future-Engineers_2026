@@ -33,6 +33,645 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28 - Log 190 false CLEAR; log 191 passes CW green
+
+Under the standing convention, neither damped-controller regression contacted
+a wall. Both completed rear positioning, exit, localization, reverse entry,
+and the scan arc. Maximum raw straight heading error remained safe at 1.3
+degrees CCW and 0.9 degrees CW. Log 191 correctly confirmed CW green seat 2.
+Log 190 failed perception: it reported `CLEAR` at CCW seat 5 although the user
+placed the official green pillar there.
+
+Log 190 contains repeated green regions, but all late candidates are broad,
+low image-bottom fragments (for example 37x45 pixels ending at y=234), unlike
+the accepted upright pillar in log 189. Rejecting those regions is correct;
+loosening pillar shape or colour thresholds would accept floor/background.
+The failure is the negative-decision timing: after stopping, only two clear
+frames were required, so a short absence of a valid upright segmentation
+ended observation before the pillar reappeared.
+
+Only the stationary parking-entry target now requires five consecutive clear
+frames. Normal moving-course discovery remains at two frames, and real pillars
+still require the existing two colour/geometry votes, allowing them to confirm
+before a slower clear decision. The 1200 ms stationary timeout, scan geometry,
+colour/shape gates, and all motion safety limits are unchanged. Next build M7
+only and repeat CCW with the official green pillar at seat 5. Require
+`GREEN seat=5`; another `CLEAR` remains a failure.
+The IDE-managed M7-only build passes (365272 bytes RAM, 421400 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Damp residual return-servo oscillation after logs 188/189
+
+The user confirmed that the large oscillation was reduced but a small amount
+remained. Both mirrored runs had substantial stability margin: maximum raw
+reverse-straight heading errors were only 0.9 and 1.1 degrees against the
+2-degree abort. Therefore the gyro correction is damped rather than increasing
+authority: feedback gain is reduced from 4 to 3, its control input is filtered
+with alpha 0.20, and the correction threshold increases from 0.3 to 0.4
+degrees. The launch preload/fade remains unchanged. The safety abort continues
+to use the unfiltered raw gyro error, so filtering cannot delay a dangerous
+heading stop.
+
+Next build M7 only and run one CW empty-field `O` regression. Require visibly
+calm straight-return steering, maximum raw heading error below 2 degrees, no
+contact/abort, and `CLEAR`. Do not repeat pillar recognition solely for this
+controller damping because logs 188/189 already accepted both mirrored seats.
+The IDE-managed M7-only build passes (365272 bytes RAM, 421352 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Logs 188/189 pass mirrored green entry tests
+
+Under the standing convention, neither run had physical contact. Log 188
+passed CW rear positioning, the full exit, localization, and entry, then
+confirmed the official green pillar as seat 2. Its revised reverse-straight
+controller reached the arc with a maximum heading error of 0.9 degrees. Log
+189 passed the mirrored CCW sequence and confirmed green seat 5 with a 1.1
+degree maximum straight error. Both are below the unchanged 2-degree abort.
+
+Rear positioning began with valid samples in both runs and passed its final
+motion-agreement check, so the log-182 `9999` startup failure did not recur.
+These runs validate normal startup but do not deliberately reproduce a rear
+sensor dropout; retain the three-second stationary reacquisition window and
+diagnostic footer. The 55 mm scan arc and green recognition are now accepted
+in both directions. No code change or build follows these results. Before
+closing the calmer return-controller item, obtain the user's visual assessment
+of whether servo oscillation was gone or materially reduced; the logs record
+heading error but not every servo command.
+
+---
+
+## 2026-08-28 - Address log 182 rear-ToF startup dropout
+
+Log 182 failed before any motion, while the robot was still inside the parking
+lot. The rear-positioning state received only `9999` out-of-range values and
+terminated after its one-second post-settle acquisition timeout. Although the
+fail-closed motor lock prevented unsafe motion, this is not an acceptable
+successful startup and must be covered by the parking reliability work.
+
+Because acquisition is stationary, its recovery window is increased from one
+to three seconds without adding collision exposure. Stable positioning still
+requires three valid frames within a 4 mm span; no invalid value can arm
+motion, and all correction/travel/final-verification gates remain unchanged.
+If reacquisition still fails, `[PARK REAR DIAG]` now records the latest frame
+sequence, filtered and raw distances, signal, and sigma so the optical or
+sensor-side cause can be distinguished. This is M7-only handling and telemetry;
+the M4 rear-ToF implementation and RPC protocol are unchanged.
+
+Next, after the calmer return controller is uploaded, a normal parked `O` run
+must first produce `[PARK REAR RESULT]`. A repeated timeout is a failed test and
+must be diagnosed from `[PARK REAR DIAG]`; rear positioning must not be bypassed.
+The combined changes build successfully with the IDE-managed M7 environment
+(365264 bytes RAM, 421304 bytes flash). M4 was not compiled, and no firmware
+was uploaded.
+
+---
+
+## 2026-08-28 - Logs 186/187 pass CW motion and green; calm return steering
+
+Both CW runs passed rear positioning, the increased pink-piece-clearance exit,
+edge localization, reverse entry, and the settled scan arc without a heading
+abort. Log 186 correctly resolved the empty target `CLEAR`. Log 187 correctly
+confirmed the official inner green pillar as `GREEN seat=2`. Under the user's
+standing convention neither run had contact. This accepts CW perception and
+the path geometry, but not the visible return-steering quality: the user saw
+substantial servo oscillation in both runs.
+
+The oscillation is consistent with the controller's permanent 10-degree
+feedforward plus its discontinuous 5-degree minimum correction. That tuning
+was introduced to overcome initial servo latency, but it remained active for
+the entire straight and forced large command changes around the target. The
+revised controller preloads 8 degrees while stationary for 200 ms, fades that
+launch aid smoothly to zero over the first 40 mm, and then uses continuous
+gyro feedback at gain 4 capped at 12 degrees with no minimum-command step. The
+2-degree fail-closed abort remains. Telemetry now records maximum straight
+heading error at the arc transition. The separate 400 ms full-lock scan-arc
+settle is retained because its short modeled arc depends on fully settled
+steering; the user's timing observation is applied only to the initial preload.
+
+Next build M7 only, then repeat one CW empty-field run. Require visibly calm
+steering, `straight_max_heading_error_deg` below 2.0, no abort/contact, and a
+`CLEAR` result. If it passes, repeat the mirrored CCW official-green seat-5
+test before proceeding to the normal route join.
+The IDE-managed M7-only build passes (365264 bytes RAM, 421120 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Logs 184/185 require steering preload before reverse
+
+Both CW runs passed rear positioning, the revised pink-clearance exit, and
+localization. In each, the reverse-straight controller correctly commanded +5
+steering at -0.5 degrees error, but the error still reached the -2.0-degree
+abort before the servo/chassis response developed. Log 184 later showed -3.4
+degrees after braking/coast. This rejects starting reverse with centred wheels
+and waiting for gyro error before moving the steering; simply raising gain did
+not address actuator latency. No contact was reported, so the abort remains an
+effective last safety layer.
+
+The controller now preloads direction-mirrored 10-degree corrective steering
+and waits the existing 400 ms steering-settle interval while fully stopped.
+Only then does reverse motion begin. Gyro feedback trims around that preload at
+gain 8, with total steering capped at 20 degrees for correction headroom. The
+measured sign remains: CW uses positive preload; CCW uses negative. The
+2.0-degree heading abort, speed, pink-clearance geometry, and full-lock scan
+arc remain unchanged.
+
+Next build/upload only M7 and repeat one CW clear-field test. Require
+`Straight steering settle complete preload=10`, heading remaining within 2
+degrees, no contact/abort, and arrival at `Arc steering settle`. Do not add a
+pillar until this passes.
+The IDE-managed M7-only build passes (365256 bytes RAM, 420936 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Logs 179--183 reject weak reverse heading controller
+
+The user ran five CW attempts. Log 179 failed rear-position verification after
+a 20.4 mm correction: final range 59.7 mm was 5.3 mm from target, just outside
+the existing 5 mm gate, and firmware safely locked before exit. Logs 180, 181,
+and 183 passed the revised 85/150 mm exit and localization but all stopped on
+the reverse-entry heading abort at -2.0 degrees. Log 182 had ambiguous side
+ranges and an out-of-range rear ToF value of 9999, so it correctly refused to
+infer longitudinal parking position and locked before motion. Do not bypass
+that invalid-sensor safety gate.
+
+The three gyro failures reject the low-authority proportional controller. The
+last sign change was inferred from a +/-1 steering response too small to
+overcome natural chassis bias. Direct maneuver telemetry gives the reliable
+sign: during CW reverse exit segments, steering -50 consistently changes
+heading by about -10 degrees. Therefore a negative heading error requires
+positive reverse steering. Restore that sign, increase gain from 2.5 to 8.0,
+engage at 0.3 degrees error, and enforce a 5-degree minimum effective steering
+command, still capped at 12 degrees. The 2.0-degree hard abort remains and
+prevents another barrier approach if control authority is insufficient.
+
+The revised 85/150 mm exit itself is accepted provisionally by these runs: it
+completed consistently and placed CW exit/localization poses around y=-1203
+to -1215 mm, materially farther from the pink pieces than logs 175/176 near
+-1228 to -1231 mm. Physical reverse-entry acceptance still requires the new
+heading controller to reach the arc without contact or abort.
+
+Next build/upload only M7 and repeat one CW clear-field run. Require a logged
+positive steering correction for negative error, error recovery below the
+2-degree bound, no pink-limit contact, and `Arc steering settle`. Do not add a
+pillar until this passes.
+The IDE-managed M7-only build passes (365256 bytes RAM, 420744 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Logs 177/178 correct gyro sign; green CCW passes; add clearance
+
+Under the standing convention, neither new run had contact. CW log 177 passed
+exit/localization, then the new safety gate stopped the reverse entry at exactly
+-2.0 degrees before the earlier barrier-contact region. Its telemetry proves
+the proportional sign was wrong: at -0.5 degrees error it commanded +1
+steering, after which the error grew. The reverse-straight correction sign is
+now inverted from that rejected implementation, so negative heading error
+commands negative steering. The same 2.5 gain, +/-12 bound, and 2.0-degree
+fail-closed abort remain.
+
+CCW log 178 accepts the extended 55 mm scan arc. Rear positioning, exit, and
+localization passed; the scan reached x=7.2 mm, y=-1227.2 mm, heading=25.0
+degrees with 2.4 mm position and 4.8 degrees heading error. It confirmed the
+official pillar as `GREEN seat=5` and locked the motor. Thus CCW green
+perception is now accepted; CW motion safety remains the next prerequisite.
+
+The user's clearance request referred to the pink parking-limit pieces, not the
+red/green obstacle pillars. The initially applied +10 mm obstacle-route change
+was therefore reverted completely. To move the parallel exit pose away from
+the pink pieces, exit segment 4 is extended from 75 to 85 mm. The following
+gyro-aligned opposite arc consequently runs about 10 mm farther; its modeled
+distance is updated from 140 to 150 mm while retaining the existing 120--180
+mm gyro termination bounds. The swept model moves the final pose about 19.4 mm
+farther laterally from the pink limits. This mirrored geometry applies to CW
+and CCW; camera, speed, and obstacle-route clearances are unchanged.
+
+Next build/upload only M7, then repeat one CW clear-field safety run. Require
+the reverse-straight correction to reduce rather than amplify heading error,
+no contact or abort, and `Arc steering settle`. Only afterward test the CW
+green pillar. Validate the increased pink-limit clearance physically in both
+directions.
+The IDE-managed M7-only build passes (365256 bytes RAM, 420696 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+After correcting the clearance interpretation, the regenerated model passes
+exit 16/16, exit plus localization 16/16, CCW/CW entry 16/16 each, and rear
+positioning 24/24 with the 85/150 mm exit arcs.
+
+---
+
+## 2026-08-28 - CCW green is clipped; extend mirrored scan arc to 55 mm
+
+The repeated CCW `CLEAR` results are not evidence that green segmentation is
+absent. Log 172 contains an official-green-shaped 25x49 pixel, area-616 return
+at the final approach, but its image centre is near x=11. Production obstacle
+acquisition deliberately accepts centres only from x=30 through the calibrated
+right bound, so this clipped pillar cannot produce a trustworthy range and
+seat snap. Logs 171 and 173 show the same edge/absence pattern. Lowering green
+area or height thresholds would not fix the actual x gate and would admit floor
+fragments.
+
+The direction-mirrored settled full-lock scan arc is increased from 40 to
+55 mm. At the measured 109 mm radius the additional 15 mm rotates the camera
+about 7.9 degrees farther, moving the measured edge pillar into the calibrated
+image region. Arc start, reverse-straight distance, speed, full-lock steering,
+heading hold/abort, colour thresholds, seat geometry, and two-vote confirmation
+are unchanged. The same change applies to CCW and CW so both directions can be
+tested with one firmware. Run the swept-envelope model, then build M7 only.
+
+Next physical validation is one clear-field CW gyro-hold run because two CW
+contacts are the highest-priority risk. After that passes, test the official
+green pillar in CCW and CW and require the correct green seat in each direction.
+The swept model passes the five-segment exit 16/16, exit plus 70 mm localization
+16/16, both 55 mm entry directions 16/16 each, and rear positioning 24/24. The
+IDE-managed M7-only build passes (365256 bytes RAM, 420696 bytes flash) with
+existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - CW logs 175/176 contact rear barrier; add gyro straight hold
+
+The user completed four intended runs plus one intervening failed run. Logs
+172 and 173 were CCW green tests that completed motion but again resolved the
+target `CLEAR`. Log 174 failed closed before motion because the rear ToF stayed
+invalid. Logs 175 and 176 used the opposite CW exit, saw the green pillar, but
+both physically contacted the rear parking barrier and were manually disabled;
+they are rejected regardless of perception.
+
+Both CW contacts occurred during the long reverse-straight entry approach,
+before the full-lock scan arc. Localization itself passed. Log 175 started the
+entry near 179.5 degrees and was disabled near a -3.3 degree gyro deviation;
+log 176 started near 179.6 and was disabled near -3.1 degrees. The controller
+used gyro-derived heading for field odometry and its final pose gate, but the
+straight reverse command always set steering to zero. Thus it did not use the
+gyro to drive straight. The measured roughly 3-degree yaw is sufficient to
+sweep the rear corner into the nearby magenta barrier.
+
+The reverse-straight phase now captures the localized starting heading and
+applies reverse-sign gyro proportional feedback at 2.5 steering degrees per
+degree of heading error, bounded to +/-12 degrees. If absolute error exceeds
+2.0 degrees, firmware stops, de-energizes and locks the drive, writes the log,
+and never continues toward the barrier. The full-lock arc, speed, path,
+localization, and normal lap controller are unchanged. Next build/upload only
+M7 with consent and perform one CW clear-field safety run before another CW
+pillar test. Require no contact, heading error below 2 degrees throughout the
+straight, and successful transition to `Arc steering settle`.
+The IDE-managed M7-only build passes (365256 bytes RAM, 420696 bytes flash)
+with existing warnings. M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Log 171 passes localization; green seat 5 still not acquired
+
+Under the standing convention, log 171 had no contact. Rear positioning and
+all five exit segments passed without a stall. Localization reported
+`localization_seed=yes`, reversed normally, confirmed `piece_seen=yes`, and
+applied x/y corrections -12.6/-9.9 mm at 55.2 mm creep. This confirms the
+refactored normal short-piece path, but its 79 mm initial sample did not
+physically exercise the new 181..400 mm intermediate-seed branch. The removed
+early-lock condition is structurally absent, but retain a validation criterion
+that any future >180 mm seed must still enter `[PARK LOCALIZE]` and reverse.
+
+The scan pose passed at x=21.8 mm, y=-1213.7 mm, heading=20.4 degrees with
+1.4 mm position and 4.9 degrees heading error. Green recognition failed again:
+the result was `CLEAR`. The only late green return resembling the target was a
+15x29 pixel, area-248 blob clipped at the far-left edge. It is below the
+validated green minimum area of 400 and cannot provide a trustworthy range or
+seat snap; lowering acquisition thresholds would admit known fragments and is
+not justified. No code change or rebuild follows this single partial return.
+
+Next, repeat the unchanged official green pillar test at S0 station-2
+inner/left seat 5. Require `GREEN seat=5`. Also record whether the initial
+reference exceeds 180 mm; if so, require `localization_seed=yes`, subsequent
+reverse motion, `piece_seen=yes`, and accepted x/y corrections. If green is
+again clipped or absent at the accepted scan pose, use a stationary camera
+diagnostic at that exact final robot pose before changing scan geometry or
+colour thresholds.
+
+---
+
+## 2026-08-28 - Logs 169/170 remove brittle single-frame localization gate
+
+The user ran the green seat-5 test twice and reports that the first robot
+stopped immediately after unparking, before the reverse localization motion.
+Under the standing convention neither run had contact. Log 169 completed rear
+positioning and all five exit segments, then sampled 217 mm from the right ToF.
+Its beam footprint overlapped the expected parking piece and signal quality was
+good, but the hard 180 mm single-sample limit rejected the reference and
+locked the motor. Log 170, with unchanged geometry, sampled 76 mm and entered
+localization normally. The 217/76 mm variation proves this is the known
+multi-object edge return, not a different safe-motion condition.
+
+Localization arming no longer requires that one exit-completion sample to be a
+short piece return. When heading is valid and a 1..400 mm beam footprint
+overlaps the known piece, firmware always enters the existing stopped-settle
+and bounded 70 mm reverse search. A 181..400 mm intermediate seed cannot apply
+the preliminary y correction and is not recorded as piece evidence. Fresh ToF
+frames are now consumed during the stationary settle as well as reverse motion;
+only a real <=180 mm sample sets `piece_seen=yes`. Final x correction remains
+fail-closed unless that piece evidence exists, and wall confirmation, residual,
+correction, travel, and collision-envelope gates are unchanged. This removes
+the brittle pre-reverse stop without accepting an unlocalized pose.
+
+Log 170 passed localization and the scan pose but reported `CLEAR`, so it does
+not accept green recognition. Next build and upload only M7 with consent, then
+repeat the same official green pillar at S0 station-2 inner/left seat 5.
+Require `localization_seed=yes`, `piece_seen=yes`, both localization corrections,
+and `GREEN seat=5` without contact or `UNKNOWN`.
+The IDE-managed M7-only build passes (365248 bytes RAM, 420240 bytes flash)
+with the existing warnings. M4 was not compiled. No firmware was uploaded.
+
+---
+
+## 2026-08-28 - Log 168 accepts red parking-entry pillar recognition
+
+Under the standing convention, the run had no physical contact. Rear
+positioning corrected a rear-start range of 84.0 mm to 66.7 mm and passed.
+All five exit segments completed, with only 1.5 PWM low-speed compensation in
+segment 5 and no stall. The preliminary piece-derived y correction exceeded
+its new 25 mm limit and was correctly left unapplied. Edge localization still
+passed independently at 51.5 mm: wall residual -2.3 mm, x/y corrections
+-24.6/-2.3 mm, both within their gates.
+
+The entry arc reached x=20.0 mm, y=-1220.6 mm, heading=20.1 degrees with
+2.3 mm position error and 4.9 degrees heading error. The deferred-clear change
+kept S0 station 2 unresolved until the stationary observation phase. The
+official red inner/left pillar then received the required votes, injected
+seat 5, and produced `result=RED seat=5`; the test-only motor lock engaged.
+This accepts red recognition and the premature-clear fix. No code change,
+build, or upload is required next.
+
+Next, repeat the same parked-start `O` test with the pillar unchanged at S0
+station-2 inner/left seat 5 but use the official green colour. Require
+`GREEN seat=5`, no `CLEAR`/`UNKNOWN`, and no contact. This is distinct colour
+coverage before proceeding to the normal-path join.
+
+---
+
+## 2026-08-28 - Log 167 exposes premature parking-entry clear decision
+
+Under the standing convention, log 167 had no contact. Rear positioning, all
+five exit segments, localization at 52.3 mm, and the settled full-lock entry
+arc passed. The final pose was x=19.6 mm, y=-1219.7 mm, heading=16.0 degrees,
+with 1.2 mm position error and exactly 5.0 degrees heading error. General
+low-speed load compensation reached a bounded 25.8 PWM on loaded segment 5;
+there was no stall.
+
+The official red pillar test failed perception. Camera telemetry contained
+large red detections and finally showed the target pillar entering at the left
+edge, but S0 station 2 had already been recorded `CLEAR` during the moving
+approach. Parking setup pre-clears the outer seat, and the inner target crossed
+the general comfortable-visibility gate before the final scan pose. Two frames
+whose production-valid blob did not overlap the target bearing therefore
+provided premature clear evidence. Observation terminated immediately when
+the scan pose was reached, before the newly visible pillar could collect two
+votes.
+
+For the one parking-entry target station only, clear evidence is now deferred
+while the entry path is active and resumes after the robot has stopped at the
+scan pose. Obstacle observations and votes remain enabled during approach, so
+an unambiguous early pillar can still confirm. Normal lap discovery and all
+other stations are unchanged. Next, build and upload only M7 with consent,
+then repeat the same parked-start `O` test with the official red pillar at S0
+station-2 inner/left seat 5. Require two red votes and result `RED seat=5`.
+The IDE-managed M7-only build passes (365248 bytes RAM, 419984 bytes flash).
+M4 was not compiled, and no firmware was uploaded.
+
+---
+
+## 2026-08-28 - Log 166 accepts localization and settled entry scan
+
+By the established reporting convention, the run had no physical contact; the
+user said the final position looked much better. Rear positioning passed at a
+48.3 mm derived clearance, all five exit segments completed, and the general
+low-speed controller supplied a bounded 11.2 PWM response during loaded
+segment 4 without a stall. The preliminary parking-piece y correction was a
+plausible 10.3 mm and passed the new 25 mm bound.
+
+Reverse localization passed after 56.3 mm: wall range 267 mm versus 277.1 mm
+expected, x/y corrections -7.6/-10.1 mm, both accepted. The settled entry
+controller then stopped at the arc start, commanded CCW steering +50, and
+traversed the full-lock reverse arc. It reached x=22.4 mm, y=-1207.2 mm,
+heading=17.9 degrees with 1.8 mm position error and exactly 5.0 degrees heading
+error. S0 station 2 resolved `CLEAR`, and the test-only motor lock engaged.
+This accepts the empty-seat localization and entry-scan sequence at the stated
+heading boundary; no tuning or rebuild is warranted from this run.
+
+Next, retain this firmware and place one official pillar in the same targeted
+S0 station-2 inner seat (seat 5). Run one complete parked-start `O` test.
+Require no contact, the same valid localization/scan-pose gates, two consistent
+colour votes, the correct station and colour, and no `UNKNOWN` timeout. No
+firmware upload is required before this test.
+
+---
+
+## 2026-08-28 - Log 164 rejects unbounded exit correction; sample while stopped
+
+By the user's standing convention, log runs without an explicit contact report
+had no wall or parking-boundary contact. The user also observed that log 164
+stopped much farther toward the front of the parking place and remained
+parallel to the wall. This is the intentional localization-failure pose, not
+the successful scan pose: telemetry stopped at approximately x=401.9 mm,
+y=-1106.5 mm, heading=359.3 degrees, and entry discovery was never armed. A
+successful CCW test should continue rearward and finish near x=20 mm,
+y=-1207 mm, heading=+21 degrees, diagonally aimed at S0 station 2.
+
+Rear positioning, all five exit segments, alignment, and bounded low-speed
+load compensation passed without a stall. Localization failed at 71.7 mm.
+The preceding 157 mm parking-piece reference had applied a 98.2 mm y
+correction with no magnitude gate, explaining the implausibly forward field
+pose and making the expected-wall residual gate inconsistent with the real
+wall. The same 25 mm correction limit already used for final wall localization
+now also gates this preliminary piece-derived correction.
+
+The edge-search loop also stopped consuming new ToF samples as soon as the
+70 mm travel bound initiated braking. Logs 163 and 164 show that the finite
+beam can retain a short/intermediate return while moving and expose the stable
+wall only once stopped. Fresh samples are now processed during the existing
+brake hold, allowing the same two-frame wall confirmation without any added
+travel. Range, pose-residual, correction, and fail-closed gates remain intact.
+Next build only `giga_r1_m7`, then—with upload consent—repeat one clear-field
+`O` test and require a valid transition plus the settled full-lock entry arc.
+The IDE-managed `giga_r1_m7` build passes (365248 bytes RAM, 419936 bytes
+flash) with only the existing warnings. M4 was not compiled. No firmware was
+uploaded.
+
+---
+
+## 2026-08-28 - Log 163 accepts loaded exit; extend edge search to 70 mm
+
+The user confirmed no wall or parking-boundary contact. `log_163.txt` passed
+rear positioning and all five exit segments. General low-speed compensation
+responded under greater load: segment 4 used 4.5 PWM and segment 5 used
+22.6 PWM while measured speed initially lagged at 14.9 mm/s; both continued,
+and segment 5 aligned and stopped at 0.8 degrees without a stall. This is a
+second physical acceptance of the general controller and exercises a much
+larger response than log 162's 1.1 PWM.
+
+The run did not reach the new settled entry arc. Reverse localization stopped
+at 59.7 mm with the last piece return still 137 mm, then the stationary status
+showed a credible 259 mm wall return immediately afterward. This is consistent
+with the finite ToF footprint crossing the edge just beyond the old 60 mm hard
+bound. The bound is increased only to 70 mm; speed, wall confirmation,
+pose-residual gates, correction limits, and fail-closed behavior are unchanged.
+The swept model passes exit plus 70 mm reverse localization in all 16/16
+tolerance cases, both entry directions in 16/16, and rear positioning in
+24/24. Next, build/upload only M7 with consent and repeat `O` field-clear.
+Require no contact, `transition=yes` by 70 mm, both corrections applied, then
+the settled +50 CCW reverse arc and successful station-2 clear result.
+
+---
+
+## 2026-08-28 - Log 162 passes unpark/localization; short pursuit arc still fails
+
+`log_162.txt` ran the correct complete Obstacle Challenge. Rear positioning
+moved forward 22.4 mm and passed verification. All five exit segments
+completed; segment 5 used only 1.1 PWM of general load compensation, did not
+stall, aligned at 1.8 degrees, and stopped at 0.7 degrees. The parking-end ToF
+reference was usable, and reverse edge localization passed at 51.7 mm with
+x/y corrections of -19.4/-14.6 mm. Physical contact status was not supplied,
+so firmware results did not initially establish physical acceptance. The user
+subsequently confirmed there was no contact. Log 162 therefore physically
+accepts rear positioning, the complete exit, general low-speed load response,
+and reverse edge localization; only entry discovery remains rejected.
+
+Entry discovery still failed: at 280.1 mm travel the short reverse Pure
+Pursuit arc initially requested only +2.3 degrees, the chassis finished near
+its original heading, and the 20 mm overrun gate stopped at 398.8/378.8 mm
+with 20.8 degrees heading error. Both attempted pursuit signs have now produced
+the same near-straight outcome. The short 40 mm arc is too brief for this
+lookahead/servo response and should no longer use Pure Pursuit.
+
+The entry controller now reverses straight to the modeled arc start, stops,
+commands direction-specific full lock, waits the existing 400 ms steering
+settle time, and reverses through the exact 40 mm arc at the measured 109 mm
+radius. The generated path, finish position/heading gates, 20 mm overrun bound,
+60 mm/s speed, test-only lock, and swept-envelope geometry are retained.
+Next, build/upload only M7 with explicit consent and repeat a field-clear run
+using `O`. Require no contact, the complete accepted exit/localization chain,
+`Arc steering settle`, `[PARK ENTRY CONTROL] phase=REVERSE_ARC` with CCW
+steering +50, a visible arc, `Scan pose reached` with <=5 degrees heading
+error, station 2 `CLEAR`, and the test-only lock.
+
+---
+
+## 2026-08-28 - Logs 160/161 invalid: live-path command bypassed unparking
+
+Both runs made physical contact with a pink/magenta parking boundary and are
+rejected. They did not execute
+the parking exit or exercise low-speed load compensation. Their startup text
+states `Pending mode: OBSTACLE_LIVE_TEST`, `Parking exit: BYPASSED`, and a
+175 mm/s speed cap; both eventual stall reports show
+`low-speed load comp: 0.0` because 175 mm/s is outside its <=120 mm/s scope.
+The normal field path was incorrectly anchored at its nominal pose while the
+robot was physically still inside the parking lot, causing contact with the
+parking boundary rather than the outer field wall.
+
+The immediate cause was an incorrect test instruction: `Y1` selects the live
+one-lap diagnostic, not the complete challenge. The correct parked-start
+command is uppercase `O`; parking direction is inferred from the side ToF.
+`OBSTACLE_CHALLENGE_TEST_PLAN.md` now requires verifying
+`Pending mode: OBSTACLE_CHALLENGE` before enabling. Serial help and Y-mode
+selection now warn explicitly that live mode bypasses parking and must never be
+used from the parking lot. Do not repeat Y mode from a parked start. Rebuild
+and upload only M7, then repeat the field-clear test with `O` after explicit
+upload consent.
+
+---
+
+## 2026-08-28 - General low-speed load response replaces segment-specific boost
+
+The user confirmed that log 158's motor continued moving very slowly and asked
+for a general speed-controller correction rather than an unparking-specific
+startup workaround. The temporary segment-5 integrator priming was removed.
+`pid_speed()` now applies symmetric, bounded proportional load compensation to
+all settled profiles up to 120 mm/s when directional tracking error exceeds
+20 mm/s. Gain is 0.50 PWM/(mm/s) above that dead band and compensation is
+capped at 30/255 PWM. Normal low-error tracking, high-speed driving, motion
+profiles, PI gains, output limit, and both stall watchdogs are unchanged.
+
+For log 158's 80 mm/s profile and 3.7 mm/s measured speed, the general term
+would add the capped 30 PWM to the approximately 99 PWM former command. It
+fades to zero once error falls to 20 mm/s. One `[MOTOR LOAD COMP]` line per
+speed-command episode records profile/measured speed, deficit, compensation,
+and resulting output; any later watchdog failure also reports the active term.
+The IDE-managed `giga_r1_m7` build passes with existing warnings. M4 was not
+built because these constants and controller code are consumed only by M7. No
+firmware was uploaded.
+
+Next, upload only M7 with explicit consent and repeat one field-clear CCW run.
+Require segment 5 to start and remain moving, no stall or contact, and review
+any `[MOTOR LOAD COMP]` line. Continue through the existing localization and
+entry-scan gates; the reverse Pure-Pursuit diagnostic must show negative local
+y and positive steering before accepting the final scan arc.
+
+---
+
+## 2026-08-28 - Logs 154--159 classify repeated unpark failures
+
+The user reports no wall contact in any of six CCW attempts. Five failures
+were sensor/localization gates, not stalls. Logs 154 and 156 completed all five
+exit segments but reached the 60 mm reverse edge-search bound without a wall
+transition. Log 155 failed closed before motion because the rear ToF remained
+`-1.0`. Logs 157 and 159 completed and aligned, but their post-exit right-ToF
+references were 201 and 199 mm, above the deliberate 180 mm acceptance limit,
+so entry localization was not armed.
+
+Log 158 contains one genuine commanded-motion/no-progress event near the start
+of exit segment 5: 8.9 mm encoder progress in 1000 ms at 80 mm/s target,
+3.7 mm/s measured speed, and a raw PWM command of 99.2/255 (about 39 percent),
+not 99.2 percent duty. The motor was therefore not at the configured 200/255
+limit. At the 80 mm/s profile, feedforward is only about 95 PWM; the low-speed
+proportional term adds roughly 3 PWM for a 76 mm/s error, while the integral
+adds only about 1.5 PWM per second. The one-second no-progress watchdog can
+therefore expire before the controller adds meaningful torque for a full-lock
+start. The partially used 2S battery may worsen this because firmware has no
+battery-voltage compensation and loaded voltage can sag below the measured
+7.65 V, but the log identifies insufficient/slow PWM response under full-lock
+load as the immediate software-side cause. Preserve the current ToF gates. Do
+not weaken the watchdog without first changing and validating segment-start
+torque behavior. The next firmware otherwise remains the already-built M7
+reverse Pure-Pursuit sign fix; obtain a `[PARK ENTRY CONTROL]` line only after
+all existing localization gates pass.
+
+---
+
+## 2026-08-28 - Logs 152/153 expose the still-wrong reverse scan steering sign
+
+`log_152.txt` completed rear positioning and all five exit segments without a
+firmware fault, but the bounded reverse edge search reached 60.5 mm without a
+wall transition and correctly left parking-entry discovery disarmed.
+`log_153.txt` obtained a valid transition at 54.4 mm, applied x/y corrections
+of -19.7/-16.4 mm, and armed the expected CCW S0 station-2 scan. The scan then
+reproduced log 139: it traveled 393.4/373.4 mm, stayed near 1 degree instead of
+reaching the approximately 22-degree final heading, and stopped on the 20 mm
+overrun bound with `result=UNKNOWN`.
+
+The previous sign change was incorrect. The entry target is evaluated in the
+vehicle's forward frame even though it is behind the axle: on the CCW arc it
+has negative local y, while the desired reverse motion and the measured exit
+segments require positive steering to increase heading. Reverse-frame Pure
+Pursuit therefore needs the negative of the forward-frame geometric curvature.
+`src/obstacle_path.cpp` again applies the leading minus sign and emits one
+`[PARK ENTRY CONTROL]` line when lateral curvature first becomes material.
+The 109 mm measured radius, 60 mm edge-search bound, speed, and all motor locks
+are unchanged. The IDE-managed `giga_r1_m7` build passes (365240 bytes RAM,
+419224 bytes flash); existing warnings are unchanged. No firmware was uploaded.
+
+Next, upload only the M7 firmware with explicit user consent and repeat the
+field-clear CCW run. A failed edge transition may be safely repeated without a
+code change. Require no contact, `transition=yes`, applied x/y localization,
+`[PARK ENTRY CONTROL]` with negative `local_y_mm` and positive `steering`, a
+visible final reverse arc, `Scan pose reached` with heading error at most
+5 degrees, S0 station 2 `CLEAR`, and the entry-test motor lock.
+
+---
+
 ## 2026-08-28 - Log 151 accepts rear-positioned five-segment exit
 
 `log_151.txt` passed the first combined CCW run without physical contact. Rear

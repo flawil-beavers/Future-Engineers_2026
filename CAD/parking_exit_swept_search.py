@@ -346,17 +346,17 @@ SELECTED_CONTROLS = (
     (-1, +50, 20.0),
     (+1, -50, 25.0),
     (-1, +50, 20.0),
-    (+1, -50, 75.0),
+    (+1, -50, 85.0),
     # Model distance to return from about 73.6 degrees to parallel. Firmware
     # terminates this final arc from gyro alignment within bounded distance.
-    (+1, +50, 140.0),
+    (+1, +50, 150.0),
 )
 
 # Test-only straight reverse after the five exit segments. Firmware may stop
 # sooner when two wall frames confirm that the side-ToF cone has crossed the
 # opposite magenta-piece edge.
 SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
-    (-1, 0, 60.0),
+    (-1, 0, 70.0),
 )
 
 # Direction-specific test-only discovery envelopes. The firmware stops the
@@ -367,11 +367,11 @@ SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
 # the steering even though the local swept-envelope control retains +50.
 CCW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
     (-1, 0, 400.0),
-    (-1, +50, 40.0),
+    (-1, +50, 55.0),
 )
 CW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
     (-1, 0, 260.0),
-    (-1, +50, 40.0),
+    (-1, +50, 55.0),
 )
 
 

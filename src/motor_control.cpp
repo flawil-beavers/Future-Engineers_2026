@@ -238,6 +238,8 @@ bool no_progress_watchdog_preflight()
 // Debug variables
 int dc_out = 0;
 float pid_before_checking = 0;
+float low_speed_load_compensation_dc = 0.0f;
+static bool low_speed_load_compensation_logged = false;
 
 // Timing variables
 float last_loop_time = 0; // in s
@@ -515,6 +517,50 @@ void pid_speed()
     last_error = acceleration_error;
   }
 
+  // Once a low-speed motion profile has settled, acceleration feedback alone
+  // reacts too slowly to a large persistent speed deficit. Add bounded direct
+  // speed feedback for loaded operation. It is symmetric in reverse and fades
+  // out before normal low-error tracking, leaving the existing PI loops intact.
+  low_speed_load_compensation_dc = 0.0f;
+  const float abs_profile_speed = fabsf(current_speed);
+  const bool settled_low_speed_profile =
+      direction != 0.0f &&
+      abs_profile_speed <= LOW_SPEED_LOAD_COMP_MAX_PROFILE_MMS &&
+      fabsf(current_acceleration) <= CRUISE_ACCEL_THRESHOLD_MMSS;
+  if (settled_low_speed_profile)
+  {
+    const float directional_speed_deficit =
+        direction * (current_speed - measured_speed);
+    if (directional_speed_deficit >
+        LOW_SPEED_LOAD_COMP_ACTIVATION_ERROR_MMS)
+    {
+      const float compensation_magnitude = constrain(
+          (directional_speed_deficit -
+           LOW_SPEED_LOAD_COMP_ACTIVATION_ERROR_MMS) *
+              LOW_SPEED_LOAD_COMP_KP_DC_PER_MMS,
+          0.0f,
+          LOW_SPEED_LOAD_COMP_MAX_DC);
+      low_speed_load_compensation_dc = direction * compensation_magnitude;
+      output += low_speed_load_compensation_dc;
+      if (!low_speed_load_compensation_logged)
+      {
+        low_speed_load_compensation_logged = true;
+        Serial.print("[MOTOR LOAD COMP] target/profile/measured_mm_s=");
+        Serial.print(target_speed);
+        Serial.print("/");
+        Serial.print(current_speed, 1);
+        Serial.print("/");
+        Serial.print(measured_speed, 1);
+        Serial.print(" deficit_mm_s=");
+        Serial.print(directional_speed_deficit, 1);
+        Serial.print(" compensation_dc=");
+        Serial.print(low_speed_load_compensation_dc, 1);
+        Serial.print(" output_dc=");
+        Serial.println(output, 1);
+      }
+    }
+  }
+
   // A planned stop may reduce forward drive down to coasting, but must never
   // apply reverse torque against a still-rolling wheel. Emergency stop paths
   // bypass this controller and de-energize the motor immediately.
@@ -666,6 +712,7 @@ void set_speed(int speed)
         : DRIVE_ACCELERATING;
     accel_pid_integral = 0.0f;
     cruise_candidate_start_us = 0;
+    low_speed_load_compensation_logged = false;
   }
   dc_state = DC_ENABLED;
   target_speed = speed;
@@ -798,7 +845,9 @@ void check_stalling()
     Serial.print(" mm/s, measured: ");
     Serial.print(measured_speed, 1);
     Serial.print(" mm/s, DC: ");
-    Serial.println(dc_current_dc, 1);
+    Serial.print(dc_current_dc, 1);
+    Serial.print(", low-speed load comp: ");
+    Serial.println(low_speed_load_compensation_dc, 1);
     reset_no_progress_watchdog(
         no_progress_watchdog,
         current_time,

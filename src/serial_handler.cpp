@@ -312,7 +312,8 @@ static void print_serial_command_info()
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
-  Serial.println("Y1 / Y-1   : One-lap LIVE obstacle path test (left/right)");
+  Serial.println("Y1 / Y-1   : LIVE path test; PARKING EXIT IS BYPASSED");
+  Serial.println("               Never use Y while the robot is in the parking lot");
   Serial.println("Y0         : Stop LIVE obstacle path test");
   Serial.println("S1 / S-1   : Stationary seat-snap test (left/right geometry)");
   Serial.println("S0         : Stop and clear stationary seat-snap test");
@@ -640,6 +641,9 @@ void parseMessage(char *msg)
     }
     else if (value == 1 || value == -1 || value == 3 || value == -3)
     {
+      Serial.println(
+          "WARNING: LIVE path test bypasses parking exit. Robot must already "
+          "be at the validated field-path start pose.");
       if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
           pending_mode == MODE_OBSTACLE_LIVE_TEST)
         mode_stop_all();

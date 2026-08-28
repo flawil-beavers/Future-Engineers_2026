@@ -76,7 +76,7 @@ static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
     {-1, -1, 20.0f},
     {+1, +1, 25.0f},
     {-1, -1, 20.0f},
-    {+1, +1, 75.0f},
+    {+1, +1, 85.0f},
     {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
 
 static ParkingExitState oc_parking_exit_state =
@@ -115,6 +115,7 @@ static PositionEstimate oc_parking_localization_latest_wall_pose;
 static uint32_t oc_parking_localization_tof_sequence = 0;
 static uint8_t oc_parking_localization_wall_frames = 0;
 static bool oc_parking_localization_transition_found = false;
+static bool oc_parking_localization_piece_seen = false;
 
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
@@ -232,6 +233,7 @@ static void resetParkingExit()
     oc_parking_localization_tof_sequence = 0;
     oc_parking_localization_wall_frames = 0;
     oc_parking_localization_transition_found = false;
+    oc_parking_localization_piece_seen = false;
 }
 
 static void initializeParkingFieldPose(float rearTofRangeMm)
@@ -431,6 +433,20 @@ static void holdParkingRearPositioning(const char *reason)
     Serial.print(oc_parking_rear_last_range, 1);
     Serial.print(" travel_mm=");
     Serial.println(oc_parking_rear_cumulative_travel, 1);
+    TofDiagnosticSnapshot snapshot;
+    if (get_tof_diagnostic_snapshot(TOF_REAR, snapshot))
+    {
+        Serial.print("[PARK REAR DIAG] sequence/filtered/raw_mm=");
+        Serial.print(snapshot.sequence);
+        Serial.print("/");
+        Serial.print(snapshot.filtered_distance_mm, 1);
+        Serial.print("/");
+        Serial.print(snapshot.selected_raw_distance_mm, 1);
+        Serial.print(" signal_mcps=");
+        Serial.print(snapshot.selected_signal_mcps, 3);
+        Serial.print(" sigma_mm=");
+        Serial.println(snapshot.selected_sigma_mm, 1);
+    }
     Serial.println("[PARK REAR] Drive motor locked off");
     robot_logger.write_to_usb();
 }
@@ -619,12 +635,13 @@ static void finishParkingExit(bool stagedTest)
         referenceSensor == TOF_LEFT
             ? fabsf(OBSTACLE_TOF_LEFT_LOCAL_Y_MM)
             : fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM);
-    const bool rangeAndHeadingUsable =
-        referenceRange > 0.0f &&
-        referenceRange <=
-            OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM &&
+    const bool headingUsable =
         finalHeadingError <=
             OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG;
+    const bool pieceRangeUsable =
+        referenceRange > 0.0f &&
+        referenceRange <=
+            OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
     const float rearBeyondParkingEnd =
         (referenceRange + sensorWallOffset) * cosf(headingRad) -
         awayAxisSign * sensorLocalX * sinf(headingRad);
@@ -674,13 +691,23 @@ static void finishParkingExit(bool stagedTest)
         beamFootprintMinX <= expectedPieceMaxX +
                                  OBSTACLE_PARKING_EXIT_BEAM_X_TOLERANCE_MM;
     const bool referenceUsable =
-        rangeAndHeadingUsable && beamOverExpectedPiece;
+        headingUsable && pieceRangeUsable && beamOverExpectedPiece;
+    // Multi-object ToF returns at the end of the thin parking piece can jump
+    // between the piece, an oblique edge, and the outer wall. A geometrically
+    // valid intermediate return may seed the bounded edge search, but it must
+    // not be used as a piece measurement or field-y correction.
+    const bool localizationSeedUsable =
+        headingUsable && referenceRange > 0.0f &&
+        referenceRange <= OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM &&
+        beamOverExpectedPiece;
     const float tofFieldY =
         OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM +
         rearBeyondParkingEnd;
     const float tofCorrectionY = tofFieldY - fieldPose.y_mm;
     const bool applyFieldY =
-        referenceUsable && oc_parking_field_pose_initialized;
+        referenceUsable && oc_parking_field_pose_initialized &&
+        fabsf(tofCorrectionY) <=
+            OBSTACLE_PARKING_EXIT_MAX_Y_CORRECTION_MM;
     if (applyFieldY)
     {
         position_apply_xy_correction(0.0f, tofCorrectionY);
@@ -715,6 +742,8 @@ static void finishParkingExit(bool stagedTest)
     Serial.print(beamOverExpectedPiece ? "yes" : "no");
     Serial.print(" usable=");
     Serial.print(referenceUsable ? "yes" : "no");
+    Serial.print(" localization_seed=");
+    Serial.print(localizationSeedUsable ? "yes" : "no");
     Serial.print(" apply_y=");
     Serial.println(applyFieldY ? "yes" : "no");
 
@@ -742,15 +771,20 @@ static void finishParkingExit(bool stagedTest)
     if (
         !stagedTest &&
         OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED &&
-        referenceUsable)
+        localizationSeedUsable)
     {
         oc_parking_localization_sensor = referenceSensor;
-        oc_parking_localization_initial_piece_range = referenceRange;
-        oc_parking_localization_last_piece_range = referenceRange;
+        oc_parking_localization_initial_piece_range =
+            referenceUsable
+                ? referenceRange
+                : OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
+        oc_parking_localization_last_piece_range =
+            referenceUsable ? referenceRange : 0.0f;
         oc_parking_localization_last_piece_pose = fieldPose;
         oc_parking_localization_wall_range = 0.0f;
         oc_parking_localization_wall_frames = 0;
         oc_parking_localization_transition_found = false;
+        oc_parking_localization_piece_seen = referenceUsable;
         TofDiagnosticSnapshot snapshot;
         oc_parking_localization_tof_sequence =
             get_tof_diagnostic_snapshot(referenceSensor, snapshot)
@@ -761,7 +795,9 @@ static void finishParkingExit(bool stagedTest)
         Serial.print("[PARK LOCALIZE] Armed sensor=");
         Serial.print(referenceSensor == TOF_LEFT ? "L" : "R");
         Serial.print(" piece_range_mm=");
-        Serial.print(referenceRange, 1);
+        Serial.print(
+            referenceUsable ? referenceRange : 0.0f,
+            1);
         Serial.print(" direction=");
         Serial.print(
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION < 0
@@ -837,6 +873,7 @@ static void finishParkingEdgeLocalization()
         }
         xCorrection = knownEdgeX - predictedEdgeX;
         applyX =
+            oc_parking_localization_piece_seen &&
             fabsf(xCorrection) <=
             OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM;
 
@@ -883,6 +920,8 @@ static void finishParkingEdgeLocalization()
     Serial.print(creepDistance, 1);
     Serial.print(" piece_range_mm=");
     Serial.print(oc_parking_localization_last_piece_range, 1);
+    Serial.print(" piece_seen=");
+    Serial.print(oc_parking_localization_piece_seen ? "yes" : "no");
     Serial.print(" wall_range_mm=");
     Serial.print(oc_parking_localization_wall_range, 1);
     Serial.print(" expected_wall_range_mm=");
@@ -924,6 +963,60 @@ static void finishParkingEdgeLocalization()
     }
 
     completeParkingExit(false);
+}
+
+static void processParkingEdgeLocalizationTof()
+{
+    TofDiagnosticSnapshot snapshot;
+    if (
+        !get_tof_diagnostic_snapshot(
+            oc_parking_localization_sensor, snapshot) ||
+        snapshot.sequence == oc_parking_localization_tof_sequence)
+    {
+        return;
+    }
+
+    oc_parking_localization_tof_sequence = snapshot.sequence;
+    const float rawRange = snapshot.selected_raw_distance_mm;
+    const PositionEstimate samplePose = get_position_struct();
+    const float markerRangeMaximum = fminf(
+        OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM,
+        oc_parking_localization_initial_piece_range +
+            OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM);
+    const float expectedWallRange = expectedParkingOuterWallRange(
+        oc_parking_localization_sensor, samplePose);
+    const bool wallRangeConsistent =
+        rawRange >= OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM &&
+        rawRange <= OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM &&
+        expectedWallRange > 0.0f &&
+        fabsf(rawRange - expectedWallRange) <=
+            OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM;
+    if (rawRange > 0.0f && rawRange <= markerRangeMaximum)
+    {
+        oc_parking_localization_piece_seen = true;
+        oc_parking_localization_last_piece_range = rawRange;
+        oc_parking_localization_last_piece_pose = samplePose;
+        oc_parking_localization_wall_frames = 0;
+    }
+    else if (wallRangeConsistent)
+    {
+        // Confirm a sequence, then localize from its newest sample. The first
+        // in-range return can still contain the fading edge of the magenta
+        // piece even though it passes the residual gate.
+        oc_parking_localization_latest_wall_pose = samplePose;
+        oc_parking_localization_wall_range = rawRange;
+        ++oc_parking_localization_wall_frames;
+    }
+    else
+    {
+        // Intermediate oblique returns are neither the short magenta end nor
+        // a wall range consistent with the current pose.
+        oc_parking_localization_wall_frames = 0;
+    }
+
+    oc_parking_localization_transition_found =
+        oc_parking_localization_wall_frames >=
+        OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
 }
 
 static bool updateParkingExit()
@@ -1146,6 +1239,11 @@ static bool updateParkingExit()
         set_steering(0);
         steer(0);
 
+        // Consume fresh stationary samples here as well as while driving. An
+        // intermediate edge return at exit completion must not prevent a
+        // subsequent short piece return from seeding localization.
+        processParkingEdgeLocalizationTof();
+
         if (
             millis() - oc_parking_exit_settle_start_ms <
                 OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS)
@@ -1166,61 +1264,10 @@ static bool updateParkingExit()
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED);
         set_steering(0);
 
-        TofDiagnosticSnapshot snapshot;
-        if (
-            get_tof_diagnostic_snapshot(
-                oc_parking_localization_sensor, snapshot) &&
-            snapshot.sequence != oc_parking_localization_tof_sequence)
-        {
-            oc_parking_localization_tof_sequence = snapshot.sequence;
-            const float rawRange = snapshot.selected_raw_distance_mm;
-            const PositionEstimate samplePose = get_position_struct();
-            const float markerRangeMaximum = fminf(
-                OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM,
-                oc_parking_localization_initial_piece_range +
-                    OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM);
-            const float expectedWallRange =
-                expectedParkingOuterWallRange(
-                    oc_parking_localization_sensor, samplePose);
-            const bool wallRangeConsistent =
-                rawRange >=
-                    OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM &&
-                rawRange <=
-                    OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM &&
-                expectedWallRange > 0.0f &&
-                fabsf(rawRange - expectedWallRange) <=
-                    OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM;
-            if (
-                rawRange > 0.0f &&
-                rawRange <= markerRangeMaximum)
-            {
-                oc_parking_localization_last_piece_range = rawRange;
-                oc_parking_localization_last_piece_pose =
-                    samplePose;
-                oc_parking_localization_wall_frames = 0;
-            }
-            else if (wallRangeConsistent)
-            {
-                // Confirm a sequence, then localize from its newest sample.
-                // The first in-range return can still contain the fading edge
-                // of the magenta piece even though it passes the residual gate.
-                oc_parking_localization_latest_wall_pose = samplePose;
-                oc_parking_localization_wall_range = rawRange;
-                ++oc_parking_localization_wall_frames;
-            }
-            else
-            {
-                // Intermediate oblique returns are neither the short magenta
-                // end nor a wall range consistent with the current pose.
-                oc_parking_localization_wall_frames = 0;
-            }
-        }
+        processParkingEdgeLocalizationTof();
 
         const float creepDistance =
             distanceSince(oc_parking_localization_start_distance);
-        oc_parking_localization_transition_found =
-            oc_parking_localization_wall_frames >=
-            OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
         const bool distanceLimitReached =
             creepDistance >=
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM;
@@ -1237,6 +1284,10 @@ static bool updateParkingExit()
 
     if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_BRAKE)
     {
+        // The finite ToF footprint can keep returning the parking piece until
+        // the chassis has stopped and settled. Continue accepting fresh frames
+        // during the existing brake hold, without extending creep distance.
+        processParkingEdgeLocalizationTof();
         if (
             millis() - oc_parking_exit_brake_start_ms <
                 OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS)
