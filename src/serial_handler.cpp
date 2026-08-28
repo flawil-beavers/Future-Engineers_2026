@@ -168,7 +168,7 @@ static bool handle_pid_command(const char *message)
       return true;
     }
     mode_switch(MODE_MANUAL);
-    set_speed((int)roundf(speed));
+    mode_manual_set_speed((int)roundf(speed));
     Serial.print("PID test running at "); Serial.print(speed, 1);
     Serial.println(" mm/s. Send 'z' to stop.");
     return true;
@@ -455,7 +455,7 @@ void parseMessage(char *msg)
   case 'd':
     // Direct drive commands consistently select manual mode.
     mode_switch(MODE_MANUAL);
-    set_speed(value);
+    mode_manual_set_speed(value);
     break;
 
   case 's':
@@ -774,6 +774,12 @@ void pid_config_print()
     Serial.print(accel_pid_integral);
     Serial.print(" dc_out: ");
     Serial.print(dc_out);
+    Serial.print(" low_speed_pulse_density: ");
+    Serial.print(low_speed_pulse_density_active ? "active" : "off");
+    Serial.print(" pulse_slots/on: ");
+    Serial.print(low_speed_pulse_density_slots);
+    Serial.print("/");
+    Serial.print(low_speed_pulse_density_powered_slots);
     Serial.print(" pid_before_checking: ");
     Serial.print(pid_before_checking);
     Serial.print("\r\n");

@@ -33,6 +33,544 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28: log 227 validates log-221 fix and complete 7.16 V parking flow
+
+Log 227 confirms the revised M7 image with
+`approach/verify_target_mm=62.0/65.0`. At a reported 7.16 V, rear positioning
+moved from 46.3 to 60.7 mm using 15.7 mm encoder travel. The settled result had
+4.3 mm canonical target error and 1.4 mm motion-agreement error, so it passed
+the unchanged safety gates. All five exit segments completed; segment 5 aligned
+at 172.1 mm and the stopped result had 0.7 degree heading error. Parking-edge
+localization crossed after 47.0 mm, applied -9.7/-9.1 mm x/y corrections, and
+retained a plausible wall residual. Green station 2 / seat 5 was resolved,
+avoidance was injected, and the diagnostic ended with its intended motor lock.
+No watchdog stall or abnormal motor event occurred.
+
+This accepts the log-221 approach-bias fix and the low-speed motor tuning
+together at the lowest tested pack voltage. Retain the 120-PWM/200 Hz carrier,
+low-speed Ki=0.250, 10-PWM full-lock steering feedforward, 62 mm correction
+approach, and unchanged 65 +/-5 mm final verification. Remaining validation is
+the separately tracked mirrored parked direction and any optional 100 mm/s
+matrix coverage; neither blocks acceptance of the low-speed unparking fix.
+
+---
+
+## 2026-08-28: log 226 passes complete flow at 7.2 V but still uses old M7 image
+
+Log 226 completed rear positioning, all five exit segments, parking-edge
+localization, green station-2/seat-5 discovery, avoidance injection, and the
+intended diagnostic motor lock at a reported 7.2 V. Loaded segments activated
+bounded motor compensation without a watchdog stall. Rear correction from
+44.3 to 64.7 mm passed, final exit heading error was 1.0 degree, localization
+applied a -17.3 mm x correction with 0.6 mm wall residual, and entry discovery
+resolved GREEN.
+
+The log still proves that the revised M7 image was not installed: it planned
+20.7 mm from 44.3 mm, targeting the old 65 mm value, and omitted
+`approach/verify_target_mm=62.0/65.0`. The revised M7 build would plan 17.7 mm.
+Uploading the M4 image to restore rear sensing does not install this M7-only
+fix. No additional source change is needed. Upload environment `giga_r1_m7`;
+future correction telemetry must contain the new approach/verify field.
+
+---
+
+## 2026-08-28: logs 223--225 used pre-fix firmware; exits pass but low-pack localization locks safely
+
+These three tests do not contain the new
+`approach/verify_target_mm=62.0/65.0` telemetry and their planned corrections
+still target 65 mm: log 223 planned 10.7 mm from 75.7 mm, while the revised
+build would plan 13.7 mm; log 225 planned 5.3 mm from 59.7 mm, while the revised
+build would plan 2.3 mm. Therefore the log-221 approach-bias fix was not
+installed and these logs cannot validate it.
+
+The approximately 7.95 V log 223 nevertheless passed rear positioning, all
+five exit segments, edge localization, and green station-2/seat-5 discovery.
+Both 7.23 V logs completed all five exit segments with final heading errors of
+0.7 and 0.4 degrees, confirming the motor tuning under low voltage. Log 224
+then rejected a -27.0 mm parking-edge x correction beyond the 25 mm bound.
+Log 225 had an unusable 255 mm parking-piece reference, found no initial piece,
+and rejected a -38.0 mm x correction. Both safely locked before parking-entry
+motion. No further source change follows from these stale-firmware tests.
+Upload the current M7 build before claiming the log-221 fix is installed; its
+log must show `approach/verify_target_mm=62.0/65.0` whenever correction occurs.
+
+---
+
+## 2026-08-28: fix log 221 with safe one-shot rear-position approach bias
+
+The user requested a fix for log 221 without more physical testing. Do not add
+a reverse retry: project history shows the former bidirectional rear controller
+oscillated and touched the front parking limit in log 143. Do not widen the
+final tolerance to include 70.7 mm either. The swept-envelope model passes only
+12/16 cases when starting at 55--56 mm rear body clearance, versus 16/16 at the
+canonical 50 mm placement.
+
+Instead, corrective motion now aims 3 mm toward the rear marker: 62 mm optical
+range / 47 mm nominal body clearance. Settled verification still requires the
+original 65 +/-5 mm range and 8 mm encoder/range motion agreement. The existing
+one-shot direction, 55 mm travel cap, stable-frame requirements, and motor lock
+on failure are unchanged. The swept model passes 16/16 cases at 47 mm nominal
+clearance. Based on the observed runs, the bias predicts log 221 near 67.7 mm
+instead of 70.7 mm and log 222 near 62.7 mm instead of 65.7 mm, both within the
+unchanged safe final gate. Build M7 only; M4 does not consume this new constant.
+
+The IDE-managed `giga_r1_m7` build passes with 365296 bytes RAM and 422664
+bytes flash. M4 was not built because the approach constant and state logic are
+M7-only. Firmware was not uploaded by the agent.
+
+---
+
+## 2026-08-28: logs 221/222 restore parking operation; one rear-position abort and one complete green run
+
+The prior no-motion cause was physical: the rear ToF was not plugged in
+correctly and did not power up. After the user corrected it, both 7.96 V `O`
+runs received valid rear data and moved. Log 221 started at 49.7 mm rear range,
+drove the planned 15.3 mm correction (15.7 mm encoder travel), then measured
+70.7 mm instead of the 65 mm target. Motion agreement error was 5.3 mm, within
+its 8 mm limit, but target error was 5.7 mm, 0.7 mm beyond the 5 mm final
+tolerance. It correctly aborted and locked the motor off before the exit.
+
+Log 222 started at 44.3 mm, drove 20.8 mm, verified 65.7 mm with 0.7 mm target
+error and passed. It completed all five parking-exit segments, localized from
+the parking edge after 54.7 mm creep, applied x/y corrections of -15.8/-4.4 mm,
+and resolved the green pillar at station 2 / seat 5. The live avoidance was
+injected and the intended parking-entry diagnostic ended with the motor locked
+off. Segment 5 reached its 180 mm cap with 2.4 degrees moving heading error,
+but after braking/centering the final result recorded 0.5 degrees and the
+subsequent localization residual was only -4.4 mm.
+
+This establishes that the accepted low-speed tuning works through the real
+parking sequence, but rear-position repeatability is currently one pass in two.
+Do not loosen the 5 mm clearance-related tolerance or add a correction retry
+without checking the parking swept-envelope safety. Keep firmware unchanged
+and perform one identical, accurately placed higher-pack repeat while recording
+any contact or intervention.
+
+---
+
+## 2026-08-28: logs 217--220 parking exits safely abort because rear M4 ToF is absent
+
+Four `O` attempts—two with the low pack and two with the higher pack—produced
+identical no-motion results. Logs 217 through 220 show parking direction was
+identified and the rear-positioning phase armed, but rear range stayed -1.0
+and each run ended with `Failed reason=no_valid_rear_range` at zero travel,
+followed by `Drive motor locked off`. This occurs before any parking motion is
+commanded and is unrelated to the accepted low-speed motor tuning. The safety
+gate behaved correctly and must not be bypassed.
+
+Code inspection confirms the rear-positioning state already waits its settle
+period plus a 3000 ms timeout. No rear diagnostic snapshot was logged, which
+means the M7 received no usable `REAR_TOF_RPC_RUNNING` frame from the M4 service
+rather than merely seeing an out-of-range target. The existing M4 rear-ToF
+firmware builds successfully with the IDE-managed PlatformIO installation:
+59768 bytes RAM and 155176 bytes flash. No source change and no upload were
+performed. Next upload the `giga_r1_m4` image, reboot, and verify a finite rear
+`Tof .../.../B` value while stationary with the enable switch LOW. Do not run
+`O` again until that stationary rear reading is restored.
+
+---
+
+## 2026-08-28: log 216 completes isolated low-pack reverse validation
+
+At 7.36 V, log 216 exercised -60 mm/s in straight and both full-lock steering
+directions. The first straight segment averaged -51.3 mm/s and the later
+straight segment -59.8 mm/s. The -50 and +50 segments averaged -56.3 and
+-65.4 mm/s, respectively. All segment means are within +/-10 mm/s of the
+signed target, physical heading changes match steering direction, and there is
+no watchdog stall or abnormal shutdown. A final isolated -180.4 mm/s sample
+does not alter the segment-level acceptance and should not drive tuning.
+
+Together with logs 205, 206, 208, 209, 213, and 215, this completes isolated
+straight/full-lock, forward/reverse validation on the higher and lower charge
+packs. Keep the accepted 120-PWM/200 Hz carrier, low-speed Ki=0.250, and
+10-PWM full-lock steering feedforward unchanged. Next validate one complete
+parking exit with the higher-voltage pack from the established safe start pose
+before repeating a representative exit with the lower-voltage pack.
+
+---
+
+## 2026-08-28: log 215 validates low-pack straight and full-lock forward driving
+
+At a reported 7.41 V, log 215 exercised 60 mm/s forward with straight and both
+full-lock steering commands. The initial straight segment averaged 50.0 mm/s,
+exactly at the lower edge of the +/-10 mm/s criterion; a later straight segment
+averaged 68.1 mm/s. The +50 and -50 segments averaged 56.0 and 54.8 mm/s,
+respectively, while average requested effort rose to 109.7 and 101.0 PWM. No
+watchdog stall or abnormal disable occurred. This confirms that integral and
+steering-load compensation adapt usefully at 7.41 V. Keep tuning unchanged and
+validate reverse 60 mm/s with this pack before a complete parking-exit run.
+Do not infer a safe 7.0 V cutoff from driving telemetry; battery chemistry,
+cell count, manufacturer limits, and loaded per-cell voltage determine safety.
+
+---
+
+## 2026-08-28: log 213 validates reverse straight and full-lock operation
+
+Log 213 contains debug telemetry for a -60 mm/s run with several steering
+changes. Two straight reverse segments averaged -57.6 and -57.7 mm/s. Reverse
+-50 segments averaged -56.1 and -61.0 mm/s, while the first +50 segment was
+weaker at -48.0 mm/s but did not stall. All physical directions are consistent
+with the commands, and shutdown was normal. This confirms symmetric steering
+feedforward works in reverse while retaining the previously observed modest
+left/right load asymmetry. Keep tuning unchanged. With straight and most
+full-lock cases passing in both drive directions, proceed to isolated straight
+60 mm/s validation using the nearly empty pack, provided its voltage is within
+the pack's safe operating range.
+
+---
+
+## 2026-08-28: log 209 accepts mirrored -50 curve with mild load asymmetry
+
+At 7.96 V, log 209 tested 60 mm/s at -50 steering. Excluding the first three
+steering samples, measured speed averaged 55.7 mm/s (22.4--83.3), within the
++/-10 mm/s criterion. Physical turning is confirmed by a 142.9-degree heading
+change; pulse-density duty was 761/926 slots (82.2%), and there was no stall or
+abnormal disable. The mirrored side needed 98.9 PWM average versus 92.2 PWM for
+the accepted +50 log 208 and ran about 3.9 mm/s slower, indicating modest
+left/right mechanical load asymmetry. Both sides pass, so keep symmetric tuning
+and proceed to isolated reverse straight and full-lock validation before the
+low-voltage pack.
+
+---
+
+## 2026-08-28: log 208 accepts +50 steering feedforward
+
+At 7.98 V, log 208 repeated the 60 mm/s, +50 steering floor test with the
+10-PWM full-lock feedforward. Excluding the first three steering samples,
+measured speed averaged 59.6 mm/s (13.1--101.4), improving from log 207's
+48.4 mm/s and essentially matching the target. Average requested effort was
+92.2 PWM and pulse-density duty was 934/1219 slots (76.6%). Physical turning
+is confirmed by a 205.8-degree heading change. One 13.1 mm/s sample occurs
+immediately before disable, but there is no sustained near-stall or watchdog
+event. Accept +50 provisionally, keep tuning unchanged, and run the isolated
+60 mm/s, -50 steering mirror test next.
+
+---
+
+## 2026-08-28: log 207 validates +50 curve and adds steering-load feedforward
+
+At 7.99 V, log 207 is a valid 60 mm/s, +50 steering floor test. Physical
+turning is confirmed by a 168-degree gyro-heading change. Excluding the first
+three steering samples, measured speed averaged 48.4 mm/s (16.3--96.6), just
+outside the +/-10 mm/s criterion, while requested effort averaged 91.4 PWM
+versus 80.7 PWM in the accepted straight log 206. The scheduler delivered 977
+powered slots over 1295 slots (75.4%). There was no watchdog stall, but the
+final samples slowed sharply as requested effort reached 104--114 PWM.
+
+Add a generic low-speed steering feedforward scaled from zero when straight to
+10 PWM at +/-50 degrees. It is symmetric for steering sign and drive direction
+and is included in the normal feedforward/anti-windup calculation. Straight
+behavior, carrier settings, PI gains, and load compensation remain unchanged.
+Build M7 only, then repeat the isolated +50 test before testing -50.
+
+The IDE-managed `giga_r1_m7` build passes with 365296 bytes RAM and 422568
+bytes flash. M4 was not built because this motor-control change is M7-only.
+Firmware was not uploaded by the agent.
+
+---
+
+## 2026-08-28: log 206 accepts straight 60 mm/s tracking
+
+At 7.98 V, log 206 tested a straight 60 mm/s command with the accepted
+120-PWM/200 Hz carrier and low-speed Ki=0.250. Excluding the first three
+transition samples, measured speed averaged 52.2 mm/s (28.5--88.7), within the
+test plan's +/-10 mm/s mean-speed tolerance. Requested effort averaged 80.7
+PWM and the scheduler delivered 735 powered slots over 1108 slots (66.3%),
+consistent with the requested average. Instantaneous encoder speed still
+ripples, but there is no multi-second stop, runaway, stall, or abnormal
+disable. Keep tuning unchanged and proceed to isolated 60 mm/s full-steering
+floor tests, one steering direction per run.
+
+---
+
+## 2026-08-28: log 205 accepts straight 80 mm/s integral response
+
+At approximately 8.00 V, log 205 repeated the straight 80 mm/s floor test with
+`LOW_SPEED_CRUISE_KI=0.250`. Excluding the first three transition samples,
+measured speed averaged 71.0 mm/s (45.5--96.4), improving from log 204's
+59.4 mm/s and meeting the test plan's mean-speed tolerance of +/-10 mm/s.
+Requested effort averaged 84.9 PWM; the scheduler delivered 712 powered slots
+over 1016 slots (70.1%), consistent with the requested average. No stall,
+runaway, or multi-second power cycle appears, and disable was normal. Do not
+increase integral gain again from this result. Keep the current tuning and
+validate a fresh straight 60 mm/s run before full-lock curves and low-pack
+testing.
+
+---
+
+## 2026-08-28: log 204 accepts 120-PWM carrier, increases low-speed integral adaptation
+
+At 8.03 V, log 204 tested the 120-PWM/200 Hz carrier at a straight 80 mm/s
+command. Excluding the first three settled-transition samples, measured speed
+averaged 59.4 mm/s (40.8--84.9), requested effort averaged 83.3 PWM, and the
+scheduler delivered 702 powered slots over 1020 slots (68.8%, consistent with
+the requested average). The user reports some remaining sound but considers it
+acceptable. Compared with log 202, the carrier prevents the former transition
+to 109--128 PWM continuous drive and limits overshoot, but it does not remove
+the late under-speed condition: the final samples remain 40.8--42.6 mm/s while
+the request only gradually reaches about 98 PWM.
+
+Keep the accepted 120-PWM/200 Hz carrier. Increase `LOW_SPEED_CRUISE_KI` from
+0.100 to 0.250 so sustained battery/load error changes average effort within
+the duration of an unparking manoeuvre. Keep low-speed Kp, feedforward, load
+compensation, and the integral clamp unchanged. Build M7 only, then repeat the
+same short straight `d80` floor test before testing curves.
+
+The IDE-managed `giga_r1_m7` build passes with 365296 bytes RAM and 422504
+bytes flash. M4 was not built because this tuning is M7-only. Firmware was not
+uploaded by the agent.
+
+---
+
+## 2026-08-28: 120 PWM / 200 Hz loaded-breakaway revision
+
+Reviewing logs 202 and 203 together shows that the prior 100-PWM carrier is
+ample for unloaded rotation but not a reliable loaded breakaway pulse. Log 202
+only began recovering from its deepest floor slowdown when requested effort
+reached roughly 109--128 PWM, whereas log 203 substantially oversped in the air
+at average requests mostly around 43--83 PWM. The next isolated revision raises
+the pulse-density carrier from 100 to 120 PWM while retaining 5 ms slots
+(200 Hz). Average requested effort, direction gates, stops, and the PID remain
+unchanged. This is intentionally below the rejected 130-PWM/100 Hz setup and
+should provide stronger loaded pulses without restoring its long, audible
+torque intervals. Build M7 only and retest `d80` on the floor before curves or
+the low-voltage pack.
+
+The IDE-managed `giga_r1_m7` build passes with 365296 bytes RAM and 422504
+bytes flash. M4 was not built because this constant is consumed by M7 motor
+control only. Firmware has not been uploaded by the agent.
+
+---
+
+## 2026-08-28: log 203 free-wheel run isolates floor-side load
+
+Log 203 is the lifted-wheel diagnostic at an 80 mm/s command. It contains 32
+manual-mode samples with encoder speed mean 114.6 mm/s (45.4--228.8 mm/s)
+while requested PWM was generally only about 43--83. The motor/encoder can
+therefore spin freely without the late high-duty slowdown seen in log 202.
+Together with the user's report of approximately unchanged battery voltage and
+no collision, this points to a floor-side mechanical/traction issue under load
+(wheel or gearbox friction, alignment/rubbing, tire condition, or cable
+interference), not low-frequency pulse cycling or a battery-only cause. No
+firmware change was made from this diagnostic. Next action is a power-off
+left/right wheel resistance and rubbing inspection, followed by a short fresh
+80 mm/s floor run.
+
+---
+
+## 2026-08-28: log 202 valid 80 mm/s run with late high-load slowdown
+
+Use only `log_202.txt` for this result; the user reports that `log_201.txt` is
+not valid for analysis. Log 202 contains 64 samples at an 80 mm/s profile,
+mean measured speed 56.2 mm/s (range 5.8--109.9), and mean requested effort
+94.8 PWM. The final samples slowed to 17--53 mm/s while effort rose to
+109--128 PWM, with steer=0 throughout, followed by a normal pause and system
+disable. The user reports no contact and approximately unchanged voltage, so
+this remains an unexplained drivetrain/load event rather than evidence of
+low-frequency cycling. Do not change gains from this run alone; perform a
+controlled free-wheel/mechanical check and a fresh short floor run.
+
+---
+
+## 2026-08-28: log 200 validates manual steering; mixed-speed data is history-dependent
+
+At 8.05 V, log 200 validates the manual-servo lifecycle repair. Commands at
+both steering signs produced strong opposite gyro-heading changes at +40/-40
+and +50/-50, so the former setpoint-only failure is resolved. No stall or
+delayed disable appears. The user lifted the robot for approximately the last
+five seconds; the resulting encoder peaks up to 296 mm/s are free-wheel data
+and must not be used for floor-speed tuning.
+
+The floor data does not yet accept speed regulation. Continuous mixed commands
+made results strongly history/condition dependent: the first 80 mm/s straight
+segment averaged about 49 mm/s, while a later straight segment following the
+loaded steering runs averaged about 100 mm/s. At 100 mm/s, usable curved
+segments generally averaged roughly 75--79 mm/s and requested continuous
+effort above the 100-PWM PDM carrier. The initial 60 mm/s straight segment
+averaged about 42 mm/s, while a later straight segment averaged about 53 mm/s.
+Because command duration, accumulated controller state, changing floor path,
+and the uncertain lift boundary are mixed together, do not derive a steering
+feedforward or battery compensation from this run. Next use isolated runs from
+rest at one speed/steering setting, with a disable/re-arm between conditions,
+and never lift the driven wheels until after disabling.
+
+---
+
+## 2026-08-28 - Log 197 smoother but noisy and substantially overspeed
+
+The user reported much smoother straight driving and 8.11 V at the end of log
+197, but also a grinding sound. The 10 ms scheduler functioned: powered slots
+rose to 309 of 483 and the robot travelled about 578 mm without a stall. This
+accepts the scheduler mechanics but not the controller tuning or motor quality.
+After the 60 mm/s profile settled, measured speed was mostly about 90--150
+mm/s and average requested PWM stayed near 84--90. Thus the former 86-PWM
+static feedforward remains much too high when pulse density can represent
+sub-minimum average torque.
+
+The grinding is consistent with 130-PWM torque steps at 100 Hz. Burst/PWM motor
+control is normal in principle, but this audible mechanical response plus the
+large overspeed is not accepted as a final motor-safe operating point; heating
+and curve response have not been validated. Raising frequency alone would
+reduce torque ripple but preserve excessive average effort.
+
+The next revision lowers the carrier from 130 to 100 PWM and shortens slots
+from 10 to 5 ms (200 Hz). Low-speed pulse profiles use a separate 65-PWM static
+feedforward rather than the continuous-drive value of 86. Low-speed cruise Kp/
+Ki increase from 0.035/0.020 to 0.150/0.100 so encoder feedback corrects pack
+and load differences in a useful time. Existing bounded load compensation can
+still add up to 30 PWM under tire scrub, and requests at/above the carrier run
+continuously, so curves are not artificially capped. Physical full-lock
+validation remains mandatory after straight speed and sound pass.
+
+The IDE-managed M7-only build passes (365296 bytes RAM, 422520 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+repeat the straight `d60` full-pack test for roughly 500 mm. Require lower
+noise, materially closer tracking to 60 mm/s, powered-slot activity, no stall,
+and immediate disable. Do not test curves or the low pack until it passes.
+
+---
+
+## 2026-08-28 - Log 196 rejects coarse low-speed pulse modulation
+
+Log 196 is the first valid motor test on branch `test/low-speed-drive`. The
+user reported slight chassis shaking and 8.12 V. Manual arming worked and the
+robot travelled about 420 mm without a stall. The shaking is confirmed by
+measured-speed swings: settled 60 mm/s demand repeatedly produced roughly
+18--43 mm/s while PWM 95--119 was applied, followed by roughly 94--122 mm/s
+while applied PWM was zero. This rejects the first 50 ms modulation design.
+
+Although sub-80 requests entered pulse-density mode (`PDM slots` increased),
+`powered slots` remained zero. Corrections above 80 repeatedly left the narrow
+PDM region and reset its accumulator, recreating the original long full-on/
+full-off behavior. The battery dropped only from the reported 8.27 V resting
+condition to 8.12 V during this run; the oscillation is directly present in
+the command/encoder telemetry and must be corrected in software before testing
+the low pack.
+
+Low-speed modulation now covers all same-direction average requests below a
+130-PWM carrier for targets through 120 mm/s. Carrier decisions run every
+10 ms from the main drive loop, independently of the 50 ms encoder/PID update,
+so threshold crossings cannot erase accumulated average effort and individual
+powered/unpowered intervals are five times shorter. Requests at or above 130
+remain continuous for loaded operation. Stop, disable, zero command, opposing
+direction, position hold, and higher-speed behavior retain their safety gates.
+
+The IDE-managed M7-only build passes (365296 bytes RAM, 422488 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+re-upload M7 and repeat only `d60` with the 8.12 V/full pack. Stop within about
+500 mm or immediately if shaking is worse. Require powered-slot counts to
+increase, materially narrower speed variation, and correct immediate disable
+before extending the test matrix.
+
+---
+
+## 2026-08-28 - Log 195 proves armed speed cleared before manual start
+
+At 8.27 V, log 195 accepted `d60` and printed `Pending mode: MANUAL` plus
+`Manual speed armed for enable: 60 mm/s`. Enabling resumed manual mode, but it
+never printed `Armed manual speed applied`; target/profile speed, requested and
+applied PWM, and PDM slots all remained zero. The user's manual forward/back
+push was independently visible in the encoder telemetry, reaching roughly
++126 and -145 mm/s while PWM remained zero. This proves the encoder worked and
+the motor driver was never commanded; it is not evidence of a motor, driver,
+battery, or low-speed controller failure.
+
+Inspection found that the armed-speed application block had been inserted in
+`stop_mode(MODE_MANUAL)`, immediately after that same path cleared the armed
+value, rather than in `start_mode(MODE_MANUAL)`. The block is now in the start
+path: startup first establishes a stopped state, consumes the nonzero armed
+speed once, and calls `set_speed`. The stop path still clears the armed value,
+so disabling and re-enabling cannot restart manual propulsion without another
+command. This supersedes the unvalidated implementation claim in the preceding
+manual-start entry.
+
+The IDE-managed M7-only build passes (365288 bytes RAM, 422392 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+re-upload M7, arm `d60` with the switch LOW, and require the `Armed manual speed
+applied` line immediately after enabling before assessing motion.
+
+---
+
+## 2026-08-28 - Logs 192--194 reject PID test command before motion
+
+The USB drive is `D:` with label `PHILIPP`; its timestamps are not reliable,
+so robot logs must be selected by the highest numeric filename. Logs 192, 193,
+and 194 contain the low-speed attempts at the user-reported 8.27 V. They prove
+the new firmware was uploaded because `DC req/applied` and `PDM slots/on`
+telemetry are present, but every attempted motor command printed `Usage: pid
+test <speed_mm_s>`. No `Pending mode: MANUAL`, `Manual speed armed`, or PID
+test confirmation followed. The robot stayed in the development stationary
+`CAMERA_CALIBRATION` mode with target speed, requested PWM, applied PWM, and
+PDM counts all zero. Enabling therefore correctly reported no pending mode and
+could not drive.
+
+These are command-rejection runs, not motor-controller failures; the 8.27 V
+pack never powered the drive motor. To eliminate multi-word input ambiguity,
+the next test uses the existing equivalent direct command `d60`, which now
+shares the corrected one-shot manual-speed arming path. With the switch LOW,
+require `Pending mode: MANUAL` and `Manual speed armed for enable: 60 mm/s`
+before enabling. Do not proceed if either line is absent. No code change or
+build follows this log review.
+
+---
+
+## 2026-08-28 - Fix pending manual-speed test startup
+
+Two attempted 60 mm/s tests at a displayed 8.27 V did not start. Their new
+log files were not present anywhere in the workspace, so no raw log evidence
+was available, but source inspection found a deterministic startup defect in
+the issued procedure. With the enable switch LOW, `pid test 60` selected
+pending manual mode and called `set_speed(60)`. On the later enable edge,
+`start_mode(MODE_MANUAL)` called `stop(false)` and erased that speed before the
+drive loop ran. Thus neither attempt exercised the low-speed controller or the
+battery under motor load.
+
+Manual speed commands now use a one-shot armed value. If manual mode is already
+running, the speed applies immediately. If the switch is LOW, the value is
+stored and applied once after manual mode starts, then cleared. Stopping,
+switching to a non-manual mode, or pausing an active manual run clears it, so a
+later enable cannot unexpectedly restart propulsion. Both `pid test <speed>`
+and `d<speed>` use the corrected path. Expected arming telemetry is `Manual
+speed armed for enable: 60 mm/s`, followed after enabling by `Armed manual
+speed applied: 60 mm/s` and `Resumed mode: MANUAL`.
+
+The IDE-managed M7-only build passes (365288 bytes RAM, 422392 bytes flash)
+with existing warnings. M4 was not built, and the rebuilt firmware was not
+uploaded. Re-upload this M7 build and repeat only the full-pack 60 mm/s forward
+test before extending the matrix.
+
+---
+
+## 2026-08-28 - Isolate and implement low-speed pulse-density drive
+
+Branch `test/low-speed-drive` was created from the clean `pure-pursuit`
+worktree. The observed battery-dependent low-speed cycling is consistent with
+the former hard `MOTOR_MIN_DC=80` cutoff: the PI output could fall below 80,
+which de-energized the motor until wheel speed decayed enough to demand at
+least 80 again. A full battery changes speed more quickly during those powered
+and unpowered intervals, while a discharged battery stretches the same loop.
+This mechanism is a code-supported hypothesis pending the controlled two-pack
+test; firmware has no battery-voltage input.
+
+For nonzero drive targets through 120 mm/s, sub-80 average requests are now
+converted to error-diffused 80-PWM pulse slots at the existing nominal 20 Hz
+encoder-speed update rate. The PI loop retains the requested average duty, so
+it can change pulse density with battery state and steering load. The previous
+hard cutoff remains for disabled drive, zero-target deceleration, position
+holding, and speeds above the low-speed band. Pulse state resets on stop and
+direction changes. General debug and `P` status now report requested/applied
+PWM and cumulative pulse slots/powered slots.
+
+The final IDE-managed `giga_r1_m7` build passes (365288 bytes RAM, 422152 bytes
+flash) with the existing warnings. M4 is unaffected and was not built. No
+firmware was uploaded. Next obtain upload consent, then run the ordered
+low-speed checklist with the full pack first. Do not begin with a complete
+parking manoeuvre. A slow multi-second surge, failure to stop immediately,
+unexpected direction, or a no-progress watchdog event rejects the
+implementation.
+
+---
+
 ## 2026-08-28 - Log 190 false CLEAR; log 191 passes CW green
 
 Under the standing convention, neither damped-controller regression contacted
@@ -3860,3 +4398,20 @@ Physical contact invalidates the run even if it later reports `PASS`. On a
 safe run, compare `[CLEARANCE PLAN]`, `[CLEARANCE ODOM]`, and `[PILLAR TOF]`
 for each seat, including the reported nearest wall feature and inner-corner
 values, before selecting any further geometry change.
+## 2026-08-28: low-speed log 198 and manual steering lifecycle fix
+
+- At 60 mm/s, `log_198.txt` showed the revised 100 PWM / 200 Hz pulse-density
+  output tracking a straight-line mean of 54.2 mm/s. The user reported that
+  the sound was better. Requested duty averaged 80.2 PWM and the scheduler's
+  powered-slot ratio was 80.2%, confirming correct average-duty delivery.
+- The final `Steer: 40` samples are not a valid curved-driving test. The user
+  reported that the wheels did not physically steer. Code inspection found
+  that `start_mode(MODE_MANUAL)` called `stop(false)`, which sets
+  `servo_disabled = true`, but did not restore it. Telemetry therefore showed
+  the requested steering setpoint even though `steer()` rejected servo writes.
+- Fixed manual-mode startup by setting `servo_disabled = false` immediately
+  after `stop(false)`. Retest steering while stationary first, then repeat the
+  controlled 60 mm/s curve test before considering any steering-load motor
+  compensation.
+- The affected M7 environment builds successfully: 365296 bytes RAM and
+  422504 bytes flash. M4 was not built because this lifecycle change is M7-only.

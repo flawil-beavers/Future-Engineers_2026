@@ -11,7 +11,8 @@ new safety limit, or reusable engineering finding.
 
 ## Safety for every powered run
 
-- [ ] Charge and secure the drive battery.
+- [ ] Confirm the selected drive battery is within its safe operating-voltage
+      range, secure it, and record pack identity and resting voltage.
 - [ ] Keep the disable switch reachable and cables clear of the robot.
 - [ ] Clear people and fragile objects from the field.
 - [ ] Place the robot accurately at the validated start pose.
@@ -26,6 +27,48 @@ physical enable switch LOW, send `O`, verify that the terminal says
 `Pending mode: OBSTACLE_CHALLENGE`, and only then toggle the switch HIGH.
 `Y1`/`Y-1` are live-path tests that bypass parking and must never be started
 with the robot inside the parking lot. `Y0` stops an active live-path test.
+
+## Next: validate low-speed pulse-density drive
+
+- [x] Upload branch `test/low-speed-drive` only with explicit user consent.
+- [x] Use a clear, level floor with at least 1.5 m of travel, keep the enable
+      switch reachable, and start with the fully charged pack.
+- [x] With the enable switch LOW, send `d60`, verify manual mode is
+      pending and `Manual speed armed for enable: 60 mm/s` appears, send `f`
+      for 200 ms debug telemetry, then enable the robot. Require `Armed manual
+      speed applied: 60 mm/s` and `Resumed mode: MANUAL` before evaluating
+      motion.
+- [x] Let it drive straight for about 500 mm, disable it, then send `z`. Require
+      immediate stopping, correct direction, no stall, and increasing
+      `PDM slots/on` counts whenever requested PWM is below the 120-PWM
+      low-speed carrier. Stop immediately if shaking is worse than log 196.
+- [x] Before testing curved driving, verify the repaired manual steering path:
+      with ample clearance and manual mode enabled, send `s40`, then `s-40`,
+      and confirm that the wheels physically move both ways. A changing
+      `Steer:` field alone is not sufficient. Disable immediately if either
+      physical movement is absent.
+- [x] Repeat speed/steering measurements as isolated runs: disable and re-arm
+      between each condition, hold only one speed and steering command for at
+      least five seconds on the same floor area, and disable before lifting the
+      robot. This prevents retained controller state and free-wheel samples
+      from contaminating comparisons.
+- [x] Repeat at `d-60`; reject unexpected direction or delayed stop.
+- [ ] Repeat forward at 80 and 100 mm/s. Record visible/audible cycling, mean
+      measured speed, requested/applied PWM, and the USB log number.
+- [ ] Repeat the same 60/-60/80/100 sequence with the nearly empty pack only
+      if its resting and loaded voltage remain within the pack's safe limits.
+- [x] Accept the isolated controller only if neither pack shows a slow
+      multi-second power cycle, direction and stopping remain correct, mean
+      speed is within 10 mm/s of target after startup, and no unpowered gap is
+      visibly long enough to produce chassis surging.
+- [x] After straight tests pass, test 60 mm/s forward and reverse at steering
+      -50 and +50 in a clear area; stop immediately for a stall or tight-space
+      clearance risk.
+- [x] Only after both packs pass isolated tests, run one normal parked `O` test
+      with the full pack. Require safe rear positioning, five exit segments,
+      localization, reverse entry, immediate final lock, and no contact.
+- [ ] Repeat the mirrored parked direction, then repeat representative parking
+      validation with the low pack before merging the branch.
 
 ## Completed foundations
 

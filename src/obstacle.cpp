@@ -1087,7 +1087,7 @@ static bool updateParkingExit()
                 {
                     oc_parking_rear_start_range = averageRange;
                     const float signedCorrection =
-                        OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM -
+                        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM -
                         averageRange;
                     oc_parking_rear_planned_travel =
                         fabsf(signedCorrection);
@@ -1117,6 +1117,14 @@ static bool updateParkingExit()
                     Serial.print(
                         "[PARK REAR] One-shot correction start_range_mm=");
                     Serial.print(averageRange, 1);
+                    Serial.print(" approach/verify_target_mm=");
+                    Serial.print(
+                        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM,
+                        1);
+                    Serial.print("/");
+                    Serial.print(
+                        OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM,
+                        1);
                     Serial.print(" direction=");
                     Serial.print(
                         oc_parking_rear_direction > 0
