@@ -522,7 +522,14 @@ void pid_speed()
   const float active_static_ff = low_speed_pulse_profile
       ? LOW_SPEED_PULSE_STATIC_FF_DC
       : motor_static_ff;
+  const float steering_load_ff = low_speed_pulse_profile
+      ? direction * LOW_SPEED_STEERING_FF_MAX_DC * constrain(
+            fabsf((float)set_degree) / MAX_STEERING,
+            0.0f,
+            1.0f)
+      : 0.0f;
   const float feedforward = direction * active_static_ff +
+      steering_load_ff +
       motor_speed_ff * current_speed +
       motor_accel_ff * commanded_acceleration;
   float output = 0.0f;

@@ -40,7 +40,7 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       motion.
 - [ ] Let it drive straight for about 500 mm, disable it, then send `z`. Require
       immediate stopping, correct direction, no stall, and increasing
-      `PDM slots/on` counts whenever requested PWM is below the 100-PWM
+      `PDM slots/on` counts whenever requested PWM is below the 120-PWM
       low-speed carrier. Stop immediately if shaking is worse than log 196.
 - [x] Before testing curved driving, verify the repaired manual steering path:
       with ample clearance and manual mode enabled, send `s40`, then `s-40`,

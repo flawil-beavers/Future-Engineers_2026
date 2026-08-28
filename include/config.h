@@ -60,11 +60,12 @@ constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 
 // A hard minimum-PWM cutoff makes the low-speed PI loop alternate between long
 // powered and unpowered intervals. At low commanded speeds, represent average
-// effort below this carrier with 5 ms error-diffused slots. Log 197 confirmed
-// the scheduler works but rejected a noisy 130-PWM/10 ms carrier; use shorter,
-// lower-amplitude pulses while retaining smoothing across MOTOR_MIN_DC.
+// effort below this carrier with 5 ms error-diffused slots. Log 197 rejected a
+// noisy 130-PWM/10 ms carrier, while logs 202/203 showed that 100 PWM was below
+// reliable loaded breakaway despite being ample with the wheels lifted. Use a
+// 120-PWM carrier at the quieter 200 Hz slot rate as the intermediate point.
 constexpr float LOW_SPEED_PULSE_DENSITY_MAX_TARGET_MMS = 120.0f;
-constexpr float LOW_SPEED_PULSE_DENSITY_CARRIER_DC = 100.0f;
+constexpr float LOW_SPEED_PULSE_DENSITY_CARRIER_DC = 120.0f;
 constexpr uint32_t LOW_SPEED_PULSE_DENSITY_SLOT_US = 5000UL;
 static_assert(
     MOTOR_MIN_DC > 0 && MOTOR_MIN_DC <= MOTOR_MAX_DC &&
@@ -88,7 +89,11 @@ constexpr auto SERVO_MIN_ANGLE = (SERVO_CENTER - MAX_STEERING); // Max left turn
 constexpr float CRUISE_KP = 0.12f;
 constexpr float CRUISE_KI = 0.04f;
 constexpr float LOW_SPEED_CRUISE_KP = 0.150f;
-constexpr float LOW_SPEED_CRUISE_KI = 0.100f;
+// Log 204 showed stable 120-PWM pulse delivery but only 59.4 mm/s mean for an
+// 80 mm/s floor target: requested average effort rose too slowly during the
+// sustained deficit. Increase only integral adaptation; retain proportional
+// gain and carrier amplitude to avoid restoring fast torque oscillation.
+constexpr float LOW_SPEED_CRUISE_KI = 0.250f;
 constexpr float MID_SPEED_CRUISE_KP = 0.08f;
 constexpr float MID_SPEED_CRUISE_KI = 0.03f;
 constexpr float CRUISE_ENTRY_INTEGRAL_MIN = -2.0f;
@@ -112,6 +117,15 @@ constexpr float MOTOR_ACCEL_FF_DC_PER_MMSS = 0.015f;
 // speed on an 8.11 V pack. PI feedback and load compensation add effort for
 // lower battery voltage and the tire scrub produced by curves.
 constexpr float LOW_SPEED_PULSE_STATIC_FF_DC = 65.0f;
+// Full-lock tire scrub required about 11 PWM more average effort than straight
+// driving in log 207. Apply a small symmetric steering feedforward so curve
+// torque is available immediately; PI feedback still corrects the remainder.
+constexpr float LOW_SPEED_STEERING_FF_MAX_DC = 10.0f;
+static_assert(
+    LOW_SPEED_STEERING_FF_MAX_DC >= 0.0f &&
+        LOW_SPEED_STEERING_FF_MAX_DC <= MOTOR_MAX_DC -
+            LOW_SPEED_PULSE_DENSITY_CARRIER_DC,
+    "Low-speed steering feedforward must leave motor-output headroom");
 constexpr float DRIVE_JERK_LIMIT_MMSSS = 2000.0f;
 constexpr float DRIVE_ACCEL_RELEASE_JERK_MMSSS = 500.0f;
 constexpr float CRUISE_ACCEL_THRESHOLD_MMSS = 20.0f;
@@ -366,6 +380,12 @@ constexpr auto OBSTACLE_REAR_TOF_BEHIND_AXLE_MM = 25.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM = 2.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM = 5.0f;
+// Preserve the canonical 65 mm verification target, but stop a one-shot
+// correction 3 mm toward the rear marker. Log 221 overshot to 70.7 mm; a
+// reverse retry would restore the unsafe bidirectional chasing rejected by
+// logs 142/143. The 47 mm nominal rear-clearance result passes all 16 swept-
+// envelope tolerance cases and remains inside the existing final gate.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM = 3.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_SAMPLE_SPAN_MM = 4.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_MOTION_AGREEMENT_MM = 8.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S = 50;
@@ -384,11 +404,20 @@ constexpr auto OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM =
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM =
     OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM +
     OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM =
+    OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM -
+    OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM;
 static_assert(
     OBSTACLE_REAR_TOF_BEHIND_AXLE_MM >= 0.0f &&
         OBSTACLE_REAR_TOF_BEHIND_AXLE_MM <=
             OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM,
     "Rear ToF must be between the rear axle and current rearmost body point");
+static_assert(
+    OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM >= 0.0f &&
+        OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM <=
+            OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM &&
+        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM > 0.0f,
+    "Rear-ToF approach bias must remain inside the verified final range");
 static_assert(
     OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM > 0.0f &&
         OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM <
