@@ -529,10 +529,12 @@ void general_debug_print()
     Serial.print(py, 0);
     Serial.print(")");
 
-    Serial.print(" | Tof L/R: ");
+    Serial.print(" | Tof L/R/B: ");
     Serial.print(get_tof_distance(TOF_LEFT), 0);
     Serial.print("/");
     Serial.print(get_tof_distance(TOF_RIGHT), 0);
+    Serial.print("/");
+    Serial.print(get_tof_distance(TOF_REAR), 0);
     Serial.print(" | Dist: ");
     Serial.print(get_distance(), 0);
 

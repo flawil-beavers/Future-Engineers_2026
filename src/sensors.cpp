@@ -8,6 +8,7 @@
 #include <Wire.h>
 #include "logger.h"
 #include "motor_control.h"
+#include "rear_tof_rpc.h"
 #define Serial robot_logger
 
 
@@ -35,11 +36,12 @@ static VL53L4CX sensor_left(&Wire, -1);
 static VL53L4CX sensor_right(&Wire2, -1);
 
 // Distance readings in millimeters
-static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f};
-static float tof_raw_distances[TOF_COUNT] = {-1.0f, -1.0f};
-static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f};
-static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f};
+static float tof_distances[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
+static float tof_raw_distances[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
+static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
+static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
 static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
+static uint32_t rear_tof_rpc_sequence = 0;
 
 static bool restart_gyro_stream()
 {
@@ -359,6 +361,35 @@ void update_lasers()
 
   read_single_tof(sensor_left, tof_distances[TOF_LEFT]);
   read_single_tof(sensor_right, tof_distances[TOF_RIGHT]);
+
+  RearTofRpcFrame rear_frame;
+  if (!rear_tof_rpc_read(rear_frame)) {
+    tof_distances[TOF_REAR] = -1.0f;
+    tof_raw_distances[TOF_REAR] = -1.0f;
+    tof_signal_rates[TOF_REAR] = -1.0f;
+    tof_sigmas[TOF_REAR] = -1.0f;
+    return;
+  }
+  if (rear_frame.sequence == rear_tof_rpc_sequence)
+    return;
+
+  rear_tof_rpc_sequence = rear_frame.sequence;
+  tof_distances[TOF_REAR] = rear_frame.filtered_distance_mm;
+  tof_raw_distances[TOF_REAR] = rear_frame.raw_distance_mm;
+  tof_signal_rates[TOF_REAR] = rear_frame.signal_mcps;
+  tof_sigmas[TOF_REAR] = rear_frame.sigma_mm;
+
+  TofDiagnosticSnapshot &diagnostic = tof_diagnostics[TOF_REAR];
+  diagnostic.sequence = rear_frame.sequence;
+  diagnostic.filtered_distance_mm = rear_frame.filtered_distance_mm;
+  diagnostic.selected_raw_distance_mm = rear_frame.raw_distance_mm;
+  diagnostic.selected_signal_mcps = rear_frame.signal_mcps;
+  diagnostic.selected_sigma_mm = rear_frame.sigma_mm;
+  diagnostic.timing_budget_us = TOF_TIMING_BUDGET_US;
+  diagnostic.distance_mode = TOF_DISTANCE_MODE;
+  diagnostic.reported_object_count = rear_frame.raw_distance_mm >= 0.0f ? 1 : 0;
+  diagnostic.stored_object_count = 0;
+  diagnostic.selected_object_index = -1;
 }
 
 void sensors_set_tof_timing_budget(uint32_t budget_us)
@@ -475,7 +506,7 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
 
 float get_tof_distance(TofSensor sensor)
 {
-  if (sensor >= 0 && sensor < TOF_COUNT)
+  if (sensor < TOF_COUNT)
   {
     return tof_distances[sensor];
   }
@@ -484,7 +515,7 @@ float get_tof_distance(TofSensor sensor)
 
 float get_tof_raw_distance(TofSensor sensor)
 {
-  if (sensor >= 0 && sensor < TOF_COUNT)
+  if (sensor < TOF_COUNT)
   {
     return tof_raw_distances[sensor];
   }
@@ -493,7 +524,7 @@ float get_tof_raw_distance(TofSensor sensor)
 
 float get_tof_signal_rate(TofSensor sensor)
 {
-  if (sensor >= 0 && sensor < TOF_COUNT)
+  if (sensor < TOF_COUNT)
   {
     return tof_signal_rates[sensor];
   }
@@ -502,7 +533,7 @@ float get_tof_signal_rate(TofSensor sensor)
 
 float get_tof_sigma(TofSensor sensor)
 {
-  if (sensor >= 0 && sensor < TOF_COUNT)
+  if (sensor < TOF_COUNT)
   {
     return tof_sigmas[sensor];
   }
@@ -611,4 +642,9 @@ void sensors_setup()
   bno.wasReset();
 
   Serial.println("===== SENSORS INITIALIZED =====");
+
+  Serial.println("Starting M4 rear ToF service...");
+  Serial.println(rear_tof_rpc_setup()
+                     ? "M4 rear ToF RPC connected."
+                     : "WARNING: M4 rear ToF RPC unavailable.");
 }

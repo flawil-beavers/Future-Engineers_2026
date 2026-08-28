@@ -55,7 +55,7 @@ struct PillarTofPassage
     bool reported = false;
     uint8_t lapIndex = 0;
     float seatPathDistanceMm = 0.0f;
-    PassageTofSamples samples[TOF_COUNT];
+    PassageTofSamples samples[TOF_SIDE_COUNT];
     uint16_t odometrySamples = 0;
     ObstacleClearanceSample odometryMinimum;
 };
@@ -113,7 +113,7 @@ void resetPassageMeasurements(PillarTofPassage &passage)
     passage.odometryMinimum.wallMm = 1.0e9f;
     for (uint8_t corner = 0; corner < 4; ++corner)
         passage.odometryMinimum.innerCornerMm[corner] = 1.0e9f;
-    for (uint8_t side = 0; side < TOF_COUNT; ++side)
+    for (uint8_t side = 0; side < TOF_SIDE_COUNT; ++side)
     {
         passage.samples[side] = PassageTofSamples{};
         TofDiagnosticSnapshot snapshot;
@@ -324,7 +324,7 @@ void updatePillarTofPassages(bool flushIncomplete = false)
                     seatId, pose.x_mm, pose.y_mm, pose.heading_deg,
                     odometry))
                 addOdometryClearanceSample(passage, odometry);
-            for (uint8_t side = 0; side < TOF_COUNT; ++side)
+            for (uint8_t side = 0; side < TOF_SIDE_COUNT; ++side)
             {
                 TofDiagnosticSnapshot snapshot;
                 if (get_tof_diagnostic_snapshot(

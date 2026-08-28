@@ -174,6 +174,11 @@ constexpr auto TOF_TIMING_BUDGET_US = 30000UL; // Normal 30ms budget; explicitly
 // 1 ms polling retains at most 1 ms of fresh-sample service latency.
 constexpr auto TOF_READY_POLL_INTERVAL_US = 1000UL;
 constexpr auto TOF_MAX_RELIABLE_DISTANCE_MM = 600.0f; // Max distance for reliable wall detection (mm)
+// The rear position deliberately reuses the previously damaged Adafruit
+// module. Physical black-wall testing found it accurate only through about
+// 370 mm, so M4 must reject longer control distances even if hardware status
+// and signal-quality checks pass.
+constexpr auto REAR_TOF_MAX_RELIABLE_DISTANCE_MM = 370.0f;
 constexpr auto TOF_MAX_LONG_DISTANCE_MM = 4000.0f; // Max distance for long-range discovery (mm)
 constexpr auto TOF_OUT_OF_RANGE_MM = 9999.0f; // Value returned when no object is detected or beyond reliable range (mm)
 constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecutive readings (mm)

@@ -51,8 +51,8 @@ struct TestState {
   uint8_t settle_frames = 0;
   uint32_t restore_budget_us = TOF_TIMING_BUDGET_US;
   VL53L4CX_DistanceModes restore_mode = TOF_DISTANCE_MODE;
-  uint32_t last_sequence[TOF_COUNT] = {};
-  SensorStats stats[TOF_COUNT];
+  uint32_t last_sequence[TOF_SIDE_COUNT] = {};
+  SensorStats stats[TOF_SIDE_COUNT];
 };
 
 TestState test;
@@ -163,7 +163,7 @@ void print_summary(const TofDiagnosticSnapshot &left,
 void set_last_sequences()
 {
   TofDiagnosticSnapshot snapshot;
-  for (int i = 0; i < TOF_COUNT; ++i) {
+  for (int i = 0; i < TOF_SIDE_COUNT; ++i) {
     test.last_sequence[i] =
         get_tof_diagnostic_snapshot(static_cast<TofSensor>(i), snapshot)
             ? snapshot.sequence
@@ -320,7 +320,7 @@ void tof_diagnostic_update()
   if (!test.active)
     return;
 
-  TofDiagnosticSnapshot snapshots[TOF_COUNT];
+  TofDiagnosticSnapshot snapshots[TOF_SIDE_COUNT];
   if (!get_tof_diagnostic_snapshot(TOF_LEFT, snapshots[TOF_LEFT]) ||
       !get_tof_diagnostic_snapshot(TOF_RIGHT, snapshots[TOF_RIGHT]))
     return;
@@ -336,7 +336,7 @@ void tof_diagnostic_update()
   }
 
   ++test.captured_samples;
-  for (int i = 0; i < TOF_COUNT; ++i) {
+  for (int i = 0; i < TOF_SIDE_COUNT; ++i) {
     const TofSensor side = static_cast<TofSensor>(i);
     add_stats(test.stats[i], snapshots[i]);
     print_snapshot(test.label, test.captured_samples, side, snapshots[i]);

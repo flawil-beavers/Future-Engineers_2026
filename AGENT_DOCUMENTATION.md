@@ -33,6 +33,33 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28 - M4 software-I2C rear ToF implementation prepared
+
+Branch `feature/m4-rear-tof` adds a separate `giga_r1_m4` image which owns A3
+as SDA and A4 as SCL, drives an Adafruit VL53L4CX through a 100 kHz
+software-backed `TwoWire`, and sends filtered frames to M7 through the raw
+OpenAMP/RPC endpoint. M7 exposes the result as `TOF_REAR` through the existing
+distance/raw/signal/sigma/diagnostic getters. Side-only path and diagnostic
+loops now use `TOF_SIDE_COUNT`, so the rear range cannot be consumed as a
+lateral wall reading. The installed rear unit is the previously damaged
+Adafruit sensor: the user reports black-wall distances are accurate only to
+about 370 mm. M4 therefore converts every longer filtered range to the normal
+`9999.0` out-of-range value while preserving raw diagnostics. Invalid
+initialization or bus status, stopped RPC, and measurements older than 250 ms
+fail to `-1.0`; no driving behaviour uses the rear sensor yet.
+
+The IDE-managed incremental builds passed: M4 uses 59,768 bytes RAM and
+155,184 bytes flash; M7 uses 365,192 bytes RAM and 415,984 bytes flash.
+Existing framework and project warnings are unchanged. No firmware was
+uploaded. Next, wire the rear module per `REAR_TOF_M4_SETUP.md`, upload M4 then
+M7 with the motor switch disabled, confirm RPC startup and known-distance
+readings through serial command `v`, then unplug the rear module and require
+the rear value to become `-1.0` without disturbing M7, gyro, camera, or the two
+side sensors. Also verify black-wall readings through 370 mm and require a
+clearly longer placement to return `9999.0`.
+
+---
+
 ## 2026-08-27 - Log 139 overran the entry scan arc
 
 `D:\\log_139.txt` was physically contact-free, but the CCW parking-entry
