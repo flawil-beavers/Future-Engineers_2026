@@ -16,8 +16,13 @@
 enum TofSensor {
   TOF_LEFT = 0,
   TOF_RIGHT = 1,
+  TOF_REAR = 2,
   TOF_COUNT
 };
+
+// Algorithms that reason about the two lateral sides must not accidentally
+// include the rear-facing sensor when iterating.
+constexpr uint8_t TOF_SIDE_COUNT = 2;
 
 constexpr uint8_t TOF_DIAGNOSTIC_MAX_OBJECTS = 4;
 
@@ -59,7 +64,7 @@ void update_gyro();
 
 /**
  * @brief Update ToF distance sensor readings
- * Reads from both left and right sensors, selects most reliable measurements
+ * Reads the left and right sensors and imports the newest M4 rear-sensor frame.
  * Should be called regularly in the main loop
  */
 void update_lasers();
@@ -95,28 +100,28 @@ bool gyro_is_healthy();
 
 /**
  * @brief Get the latest distance from a specific ToF sensor
- * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
  * @return Distance in millimeters, or -1.0 if invalid
  */
 float get_tof_distance(TofSensor sensor);
 
 /**
  * @brief Get the latest raw distance (before clamping) from a specific ToF sensor
- * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
  * @return Raw distance in millimeters, or -1.0 if invalid
  */
 float get_tof_raw_distance(TofSensor sensor);
 
 /**
  * @brief Get the latest signal rate from a specific ToF sensor.
- * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
  * @return Signal rate in Mcps, or -1.0 if invalid
  */
 float get_tof_signal_rate(TofSensor sensor);
 
 /**
  * @brief Get the latest sigma (measurement uncertainty) from a specific ToF sensor.
- * @param sensor The sensor to query (TOF_LEFT or TOF_RIGHT)
+ * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
  * @return Sigma in mm, or -1.0 if invalid
  */
 float get_tof_sigma(TofSensor sensor);
@@ -125,10 +130,10 @@ float get_tof_sigma(TofSensor sensor);
 bool get_tof_diagnostic_snapshot(TofSensor sensor,
                                  TofDiagnosticSnapshot &snapshot);
 
-/** Change both sensors' timing budget at runtime. */
+/** Change both directly connected side sensors' timing budget at runtime. */
 void sensors_set_tof_timing_budget(uint32_t budget_us);
 
-/** Stop, reconfigure, and restart both sensors for a stationary test. */
+/** Stop, reconfigure, and restart both side sensors for a stationary test. */
 bool sensors_configure_tof_for_test(VL53L4CX_DistanceModes distance_mode,
                                     uint32_t budget_us);
 

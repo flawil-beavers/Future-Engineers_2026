@@ -526,7 +526,9 @@ void parseMessage(char *msg)
     Serial.print("LEFT: ");
     Serial.print(get_tof_distance(TOF_LEFT), 1);
     Serial.print(" RIGHT: ");
-    Serial.println(get_tof_distance(TOF_RIGHT), 1);
+    Serial.print(get_tof_distance(TOF_RIGHT), 1);
+    Serial.print(" REAR: ");
+    Serial.println(get_tof_distance(TOF_REAR), 1);
     break;
 
   case 'a':

@@ -36,7 +36,7 @@ struct DiagnosticState
     float centerXmm = 0.0f;
     float centerYmm = 0.0f;
     float headingDeg = 0.0f;
-    uint32_t lastSequence[TOF_COUNT] = {};
+    uint32_t lastSequence[TOF_SIDE_COUNT] = {};
 };
 
 DiagnosticState state;
@@ -61,7 +61,7 @@ float estimatedLateral(const PositionEstimate &pose)
 void readSequences()
 {
     TofDiagnosticSnapshot snapshot;
-    for (int i = 0; i < TOF_COUNT; ++i)
+    for (int i = 0; i < TOF_SIDE_COUNT; ++i)
     {
         state.lastSequence[i] =
             get_tof_diagnostic_snapshot(static_cast<TofSensor>(i), snapshot)
@@ -216,7 +216,7 @@ void tof_pose_diagnostic_update()
         return;
     }
 
-    TofDiagnosticSnapshot snapshots[TOF_COUNT];
+    TofDiagnosticSnapshot snapshots[TOF_SIDE_COUNT];
     if (!get_tof_diagnostic_snapshot(TOF_LEFT, snapshots[TOF_LEFT]) ||
         !get_tof_diagnostic_snapshot(TOF_RIGHT, snapshots[TOF_RIGHT]) ||
         snapshots[TOF_LEFT].sequence == state.lastSequence[TOF_LEFT] ||
