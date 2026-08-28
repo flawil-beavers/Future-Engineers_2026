@@ -89,6 +89,9 @@ extern float last_speed;
 extern int dc_out;
 extern float pid_before_checking;
 extern float low_speed_load_compensation_dc;
+extern bool low_speed_pulse_density_active;
+extern uint32_t low_speed_pulse_density_slots;
+extern uint32_t low_speed_pulse_density_powered_slots;
 
 // Enable switch state management
 extern bool system_enabled;           // Whether system is currently running
@@ -125,8 +128,9 @@ void set_steering(int angle);
 void set_steering_radius(float radius_mm);
 
 /**
- * @brief Set the duty cycle of the DC motor
- * @param dc Duty cycle value (-255 to +255)
+ * @brief Set the requested average duty cycle of the DC motor
+ * @param dc Duty cycle value (-255 to +255). Low-speed requests below the
+ * drive-verified minimum are pulse-density modulated by the controller.
  */
 void set_dc(float dc, bool rate_limit = true);
 

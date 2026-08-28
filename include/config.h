@@ -58,6 +58,22 @@ constexpr auto MOTOR_MAX_DC = 200; // Max duty cycle (0-255)
 constexpr auto MOTOR_MIN_DC = 80; // Min duty cycle to overcome static friction
 constexpr auto MOTOR_MAX_ACC_DC = 255; // Max acceleration duty cycle (DC/s)
 
+// A hard minimum-PWM cutoff makes the low-speed PI loop alternate between long
+// powered and unpowered intervals. At low commanded speeds, represent average
+// effort below this carrier with 5 ms error-diffused slots. Log 197 confirmed
+// the scheduler works but rejected a noisy 130-PWM/10 ms carrier; use shorter,
+// lower-amplitude pulses while retaining smoothing across MOTOR_MIN_DC.
+constexpr float LOW_SPEED_PULSE_DENSITY_MAX_TARGET_MMS = 120.0f;
+constexpr float LOW_SPEED_PULSE_DENSITY_CARRIER_DC = 100.0f;
+constexpr uint32_t LOW_SPEED_PULSE_DENSITY_SLOT_US = 5000UL;
+static_assert(
+    MOTOR_MIN_DC > 0 && MOTOR_MIN_DC <= MOTOR_MAX_DC &&
+        LOW_SPEED_PULSE_DENSITY_MAX_TARGET_MMS > 0.0f &&
+        LOW_SPEED_PULSE_DENSITY_CARRIER_DC >= MOTOR_MIN_DC &&
+        LOW_SPEED_PULSE_DENSITY_CARRIER_DC <= MOTOR_MAX_DC &&
+        LOW_SPEED_PULSE_DENSITY_SLOT_US > 0,
+    "Low-speed pulse-density drive requires a valid minimum PWM and speed range");
+
 // ==========================================
 // STEERING CONFIGURATION
 // ==========================================
@@ -71,8 +87,8 @@ constexpr auto SERVO_MIN_ANGLE = (SERVO_CENTER - MAX_STEERING); // Max left turn
 // ==========================================
 constexpr float CRUISE_KP = 0.12f;
 constexpr float CRUISE_KI = 0.04f;
-constexpr float LOW_SPEED_CRUISE_KP = 0.035f;
-constexpr float LOW_SPEED_CRUISE_KI = 0.020f;
+constexpr float LOW_SPEED_CRUISE_KP = 0.150f;
+constexpr float LOW_SPEED_CRUISE_KI = 0.100f;
 constexpr float MID_SPEED_CRUISE_KP = 0.08f;
 constexpr float MID_SPEED_CRUISE_KI = 0.03f;
 constexpr float CRUISE_ENTRY_INTEGRAL_MIN = -2.0f;
@@ -90,6 +106,12 @@ constexpr float PROFILE_ACCEL_PER_TARGET_SPEED = 1.3f;
 constexpr float MOTOR_STATIC_FF_DC = 86.0f;
 constexpr float MOTOR_SPEED_FF_DC_PER_MMS = 0.113f;
 constexpr float MOTOR_ACCEL_FF_DC_PER_MMSS = 0.015f;
+// Pulse-density drive overcomes static friction with each carrier pulse, so it
+// does not need the continuous-drive static offset. Log 197 showed that the
+// former 86-PWM offset drove a 60 mm/s target at roughly twice the requested
+// speed on an 8.11 V pack. PI feedback and load compensation add effort for
+// lower battery voltage and the tire scrub produced by curves.
+constexpr float LOW_SPEED_PULSE_STATIC_FF_DC = 65.0f;
 constexpr float DRIVE_JERK_LIMIT_MMSSS = 2000.0f;
 constexpr float DRIVE_ACCEL_RELEASE_JERK_MMSSS = 500.0f;
 constexpr float CRUISE_ACCEL_THRESHOLD_MMSS = 20.0f;

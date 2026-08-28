@@ -33,6 +33,235 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28: log 203 free-wheel run isolates floor-side load
+
+Log 203 is the lifted-wheel diagnostic at an 80 mm/s command. It contains 32
+manual-mode samples with encoder speed mean 114.6 mm/s (45.4--228.8 mm/s)
+while requested PWM was generally only about 43--83. The motor/encoder can
+therefore spin freely without the late high-duty slowdown seen in log 202.
+Together with the user's report of approximately unchanged battery voltage and
+no collision, this points to a floor-side mechanical/traction issue under load
+(wheel or gearbox friction, alignment/rubbing, tire condition, or cable
+interference), not low-frequency pulse cycling or a battery-only cause. No
+firmware change was made from this diagnostic. Next action is a power-off
+left/right wheel resistance and rubbing inspection, followed by a short fresh
+80 mm/s floor run.
+
+---
+
+## 2026-08-28: log 202 valid 80 mm/s run with late high-load slowdown
+
+Use only `log_202.txt` for this result; the user reports that `log_201.txt` is
+not valid for analysis. Log 202 contains 64 samples at an 80 mm/s profile,
+mean measured speed 56.2 mm/s (range 5.8--109.9), and mean requested effort
+94.8 PWM. The final samples slowed to 17--53 mm/s while effort rose to
+109--128 PWM, with steer=0 throughout, followed by a normal pause and system
+disable. The user reports no contact and approximately unchanged voltage, so
+this remains an unexplained drivetrain/load event rather than evidence of
+low-frequency cycling. Do not change gains from this run alone; perform a
+controlled free-wheel/mechanical check and a fresh short floor run.
+
+---
+
+## 2026-08-28: log 200 validates manual steering; mixed-speed data is history-dependent
+
+At 8.05 V, log 200 validates the manual-servo lifecycle repair. Commands at
+both steering signs produced strong opposite gyro-heading changes at +40/-40
+and +50/-50, so the former setpoint-only failure is resolved. No stall or
+delayed disable appears. The user lifted the robot for approximately the last
+five seconds; the resulting encoder peaks up to 296 mm/s are free-wheel data
+and must not be used for floor-speed tuning.
+
+The floor data does not yet accept speed regulation. Continuous mixed commands
+made results strongly history/condition dependent: the first 80 mm/s straight
+segment averaged about 49 mm/s, while a later straight segment following the
+loaded steering runs averaged about 100 mm/s. At 100 mm/s, usable curved
+segments generally averaged roughly 75--79 mm/s and requested continuous
+effort above the 100-PWM PDM carrier. The initial 60 mm/s straight segment
+averaged about 42 mm/s, while a later straight segment averaged about 53 mm/s.
+Because command duration, accumulated controller state, changing floor path,
+and the uncertain lift boundary are mixed together, do not derive a steering
+feedforward or battery compensation from this run. Next use isolated runs from
+rest at one speed/steering setting, with a disable/re-arm between conditions,
+and never lift the driven wheels until after disabling.
+
+---
+
+## 2026-08-28 - Log 197 smoother but noisy and substantially overspeed
+
+The user reported much smoother straight driving and 8.11 V at the end of log
+197, but also a grinding sound. The 10 ms scheduler functioned: powered slots
+rose to 309 of 483 and the robot travelled about 578 mm without a stall. This
+accepts the scheduler mechanics but not the controller tuning or motor quality.
+After the 60 mm/s profile settled, measured speed was mostly about 90--150
+mm/s and average requested PWM stayed near 84--90. Thus the former 86-PWM
+static feedforward remains much too high when pulse density can represent
+sub-minimum average torque.
+
+The grinding is consistent with 130-PWM torque steps at 100 Hz. Burst/PWM motor
+control is normal in principle, but this audible mechanical response plus the
+large overspeed is not accepted as a final motor-safe operating point; heating
+and curve response have not been validated. Raising frequency alone would
+reduce torque ripple but preserve excessive average effort.
+
+The next revision lowers the carrier from 130 to 100 PWM and shortens slots
+from 10 to 5 ms (200 Hz). Low-speed pulse profiles use a separate 65-PWM static
+feedforward rather than the continuous-drive value of 86. Low-speed cruise Kp/
+Ki increase from 0.035/0.020 to 0.150/0.100 so encoder feedback corrects pack
+and load differences in a useful time. Existing bounded load compensation can
+still add up to 30 PWM under tire scrub, and requests at/above the carrier run
+continuously, so curves are not artificially capped. Physical full-lock
+validation remains mandatory after straight speed and sound pass.
+
+The IDE-managed M7-only build passes (365296 bytes RAM, 422520 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+repeat the straight `d60` full-pack test for roughly 500 mm. Require lower
+noise, materially closer tracking to 60 mm/s, powered-slot activity, no stall,
+and immediate disable. Do not test curves or the low pack until it passes.
+
+---
+
+## 2026-08-28 - Log 196 rejects coarse low-speed pulse modulation
+
+Log 196 is the first valid motor test on branch `test/low-speed-drive`. The
+user reported slight chassis shaking and 8.12 V. Manual arming worked and the
+robot travelled about 420 mm without a stall. The shaking is confirmed by
+measured-speed swings: settled 60 mm/s demand repeatedly produced roughly
+18--43 mm/s while PWM 95--119 was applied, followed by roughly 94--122 mm/s
+while applied PWM was zero. This rejects the first 50 ms modulation design.
+
+Although sub-80 requests entered pulse-density mode (`PDM slots` increased),
+`powered slots` remained zero. Corrections above 80 repeatedly left the narrow
+PDM region and reset its accumulator, recreating the original long full-on/
+full-off behavior. The battery dropped only from the reported 8.27 V resting
+condition to 8.12 V during this run; the oscillation is directly present in
+the command/encoder telemetry and must be corrected in software before testing
+the low pack.
+
+Low-speed modulation now covers all same-direction average requests below a
+130-PWM carrier for targets through 120 mm/s. Carrier decisions run every
+10 ms from the main drive loop, independently of the 50 ms encoder/PID update,
+so threshold crossings cannot erase accumulated average effort and individual
+powered/unpowered intervals are five times shorter. Requests at or above 130
+remain continuous for loaded operation. Stop, disable, zero command, opposing
+direction, position hold, and higher-speed behavior retain their safety gates.
+
+The IDE-managed M7-only build passes (365296 bytes RAM, 422488 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+re-upload M7 and repeat only `d60` with the 8.12 V/full pack. Stop within about
+500 mm or immediately if shaking is worse. Require powered-slot counts to
+increase, materially narrower speed variation, and correct immediate disable
+before extending the test matrix.
+
+---
+
+## 2026-08-28 - Log 195 proves armed speed cleared before manual start
+
+At 8.27 V, log 195 accepted `d60` and printed `Pending mode: MANUAL` plus
+`Manual speed armed for enable: 60 mm/s`. Enabling resumed manual mode, but it
+never printed `Armed manual speed applied`; target/profile speed, requested and
+applied PWM, and PDM slots all remained zero. The user's manual forward/back
+push was independently visible in the encoder telemetry, reaching roughly
++126 and -145 mm/s while PWM remained zero. This proves the encoder worked and
+the motor driver was never commanded; it is not evidence of a motor, driver,
+battery, or low-speed controller failure.
+
+Inspection found that the armed-speed application block had been inserted in
+`stop_mode(MODE_MANUAL)`, immediately after that same path cleared the armed
+value, rather than in `start_mode(MODE_MANUAL)`. The block is now in the start
+path: startup first establishes a stopped state, consumes the nonzero armed
+speed once, and calls `set_speed`. The stop path still clears the armed value,
+so disabling and re-enabling cannot restart manual propulsion without another
+command. This supersedes the unvalidated implementation claim in the preceding
+manual-start entry.
+
+The IDE-managed M7-only build passes (365288 bytes RAM, 422392 bytes flash)
+with existing warnings. M4 was not built, and firmware was not uploaded. Next
+re-upload M7, arm `d60` with the switch LOW, and require the `Armed manual speed
+applied` line immediately after enabling before assessing motion.
+
+---
+
+## 2026-08-28 - Logs 192--194 reject PID test command before motion
+
+The USB drive is `D:` with label `PHILIPP`; its timestamps are not reliable,
+so robot logs must be selected by the highest numeric filename. Logs 192, 193,
+and 194 contain the low-speed attempts at the user-reported 8.27 V. They prove
+the new firmware was uploaded because `DC req/applied` and `PDM slots/on`
+telemetry are present, but every attempted motor command printed `Usage: pid
+test <speed_mm_s>`. No `Pending mode: MANUAL`, `Manual speed armed`, or PID
+test confirmation followed. The robot stayed in the development stationary
+`CAMERA_CALIBRATION` mode with target speed, requested PWM, applied PWM, and
+PDM counts all zero. Enabling therefore correctly reported no pending mode and
+could not drive.
+
+These are command-rejection runs, not motor-controller failures; the 8.27 V
+pack never powered the drive motor. To eliminate multi-word input ambiguity,
+the next test uses the existing equivalent direct command `d60`, which now
+shares the corrected one-shot manual-speed arming path. With the switch LOW,
+require `Pending mode: MANUAL` and `Manual speed armed for enable: 60 mm/s`
+before enabling. Do not proceed if either line is absent. No code change or
+build follows this log review.
+
+---
+
+## 2026-08-28 - Fix pending manual-speed test startup
+
+Two attempted 60 mm/s tests at a displayed 8.27 V did not start. Their new
+log files were not present anywhere in the workspace, so no raw log evidence
+was available, but source inspection found a deterministic startup defect in
+the issued procedure. With the enable switch LOW, `pid test 60` selected
+pending manual mode and called `set_speed(60)`. On the later enable edge,
+`start_mode(MODE_MANUAL)` called `stop(false)` and erased that speed before the
+drive loop ran. Thus neither attempt exercised the low-speed controller or the
+battery under motor load.
+
+Manual speed commands now use a one-shot armed value. If manual mode is already
+running, the speed applies immediately. If the switch is LOW, the value is
+stored and applied once after manual mode starts, then cleared. Stopping,
+switching to a non-manual mode, or pausing an active manual run clears it, so a
+later enable cannot unexpectedly restart propulsion. Both `pid test <speed>`
+and `d<speed>` use the corrected path. Expected arming telemetry is `Manual
+speed armed for enable: 60 mm/s`, followed after enabling by `Armed manual
+speed applied: 60 mm/s` and `Resumed mode: MANUAL`.
+
+The IDE-managed M7-only build passes (365288 bytes RAM, 422392 bytes flash)
+with existing warnings. M4 was not built, and the rebuilt firmware was not
+uploaded. Re-upload this M7 build and repeat only the full-pack 60 mm/s forward
+test before extending the matrix.
+
+---
+
+## 2026-08-28 - Isolate and implement low-speed pulse-density drive
+
+Branch `test/low-speed-drive` was created from the clean `pure-pursuit`
+worktree. The observed battery-dependent low-speed cycling is consistent with
+the former hard `MOTOR_MIN_DC=80` cutoff: the PI output could fall below 80,
+which de-energized the motor until wheel speed decayed enough to demand at
+least 80 again. A full battery changes speed more quickly during those powered
+and unpowered intervals, while a discharged battery stretches the same loop.
+This mechanism is a code-supported hypothesis pending the controlled two-pack
+test; firmware has no battery-voltage input.
+
+For nonzero drive targets through 120 mm/s, sub-80 average requests are now
+converted to error-diffused 80-PWM pulse slots at the existing nominal 20 Hz
+encoder-speed update rate. The PI loop retains the requested average duty, so
+it can change pulse density with battery state and steering load. The previous
+hard cutoff remains for disabled drive, zero-target deceleration, position
+holding, and speeds above the low-speed band. Pulse state resets on stop and
+direction changes. General debug and `P` status now report requested/applied
+PWM and cumulative pulse slots/powered slots.
+
+The final IDE-managed `giga_r1_m7` build passes (365288 bytes RAM, 422152 bytes
+flash) with the existing warnings. M4 is unaffected and was not built. No
+firmware was uploaded. Next obtain upload consent, then run the ordered
+low-speed checklist with the full pack first. Do not begin with a complete
+parking manoeuvre. A slow multi-second surge, failure to stop immediately,
+unexpected direction, or a no-progress watchdog event rejects the
+implementation.
+
+---
+
 ## 2026-08-28 - Log 190 false CLEAR; log 191 passes CW green
 
 Under the standing convention, neither damped-controller regression contacted
@@ -3860,3 +4089,20 @@ Physical contact invalidates the run even if it later reports `PASS`. On a
 safe run, compare `[CLEARANCE PLAN]`, `[CLEARANCE ODOM]`, and `[PILLAR TOF]`
 for each seat, including the reported nearest wall feature and inner-corner
 values, before selecting any further geometry change.
+## 2026-08-28: low-speed log 198 and manual steering lifecycle fix
+
+- At 60 mm/s, `log_198.txt` showed the revised 100 PWM / 200 Hz pulse-density
+  output tracking a straight-line mean of 54.2 mm/s. The user reported that
+  the sound was better. Requested duty averaged 80.2 PWM and the scheduler's
+  powered-slot ratio was 80.2%, confirming correct average-duty delivery.
+- The final `Steer: 40` samples are not a valid curved-driving test. The user
+  reported that the wheels did not physically steer. Code inspection found
+  that `start_mode(MODE_MANUAL)` called `stop(false)`, which sets
+  `servo_disabled = true`, but did not restore it. Telemetry therefore showed
+  the requested steering setpoint even though `steer()` rejected servo writes.
+- Fixed manual-mode startup by setting `servo_disabled = false` immediately
+  after `stop(false)`. Retest steering while stationary first, then repeat the
+  controlled 60 mm/s curve test before considering any steering-load motor
+  compensation.
+- The affected M7 environment builds successfully: 365296 bytes RAM and
+  422504 bytes flash. M4 was not built because this lifecycle change is M7-only.

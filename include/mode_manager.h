@@ -103,6 +103,15 @@ void mode_resume();
 void mode_stop_all();
 
 /**
+ * @brief Apply a manual speed now or arm it for the next manual-mode start.
+ *
+ * A command entered while the physical enable switch is LOW is consumed once
+ * when pending manual mode starts. Pausing a running manual test does not arm
+ * an automatic restart.
+ */
+void mode_manual_set_speed(int speed_mm_s);
+
+/**
  * @brief Get a human-readable name for a mode
  * @param mode The mode to name
  * @return String like "GYRO_FOLLOW", "CALIBRATION", "NONE"

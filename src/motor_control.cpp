@@ -239,7 +239,13 @@ bool no_progress_watchdog_preflight()
 int dc_out = 0;
 float pid_before_checking = 0;
 float low_speed_load_compensation_dc = 0.0f;
+bool low_speed_pulse_density_active = false;
+uint32_t low_speed_pulse_density_slots = 0;
+uint32_t low_speed_pulse_density_powered_slots = 0;
 static bool low_speed_load_compensation_logged = false;
+static float low_speed_pulse_density_accumulator = 0.0f;
+static int8_t low_speed_pulse_density_direction = 0;
+static uint32_t low_speed_pulse_density_last_slot_us = 0;
 
 // Timing variables
 float last_loop_time = 0; // in s
@@ -298,51 +304,119 @@ void set_steering_radius(float radius_mm)
   set_steering((int)roundf(angle));
 }
 
-void set_dc(float dc, bool rate_limit)
+static void apply_motor_output(float applied_dc)
 {
-  if (dc_state == DC_DISABLED || fabs(dc) < MOTOR_MIN_DC)
-  {
-    analogWrite(MOTOR_PWM_PIN, 0);
-    digitalWrite(MOTOR_IN1_PIN, LOW);
-    digitalWrite(MOTOR_IN2_PIN, LOW);
-    dc_out = 0;
-    dc_current_dc = 0;
-    return;
-  }
-
-  // Limit maximum duty cycle
-  if (dc != 0 && fabs(dc) > MOTOR_MAX_DC)
-  {
-    dc = MOTOR_MAX_DC * (dc / fabs(dc));
-  }
-
-  // Rate-limit acceleration
-  if (rate_limit &&
-      dc > dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
-  {
-    dc = dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time;
-  }
-  else if (rate_limit &&
-           dc < dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
-  {
-    dc = dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time;
-  }
-
-  dc_out = fabs(dc);
+  dc_out = (int)roundf(fabsf(applied_dc));
   analogWrite(MOTOR_PWM_PIN, dc_out);
 
-  if (dc > 0)
+  if (applied_dc > 0.0f)
   {
     digitalWrite(MOTOR_IN1_PIN, LOW);
     digitalWrite(MOTOR_IN2_PIN, HIGH);
   }
-  else if (dc < 0)
+  else if (applied_dc < 0.0f)
   {
     digitalWrite(MOTOR_IN1_PIN, HIGH);
     digitalWrite(MOTOR_IN2_PIN, LOW);
   }
+  else
+  {
+    digitalWrite(MOTOR_IN1_PIN, LOW);
+    digitalWrite(MOTOR_IN2_PIN, LOW);
+  }
+}
 
+static void reset_low_speed_pulse_density()
+{
+  low_speed_pulse_density_active = false;
+  low_speed_pulse_density_accumulator = 0.0f;
+  low_speed_pulse_density_direction = 0;
+  low_speed_pulse_density_last_slot_us = current_time;
+}
+
+static void service_motor_output()
+{
+  if (dc_state == DC_DISABLED || fabsf(dc_current_dc) < 0.5f)
+  {
+    reset_low_speed_pulse_density();
+    apply_motor_output(0.0f);
+    return;
+  }
+
+  const int8_t requested_direction = dc_current_dc > 0.0f ? 1 : -1;
+  const bool pulse_density_eligible =
+      dc_state == DC_ENABLED && target_speed != 0 &&
+      dc_current_dc * target_speed > 0.0f &&
+      fabsf((float)target_speed) <=
+          LOW_SPEED_PULSE_DENSITY_MAX_TARGET_MMS &&
+      fabsf(dc_current_dc) < LOW_SPEED_PULSE_DENSITY_CARRIER_DC;
+  if (pulse_density_eligible)
+  {
+    if (!low_speed_pulse_density_active ||
+        requested_direction != low_speed_pulse_density_direction)
+    {
+      low_speed_pulse_density_accumulator = 0.0f;
+      low_speed_pulse_density_direction = requested_direction;
+      low_speed_pulse_density_last_slot_us = current_time -
+          LOW_SPEED_PULSE_DENSITY_SLOT_US;
+    }
+    low_speed_pulse_density_active = true;
+
+    if (current_time - low_speed_pulse_density_last_slot_us <
+        LOW_SPEED_PULSE_DENSITY_SLOT_US)
+      return;
+
+    low_speed_pulse_density_last_slot_us = current_time;
+    ++low_speed_pulse_density_slots;
+    low_speed_pulse_density_accumulator += fabsf(dc_current_dc);
+    if (low_speed_pulse_density_accumulator >=
+        LOW_SPEED_PULSE_DENSITY_CARRIER_DC)
+    {
+      low_speed_pulse_density_accumulator -=
+          LOW_SPEED_PULSE_DENSITY_CARRIER_DC;
+      ++low_speed_pulse_density_powered_slots;
+      apply_motor_output(
+          requested_direction * LOW_SPEED_PULSE_DENSITY_CARRIER_DC);
+    }
+    else
+    {
+      apply_motor_output(0.0f);
+    }
+    return;
+  }
+
+  reset_low_speed_pulse_density();
+  if (fabsf(dc_current_dc) < MOTOR_MIN_DC)
+    apply_motor_output(0.0f);
+  else
+    apply_motor_output(dc_current_dc);
+}
+
+void set_dc(float dc, bool rate_limit)
+{
+  if (dc_state == DC_DISABLED || fabsf(dc) < 0.5f)
+  {
+    dc_current_dc = 0.0f;
+    reset_low_speed_pulse_density();
+    apply_motor_output(0.0f);
+    return;
+  }
+
+  if (fabsf(dc) > MOTOR_MAX_DC)
+    dc = copysignf(MOTOR_MAX_DC, dc);
+
+  if (rate_limit &&
+      dc > dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time)
+    dc = dc_current_dc + MOTOR_MAX_ACC_DC * last_loop_time;
+  else if (rate_limit &&
+           dc < dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time)
+    dc = dc_current_dc - MOTOR_MAX_ACC_DC * last_loop_time;
+
+  // Preserve the controller's average request independently of the current
+  // carrier slot so cruise entry and stall telemetry do not see artificial
+  // zero-output transitions.
   dc_current_dc = dc;
+  service_motor_output();
 }
 
 float get_distance(long encoder_pos)
@@ -442,7 +516,13 @@ void pid_speed()
   const float direction = current_speed > 0.5f
       ? 1.0f
       : (current_speed < -0.5f ? -1.0f : 0.0f);
-  const float feedforward = direction * motor_static_ff +
+  const bool low_speed_pulse_profile =
+      direction != 0.0f &&
+      fabsf(current_speed) <= LOW_SPEED_PULSE_DENSITY_MAX_TARGET_MMS;
+  const float active_static_ff = low_speed_pulse_profile
+      ? LOW_SPEED_PULSE_STATIC_FF_DC
+      : motor_static_ff;
+  const float feedforward = direction * active_static_ff +
       motor_speed_ff * current_speed +
       motor_accel_ff * commanded_acceleration;
   float output = 0.0f;
@@ -581,6 +661,10 @@ void drive_loop()
   // Steering is also serviced while the drive motor is disabled. This is
   // required for the stationary obstacle bench test.
   steer(set_degree);
+  // Low-speed carrier timing is independent of the 50 ms encoder/PID update.
+  // Service it on every main-loop pass so powered and unpowered slots remain
+  // short even while the requested average effort is unchanged.
+  service_motor_output();
 
   if (last_loop_time == 0 || dc_state == DC_DISABLED)
   {
@@ -844,8 +928,12 @@ void check_stalling()
     Serial.print(current_speed, 1);
     Serial.print(" mm/s, measured: ");
     Serial.print(measured_speed, 1);
-    Serial.print(" mm/s, DC: ");
+    Serial.print(" mm/s, requested DC: ");
     Serial.print(dc_current_dc, 1);
+    Serial.print(", applied DC: ");
+    Serial.print(dc_out);
+    Serial.print(", pulse density: ");
+    Serial.print(low_speed_pulse_density_active ? "active" : "off");
     Serial.print(", low-speed load comp: ");
     Serial.println(low_speed_load_compensation_dc, 1);
     reset_no_progress_watchdog(

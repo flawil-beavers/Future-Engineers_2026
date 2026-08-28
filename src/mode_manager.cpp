@@ -28,6 +28,7 @@ static unsigned long debug_loop_count = 0;
 static float debug_loop_time_sum_us = 0.0f;
 static float debug_loop_time_max_us = 0.0f;
 static unsigned long debug_last_print_time = 0;
+static int pending_manual_speed_mm_s = 0;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
@@ -53,6 +54,7 @@ static void stop_mode(RobotMode mode)
 {
     switch (mode) {
     case MODE_MANUAL:
+        pending_manual_speed_mm_s = 0;
         stop(false);
         set_steering(0);
         break;
@@ -127,7 +129,20 @@ static bool start_mode(RobotMode mode)
     switch (mode) {
     case MODE_MANUAL:
         stop(false);
+        // stop(false) de-energizes both actuators. Manual mode must restore
+        // the steering servo so subsequent `s<angle>` commands reach the
+        // hardware while direct-drive testing is active.
+        servo_disabled = false;
         set_steering(0);
+        if (pending_manual_speed_mm_s != 0)
+        {
+            const int armed_speed = pending_manual_speed_mm_s;
+            pending_manual_speed_mm_s = 0;
+            set_speed(armed_speed);
+            Serial.print("Armed manual speed applied: ");
+            Serial.print(armed_speed);
+            Serial.println(" mm/s");
+        }
         break;
 
     case MODE_HOLD:
@@ -213,6 +228,9 @@ static bool start_mode(RobotMode mode)
 
 void mode_switch(RobotMode new_mode)
 {
+    if (new_mode != MODE_MANUAL)
+        pending_manual_speed_mm_s = 0;
+
     if (new_mode == current_mode) {
         Serial.print("Already in mode: ");
         Serial.println(mode_name(new_mode));
@@ -460,9 +478,25 @@ void mode_stop_all()
     stop_mode(current_mode);
     current_mode = MODE_NONE;
     pending_mode = MODE_NONE;
+    pending_manual_speed_mm_s = 0;
     stop(false);
     set_steering(0);
     Serial.println("All modes stopped.");
+}
+
+void mode_manual_set_speed(int speed_mm_s)
+{
+    if (system_enabled && current_mode == MODE_MANUAL)
+    {
+        pending_manual_speed_mm_s = 0;
+        set_speed(speed_mm_s);
+        return;
+    }
+
+    pending_manual_speed_mm_s = speed_mm_s;
+    Serial.print("Manual speed armed for enable: ");
+    Serial.print(speed_mm_s);
+    Serial.println(" mm/s");
 }
 
 const char* mode_name(RobotMode mode)
@@ -516,6 +550,16 @@ void general_debug_print()
     // Base telemetry (Speed, Steer, Heading, Position, ToF, Distance)
     Serial.print(" | Speed: ");
     Serial.print(current_speed, 1);
+    Serial.print("/");
+    Serial.print(measured_speed, 1);
+    Serial.print(" | DC req/applied: ");
+    Serial.print(dc_current_dc, 1);
+    Serial.print("/");
+    Serial.print(dc_out);
+    Serial.print(" | PDM slots/on: ");
+    Serial.print(low_speed_pulse_density_slots);
+    Serial.print("/");
+    Serial.print(low_speed_pulse_density_powered_slots);
     Serial.print(" | Steer: ");
     Serial.print(set_degree);
     Serial.print(" | Angle: ");
