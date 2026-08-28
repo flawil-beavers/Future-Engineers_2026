@@ -33,6 +33,178 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28 - Log 151 accepts rear-positioned five-segment exit
+
+`log_151.txt` passed the first combined CCW run without physical contact. Rear
+positioning moved forward 16.7 mm from 48.3 to 64.0 mm and passed verification,
+giving 49.0 mm derived body clearance. All 5/5 exit segments completed. The
+final alignment triggered at 166.9 mm with 1.8 degrees error and stopped at
+0.5 degrees. The right parking-end reference was 74 mm; its
+`493.0..521.2 mm` beam footprint overlapped the expected `480..500 mm` piece,
+so `beam_over_piece=yes`, `usable=yes`, and `apply_y=yes`. The temporary lock
+then stopped before edge localization as intended.
+
+Rear positioning plus the complete exit is accepted in CCW.
+`OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY` is now false. The next field-clear
+test restores the previously accepted reverse magenta-edge localization and
+then runs the corrected reverse Pure Pursuit entry scan. It must still stop
+after reporting the target station; no obstacle lap is enabled. Require no
+contact, valid x/y localization, a visible final arc, `Scan pose reached`,
+heading error <=5 degrees, S0 station 2 `CLEAR`, and the final entry-test lock.
+Both `giga_r1_m4` and `giga_r1_m7` compile successfully after this shared-config
+change. The installed M4 rear-ToF firmware is unchanged in behaviour, so the
+user only needs to upload the newly built M7 firmware for the next test.
+
+---
+
+## 2026-08-28 - Logs 149/150 accept rear positioning in both directions
+
+Both delayed-verification repeats passed firmware and physical criteria with no
+contact. `log_149` started at 45.7 mm, moved forward 19.4 mm, and accepted a
+61.0 mm final sensor range (46.0 mm derived body clearance). `log_150` started
+at 90.3 mm, moved reverse 26.0 mm, and accepted 63.0 mm (48.0 mm body
+clearance). Their measured range changes agreed with encoder travel within the
+8 mm gate. Both stopped at the positioning-only lock before exit segment 1.
+
+Rear positioning is accepted for substantial forward and reverse corrections.
+`OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY` is now false. A new temporary
+`OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY` gate permits all five proven exit
+segments but locks immediately after exit telemetry, before reverse edge
+localization or parking-entry discovery. Next run one CCW combined test from an
+approximately centred, parallel parking placement. Require accepted rear
+verification, 5/5 segments, aligned final heading, usable parking-end ToF
+reference, no contact, and the new rear-positioned-exit lock.
+Both IDE-managed M4 and M7 builds pass with unchanged warnings. Only M7 needs
+uploading; no firmware was uploaded by the agent.
+
+---
+
+## 2026-08-28 - Logs 145--148 accept one-shot motion; delay final verification
+
+The user tested four longitudinal starts and reports that every one converged
+to approximately 50 mm body clearance from the rear magenta limit without
+touching either limit. Firmware accepted `log_147` (27.0 -> 67.3 mm, forward
+38.9 mm) and `log_148` (71.7 -> 68.0 mm, reverse 6.7 mm). It rejected
+`log_145` (43.3 -> 52.3 mm after forward 21.7 mm) and `log_146`
+(83.7 -> 78.0 mm after reverse 18.7 mm). No run reversed automatically and
+the positioning-only lock prevented exit segment 1.
+
+Physical convergence in all four runs accepts the one-shot, cumulative-
+encoder movement architecture, but only two of four final measurement windows
+met telemetry gates. The rejected values were symmetrically about 13 mm short
+and long, consistent with sampling the rear pipeline before it fully settled
+after movement. Final verification now waits 1000 ms instead of 200 ms and
+discards the first three fresh post-motion frames before averaging three stable
+frames. The movement, 65 mm target, tolerances, and exit lockout are unchanged.
+Repeat one substantial forward correction and one substantial reverse
+correction; require both to report `accepted=yes` before enabling the exit.
+Both IDE-managed M4 and M7 builds pass with unchanged warnings. Only M7 needs
+uploading; no firmware was uploaded by the agent.
+
+---
+
+## 2026-08-28 - Log 144 accepts stationary rear-ToF repeatability
+
+`log_144.txt` contains two motor-disabled placements against the actual
+magenta parking limit. The user's approximate ruler settings were 40 and
+60 mm. The first group held 42--43 mm across five readings; the second held
+63--65 mm across five readings. The sensor beam is confirmed unobstructed.
+Thus the rear ToF is stationary-stable and correctly observes an approximately
+20 mm physical change. Logs 142/143 are not evidence of a damaged or randomly
+jumping stationary sensor; their oscillation is consistent with chasing
+discrete/settled range updates bidirectionally and overshooting between them.
+
+The user confirmed the ruler endpoints were the ToF optical face and magenta
+limit. The measurements therefore validate the configured 65 mm optical target
+for 50 mm body clearance.
+
+The powered controller is replaced with a one-shot design. It averages three
+fresh stationary frames spanning at most 4 mm, calculates one signed encoder
+correction, and drives that distance once at 50 mm/s. It cannot reverse during
+the attempt. Travel is accumulated as absolute encoder increments and the
+required correction must not exceed 55 mm. After braking and settling, three
+new stable frames must put final range within 5 mm of 65 mm and measured range
+change within 8 mm of signed encoder travel. Failure locks the motor and saves
+the log; success still hits the existing positioning-only lock before any exit
+segment.
+
+Both IDE-managed verification builds pass (`giga_r1_m4` and `giga_r1_m7`,
+exit code 0); warnings are unchanged. Only M7 behaviour changed and only M7
+needs uploading for the next test. No firmware was uploaded by the agent.
+
+---
+
+## 2026-08-28 - Logs 142/143 reject powered rear-ToF positioning
+
+The first two powered rear-positioning tests are physically rejected. In
+`log_142.txt`, rear range started at 29--31 mm and rose only to 54 mm while the
+encoder reported 65.1 mm of forward travel. The robot stopped on the travel
+limit about 10 mm from the front magenta limit. In `log_143.txt`, the rear
+range jumped 87 -> 39 -> 97 -> 73 mm, causing alternating forward/reverse
+commands; the robot touched the front limit once and eventually stopped on the
+65.4 mm travel limit. The user reports no reliable successful run.
+
+These measurements do not behave like the distance to a fixed rear parking
+limit. Possible causes include the centred sensor's beam being obstructed by
+the current 40 mm rear envelope although its origin is only 25 mm behind the
+axle, unreliable multi-object returns from the magenta part, or sensor/target
+alignment. Logs 140/141 are unrelated camera/final-parking runs and do not
+provide the required stationary rear calibration. Do not tune the 65 mm target
+from these powered logs and do not run the current powered positioning again.
+
+The software also exposed a safety issue: its 65 mm bound uses net encoder
+displacement, so alternating directions can accumulate more physical travel
+without immediately reaching that bound. Before another powered test, use a
+motor-disabled stationary diagnostic against the actual magenta piece at
+several ruler-measured distances and confirm that the beam is unobstructed.
+Any later controller must use cumulative absolute travel, reject implausible
+range jumps/direction reversals, and initially use a single bounded correction
+rather than continuous bidirectional chasing.
+
+---
+
+## 2026-08-28 - Rear-ToF parked-position correction implemented
+
+The current rear ToF origin is configurable as 25 mm behind the rear-axle
+midpoint and centred laterally. With the current 40 mm rear body overhang it is
+15 mm ahead of the rearmost body point. The controller therefore derives body
+clearance as `rear range - 15 mm`; the validated 50 mm departure clearance has
+a 65 mm sensor target. Both sensor position and target clearance are constants
+in `include/config.h`, so mechanical changes do not require controller edits.
+
+Before the existing five-segment exit, `src/obstacle.cpp` now waits for fresh
+rear frames, logs the measured parked position, centres steering, and moves
+straight at 50 mm/s toward the 65 mm range. It brakes, settles, and requires
+three fresh frames within +/-2 mm. Impossible geometry, no valid data for one
+second, data too old for powered movement, or more than 65 mm correction travel
+fails closed and saves the log. The corrected rear measurement initializes the
+canonical field x coordinate; the side ToF continues to initialize y. This
+supports a parallel robot placed around the gap middle with at least +/-20 mm
+longitudinal error. It does not estimate an angled start; the existing swept
+model covers approximately +/-1 degree physical heading error only.
+
+`OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY` is initially true, so the
+first powered firmware stops immediately after position correction and cannot
+run the exit. First validate the new M4 sensor stationary, then test one start
+about 20 mm behind the gap middle and one about 20 mm ahead. Require the correct
+motion direction, 50+/-2 mm final body clearance, no contact, and a
+`[PARK REAR RESULT]` line before enabling the complete exit.
+
+`CAD/parking_exit_swept_search.py` now includes the rear-positioning movement.
+All 24 combinations of minimum/maximum modeled gap, middle and middle +/-20 mm
+longitudinal starts, +/-5 mm lateral placement, and +/-1 degree heading pass
+the straight correction plus complete five-segment exit collision check.
+
+The parking-entry scan-path radius remains the physically measured 109 mm.
+Log 139's missing arc was instead traced to the reverse Pure Pursuit steering
+sign; that sign is corrected, but must be tested only after rear positioning
+and the complete exit are accepted.
+
+Both affected IDE-managed PlatformIO builds pass (`giga_r1_m4` and
+`giga_r1_m7`, exit code 0). No firmware was uploaded.
+
+---
+
 ## 2026-08-28 - M4 software-I2C rear ToF implementation prepared
 
 Branch `feature/m4-rear-tof` adds a separate `giga_r1_m4` image which owns A3
@@ -72,12 +244,15 @@ degrees at 493 mm, so the camera could not resolve the station. Raw red blobs
 were present but were not accepted as a pillar.
 
 Measured conclusion: the run is safe but does not validate the scan pose. Do
-not add a pillar yet. The next implementation decision is whether to make the
-40 mm, 109 mm-radius arc more visible (for example, a tighter radius with the
-same travel) or to improve stop timing; this requires an explicit geometry
-choice before changing firmware. Until then, repeat only after that change and
-require `Scan pose reached`, heading error <=5 degrees, an in-angle target, and
-`result=CLEAR`.
+not add a pillar yet. Inspection found that the isolated reverse Pure Pursuit
+controller applied the forward-path steering sign. For a target on local left
+while reversing, it requested the mirrored steering direction, explaining why
+the chassis stayed near 1 degree while the final waypoint expected about 21
+degrees. The sign is corrected in `updateParkingEntryDiscovery()`. Retain the
+109 mm radius because it is the measured full-lock rear-axle radius; the
+previously proposed 80 mm radius is not physically achievable. Repeat only
+after rebuilding and require `Scan pose reached`, heading error <=5 degrees,
+an in-angle target, and `result=CLEAR`.
 
 ---
 

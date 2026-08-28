@@ -300,6 +300,48 @@ def validate_segments(start, segments):
     return sum(scenarios), len(scenarios)
 
 
+def validate_rear_tof_positioning():
+    """Check the supported middle +/-20 mm starts and the complete exit.
+
+    The rear sensor measures longitudinal position, then firmware moves
+    straight to 50 mm rear body clearance before running the existing path.
+    Include the existing gap, lateral-placement, and +/-1 degree heading cases.
+    """
+    scenarios = []
+    for gap in (MIN_GAP_MM, NOMINAL_GAP_MM + PLACEMENT_ERROR_MM):
+        middle_clearance = (gap - ROBOT_FRONT_MM - ROBOT_REAR_MM) * 0.5
+        for offset in (-20.0, 0.0, 20.0):
+            initial_clearance = middle_clearance + offset
+            for y_error in (-PLACEMENT_ERROR_MM, PLACEMENT_ERROR_MM):
+                for heading_error in (-HEADING_ERROR_DEG, HEADING_ERROR_DEG):
+                    pose = Pose(
+                        ROBOT_REAR_MM + initial_clearance,
+                        PARKING_DEPTH_MM - 62.5 + y_error,
+                        heading_error)
+                    valid = not collision(pose, 0, gap)
+                    correction = 50.0 - initial_clearance
+                    direction = 1 if correction >= 0.0 else -1
+                    for _ in range(int(math.ceil(abs(correction)))):
+                        step = min(1.0, abs(correction))
+                        pose = advance(pose, direction, 0, step)
+                        correction -= direction * step
+                        if collision(pose, 0, gap):
+                            valid = False
+                            break
+                    if valid:
+                        for segment_direction, steering, distance in SELECTED_CONTROLS:
+                            for _ in range(int(round(distance))):
+                                pose = advance(
+                                    pose, segment_direction, steering, 1.0)
+                                if collision(pose, steering, gap):
+                                    valid = False
+                                    break
+                            if not valid:
+                                break
+                    scenarios.append(valid)
+    return sum(scenarios), len(scenarios)
+
+
 SELECTED_CONTROLS = (
     (-1, +50, 20.0),
     (+1, -50, 25.0),
@@ -473,11 +515,15 @@ def report_selected():
           f"{ccw_passed}/{ccw_total}")
     print(f"  cw_entry_discovery_tolerance_scenarios="
           f"{cw_passed}/{cw_total}")
+    rear_passed, rear_total = validate_rear_tof_positioning()
+    print(f"  rear_tof_middle_plus_minus_20_exit_scenarios="
+          f"{rear_passed}/{rear_total}")
     output = Path(__file__).with_name("parking_exit_path.svg")
     write_svg(start, output)
     print(f"  diagram={output}")
     return (passed == total and reverse_passed == reverse_total and
-            ccw_passed == ccw_total and cw_passed == cw_total)
+            ccw_passed == ccw_total and cw_passed == cw_total and
+            rear_passed == rear_total)
 
 
 def search_alternatives():

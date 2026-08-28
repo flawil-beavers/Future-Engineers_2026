@@ -290,3 +290,11 @@ waits up to 1200 ms for two clear frames or colour votes, logs
 `CLEAR`, `RED`, `GREEN`, or `UNKNOWN`, and locks the motor. A colour-dependent
 forward join is intentionally deferred until this scan motion and observation
 are physically validated.
+
+The model also validates rear-ToF start normalization. For each modeled
+parking gap, it starts the robot at the longitudinal middle and at +/-20 mm,
+adds +/-5 mm lateral placement and +/-1 degree heading error, moves straight
+to 50 mm rear body clearance, and then executes the complete five-segment
+exit. All 24 combinations pass collision checking. This establishes modeled
+feasibility only; the initial firmware stops after the straight correction so
+both movement directions can be physically checked before enabling the exit.

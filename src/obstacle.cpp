@@ -49,6 +49,9 @@ static bool oc_complete = false;
 enum ParkingExitState : uint8_t
 {
     PARKING_EXIT_IDLE,
+    PARKING_EXIT_REAR_SETTLE,
+    PARKING_EXIT_REAR_DRIVE,
+    PARKING_EXIT_REAR_BRAKE,
     PARKING_EXIT_SEGMENT_SETTLE,
     PARKING_EXIT_SEGMENT_DRIVE,
     PARKING_EXIT_SEGMENT_BRAKE,
@@ -88,6 +91,20 @@ static uint32_t oc_parking_exit_brake_start_ms = 0;
 static uint32_t oc_parking_exit_settle_start_ms = 0;
 static uint8_t oc_parking_exit_segment = 0;
 static bool oc_parking_field_pose_initialized = false;
+static float oc_parking_rear_start_distance = 0.0f;
+static float oc_parking_rear_start_range = -1.0f;
+static float oc_parking_rear_last_range = -1.0f;
+static uint32_t oc_parking_rear_tof_sequence = 0;
+static uint8_t oc_parking_rear_confirm_frames = 0;
+static float oc_parking_rear_sample_sum = 0.0f;
+static float oc_parking_rear_sample_min = 0.0f;
+static float oc_parking_rear_sample_max = 0.0f;
+static float oc_parking_rear_planned_travel = 0.0f;
+static float oc_parking_rear_cumulative_travel = 0.0f;
+static float oc_parking_rear_last_encoder_distance = 0.0f;
+static int8_t oc_parking_rear_direction = 0;
+static bool oc_parking_rear_verifying = false;
+static uint8_t oc_parking_rear_discard_frames = 0;
 static TofSensor oc_parking_localization_sensor = TOF_RIGHT;
 static float oc_parking_localization_start_distance = 0.0f;
 static float oc_parking_localization_initial_piece_range = 0.0f;
@@ -194,6 +211,20 @@ static void resetParkingExit()
     oc_parking_exit_settle_start_ms = 0;
     oc_parking_exit_segment = 0;
     oc_parking_field_pose_initialized = false;
+    oc_parking_rear_start_distance = get_distance();
+    oc_parking_rear_start_range = -1.0f;
+    oc_parking_rear_last_range = -1.0f;
+    oc_parking_rear_tof_sequence = 0;
+    oc_parking_rear_confirm_frames = 0;
+    oc_parking_rear_sample_sum = 0.0f;
+    oc_parking_rear_sample_min = 0.0f;
+    oc_parking_rear_sample_max = 0.0f;
+    oc_parking_rear_planned_travel = 0.0f;
+    oc_parking_rear_cumulative_travel = 0.0f;
+    oc_parking_rear_last_encoder_distance = get_distance();
+    oc_parking_rear_direction = 0;
+    oc_parking_rear_verifying = false;
+    oc_parking_rear_discard_frames = 0;
     oc_parking_localization_start_distance = get_distance();
     oc_parking_localization_initial_piece_range = 0.0f;
     oc_parking_localization_last_piece_range = 0.0f;
@@ -203,7 +234,7 @@ static void resetParkingExit()
     oc_parking_localization_transition_found = false;
 }
 
-static void initializeParkingFieldPose()
+static void initializeParkingFieldPose(float rearTofRangeMm)
 {
     const int8_t turnSign =
         oc_parking_exit_steering > 0 ? -1 : 1;
@@ -213,14 +244,22 @@ static void initializeParkingFieldPose()
         turnSign > 0
             ? OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM - gapMm
             : OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM;
+    const bool rearReferenceUsable =
+        rearTofRangeMm > 0.0f &&
+        rearTofRangeMm < TOF_OUT_OF_RANGE_MM;
+    const float measuredRearClearance =
+        rearReferenceUsable
+            ? rearTofRangeMm -
+                  OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM
+            : OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM;
     const float startX =
         turnSign > 0
             ? rearReferenceX +
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM +
-                OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM
+                measuredRearClearance
             : rearReferenceX -
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM -
-                OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM;
+                measuredRearClearance;
     const float nominalStartY =
         OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM -
         OBSTACLE_WHEEL_OUTSIDE_WIDTH_MM * 0.5f;
@@ -257,7 +296,13 @@ static void initializeParkingFieldPose()
     Serial.print(" start_y_source=");
     Serial.print(outerWallReferenceUsable ? "outer_wall_tof" : "nominal");
     Serial.print(" range_mm=");
-    Serial.println(outerWallRange, 1);
+    Serial.print(outerWallRange, 1);
+    Serial.print(" start_x_source=");
+    Serial.print(rearReferenceUsable ? "rear_tof" : "nominal");
+    Serial.print(" rear_range/clearance_mm=");
+    Serial.print(rearTofRangeMm, 1);
+    Serial.print("/");
+    Serial.println(measuredRearClearance, 1);
 }
 
 static void printParkingExitGeometry()
@@ -297,6 +342,135 @@ static void printParkingExitGeometry()
     Serial.print(OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT);
     Serial.print("/");
     Serial.println(OBSTACLE_PARKING_EXIT_SEGMENT_COUNT);
+
+    Serial.print("[PARK REAR] enabled=");
+    Serial.print(
+        OBSTACLE_PARKING_REAR_TOF_POSITIONING_ENABLED ? "yes" : "no");
+    Serial.print(" sensor_behind_axle_mm=");
+    Serial.print(OBSTACLE_REAR_TOF_BEHIND_AXLE_MM, 1);
+    Serial.print(" target_range/clearance_mm=");
+    Serial.print(OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM, 1);
+    Serial.print("/");
+    Serial.println(OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM, 1);
+}
+
+static bool parkingRearRangeValid(float rangeMm)
+{
+    const float availableClearance =
+        OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM -
+        OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM;
+    const float clearanceMm =
+        rangeMm - OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM;
+    // Allow the documented +/-5 mm physical placement tolerance at the two
+    // limits, but reject a return that cannot be the rear magenta piece.
+    return rangeMm > 0.0f &&
+           rangeMm < TOF_OUT_OF_RANGE_MM &&
+           clearanceMm >= -5.0f &&
+           clearanceMm <= availableClearance + 5.0f;
+}
+
+static void resetParkingRearSamples()
+{
+    oc_parking_rear_confirm_frames = 0;
+    oc_parking_rear_sample_sum = 0.0f;
+    oc_parking_rear_sample_min = 0.0f;
+    oc_parking_rear_sample_max = 0.0f;
+}
+
+static bool addParkingRearSample(float rangeMm, float &averageMm)
+{
+    if (oc_parking_rear_confirm_frames == 0)
+    {
+        oc_parking_rear_confirm_frames = 1;
+        oc_parking_rear_sample_sum = rangeMm;
+        oc_parking_rear_sample_min = rangeMm;
+        oc_parking_rear_sample_max = rangeMm;
+        return false;
+    }
+
+    const float nextMin = fminf(oc_parking_rear_sample_min, rangeMm);
+    const float nextMax = fmaxf(oc_parking_rear_sample_max, rangeMm);
+    if (
+        nextMax - nextMin >
+        OBSTACLE_PARKING_REAR_TOF_SAMPLE_SPAN_MM)
+    {
+        // Restart the stationary window on a jump; never average two targets.
+        resetParkingRearSamples();
+        oc_parking_rear_confirm_frames = 1;
+        oc_parking_rear_sample_sum = rangeMm;
+        oc_parking_rear_sample_min = rangeMm;
+        oc_parking_rear_sample_max = rangeMm;
+        return false;
+    }
+
+    oc_parking_rear_sample_min = nextMin;
+    oc_parking_rear_sample_max = nextMax;
+    oc_parking_rear_sample_sum += rangeMm;
+    ++oc_parking_rear_confirm_frames;
+    if (
+        oc_parking_rear_confirm_frames <
+        OBSTACLE_PARKING_REAR_TOF_CONFIRM_FRAMES)
+    {
+        return false;
+    }
+
+    averageMm =
+        oc_parking_rear_sample_sum /
+        static_cast<float>(oc_parking_rear_confirm_frames);
+    return true;
+}
+
+static void holdParkingRearPositioning(const char *reason)
+{
+    stop(false);
+    set_steering(0);
+    oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+    Serial.print("[PARK REAR] Failed reason=");
+    Serial.print(reason);
+    Serial.print(" range_mm=");
+    Serial.print(oc_parking_rear_last_range, 1);
+    Serial.print(" travel_mm=");
+    Serial.println(oc_parking_rear_cumulative_travel, 1);
+    Serial.println("[PARK REAR] Drive motor locked off");
+    robot_logger.write_to_usb();
+}
+
+static void beginParkingExitSegments(float rearRangeMm)
+{
+    oc_parking_exit_state_distance = get_distance();
+    oc_parking_exit_run_start_distance = get_distance();
+    oc_parking_exit_start_heading = get_angle();
+    initializeParkingFieldPose(rearRangeMm);
+    oc_parking_exit_segment = 0;
+    oc_parking_exit_settle_start_ms = millis();
+    oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
+
+    Serial.print("[PARK REAR RESULT] start/final_range_mm=");
+    Serial.print(oc_parking_rear_start_range, 1);
+    Serial.print("/");
+    Serial.print(rearRangeMm, 1);
+    Serial.print(" start/final_clearance_mm=");
+    Serial.print(
+        oc_parking_rear_start_range -
+            OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM,
+        1);
+    Serial.print("/");
+    Serial.print(
+        rearRangeMm - OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM,
+        1);
+    Serial.print(" correction_travel_mm=");
+    Serial.println(oc_parking_rear_cumulative_travel, 1);
+
+    if (OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY)
+    {
+        stop(false);
+        set_steering(0);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            "[PARK REAR] Positioning test complete - drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
 }
 
 struct ParkingBeamFootprint
@@ -553,6 +727,18 @@ static void finishParkingExit(bool stagedTest)
     Serial.print(" tof_y_correction_mm=");
     Serial.println(applyFieldY ? tofCorrectionY : 0.0f, 1);
 
+    if (OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY)
+    {
+        stop(false);
+        set_steering(0);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            "[PARK EXIT] Rear-positioned exit test complete - "
+            "drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
+
     if (
         !stagedTest &&
         OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED &&
@@ -754,6 +940,204 @@ static bool updateParkingExit()
         return true;
     }
 
+    if (oc_parking_exit_state == PARKING_EXIT_REAR_SETTLE)
+    {
+        if (dc_state != DC_DISABLED)
+            stop(false);
+        servo_disabled = false;
+        set_steering(0);
+        steer(0);
+
+        const uint32_t requiredSettleMs =
+            oc_parking_rear_verifying
+                ? OBSTACLE_PARKING_REAR_TOF_POST_MOVE_SETTLE_MS
+                : OBSTACLE_PARKING_REAR_TOF_SETTLE_MS;
+        if (
+            millis() - oc_parking_exit_settle_start_ms <
+                requiredSettleMs)
+        {
+            return true;
+        }
+
+        TofDiagnosticSnapshot snapshot;
+        if (
+            get_tof_diagnostic_snapshot(TOF_REAR, snapshot) &&
+            snapshot.sequence != oc_parking_rear_tof_sequence)
+        {
+            oc_parking_rear_tof_sequence = snapshot.sequence;
+            const float range = snapshot.filtered_distance_mm;
+            if (parkingRearRangeValid(range))
+            {
+                oc_parking_rear_last_range = range;
+                if (
+                    oc_parking_rear_verifying &&
+                    oc_parking_rear_discard_frames > 0)
+                {
+                    --oc_parking_rear_discard_frames;
+                    return true;
+                }
+                float averageRange = 0.0f;
+                if (!addParkingRearSample(range, averageRange))
+                {
+                    if (
+                        millis() - oc_parking_exit_settle_start_ms >=
+                        requiredSettleMs +
+                            OBSTACLE_PARKING_REAR_TOF_TIMEOUT_MS)
+                    {
+                        holdParkingRearPositioning(
+                            "unstable_stationary_range");
+                    }
+                    return true;
+                }
+
+                if (!oc_parking_rear_verifying)
+                {
+                    oc_parking_rear_start_range = averageRange;
+                    const float signedCorrection =
+                        OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM -
+                        averageRange;
+                    oc_parking_rear_planned_travel =
+                        fabsf(signedCorrection);
+
+                    if (
+                        oc_parking_rear_planned_travel <=
+                        OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM)
+                    {
+                        beginParkingExitSegments(averageRange);
+                        return true;
+                    }
+                    if (
+                        oc_parking_rear_planned_travel >
+                        OBSTACLE_PARKING_REAR_TOF_MAX_TRAVEL_MM)
+                    {
+                        holdParkingRearPositioning(
+                            "required_correction_too_large");
+                        return true;
+                    }
+
+                    oc_parking_rear_direction =
+                        signedCorrection > 0.0f ? 1 : -1;
+                    oc_parking_rear_start_distance = get_distance();
+                    oc_parking_rear_last_encoder_distance = get_distance();
+                    oc_parking_rear_cumulative_travel = 0.0f;
+                    oc_parking_exit_state = PARKING_EXIT_REAR_DRIVE;
+                    Serial.print(
+                        "[PARK REAR] One-shot correction start_range_mm=");
+                    Serial.print(averageRange, 1);
+                    Serial.print(" direction=");
+                    Serial.print(
+                        oc_parking_rear_direction > 0
+                            ? "forward"
+                            : "reverse");
+                    Serial.print(" planned_mm=");
+                    Serial.println(oc_parking_rear_planned_travel, 1);
+                    return true;
+                }
+
+                const float measuredRangeChange =
+                    averageRange - oc_parking_rear_start_range;
+                const float expectedRangeChange =
+                    oc_parking_rear_direction *
+                    oc_parking_rear_cumulative_travel;
+                const float targetError = fabsf(
+                    averageRange -
+                    OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM);
+                const float motionAgreementError = fabsf(
+                    measuredRangeChange - expectedRangeChange);
+                const bool accepted =
+                    targetError <=
+                        OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM &&
+                    motionAgreementError <=
+                        OBSTACLE_PARKING_REAR_TOF_MOTION_AGREEMENT_MM;
+
+                Serial.print("[PARK REAR VERIFY] final_range_mm=");
+                Serial.print(averageRange, 1);
+                Serial.print(" target_error_mm=");
+                Serial.print(targetError, 1);
+                Serial.print(" measured/expected_change_mm=");
+                Serial.print(measuredRangeChange, 1);
+                Serial.print("/");
+                Serial.print(expectedRangeChange, 1);
+                Serial.print(" accepted=");
+                Serial.println(accepted ? "yes" : "no");
+
+                if (!accepted)
+                {
+                    holdParkingRearPositioning(
+                        "stationary_verification_failed");
+                    return true;
+                }
+                beginParkingExitSegments(averageRange);
+                return true;
+            }
+        }
+
+        if (
+            millis() - oc_parking_exit_settle_start_ms >=
+            requiredSettleMs +
+                OBSTACLE_PARKING_REAR_TOF_TIMEOUT_MS)
+        {
+            holdParkingRearPositioning("no_valid_rear_range");
+        }
+        return true;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_REAR_DRIVE)
+    {
+        const float encoderDistance = get_distance();
+        oc_parking_rear_cumulative_travel += fabsf(
+            encoderDistance - oc_parking_rear_last_encoder_distance);
+        oc_parking_rear_last_encoder_distance = encoderDistance;
+        set_steering(0);
+
+        if (
+            oc_parking_rear_cumulative_travel >=
+            oc_parking_rear_planned_travel)
+        {
+            stop(true);
+            oc_parking_exit_brake_start_ms = millis();
+            oc_parking_exit_state = PARKING_EXIT_REAR_BRAKE;
+            return true;
+        }
+        if (
+            oc_parking_rear_cumulative_travel >=
+            OBSTACLE_PARKING_REAR_TOF_MAX_TRAVEL_MM)
+        {
+            holdParkingRearPositioning("cumulative_travel_limit");
+            return true;
+        }
+
+        set_speed(
+            oc_parking_rear_direction *
+            OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S);
+        return true;
+    }
+
+    if (oc_parking_exit_state == PARKING_EXIT_REAR_BRAKE)
+    {
+        if (
+            millis() - oc_parking_exit_brake_start_ms <
+                OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS)
+        {
+            return true;
+        }
+
+        stop(false);
+        set_steering(0);
+        resetParkingRearSamples();
+        oc_parking_rear_verifying = true;
+        oc_parking_rear_discard_frames =
+            OBSTACLE_PARKING_REAR_TOF_POST_MOVE_DISCARD_FRAMES;
+        oc_parking_exit_settle_start_ms = millis();
+        TofDiagnosticSnapshot snapshot;
+        oc_parking_rear_tof_sequence =
+            get_tof_diagnostic_snapshot(TOF_REAR, snapshot)
+                ? snapshot.sequence
+                : oc_parking_rear_tof_sequence;
+        oc_parking_exit_state = PARKING_EXIT_REAR_SETTLE;
+        return true;
+    }
+
     if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_SETTLE)
     {
         if (dc_state != DC_DISABLED)
@@ -934,15 +1318,8 @@ static bool updateParkingExit()
             return true;
         }
 
-        oc_parking_exit_state_distance = get_distance();
-        oc_parking_exit_run_start_distance = get_distance();
-        oc_parking_exit_start_heading = get_angle();
         oc_parking_exit_start_left_mm = left;
         oc_parking_exit_start_right_mm = right;
-        initializeParkingFieldPose();
-        oc_parking_exit_segment = 0;
-        oc_parking_exit_settle_start_ms = millis();
-        oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;
 
         Serial.print("[PARK EXIT] Start wall left=");
         Serial.print(left, 0);
@@ -950,6 +1327,42 @@ static bool updateParkingExit()
         Serial.println(right, 0);
         Serial.print("[PARK EXIT] Away steering=");
         Serial.println(oc_parking_exit_steering);
+
+        if (OBSTACLE_PARKING_REAR_TOF_POSITIONING_ENABLED)
+        {
+            stop(false);
+            servo_disabled = false;
+            set_steering(0);
+            steer(0);
+            oc_parking_rear_start_distance = get_distance();
+            oc_parking_rear_start_range = -1.0f;
+            oc_parking_rear_last_range = get_tof_distance(TOF_REAR);
+            resetParkingRearSamples();
+            oc_parking_rear_planned_travel = 0.0f;
+            oc_parking_rear_cumulative_travel = 0.0f;
+            oc_parking_rear_last_encoder_distance = get_distance();
+            oc_parking_rear_direction = 0;
+            oc_parking_rear_verifying = false;
+            oc_parking_rear_discard_frames = 0;
+            TofDiagnosticSnapshot snapshot;
+            oc_parking_rear_tof_sequence =
+                get_tof_diagnostic_snapshot(TOF_REAR, snapshot)
+                    ? snapshot.sequence
+                    : 0;
+            oc_parking_exit_settle_start_ms = millis();
+            oc_parking_exit_state = PARKING_EXIT_REAR_SETTLE;
+
+            Serial.print("[PARK REAR] Armed initial_range_mm=");
+            Serial.print(oc_parking_rear_last_range, 1);
+            Serial.print(" target_range_mm=");
+            Serial.print(OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM, 1);
+            Serial.print(" tolerance_mm=");
+            Serial.println(OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM, 1);
+            return true;
+        }
+
+        oc_parking_rear_start_range = -1.0f;
+        beginParkingExitSegments(-1.0f);
     }
 
     const ParkingExitSegment &segment =

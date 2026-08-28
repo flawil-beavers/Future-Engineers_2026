@@ -1761,8 +1761,12 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     const float localY = -dx * sinf(heading) + dy * cosf(heading);
     const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
     const float curvature = 2.0f * localY / targetDistanceSquared;
+    // This path is traversed in reverse. A target on the vehicle's local-left
+    // side therefore needs positive steering to rotate the chassis left while
+    // backing up. The normal forward-path sign would mirror the requested arc
+    // and left log_139 almost straight despite the curved final waypoints.
     const float steering = clampFloat(
-        -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI,
+        atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI,
         -OBSTACLE_MAX_PURSUIT_STEERING_DEG,
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
     set_steering(static_cast<int>(steering));

@@ -194,6 +194,58 @@ the field is ready.
       strategy: a visually indicated safe start band plus post-exit magenta-edge
       localization (preferred), close-range camera localization, or added
       front/rear ranging hardware.
+- [x] Integrate the M4 rear ToF as a configurable longitudinal reference. Its
+      origin is currently 25 mm behind the rear axle; the position and target
+      body clearance are compile-time variables. Measure the initial clearance,
+      move straight toward the validated 50 mm rear clearance, confirm three
+      settled frames within 2 mm, and fail closed on stale/impossible data or
+      more than 65 mm correction travel.
+- [ ] Validate rear-ToF positioning with the exit locked out. First complete
+      the stationary rear-sensor checks in `REAR_TOF_M4_SETUP.md`. Then place
+      the parallel robot approximately 20 mm behind the parking-gap middle and
+      require a forward correction to 50+/-2 mm body clearance, no contact,
+      `[PARK REAR RESULT]`, and the positioning-only motor lock.
+- [ ] Reject and replace the first powered implementation. `log_142` drove to
+      within about 10 mm of the front limit after rear range changed only
+      31->54 mm during 65.1 mm encoder travel. `log_143` jumped
+      87->39->97 mm, reversed repeatedly, and touched the front limit. Do not
+      power it again until stationary measurements against the actual magenta
+      piece are credible and the travel guard counts cumulative motion.
+- [x] Verify stationary rear-ToF repeatability against the actual magenta
+      limit. `log_144` held 42--43 mm at the approximate 40 mm ruler placement
+      and 63--65 mm at the approximate 60 mm placement. The optical beam is
+      unobstructed. Clarify the ruler reference point before calibrating the
+      target.
+- [x] Replace continuous bidirectional range chasing with one settled rear
+      measurement followed by one encoder-bounded correction. Do not permit an
+      automatic reversal in the same attempt; stop and report the final rear
+      measurement for review. The implementation averages three frames within
+      a 4 mm span, uses cumulative travel, limits the one-shot correction to
+      55 mm, and requires final range/motion agreement before acceptance.
+- [ ] Repeat the positioning-only test approximately 20 mm ahead of the
+      parking-gap middle. Require a reverse correction to the same clearance,
+      no contact, and correction travel consistent with the measured start.
+- [ ] Repeat one substantial forward and reverse correction after the delayed
+      final-verification change. Logs 145--148 were all physically safe and
+      converged near 50 mm body clearance, but only 147/148 passed telemetry;
+      145/146 sampled about 13 mm short/long. Require both repeats to report
+      `accepted=yes` after the 1000 ms wait and three discarded fresh frames.
+- [x] Accept rear positioning in both directions. Logs 149 and 150 passed
+      delayed stationary verification after substantial forward and reverse
+      corrections, and the user reported no contact.
+- [ ] Run one CCW combined rear-positioning plus five-segment exit test. Stop
+      immediately after exit telemetry; do not run edge localization or entry
+      discovery yet. Require `accepted=yes`, 5/5 segments, aligned final
+      heading, no contact, and the rear-positioned-exit motor lock.
+- [x] Accept the CCW combined rear-positioning plus exit. Log 151 passed rear
+      verification, 5/5 segments, final alignment, usable parking-end ToF, and
+      the user reported no contact.
+- [ ] After both positioning-only tests pass, disable
+      `OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY` and repeat the complete
+      five-segment exit in both directions before restoring entry discovery.
+- [ ] Later, estimate/correct non-parallel parking placement. The current
+      collision model accepts approximately +/-1 degree, but one rear range
+      alone cannot measure heading; arbitrary angled starts are unsupported.
 - [x] Implement the ruler-assisted version of the preferred strategy: retain
       the validated 50 mm rear placement, initialize start `y` from the near
       wall ToF, and add a test-only 60 mm/s straight edge search after the
@@ -233,8 +285,10 @@ the field is ready.
       encoder-distance progress and final-heading fix. `log_139` was also
       contact-free, but still ended in `Scan path overrun`: travel 404.4/384.3
       mm and heading error 20.1 degrees. The user did not see a distinct arc;
-      treat this as a failed scan-pose validation until the arc is made more
-      visible or the stop timing is corrected.
+      the reverse Pure Pursuit steering sign was inverted, so the chassis
+      stayed nearly straight while targeting curved waypoints. Repeat after
+      the corrected reverse steering sign; retain the physically achievable
+      109 mm full-lock radius.
 - [ ] Repeat the accepted scan with one official pillar in that same inner
       seat. Require the correct seat and colour after two votes, no contact,
       and no `UNKNOWN` timeout. Test the opposite colour separately only if the

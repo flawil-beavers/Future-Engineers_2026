@@ -314,6 +314,48 @@ constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM = 40.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM = 135.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM = 247.5f;
 constexpr auto OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM = 50.0f;
+
+// Before the five-segment exit, use the rear-facing ToF to move the robot to
+// the longitudinal placement for which that path was validated. The sensor
+// position is measured from the rear-axle midpoint; increase
+// REAR_TOF_BEHIND_AXLE_MM if the sensor is moved farther toward the back.
+constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_ENABLED = true;
+// First powered validation stops after measuring/correcting the parked pose.
+// Set false only after offset starts have been physically accepted.
+constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY = false;
+// First combined validation executes rear positioning plus all five exit
+// segments, then stops before edge localization or entry discovery.
+constexpr bool OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY = false;
+constexpr auto OBSTACLE_REAR_TOF_BEHIND_AXLE_MM = 25.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM = 50.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM = 2.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM = 5.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_SAMPLE_SPAN_MM = 4.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_MOTION_AGREEMENT_MM = 8.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S = 50;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_MAX_TRAVEL_MM = 55.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_SETTLE_MS = 200UL;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_SETTLE_MS = 1000UL;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_CONFIRM_FRAMES = 3;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_DISCARD_FRAMES = 3;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_TIMEOUT_MS = 1000UL;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM =
+    OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM -
+    OBSTACLE_REAR_TOF_BEHIND_AXLE_MM;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM =
+    OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM +
+    OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM;
+static_assert(
+    OBSTACLE_REAR_TOF_BEHIND_AXLE_MM >= 0.0f &&
+        OBSTACLE_REAR_TOF_BEHIND_AXLE_MM <=
+            OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM,
+    "Rear ToF must be between the rear axle and current rearmost body point");
+static_assert(
+    OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM > 0.0f &&
+        OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM <
+            OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM -
+                OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM,
+    "Rear-ToF target must leave positive clearance at both parking limits");
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 140.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 180.0f;
@@ -365,6 +407,9 @@ constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = true;
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 40.0f;
+// This is the measured full-lock rear-axle radius. A smaller requested radius
+// is not physically achievable; reverse Pure Pursuit must use the correct
+// steering sign to follow it.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM = 109.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SPEED_MM_S = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_LOOKAHEAD_MM = 70.0f;
