@@ -53,10 +53,10 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       robot. This prevents retained controller state and free-wheel samples
       from contaminating comparisons.
 - [x] Repeat at `d-60`; reject unexpected direction or delayed stop.
-- [ ] Repeat forward at 80 and 100 mm/s. Record visible/audible cycling, mean
-      measured speed, requested/applied PWM, and the USB log number.
-- [ ] Repeat the same 60/-60/80/100 sequence with the nearly empty pack only
-      if its resting and loaded voltage remain within the pack's safe limits.
+- [ ] Optionally extend the isolated matrix with forward 100 mm/s on each pack.
+      Record visible/audible cycling, mean measured speed, requested/applied
+      PWM, and the USB log number. This does not block acceptance of the
+      low-speed unparking fix validated by log 227.
 - [x] Accept the isolated controller only if neither pack shows a slow
       multi-second power cycle, direction and stopping remain correct, mean
       speed is within 10 mm/s of target after startup, and no unpowered gap is
@@ -67,8 +67,12 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 - [x] Only after both packs pass isolated tests, run one normal parked `O` test
       with the full pack. Require safe rear positioning, five exit segments,
       localization, reverse entry, immediate final lock, and no contact.
-- [ ] Repeat the mirrored parked direction, then repeat representative parking
-      validation with the low pack before merging the branch.
+- [x] Repeat representative complete parking validation with the low pack.
+      `log_227` passed at a reported 7.16 V with the revised 62 mm correction
+      approach and unchanged 65 +/-5 mm final verification gate.
+- [x] Repeat the complete parked flow in the mirrored direction before merging
+      the branch. `log_228` and `log_229` passed consecutively in CW with no
+      contact, intervention, abnormal motion, watchdog, stall, or abort.
 
 ## Completed foundations
 

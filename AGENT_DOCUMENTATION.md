@@ -33,6 +33,27 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-28: logs 228/229 pass consecutive mirrored CW parking flows in telemetry
+
+Logs 228 and 229 are complete consecutive CW runs, mirroring the accepted CCW
+log 227. Both completed all five exit segments, applied usable parking-piece
+ToF localization and bounded x/y edge corrections, resolved S0 station 1, and
+ended with the intended drive-motor lock. Final stopped heading errors were
+0.0 and 0.1 degrees; edge-search travel was 40.6 and 38.3 mm. Neither log
+contains a watchdog, stall, abort, or failure marker.
+
+Log 228 began inside the accepted final rear-range band and required no
+correction, finishing at 61.3 mm. Log 229 exercised the revised one-shot
+correction from 76.0 to 60.7 mm; its 4.3 mm canonical target error and 1.2 mm
+motion-agreement error passed the unchanged gates. Log 228 resolved the target
+station clear, while log 229 confirmed GREEN at seat 2 and injected the 260 mm
+route. The user confirmed that neither run had contact, intervention, or
+abnormal motion. This accepts mirrored repeatability and closes the remaining
+physical validation gate for the low-speed unparking fix. No firmware change
+follows from these logs.
+
+---
+
 ## 2026-08-28: log 227 validates log-221 fix and complete 7.16 V parking flow
 
 Log 227 confirms the revised M7 image with
