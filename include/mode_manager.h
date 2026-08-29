@@ -44,6 +44,7 @@ enum RobotMode {
     MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
     MODE_MOTOR_MIN_CAL,         ///< Motor minimum DC calibration
+    MODE_REVERSE_GYRO_TEST,     ///< Automatic reverse gyro speed sweep
 };
 
 enum ModeResult {

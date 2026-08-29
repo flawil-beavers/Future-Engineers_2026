@@ -476,16 +476,20 @@ static_assert(
 // magenta limit, cross the parking gap quickly, then slow while passing the
 // second limit. Its far edge is the stable longitudinal field reference.
 constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
+// Isolate the reverse gyro-straight drive immediately after the parking exit.
+// The robot stops after the bounded edge search instead of continuing into
+// parking-entry camera discovery and the lap join.
+constexpr bool OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY = true;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
 constexpr unsigned long OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 100UL;
 constexpr int8_t OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 380.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP = 5.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI = 2.5f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP = 7.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI = 3.5f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S =
     5.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG = 25.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG = 30.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG = 8.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FIRST_MARKER_SKIP_CONFIRM_MM = 100.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM = 190.0f;

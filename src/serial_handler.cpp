@@ -27,6 +27,7 @@
  *   C      : TURN RADIUS CALIBRATION mode
  *   B      : SERVO CENTER CALIBRATION mode
  *   y      : PID AUTOTUNE mode
+ *   reversegyro : Reverse gyro speed sweep (40/60/80 mm/s)
  *   M      : MOTOR MIN DC CALIBRATION mode
  *   z      : STOP active mode
  *   u<val> : Set wall distance (mm)
@@ -52,6 +53,7 @@
 #include "tof_diagnostic_test.h"
 #include "tof_pose_diagnostic.h"
 #include "camera_distance_calibration.h"
+#include "reverse_gyro_test.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -422,6 +424,10 @@ void processMessage()
 
 void parseMessage(char *msg)
 {
+  if (strcmp(msg, "reversegyro") == 0) {
+    select_temporary_mode(MODE_REVERSE_GYRO_TEST);
+    return;
+  }
   if (handle_pid_command(msg))
     return;
   if (handle_seat_command(msg))
