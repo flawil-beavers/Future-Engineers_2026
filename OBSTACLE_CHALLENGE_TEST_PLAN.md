@@ -74,6 +74,38 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       the branch. `log_228` and `log_229` passed consecutively in CW with no
       contact, intervention, abnormal motion, watchdog, stall, or abort.
 
+## Next: validate the parking-entry-to-lap connector
+
+- [x] Upload the connector M7 build only with explicit user consent. M4 is
+      unchanged and must not be rebuilt or uploaded.
+- [x] First run one CCW parked `O` test with the previously accepted parking
+      placement and pillar layout. Keep the disable switch reachable. Require
+      a resolved `[PARK ENTRY RESULT]`, `[PARK ENTRY JOIN] Armed`, and
+      `[PARK ENTRY JOIN] Complete` with no contact or abrupt steering. Log 230
+      passed; the user confirmed no contact.
+- [x] For this first powered connector test, stop manually after the join has
+      settled onto the south-straight lap path; do not spend a complete lap on
+      unvalidated connector geometry. Log 230 continued through three complete
+      laps without contact, superseding the planned bounded stop with stronger
+      CCW coverage; retain the bounded stop for the first CW test.
+- [x] Accept only if join speed stays at or below 60 mm/s, cross-track and
+      heading converge to at most 60 mm and 10 degrees, no parking-piece ToF
+      correction occurs during the join, and no watchdog, travel-limit, or
+      perception abort occurs. Log 230 completed at 30.6 mm and 9.4 degrees
+      after 564.9 mm of 60 mm/s-target join travel.
+- [x] After the CCW join passes, repeat the same bounded connector test in CW.
+      `log_231` invalidly contacted the inner green pillar after false clear;
+      `log_232` passed only with that pillar removed. Upload the rejected-blob
+      clear-veto fix with consent, restore green in the exact log-231 position,
+      and require confirmation/injection before the pillar plus no contact. A
+      safe ambiguity hold/abort is not a pass but is preferable to false clear.
+      `log_233` passed the repaired case: green seat 2 confirmed/injected and
+      the join completed at 37.4 mm / 10.0 degrees without reported contact.
+- [ ] Only after both bounded joins pass, run one complete obstacle lap from a
+      parked start in each direction before enabling three-lap validation.
+      CCW already completed three laps in `log_230`; next run one complete CW
+      lap with green restored at seat 2 and stop manually after lap 1.
+
 ## Completed foundations
 
 - [x] Calibrate the camera distance model and validate the full camera FOV.

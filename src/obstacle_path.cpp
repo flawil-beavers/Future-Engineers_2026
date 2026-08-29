@@ -110,9 +110,11 @@ int8_t parkingEntryTargetStation = -1;
 bool parkingEntryActive = false;
 bool parkingEntryObserving = false;
 bool parkingEntryTestHold = false;
+bool parkingEntryJoining = false;
 uint32_t parkingEntryObserveStartMs = 0;
 bool parkingEntryUsbWritten = false;
 float parkingEntryStartEncoderDistance = 0.0f;
+float parkingEntryJoinStartEncoderDistance = 0.0f;
 bool parkingEntryPathFailed = false;
 bool parkingEntryControlLogged = false;
 ParkingEntryDrivePhase parkingEntryDrivePhase =
@@ -1529,18 +1531,31 @@ bool observationAllowsClearAtGeometry(
         seatRangeMm + OBSTACLE_DISCOVERY_BEHIND_SEAT_MARGIN_MM;
 }
 
-bool observationAllowsSeatClear(
-    const ObstacleObservationResult &observation,
-    uint8_t seatIndex,
-    const PositionEstimate &pose)
+bool rejectedBlobBlocksSeatClear(
+    const Blob *rawBlob,
+    float seatBearingDeg)
 {
-    float seatBearingDeg = 0.0f;
-    float seatRangeMm = -1.0f;
-    seatCameraGeometry(seatIndex, pose, seatBearingDeg, seatRangeMm);
-    return observationAllowsClearAtGeometry(
-        observation,
-        seatBearingDeg,
-        seatRangeMm);
+    if (rawBlob == nullptr || !rawBlob->found ||
+        obstacle_blob_valid_for_acquisition(rawBlob) ||
+        rawBlob->maxY < OBSTACLE_MIN_BOTTOM_Y)
+    {
+        return false;
+    }
+
+    // A low rejected colour region may be a badly segmented pillar. It is not
+    // trustworthy enough to inject a route, but it must prevent an occupied
+    // seat from being certified clear. Thin horizon fragments remain above
+    // OBSTACLE_MIN_BOTTOM_Y and therefore do not block empty-field evidence.
+    const float edgeBearing0 = cameraBearingForImageX(rawBlob->minX);
+    const float edgeBearing1 = cameraBearingForImageX(rawBlob->maxX);
+    const float minimumBearing =
+        fminf(edgeBearing0, edgeBearing1) -
+        OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG;
+    const float maximumBearing =
+        fmaxf(edgeBearing0, edgeBearing1) +
+        OBSTACLE_DISCOVERY_BLOB_BEARING_MARGIN_DEG;
+    return seatBearingDeg >= minimumBearing &&
+           seatBearingDeg <= maximumBearing;
 }
 
 bool seatComfortablyVisible(
@@ -1561,7 +1576,8 @@ bool seatComfortablyVisible(
 
 void updateDiscoveryCoverage(
     const ObstacleObservationResult &observation,
-    const PositionEstimate &pose)
+    const PositionEstimate &pose,
+    const Blob *rawBlob)
 {
     if (completedLaps != 0)
         return;
@@ -1593,9 +1609,20 @@ void updateDiscoveryCoverage(
                     static_cast<uint8_t>(parkingEntryTargetStation);
             const bool comfortablyVisible =
                 seatComfortablyVisible(seatIndex, pose);
+            float seatBearingDeg = 0.0f;
+            float seatRangeMm = -1.0f;
+            seatCameraGeometry(
+                seatIndex,
+                pose,
+                seatBearingDeg,
+                seatRangeMm);
             const bool clearEvidence =
                 !deferParkingTargetClear && comfortablyVisible &&
-                observationAllowsSeatClear(observation, seatIndex, pose);
+                !rejectedBlobBlocksSeatClear(rawBlob, seatBearingDeg) &&
+                observationAllowsClearAtGeometry(
+                    observation,
+                    seatBearingDeg,
+                    seatRangeMm);
             if (clearEvidence)
                 coverage.lastClearEvidenceMask |=
                     static_cast<uint8_t>(1U << side);
@@ -1646,10 +1673,11 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     const PositionEstimate pose = get_position_struct();
     if (newCameraFrame)
     {
+        const Blob *rawBlob = getLargestObstacle();
         const ObstacleObservationResult observation =
             obstacle_path_observe(getLargestValidObstacle());
         lastDiscoveryObservation = observation;
-        updateDiscoveryCoverage(observation, pose);
+        updateDiscoveryCoverage(observation, pose, rawBlob);
     }
 
     if (parkingEntryObserving)
@@ -1710,16 +1738,71 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         Serial.println(targetRange, 1);
         parkingEntryActive = false;
         parkingEntryObserving = false;
-        parkingEntryTestHold =
-            OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY;
-        if (parkingEntryTestHold)
+        if (!resolved)
         {
+            parkingEntryTestHold = true;
+            Serial.println(
+                "[PARK ENTRY] Discovery unresolved - drive motor locked off");
+            if (!parkingEntryUsbWritten)
+            {
+                robot_logger.write_to_usb();
+                parkingEntryUsbWritten = true;
+            }
+        }
+        else if (OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY)
+        {
+            parkingEntryTestHold = true;
             Serial.println(
                 "[PARK ENTRY] Test complete - drive motor locked off");
             if (!parkingEntryUsbWritten)
             {
                 robot_logger.write_to_usb();
                 parkingEntryUsbWritten = true;
+            }
+        }
+        else
+        {
+            const PathPoint *path = optimizedBuilt ? optimizedPath : livePath;
+            progressIndex = nearestPathIndex(
+                path,
+                pose.x_mm,
+                pose.y_mm,
+                0,
+                pathLength);
+            const float startError = hypotf(
+                pose.x_mm - path[progressIndex].x,
+                pose.y_mm - path[progressIndex].y);
+            const float startHeadingError = fabsf(wrap180(
+                pose.heading_deg - path[progressIndex].headingDeg));
+            if (startError >
+                    OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM ||
+                startHeadingError > 90.0f)
+            {
+                parkingEntryTestHold = true;
+                Serial.print(
+                    "[PARK ENTRY JOIN] Rejected start cross_track/heading_deg=");
+                Serial.print(startError, 1);
+                Serial.print("/");
+                Serial.print(startHeadingError, 1);
+                Serial.println(" - drive motor locked off");
+                if (!parkingEntryUsbWritten)
+                {
+                    robot_logger.write_to_usb();
+                    parkingEntryUsbWritten = true;
+                }
+            }
+            else
+            {
+                parkingEntryJoining = true;
+                parkingEntryJoinStartEncoderDistance = get_distance();
+                servo_disabled = false;
+                Serial.print(
+                    "[PARK ENTRY JOIN] Armed progress/cross_track/heading_deg=");
+                Serial.print(progressIndex);
+                Serial.print("/");
+                Serial.print(startError, 1);
+                Serial.print("/");
+                Serial.println(startHeadingError, 1);
             }
         }
         return;
@@ -2117,9 +2200,11 @@ void obstacle_path_reset()
     parkingEntryActive = false;
     parkingEntryObserving = false;
     parkingEntryTestHold = false;
+    parkingEntryJoining = false;
     parkingEntryObserveStartMs = 0;
     parkingEntryUsbWritten = false;
     parkingEntryStartEncoderDistance = get_distance();
+    parkingEntryJoinStartEncoderDistance = get_distance();
     parkingEntryPathFailed = false;
     parkingEntryControlLogged = false;
     parkingEntryDrivePhase = PARKING_ENTRY_STRAIGHT_STEER_SETTLE;
@@ -2288,7 +2373,8 @@ void obstacle_path_update(bool new_camera_frame)
             lastDiscoveryObservation = observation;
             updateDiscoveryCoverage(
                 observation,
-                pose);
+                pose,
+                getLargestObstacle());
         }
     }
 
@@ -2297,7 +2383,8 @@ void obstacle_path_update(bool new_camera_frame)
     // recorded, so this delays only geometry activation, not perception.
     activateDeferredInjection(baselinePath[progressIndex].distanceMm);
 
-    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving)
+    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
+        !parkingEntryJoining)
     {
         const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
             pose,
@@ -2317,7 +2404,8 @@ void obstacle_path_update(bool new_camera_frame)
         lookahead *= OBSTACLE_LOOKAHEAD_CORNER_SCALE;
 
     PathPoint target = findLookahead(path, pose, lookahead);
-    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving)
+    if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
+        !parkingEntryJoining)
         applyDiscoveryTargetNudge(target, pose);
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
@@ -2333,6 +2421,50 @@ void obstacle_path_update(bool new_camera_frame)
 
     set_steering(static_cast<int>(steering));
     float safeSpeed = commandedSpeed;
+    if (parkingEntryJoining)
+    {
+        const float crossTrack = hypotf(
+            pose.x_mm - progress.x,
+            pose.y_mm - progress.y);
+        const float headingError = fabsf(wrap180(
+            pose.heading_deg - progress.headingDeg));
+        const float joinTravel = fabsf(
+            get_distance() - parkingEntryJoinStartEncoderDistance);
+        if (crossTrack <= OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
+            headingError <= OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG)
+        {
+            parkingEntryJoining = false;
+            Serial.print(
+                "[PARK ENTRY JOIN] Complete travel/cross_track/heading_deg=");
+            Serial.print(joinTravel, 1);
+            Serial.print("/");
+            Serial.print(crossTrack, 1);
+            Serial.print("/");
+            Serial.println(headingError, 1);
+        }
+        else if (joinTravel >= OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM)
+        {
+            parkingEntryJoining = false;
+            parkingEntryTestHold = true;
+            stop(false);
+            set_steering(0);
+            Serial.print(
+                "[PARK ENTRY JOIN] Travel limit cross_track/heading_deg=");
+            Serial.print(crossTrack, 1);
+            Serial.print("/");
+            Serial.print(headingError, 1);
+            Serial.println(" - drive motor locked off");
+            if (!parkingEntryUsbWritten)
+            {
+                robot_logger.write_to_usb();
+                parkingEntryUsbWritten = true;
+            }
+            return;
+        }
+        safeSpeed = fminf(
+            safeSpeed,
+            OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S);
+    }
     if (!runtimeTestMode && completedLaps == 0)
     {
         float unresolvedForward = 0.0f;
@@ -2973,7 +3105,11 @@ bool obstacle_path_geometry_preflight()
     floorFragment.minY = 132;
     floorFragment.maxY = 174;
     if (!obstacle_blob_valid_for_acquisition(&pillarShape) ||
-        obstacle_blob_valid_for_acquisition(&floorFragment))
+        obstacle_blob_valid_for_acquisition(&floorFragment) ||
+        !rejectedBlobBlocksSeatClear(&floorFragment, 20.0f))
+        return false;
+    floorFragment.maxY = OBSTACLE_MIN_BOTTOM_Y - 1;
+    if (rejectedBlobBlocksSeatClear(&floorFragment, 20.0f))
         return false;
 
     ObstacleObservationResult noBlob;

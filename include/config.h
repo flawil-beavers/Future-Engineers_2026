@@ -465,13 +465,13 @@ static_assert(
         OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == 1,
     "Parking-edge localization direction must be reverse or forward");
 
-// Test-only Pure-Pursuit discovery movement after the reverse edge reference.
+// Pure-Pursuit discovery movement after the reverse edge reference.
 // The parking section's outer-row seats are known empty by rule; this path
 // rotates the forward camera toward the first upcoming inner-row seat. The
 // fixed parking position is asymmetric along the straight, so the two travel
 // directions use different field-x positions before the mirrored scan arc.
 constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
-constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = true;
+constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = false;
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
 // A 40 mm arc left the official green inner pillar clipped near image x=11
@@ -498,6 +498,28 @@ constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM = 18.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG = 5.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1200UL;
+// After the stationary scan, approach the already-built lap path at the same
+// validated low speed. Keep parking-piece ToF returns out of normal wall
+// correction until the rear axle is close and parallel to the lap baseline.
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S = 60.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM = 60.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG = 10.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM = 700.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 750.0f;
+static_assert(
+    OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S <=
+            OBSTACLE_PARKING_ENTRY_SPEED_MM_S,
+    "Parking-entry join must not exceed the validated discovery speed");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG < 90.0f &&
+        OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM >
+            OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
+        OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM >
+            OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM,
+    "Parking-entry join gates must permit convergence before travel abort");
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS = 32;
 static_assert(
     OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP > 0.0f &&

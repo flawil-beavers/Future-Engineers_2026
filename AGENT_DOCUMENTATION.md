@@ -30,6 +30,120 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 - Keep `OBSTACLE_CHALLENGE_TEST_PLAN.md` as an ordered checkbox list, not a log
   narrative. Put durable reasoning and important evidence here, and leave raw
   measurements in the USB logs or focused technical documents.
+- The user will explicitly report any physical contact during robot tests. When
+  the user presents a completed log without flagging contact, record that as
+  no user-observed contact unless the surrounding message is ambiguous. Never
+  infer contact solely from telemetry; ask if telemetry and the report conflict.
+
+---
+
+## 2026-08-29: log 233 passes repaired CW green-pillar connector
+
+Log 233 repeats the failed log-231 CW layout with green restored at inner seat
+2. This time the pillar received two valid votes during the reverse scan arc,
+was confirmed as `GREEN seat=2`, and injected the 260 mm avoidance before the
+scan pose. The join armed at 231.6 mm / 29.5 degrees and, with the injected
+path, converged after 341.1 mm at 37.4 mm / 10.0 degrees. This is substantially
+shorter than the 562.8 mm unmodified-path join in the contact run.
+
+The user submitted the log without reporting contact, which under the recorded
+project convention means no user-observed contact. The log contains no
+watchdog, stall, abort, ambiguity failure, or ToF correction during the join.
+The user manually disabled after the bounded connector test. This accepts the
+rejected-blob clear-veto fix and closes mirrored bounded connector validation.
+No code change or upload is needed. Next, repeat the same CW green-seat-2
+layout for one complete obstacle lap from the parked start; require one green
+confirmation/injection, no contact/intervention, all stations resolved, and
+`[PATH] Completed lap 1`, then stop manually rather than spending three laps.
+
+---
+
+## 2026-08-29: log 231 contacts green after false clear; log 232 passes empty CW connector
+
+Log 231 is physically invalid. The user placed green on the inner side in the
+south section after unparking; the firmware declared the relevant parking
+section stations clear, injected no avoidance, and drove into the pillar. The
+user had to remove it so the robot could continue. The CW join itself armed at
+228.8 mm / 30.9 degrees and completed after 562.8 mm at 24.1 mm / 10.0
+degrees, but those controller numbers cannot override the physical collision.
+
+The camera log identifies the false-clear mechanism. While clear votes were
+being accumulated, repeated rejected green regions reached bottom y=224--234.
+They were too low to pass production pillar geometry, so the path code received
+only `NO_BLOB` and certified the station clear. In the empty-field control log
+232, the rejected green regions were thin horizon fragments ending at y=92--96.
+That run completed the CW join after 576.7 mm at 17.0 mm / 10.0 degrees and the
+user reported no contact by the established reporting convention.
+
+Clear voting now also inspects the raw best colour blob. A rejected blob that
+reaches the existing obstacle depth band (`maxY >= OBSTACLE_MIN_BOTTOM_Y`) and
+whose image bounds overlap a candidate seat bearing vetoes clear evidence. It
+does not vote for a colour or inject a route; persistent ambiguity therefore
+reaches the existing stationary perception hold/abort instead of authorizing
+motion toward a possibly occupied seat. Thin horizon fragments remain eligible
+for empty-field clear evidence. Deterministic geometry preflight covers both
+the low-fragment veto and horizon-fragment non-veto.
+
+The IDE-managed `giga_r1_m7` build passes with 365304 bytes RAM and 423840
+bytes flash. M4 was not built because this is M7-only perception/path safety
+logic. Firmware was not uploaded. Next, upload M7 only with explicit consent
+and repeat the bounded CW run with the green pillar restored in exactly the
+log-231 position. Require a GREEN confirmation and injection before reaching
+the pillar, no contact/intervention, and a completed join. A safe ambiguity
+hold/abort is preferable to another false clear but does not yet accept the
+pillar case.
+
+---
+
+## 2026-08-29: log 230 passes CCW connector and three laps without contact
+
+Log 230 installed and exercised the guarded connector in CCW. Parking exit and
+edge localization passed, parking-entry discovery resolved S0 station 2 clear,
+and the join armed at 199.1 mm cross-track / 27.0 degrees heading error. It
+remained capped at a 60 mm/s target and completed after 564.9 mm at 30.6 mm /
+9.4 degrees, inside the 60 mm / 10 degree release gates. No normal wall-ToF
+correction occurred during the join, and there was no join rejection, travel
+limit, perception expiry, watchdog, stall, or abort. The user explicitly
+confirmed that the robot touched nothing.
+
+The robot was not manually stopped after the bounded join as planned; it
+continued and completed all three laps. All stations resolved, GREEN seat 3
+was confirmed and injected once, the optimized later-lap path was built after
+lap 1, and laps 1--3 completed. The usual final-parking-not-implemented stop
+was requested after lap 3. This is stronger CCW route coverage than required,
+but it does not replace the mirrored connector test. No code change follows
+from this run. Next, use the same firmware for one bounded CW parked `O` test
+and stop manually after `[PARK ENTRY JOIN] Complete` and stable south-straight
+tracking. Do not deliberately run three CW laps until that mirrored join is
+accepted.
+
+---
+
+## 2026-08-28: implement guarded parking-entry-to-lap connector
+
+The accepted parking-entry discovery formerly ended at an intentional
+test-only motor lock. Successful discovery now selects the globally nearest
+point on the already-built lap path and enters an explicit low-speed join
+state. The join is capped at the validated 60 mm/s discovery speed until
+cross-track error is at most 60 mm and heading error is at most 10 degrees.
+It rejects an initial path error above 700 mm or heading mismatch above 90
+degrees and locks off if convergence takes 750 mm of travel.
+
+Unresolved or timed-out parking-seat discovery remains a hard motor-locking
+failure. The transition explicitly re-enables steering after the stationary
+scan. Normal wall-ToF correction and discovery steering nudges remain
+suppressed during the join so a nearby magenta parking piece cannot move the
+field pose or distort the connector. Telemetry reports join arming,
+completion, rejected geometry, or travel-limit failure with the relevant
+cross-track, heading, and travel values.
+
+The IDE-managed `giga_r1_m7` build passes with 365304 bytes RAM and 423664
+bytes flash. M4 was not built because the connector and its configuration are
+M7-only. Firmware was not uploaded. Next, upload M7 only with explicit consent
+and run one bounded CCW connector test. Stop manually after it settles onto the
+south-straight lap path; require resolved discovery, join arm and completion,
+no contact or abrupt steering, and no ToF correction during the join. Mirror
+the bounded test in CW only after CCW passes.
 
 ---
 
