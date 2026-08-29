@@ -76,6 +76,188 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 
 ## Next: validate the parking-entry-to-lap connector
 
+- [x] Implement the user-selected observation-track architecture. After the
+      primary parking station resolves, preflight and traverse another 55 mm
+      full-lock reverse arc at 60 mm/s, use the normal lap-1 voting/CLEAR and
+      route-injection pipeline on the preceding station, then retrace the arc
+      forward before building the connector from the returned measured pose.
+      M7 builds at 366688 bytes RAM and 436592 bytes flash; no upload occurred.
+- [ ] After explicit upload permission, run CW/red with the green station-0
+      pillar restored. Require `[PARK ENTRY SCOUT] Preflight PASS`, a settled
+      reverse scan, about 55 mm outbound travel, station 0 GREEN confirmation
+      and live-route injection, about 55 mm forward return, and no wall/pillar
+      contact. An unresolved scout must stop safely and is not a pass.
+- [ ] Require the post-return connector to preflight against the updated
+      red-plus-green live route, start forward without an immediate inward
+      turn, complete within the unchanged endpoint/travel gates, and continue
+      through the normal green then red avoidances without contact or stall.
+- [ ] Only after the complete CW/red-plus-green transition is physically
+      contact-free, repeat the mirrored CCW/green-plus-red case.
+
+- [x] Analyze logs 358--361. Log 358's unguarded CW/red connector stalled after
+      104 mm while turning immediately inward; log 360 safely rejected the same
+      hidden-seat-0 conflict at -21.2 mm front clearance. Logs 359/361 CLEAR
+      reached the final connector segment but checked the 500 mm abort before
+      accepting the existing endpoint pose gate.
+- [x] Restore pose-based handoff semantics for the finite connector: accept the
+      unchanged 60 mm/15 degree endpoint gate before testing the unchanged
+      500 mm abort, without requiring progress to equal the exact last sampled
+      waypoint. Include endpoint error in any later travel-limit log. M7 builds
+      at 366664 bytes RAM and 434248 bytes flash; no upload occurred.
+- [x] Reject the attempted single guard-aware quintic after bounded offline
+      replay: from the log-360 pose it cannot satisfy hidden-pillar clearance,
+      the 42-degree steering gate, and the 500 mm/60 mm/15 degree handoff
+      envelope together. The experimental curve is not retained.
+- [ ] Choose and implement the next pillar-present architecture: either resolve
+      the hidden preceding pillar with a separate safe observation/avoidance
+      maneuver before connector motion, or obtain explicit authorization for a
+      newly justified travel envelope. Do not widen the current limit silently
+      and do not restore the disproven 150 mm leg.
+- [ ] After that architecture is implemented and explicitly authorized for
+      upload, test CW/red with the green pillar present before any CLEAR or CCW
+      validation. Physical contact remains a hard failure.
+
+- [x] Record the user's physical report for the two-test round: the first run
+      contacted the green pillar and is a hard failure; the second stopped.
+      `log_357` contains only the stopped second run and no forward connector
+      motion, so it is not evidence about the collision.
+- [x] The user clarified that the robot was probably not reset between the
+      collision and stopped runs, so no separate collision log is available.
+      Do not infer contact-free behavior from log 357.
+- [x] Guard the inner legal pillar position at the station immediately before
+      the parking-scan target, even while it is unobserved. Check every front
+      and rear connector pose against this hidden-pillar guard, log its seat and
+      clearance, and reject before motion on any conflict. M7 builds at 366664
+      bytes RAM and 434120 bytes flash; no upload occurred.
+- [ ] On the next explicitly authorized CW/red test, restore the green pillar
+      that was contacted. Require `hidden_guard_seat` in a connector PASS or a
+      safe `Preflight FAIL hidden_guard` stop, plus the user's confirmation of
+      no physical contact. A safe guard rejection is not a completed join.
+
+- [x] Analyze log 357. CW exit, localization, red seat-2 injection, and scan
+      completed. The connector safely rejected its first target at 43.2 mm
+      forward because 47.4 degrees exceeded the unchanged 42-degree bound; its
+      selected merge was only 260 mm forward/136 mm lateral and therefore too
+      short for the required transition.
+- [x] Require at least 350 mm spatially forward and use a gradual S-transition
+      with start/end tangent scales 1.25/1.50, bounded at 800/1000 mm. Retain
+      the clearance, steering, before-pillar, and travel safety gates. M7 builds
+      at 366664 bytes RAM and 433712 bytes flash; no upload occurred.
+- [ ] After explicit upload permission, repeat CW/red with both pillars.
+      Require preflight PASS at a merge at least 350 mm forward, initial
+      forward motion, no turn-around/contact/stall, connector completion at the
+      saved merge index, and normal red avoidance after the merge.
+- [ ] Do not proceed to CCW/green until the user physically confirms CW/red is
+      contact-free. Preflight and telemetry alone are insufficient.
+
+- [x] Analyze logs 353--356 at the reported 6.95 V. CCW green/CLEAR completed
+      the combined 70.2/70.1 mm localization continuation and entered the scan
+      arc without the former extra centered reverse. All four connectors then
+      stopped safely at preflight: their minimum-lookahead targets required
+      -62.6, +49.0, +56.2, and -38.1 degrees steering, with the CW CLEAR target
+      also 40.6 mm behind its nominal pose.
+- [x] Correct the Hermite derivative chord term from the reversed
+      `6*t^2 - 6*t` to `6*t - 6*t^2`, so generated waypoint headings and
+      preflight frames match the connector curve. Retain the 0.75 start tangent
+      but use a shorter 0.25 end tangent, capped at 100 mm, to preserve forward
+      departure before aligning with the lap route. M7 builds at 366664 bytes
+      RAM and 433712 bytes flash; no upload occurred.
+- [ ] After explicit upload permission, test CW/red first with both pillars
+      present. Require preflight PASS, a forward first target, no turn-around,
+      stall, wall contact, or pillar contact, connector completion at its saved
+      merge index, and normal confirmed red avoidance after the merge.
+- [ ] Only if CW/red is physically contact-free, test CCW/green with both
+      pillars and require the same transition criteria plus one continuous
+      localization reverse and no separate centered-reverse entry phase.
+- [ ] After both pillar-present directions pass, test the CLEAR layout in each
+      direction. Confirm the chosen merge is the forward heading-ray/path
+      intersection and does not select a behind-route target.
+
+- [x] Analyze logs 349--352. CCW localization stopped after 316--327 mm and a
+      separate entry state then reversed another 68--72 mm before the scan arc;
+      CW already had zero separate straight distance. All four direct connectors
+      safely rejected because their first minimum-lookahead targets required
+      42.6--79.3 degrees steering.
+- [x] Combine the CCW centered entry distance with localization: after latching
+      the second-marker transition, continue the same gyro-held reverse for 70
+      mm, brake once at the existing arc start, skip the redundant straight
+      entry states, settle full-lock steering, and run the 55 mm scan arc. Raise
+      direct-merge minimum forward distance to 250 mm and tangent scale to 0.75.
+      M7 builds at 366664 bytes RAM and 433696 bytes flash; no upload occurred.
+- [ ] In the next CCW run, require one continuous centered localization reverse,
+      `[PARK LOCALIZE] CCW continuation complete` near 70 mm, corrected pose near
+      x=60 mm, immediate arc preload with no separate reverse-straight segment,
+      and the same valid green/CLEAR camera scan behavior.
+- [x] Analyze logs 347--348. Even at 25 mm lookahead, the staged connector's
+      first curved target was only 7.9--14.5 mm forward and required about 80
+      degrees steering. The endpoint, not lookahead length, was unsuitable.
+- [x] At the user's direction, remove the 150 mm leg and cyclic merge target.
+      Build one direct cubic to an exact modified-route point selected in the
+      measured pose frame: 50--800 mm physically forward and, with a pillar,
+      retaining 150--500 mm of its normal approach; with CLEAR, closest to the
+      current heading-ray intersection. M7 builds at 366656 bytes RAM and
+      433080 bytes flash; no upload occurred.
+- [ ] Test CW/red first with both parking-section pillars present. Require
+      preflight PASS with positive `merge_forward`, a plausible small
+      `merge_lateral`, 150--500 mm `before_pillar`, a reachable selected
+      lookahead, forward motion without turn-around/contact/stall, connector
+      completion, and normal red avoidance after the merge.
+- [ ] Only after CW/red is physically contact-free, repeat CCW/green with both
+      pillars. Then test CLEAR in each direction and verify that the selected
+      merge point lies near the measured heading-ray/path intersection.
+- [x] Analyze logs 345--346 from the forward-envelope build. CCW/green safely
+      rejected a -48.1 degree target at 82.5 mm lookahead; CCW/CLEAR safely
+      rejected -49.6 degrees at 150 mm. These stops are correct but not valid
+      completed transitions.
+- [x] Make the 150 mm leg a real controller phase: prevent progress/lookahead
+      from entering the curve before 150 mm encoder travel. Afterward, select
+      and store the largest connector-specific lookahead, in 25 mm steps, that
+      passes the forward-target and 42-degree steering preflight at every curve
+      waypoint. The IDE-managed M7 build passes at 366656 bytes RAM and 433456
+      bytes flash; no upload occurred.
+- [x] Superseded at the user's direction: do not physically validate the staged
+      150 mm leg. The replacement is the direct spatial merge above.
+- [x] Reject a finite connector before motion when its simulated Pure Pursuit
+      lookahead is not ahead of the nominal pose or requires steering beyond
+      the configured physical limit. Repeat the same check from the measured
+      pose at runtime, and do not apply cyclic corner gates to connector-local
+      distance. The IDE-managed M7 build passes at 366648 bytes RAM and 433200
+      bytes flash; no firmware upload occurred.
+- [ ] On the next powered test, a geometrically unsuitable connector must log
+      `Preflight FAIL tracking_sample/target` and remain stopped; it must never
+      turn around. A safe rejection is not a completed transition or a physical
+      pass.
+- [x] Analyze logs 338--341. The pillar-present runs passed preflight but did
+      not complete: CCW/green stalled after 158 mm total connector travel, and
+      CW/red was manually disabled after 1615 mm. Both CLEAR runs rejected
+      because connector construction incorrectly required a confirmed pillar.
+      Physical contact status for the two pillar-present runs remains pending
+      the user's report.
+- [x] Restore the validated 0.55 green parking-entry lookahead scale for the
+      finite connector, allow CLEAR to use the inner-seat route phase with
+      wall-only preflight, log straight-leg completion and total path length,
+      and enforce the unchanged 500 mm recovery limit. The IDE-managed M7 build
+      passes at 366648 bytes RAM and 432104 bytes flash; no upload occurred.
+- [x] Logs 334-337 physically collided with the opposite parking-adjacent
+      pillar: the single cubic turned inward within 67-113 mm even when the
+      merge phase was corrected. The proposed straight clearance leg was later
+      removed at the user's direction and replaced by spatial merge selection.
+- [ ] If another pillar confirms while the connector is active, require a
+      stopped connector rebuild against the updated live path before motion
+      resumes. A stale connector after injection is a failure.
+
+- [ ] Logs 334-335 invalidate the generic 800-1400 mm merge window: CCW green
+      rejected preflight and CW red merged at index 16 after its confirmed
+      avoidance. Validate the replacement target at the injected taper start,
+      500 mm cyclically before the confirmed parking-section pillar.
+- [ ] Run CW/red first. Require the preflight line to report merge distance
+      approximately 500 mm before seat 2, connector completion before the red
+      pass, and the normal displaced live route to clear the red pillar. Stop
+      immediately on contact; do not accept confirmation alone as a pass.
+- [ ] Then run CCW/green. Require preflight PASS near the green seat-5 taper
+      start. If it rejects, preserve the stop and use the new sample plus
+      front/rear wall/pillar clearance telemetry to correct geometry.
+
 - [x] Upload the connector M7 build only with explicit user consent. M4 is
       unchanged and must not be rebuilt or uploaded.
 - [x] First run one CCW parked `O` test with the previously accepted parking
@@ -109,10 +291,28 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       empty S3 station-0 hold expiry; the veto is now limited to parking/join.
       Log 238 completed three CCW laps with green seat 5 but is physically
       invalid because the user reported a marginal pillar touch.
-- [ ] Upload the revised M7 build with consent and first validate the staged
-      join speed in the already contact-free CW green-seat-2 layout. Require
-      80 mm/s for only the first 150 mm, then 60 mm/s through join completion,
-      with no contact or abnormal steering. Stop after the bounded join.
+- [x] Build the measured-pose connector with the IDE-managed M7 PlatformIO
+      Core. Logs 330--331 showed a separate leftover
+      `OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY=true` stop after valid
+      localization; it is now false and the build passes. Do not upload without
+      explicit consent.
+- [ ] After explicit upload consent, run CW/red first from the validated parked
+      pose. Require `[PARK ENTRY CONNECTOR] Armed`, `preflight PASS`, Pure
+      Pursuit steering from the first forward command, no nominal nearest-route
+      jump, no old 450/500 mm join/recovery failure, and
+      `[PARK ENTRY CONNECTOR] Complete` at the saved merge index. Stop on any
+      contact or intervention and record the user's physical report. Confirm
+      the logged merge index is in the forward entry window, not near the lap
+      seam; a pending mode or no-motion result is not a valid test.
+- [ ] For the revised connector-time perception behavior, keep both established
+      red and green pillars on the field. In CW/red, require the red pillar to
+      receive confirmation/injection while the connector or before its pass;
+      a later unresolved-station failure is not acceptable. Record the exact
+      first visible/confirmed line and the user's physical contact report.
+- [ ] Only after CW/red passes, run CCW/green with the same connector criteria.
+      Require the confirmed green avoidance to remain active through the
+      connector, no premature lap boundary or discovery hold, and normal
+      discovery to begin from the saved cyclic merge phase.
 - [x] Establish whether log 238's marginal touch occurred on the 260 mm lap-1
       route or the 210 mm later-lap route. The user confirmed lap 1 only; laps
       2-3 were clear. Keep both displacement values and add a one-waypoint
@@ -750,6 +950,71 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 - [ ] Run one bounded CW and one CCW test. A join-limit stop is an acceptable
       safe diagnostic failure; contact, stall, or continuing beyond 450 mm is
       not.
+- [ ] Logs 302-303 isolate the contact to green seat 5; red seat 2 was physically
+      clear. Test green/CCW first with its new plateau, 100 mm/s join cap, and
+      0.55 lookahead scale. Require no green contact.
+- [ ] After green passes, repeat red/CW once. Its avoidance geometry and 175
+      mm/s join cap are intentionally unchanged; confirm it remains clear.
+- [x] Logs 304-305: green/CCW and red/CW were both physically contact-free.
+      Preserve their current clearance geometry and color-specific join speed.
+- [ ] Both runs safely stopped at the 450 mm join limit despite cross-track
+      reaching 34.2/30.9 mm; heading remained 60.1/47.9 degrees. Fix connector
+      heading convergence without widening the travel limit.
+- [ ] Replace or constrain lap-seam nearest-path joining with an explicit
+      forward connector that aligns to the cyclic route before normal progress
+      tracking. Revalidate green/CCW first, then red/CW, below 450 mm.
+- [ ] Logs 306-308 were contact-free, but red/CW and green/CCW again stopped at
+      450 mm with cross-track already inside 60 mm and heading still 48-63
+      degrees. Treat four consecutive occurrences as sufficient evidence to
+      implement a dedicated low-speed heading-alignment phase.
+- [ ] Keep total join travel capped at 450 mm. The alignment phase must begin
+      inside a conservative cross-track capture band and complete both the
+      existing 60 mm / 10 degree gates without changing pillar clearance.
+- [ ] Repeat CCW marker localization once during connector validation. Log 307
+      acquired the second marker but missed the confirmed far edge at its
+      distance bound; do not loosen thresholds from one miss.
+- [ ] Validate the implemented heading phase: it must start only after
+      cross-track <=60 mm, run at 80 mm/s with <=35 degrees logical steering,
+      and complete heading <=10 degrees within its 300 mm bound.
+- [ ] Confirm the extended 430 mm localization bound fixes the isolated log-307
+      second-edge miss without heading abort, contact, or marker-order changes.
+- [x] Logs 309-311 confirmed ordered localization within 341 mm; retain the 430
+      mm bound without further widening.
+- [ ] Reject direct heading steering: log 311 hit the red pillar and log 309
+      corrected heading while worsening cross-track from 60 to 114 mm.
+- [ ] Validate bounded Pure Pursuit recovery instead. After lateral capture,
+      retain obstacle-aware path steering at <=80 mm/s and require completion
+      inside a separate 500 mm recovery bound. Test red/CW first, then green/CCW.
+- [ ] Validate the stationary observation increase from 1200 to 1600 ms against
+      a weak/late color view like log 310 without weakening confirmation.
+- [x] Reject immediate handoff into the old nearest-route join: log 317 armed
+      after about 12 mm of scan but stopped at 88.5 mm / 55.6 degrees. Keep the
+      complete bounded scan temporarily until the measured-pose connector is
+      implemented and preflighted.
+- [ ] Confirm the 15-degree join gate prevents log-314-style false stops while
+      normal Pure Pursuit continues reducing heading error after completion.
+- [ ] Confirm earlier 750 mm lap-1 slowdown plus 800 ms bounded hold resolves
+      the log-315 S2 station-0 camera timeout without weakening two-frame votes.
+- [ ] Revalidate S2 station-0 and station-1 at the 100 mm/s discovery cap with
+      camera-target nudging suppressed through each injected avoidance. Require
+      the driven clearance path to match the normal-speed behavior and retain
+      at least 150 mm past-pillar protection before aiming at the next station.
+- [ ] Replace nominal-route nearest-point parking joining with a finite
+      measured-pose connector. Its first waypoint must be the localized pose;
+      its terminal position and tangent must match a selected forward waypoint
+      on the already-displaced fixed-field route.
+- [ ] Run swept-envelope preflight for that connector against both field walls,
+      the confirmed parking-section pillar, and the robot footprint. Reject an
+      unsafe connector without moving; do not translate the complete lap or its
+      fixed seat/wall geometry to the measured start pose.
+- [ ] Follow the connector with the standard obstacle-aware Pure Pursuit
+      controller from the first forward command. Transfer directly to the saved
+      cyclic merge index without a global nearest-path search, heading-only
+      controller, or separate recovery steering mode.
+- [ ] Validate the connector first CW/red and then CCW/green. Require continuous
+      Pure Pursuit control, no contact, no 450/500 mm join-limit stop, and a
+      bounded monotonic reduction in connector error before removing the old
+      join/recovery implementation.
 
 - [ ] Decide whether the unlikely 500 mm outer-extreme opposing pair
       (seat 6 followed by seat 9) needs competition acceptance testing; ask the

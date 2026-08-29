@@ -479,14 +479,16 @@ constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
 // Isolate the reverse gyro-straight drive immediately after the parking exit.
 // The robot stops after the bounded edge search instead of continuing into
 // parking-entry camera discovery and the lap join.
-constexpr bool OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY = true;
+constexpr bool OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY = false;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
 constexpr unsigned long OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 100UL;
 constexpr int8_t OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 380.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP = 7.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI = 3.5f;
+// Log 307 acquired the second marker but reached the old bound before three
+// far-edge wall frames arrived. Allow one additional short sensing interval.
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 430.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP = 5.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI = 2.5f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S =
     5.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG = 30.0f;
@@ -533,6 +535,9 @@ constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
 constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = false;
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
+// Continue the existing CCW gyro-held localization reverse to the scan-arc
+// start instead of scheduling a second centered reverse after localization.
+constexpr auto OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM = 70.0f;
 // A 40 mm arc left the official green inner pillar clipped near image x=11
 // in repeated CCW runs; acquisition is calibrated only from x=30. The extra
 // 15 mm at the measured radius rotates the camera about 7.9 degrees farther
@@ -557,22 +562,65 @@ constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG = 2.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM = 18.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG = 5.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
-constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1200UL;
+// Log 310 reached the scan pose but timed out unresolved. Allow several more
+// stationary camera frames without changing the scan geometry.
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1600UL;
+// Extend the settled reverse scan arc to aim at the preceding station, use
+// normal lap-1 seat voting there, and retrace the arc before joining the route.
+constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM = 75.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S = 60.0f;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS = 400UL;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS = 1600UL;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_BRAKE_MS = 150UL;
 // After the stationary scan, approach the already-built lap path at lap-1
 // speed. The path's curvature profile may still command less. Keep parking-
 // piece ToF returns out of wall correction until the robot joins the baseline.
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S = 175.0f;
+// Green seat 5 was contacted while joining in log 302. Preserve the proven red
+// join speed, but track the green avoidance bend without cutting its corner.
+constexpr auto OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S = 100.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_GREEN_JOIN_LOOKAHEAD_SCALE = 0.55f;
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM = 60.0f;
-constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG = 10.0f;
+// Log 314 reached 34 mm cross-track and 12.3 degrees while safely following
+// the obstacle-aware path. Hand normal Pure Pursuit control over at 15 degrees;
+// it will continue converging without an unnecessary recovery-limit stop.
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG = 15.0f;
 // Logs 298-300 completed joins within 250-387 mm. In log 301 the join remained
 // active for 716.9 mm and the user reported contact with the green block.
 // Reject gross starts and stop abnormal joins before they can continue that far.
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM = 350.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 450.0f;
+// Once lateral capture is achieved, continue on the obstacle-aware Pure
+// Pursuit curve at low speed. Direct gyro steering ignored that curve and hit
+// the red pillar in log 311.
+constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S = 80.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM = 500.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS = 64;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM = 25.0f;
+// Select a route point by its spatial relationship to the measured parking
+// pose. With a pillar, retain enough of its displaced approach; without one,
+// approximate the intersection of the current heading ray and sampled route.
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM = 350.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_FORWARD_MM = 800.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM = 150.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM = 500.0f;
+// The merge is an S-transition: preserve the departure tangent and give the
+// route-end tangent enough length to finish the lateral shift gradually.
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_SCALE = 1.25f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_SCALE = 1.50f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_MAX_MM = 800.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_MAX_MM = 1000.0f;
 static_assert(
     OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S > 0.0f &&
         OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S <= 175.0f,
     "Parking-entry join speed must not exceed lap-1 speed");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S <=
+            OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S &&
+        OBSTACLE_PARKING_ENTRY_GREEN_JOIN_LOOKAHEAD_SCALE > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_GREEN_JOIN_LOOKAHEAD_SCALE < 1.0f,
+    "Green parking-entry join must be slower with shorter lookahead");
 static_assert(
     OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM > 0.0f &&
         OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG > 0.0f &&
@@ -582,6 +630,42 @@ static_assert(
         OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM >
             OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM,
     "Parking-entry join gates must permit convergence before travel abort");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S <=
+            OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S &&
+        OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM > 0.0f,
+    "Parking-entry recovery must remain slow and bounded");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM <= 100.0f &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S <=
+            OBSTACLE_PARKING_ENTRY_SPEED_MM_S &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS > 0UL &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS <
+            OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS > 0UL &&
+        OBSTACLE_PARKING_ENTRY_SCOUT_BRAKE_MS > 0UL,
+    "Parking-entry scout must remain short, slow, and bounded");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS >= 8 &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_FORWARD_MM >
+            OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM >
+            OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_SCALE > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_SCALE <= 1.5f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_SCALE > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_SCALE <= 2.0f &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_MAX_MM >
+            OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM &&
+        OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_MAX_MM >=
+            OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_MAX_MM,
+    "Measured-pose connector geometry must be bounded");
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS = 32;
 static_assert(
     OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP > 0.0f &&
@@ -600,6 +684,11 @@ static_assert(
             OBSTACLE_PARKING_EXIT_STEERING &&
         OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG > 0.0f,
     "Parking-entry heading hold must remain bounded below full lock");
+static_assert(
+    OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM <
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM,
+    "CCW localization continuation must remain positive and bounded");
 static_assert(
     OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM <
             OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM &&
@@ -824,6 +913,11 @@ constexpr auto OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM = 210.0f;
 // the extreme adjacent transition. At release, that station remains about
 // 400 mm ahead and inside the existing perception/hold window.
 constexpr auto OBSTACLE_EXTREME_ADJACENT_RELEASE_MM = 100.0f;
+// Once an avoidance is injected, follow its clearance geometry without a
+// camera-target rotation until the rear of the vehicle has passed the pillar.
+// At reduced discovery speed the slew-limited nudge otherwise has more time to
+// grow and can pull Pure Pursuit away from the validated avoidance curve.
+constexpr auto OBSTACLE_DISCOVERY_NUDGE_RESUME_PAST_PILLAR_MM = 150.0f;
 // A newly confirmed second obstacle must not reshape the route while the rear
 // of the robot is still clearing the first obstacle.  At 100 mm past the first
 // seat, the conservative robot envelope is clear and 400 mm of approach to the
@@ -871,7 +965,9 @@ constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
 // target clear after two pillar-dropout frames. Give the official pillar more
 // frames to appear without weakening its separate two-vote confirmation.
 constexpr auto OBSTACLE_PARKING_ENTRY_CLEAR_FRAMES = 5;
-constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 600.0f;
+// Begin slowing before the calibrated 230-600 mm observation window so the
+// first usable view is not consumed at full lap speed (log 315).
+constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 750.0f;
 // Stop early enough that an unresolved near-side pillar cannot overlap the
 // chassis before the camera has produced a usable edge-of-view observation.
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
@@ -879,7 +975,9 @@ constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
 // first valid red vote in the same cycle that the former immediate abort ran;
 // 400 ms covers several normal ~80 ms camera frames without allowing motion
 // toward an unresolved station. The normal two-frame confirmation is retained.
-constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 400UL;
+// Log 315 exhausted 400 ms at S2 station 0. Preserve the hard stop and all
+// evidence gates, but allow roughly ten normal asynchronous camera frames.
+constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 800UL;
 // Slow before an unresolved station enters its short trusted camera window,
 // giving the asynchronous camera time for two independent frames. This remains
 // above the drivetrain's observed sub-90 mm/s oscillation region.

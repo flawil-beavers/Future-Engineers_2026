@@ -132,6 +132,8 @@ static float oc_parking_localization_heading = 0.0f;
 static float oc_parking_localization_heading_integral = 0.0f;
 static float oc_parking_localization_max_heading_error = 0.0f;
 static uint32_t oc_parking_localization_control_ms = 0;
+static bool oc_parking_localization_ccw_continuing = false;
+static float oc_parking_localization_continue_start_distance = 0.0f;
 
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
@@ -266,6 +268,8 @@ static void resetParkingExit()
     oc_parking_localization_heading_integral = 0.0f;
     oc_parking_localization_max_heading_error = 0.0f;
     oc_parking_localization_control_ms = millis();
+    oc_parking_localization_ccw_continuing = false;
+    oc_parking_localization_continue_start_distance = 0.0f;
 }
 
 static void initializeParkingFieldPose(float rearTofRangeMm)
@@ -817,6 +821,8 @@ static void finishParkingExit(bool stagedTest)
         oc_parking_localization_heading_integral = 0.0f;
         oc_parking_localization_max_heading_error = 0.0f;
         oc_parking_localization_control_ms = millis();
+        oc_parking_localization_ccw_continuing = false;
+        oc_parking_localization_continue_start_distance = 0.0f;
         TofDiagnosticSnapshot snapshot;
         oc_parking_localization_tof_sequence =
             get_tof_diagnostic_snapshot(referenceSensor, snapshot)
@@ -1122,9 +1128,9 @@ static void processParkingEdgeLocalizationTof()
             oc_parking_localization_wall_frames = 0;
         }
 
-        oc_parking_localization_transition_found =
-            oc_parking_localization_wall_frames >=
-            OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
+        if (oc_parking_localization_wall_frames >=
+            OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES)
+            oc_parking_localization_transition_found = true;
     }
 }
 
@@ -1474,13 +1480,41 @@ static bool updateParkingExit()
         const bool distanceLimitReached =
             creepDistance >=
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM;
-        if (
-            oc_parking_localization_transition_found ||
-            distanceLimitReached)
+        const bool counterClockwiseExit = oc_parking_exit_steering < 0;
+        if (oc_parking_localization_transition_found &&
+            counterClockwiseExit &&
+            !oc_parking_localization_ccw_continuing)
+        {
+            oc_parking_localization_ccw_continuing = true;
+            oc_parking_localization_continue_start_distance = get_distance();
+            Serial.print(
+                "[PARK LOCALIZE] CCW continuing centered reverse to arc start mm=");
+            Serial.println(
+                OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM,
+                1);
+        }
+        const float continuationTravel =
+            oc_parking_localization_ccw_continuing
+                ? distanceSince(
+                      oc_parking_localization_continue_start_distance)
+                : 0.0f;
+        const bool continuationComplete =
+            oc_parking_localization_ccw_continuing &&
+            continuationTravel >=
+                OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM;
+        if ((!counterClockwiseExit &&
+             oc_parking_localization_transition_found) ||
+            continuationComplete || distanceLimitReached)
         {
             stop(true);
             oc_parking_exit_brake_start_ms = millis();
             oc_parking_exit_state = PARKING_EXIT_LOCALIZE_BRAKE;
+            if (oc_parking_localization_ccw_continuing)
+            {
+                Serial.print(
+                    "[PARK LOCALIZE] CCW continuation complete travel_mm=");
+                Serial.println(continuationTravel, 1);
+            }
         }
         return true;
     }
