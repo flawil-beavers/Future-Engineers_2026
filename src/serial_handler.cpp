@@ -794,15 +794,9 @@ void serial_setup()
 {
   Serial.begin(SERIAL_BAUD);
   
-  // Wait for serial only if the robot isn't already enabled via the physical switch
-  // This allows the robot to run without a PC if the switch is ON, 
-  // but blocks for debugging if the switch is OFF.
-  while (!Serial && !system_enabled)
-  {
-    // Re-check switch in case user toggles it to skip waiting
-    system_enabled = digitalRead(ENABLE_SWITCH_PIN);
-    delay(10);
-  }
+  // Do not block autonomous startup waiting for a USB terminal. The RAM logger
+  // captures boot diagnostics, and the Obstacle Challenge blue-ready light can
+  // only become meaningful after the rest of setup (including the camera) runs.
 
   Serial.println("===== SERIAL INITIALIZED =====");
 }

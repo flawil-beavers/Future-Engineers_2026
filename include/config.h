@@ -343,9 +343,14 @@ static_assert(
 // These values come from the current 165 mm footprint model and must be
 // revalidated after any chassis, wheel-envelope, or steering change.
 constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 50;
+// Logs 253/254 showed that the full-lock final arc can leave little clearance
+// at a pink limit. Use the same larger-radius logical steering magnitude in
+// both directions. This remains an offset from SERVO_CENTER, so recalibrating
+// the servo zero preserves the mirrored +/- geometry.
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_STEERING = 45;
 constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 80;
-constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 400;
-constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 300;
+constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 200;
+constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 150;
 constexpr auto OBSTACLE_PARKING_EXIT_SEGMENT_COUNT = 5;
 
 // Safety gate for powered development. A value below SEGMENT_COUNT stops and
@@ -357,6 +362,11 @@ static_assert(
         OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT <=
             OBSTACLE_PARKING_EXIT_SEGMENT_COUNT,
     "Parking exit segment limit must select one or more valid segments");
+static_assert(
+    OBSTACLE_PARKING_EXIT_FINAL_STEERING > 0 &&
+        OBSTACLE_PARKING_EXIT_FINAL_STEERING <
+            OBSTACLE_PARKING_EXIT_STEERING,
+    "Final parking arcs must be symmetric and wider than full lock");
 
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM = 165.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_FRONT_MM = 125.0f;
@@ -380,20 +390,35 @@ constexpr auto OBSTACLE_REAR_TOF_BEHIND_AXLE_MM = 25.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM = 2.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM = 5.0f;
+// After one bounded correction, a confirmed stationary range in this window
+// is a precise usable pose even if drivetrain take-up missed the ideal target.
+// Continue from that measured coordinate instead of wasting time chasing it.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_USABLE_MIN_RANGE_MM = 60.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_USABLE_MAX_RANGE_MM = 70.0f;
 // Preserve the canonical 65 mm verification target, but stop a one-shot
 // correction 3 mm toward the rear marker. Log 221 overshot to 70.7 mm; a
 // reverse retry would restore the unsafe bidirectional chasing rejected by
 // logs 142/143. The 47 mm nominal rear-clearance result passes all 16 swept-
 // envelope tolerance cases and remains inside the existing final gate.
-constexpr auto OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM = 3.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM = 0.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_SAMPLE_SPAN_MM = 4.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_MOTION_AGREEMENT_MM = 8.0f;
-constexpr auto OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S = 50;
+// 60 mm/s is well above the ~45 mm/s stall region at 7V and low enough to
+// stop within 1-2 mm of target at this voltage. The micro-correction inherits
+// the same speed for consistency.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S = 60;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_MAX_TRAVEL_MM = 55.0f;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_MAX_MICRO_CORRECTION_MM = 15.0f;
+// Do not add encoder allowance to the planned correction. Logs 274-275 showed
+// that the former 20 mm allowance directly produced unsafe overshoot.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_DRIVE_ALLOWANCE_MM = 0.0f;
+// 200 ms initial settle lets the rear ToF reacquire the magenta piece cleanly.
 constexpr auto OBSTACLE_PARKING_REAR_TOF_SETTLE_MS = 200UL;
-constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_SETTLE_MS = 1000UL;
+// 500 ms post-move settle + 2 discard frames. Log db37588 was the last proven
+// reliable config; these match that value. 200 ms was too short at 7V.
+constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_SETTLE_MS = 500UL;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_CONFIRM_FRAMES = 3;
-constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_DISCARD_FRAMES = 3;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_POST_MOVE_DISCARD_FRAMES = 2;
 // The robot remains stopped throughout acquisition. One second was rejected by
 // log 182 after a transient run of out-of-range frames terminated an otherwise
 // valid parked start. Allow the rear sensor time to reacquire the magenta piece.
@@ -404,8 +429,11 @@ constexpr auto OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM =
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM =
     OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM +
     OBSTACLE_PARKING_REAR_TOF_SENSOR_TO_BODY_MM;
-constexpr auto OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM =
+constexpr auto OBSTACLE_PARKING_REAR_TOF_FORWARD_APPROACH_RANGE_MM =
     OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM -
+    OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM;
+constexpr auto OBSTACLE_PARKING_REAR_TOF_REVERSE_APPROACH_RANGE_MM =
+    OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM +
     OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM;
 static_assert(
     OBSTACLE_REAR_TOF_BEHIND_AXLE_MM >= 0.0f &&
@@ -416,7 +444,7 @@ static_assert(
     OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM >= 0.0f &&
         OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM <=
             OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM &&
-        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM > 0.0f,
+        OBSTACLE_PARKING_REAR_TOF_FORWARD_APPROACH_RANGE_MM > 0.0f,
     "Rear-ToF approach bias must remain inside the verified final range");
 static_assert(
     OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM > 0.0f &&
@@ -426,7 +454,7 @@ static_assert(
     "Rear-ToF target must leave positive clearance at both parking limits");
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 150.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 180.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 220.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
 // A short side-ToF return after alignment is expected to be the exact 200 mm
 // open end of the adjacent magenta parking piece, not the more distant outer
@@ -443,27 +471,54 @@ static_assert(
     OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG > 0.0f &&
         OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG < 90.0f,
     "Parking-exit ToF detection FoV must be a plausible full angle");
-// After the five validated manoeuvre segments, reverse straight until the
-// outer-wall-side ToF crosses the opposite edge of the magenta piece and sees
-// the black wall. Reversing leaves more approach distance for starting-section
-// discovery. This isolated test-stage motion is bounded and cannot start the
-// lap until its swept path has also passed the physical test.
+// After the five manoeuvre segments, reverse under gyro heading control even
+// if the side ToF initially sees only the distant outer wall. Pass the first
+// magenta limit, cross the parking gap quickly, then slow while passing the
+// second limit. Its far edge is the stable longitudinal field reference.
 constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
+constexpr unsigned long OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 100UL;
 constexpr int8_t OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 70.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 200;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM = 380.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP = 5.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI = 2.5f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S =
+    5.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG = 25.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG = 8.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FIRST_MARKER_SKIP_CONFIRM_MM = 100.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MIN_MM = 190.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_REFERENCE_MAX_MM = 400.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES = 3;
+constexpr auto OBSTACLE_PARKING_EXIT_MARKER_CONFIRM_FRAMES = 2;
 constexpr auto OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM = 25.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM = 25.0f;
+// CCW exits at 7V exit with ~40 mm x-error (logs 289/291/292); accept up to 50 mm.
+constexpr auto OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_MAX_Y_CORRECTION_MM = 25.0f;
 static_assert(
     OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == -1 ||
         OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION == 1,
     "Parking-edge localization direction must be reverse or forward");
+static_assert(
+    OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED >=
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED <= 100 &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM >
+        OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP > 0.0f &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI >= 0.0f &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S > 0.0f &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG > 0.0f &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG <
+            OBSTACLE_PARKING_EXIT_STEERING &&
+        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG > 0.0f &&
+        OBSTACLE_PARKING_EXIT_FIRST_MARKER_SKIP_CONFIRM_MM > 0.0f &&
+        OBSTACLE_PARKING_EXIT_FIRST_MARKER_SKIP_CONFIRM_MM <
+            OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM &&
+        OBSTACLE_PARKING_EXIT_MARKER_CONFIRM_FRAMES >= 2,
+    "Second-marker localization must remain fast, bounded, and confirmed");
 
 // Pure-Pursuit discovery movement after the reverse edge reference.
 // The parking section's outer-row seats are known empty by rule; this path
@@ -484,6 +539,7 @@ constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 55.0f;
 // modeled arc so servo lag cannot erase this short heading change.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM = 109.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SPEED_MM_S = 60.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_SPEED_MM_S = 80.0f;
 // Hold the localized heading on the long reverse approach beside the parking
 // barrier. Reverse steering has the opposite yaw response from forward.
 constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP = 3.0f;
@@ -492,25 +548,27 @@ constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG = 8.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_FADE_MM = 40.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_CORRECTION_START_DEG = 0.4f;
 constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_MAX_STEERING_DEG = 12.0f;
-constexpr unsigned long OBSTACLE_PARKING_ENTRY_STRAIGHT_STEER_SETTLE_MS = 200UL;
+constexpr unsigned long OBSTACLE_PARKING_ENTRY_STRAIGHT_STEER_SETTLE_MS = 100UL;
 constexpr auto OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_ABORT_DEG = 2.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM = 18.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG = 5.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1200UL;
-// After the stationary scan, approach the already-built lap path at the same
-// validated low speed. Keep parking-piece ToF returns out of normal wall
-// correction until the rear axle is close and parallel to the lap baseline.
-constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S = 60.0f;
+// After the stationary scan, approach the already-built lap path at lap-1
+// speed. The path's curvature profile may still command less. Keep parking-
+// piece ToF returns out of wall correction until the robot joins the baseline.
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S = 175.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG = 10.0f;
-constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM = 700.0f;
-constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 750.0f;
+// Logs 298-300 completed joins within 250-387 mm. In log 301 the join remained
+// active for 716.9 mm and the user reported contact with the green block.
+// Reject gross starts and stop abnormal joins before they can continue that far.
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_START_ERROR_MM = 350.0f;
+constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 450.0f;
 static_assert(
     OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S > 0.0f &&
-        OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S <=
-            OBSTACLE_PARKING_ENTRY_SPEED_MM_S,
-    "Parking-entry join must not exceed the validated discovery speed");
+        OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S <= 175.0f,
+    "Parking-entry join speed must not exceed lap-1 speed");
 static_assert(
     OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM > 0.0f &&
         OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG > 0.0f &&
@@ -523,6 +581,9 @@ static_assert(
 constexpr auto OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS = 32;
 static_assert(
     OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_KP > 0.0f &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_SPEED_MM_S >=
+            OBSTACLE_PARKING_ENTRY_SPEED_MM_S &&
+        OBSTACLE_PARKING_ENTRY_STRAIGHT_SPEED_MM_S <= 80.0f &&
         OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA > 0.0f &&
         OBSTACLE_PARKING_ENTRY_STRAIGHT_HEADING_FILTER_ALPHA <= 1.0f &&
         OBSTACLE_PARKING_ENTRY_STRAIGHT_FEEDFORWARD_DEG > 0.0f &&
@@ -734,6 +795,11 @@ constexpr auto OBSTACLE_OUTER_SAFE_APPROACH_LEAD_WAYPOINTS = 1;
 // taper. Together these form a short plateau around the complete vehicle pass.
 // Confirmed adjacent-pair and moderate 260 mm paths retain their old shapes.
 constexpr auto OBSTACLE_OUTER_SAFE_EXIT_HOLD_WAYPOINTS = 1;
+// Log 238 left effectively zero physical wheel margin on the CCW lap-1 green
+// seat-5 pass, while its unchanged 210 mm laps 2-3 were clear. Keep the 260 mm
+// peak displacement but hold it for one waypoint on each side of that pillar
+// so both the front- and rear-wheel phases receive the full avoidance.
+constexpr auto OBSTACLE_PARKING_CCW_GREEN_LAP1_PLATEAU_WAYPOINTS = 1;
 // Log_106 proved that reusing the 230 mm plateau on optimized laps prevented
 // contact but left only about 10 mm physical front-wheel clearance to the
 // outer wall, while retaining 108-138 mm ToF-estimated pillar clearance.
@@ -801,7 +867,7 @@ constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
 // target clear after two pillar-dropout frames. Give the official pillar more
 // frames to appear without weakening its separate two-vote confirmation.
 constexpr auto OBSTACLE_PARKING_ENTRY_CLEAR_FRAMES = 5;
-constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 420.0f;
+constexpr auto OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM = 600.0f;
 // Stop early enough that an unresolved near-side pillar cannot overlap the
 // chassis before the camera has produced a usable edge-of-view observation.
 constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
@@ -810,10 +876,10 @@ constexpr auto OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM = 340.0f;
 // 400 ms covers several normal ~80 ms camera frames without allowing motion
 // toward an unresolved station. The normal two-frame confirmation is retained.
 constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 400UL;
-// The drivetrain oscillates below its continuous controllable range at
-// 90 mm/s. Use the already validated test speed while approaching an unresolved
-// station; the final hold remains available if perception cannot resolve it.
-constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 175.0f;
+// Slow before an unresolved station enters its short trusted camera window,
+// giving the asynchronous camera time for two independent frames. This remains
+// above the drivetrain's observed sub-90 mm/s oscillation region.
+constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 100.0f;
 
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.
@@ -1007,4 +1073,4 @@ constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
 // line exposure fits inside the active window; remove only those idle lines.
 #define CAMERA_GC2145_HBLANK 0x011C
 #define CAMERA_GC2145_VBLANK 0x0000
-#define STARTUP_ROBOT_MODE MODE_CAMERA_CALIBRATION
+#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE

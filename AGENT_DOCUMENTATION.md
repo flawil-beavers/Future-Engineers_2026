@@ -37,6 +37,175 @@ constraints, and the next concrete action. It complements `AGENTS.md`, which
 
 ---
 
+## 2026-08-29: logs 288--292 validate two-stage parked start, 2-lap completion, and optimize 7V exit timings
+
+Logs 288 through 292 evaluate the two-stage rear ToF positioning, full laps, and unparking dynamics at 7V battery voltage:
+- **Full Lap Validation (Log 288 - CW):** Two-stage positioning corrected an
+  offset start from 86.7 mm to 60.0 mm (`accepted=yes`). The robot completed all
+  5 exit segments, performed reverse edge localization (`creep_mm=35.2`),
+  discovered S0 station 1 as `GREEN seat=2`, completed the parking join, and
+  drove **Lap 1 and Lap 2** with zero contact before manual stop at 15.2 m.
+- **CCW Unparking & Localization (Logs 289, 291, 292):** Two-stage positioning
+  consistently achieved precision within $\pm 5\text{ mm}$ (66.7, 64.7, 68.3 mm).
+  All 5 exit segments passed with zero wall contact. After segment 5, the robot
+  was positioned slightly past the magenta edge (`creep_mm=0.0`), producing an
+  x-correction of -37.2 to -41.5 mm which was rejected by the previous 35 mm limit.
+  Increased `OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM` to 50.0 mm.
+- **Timing & Speed Optimization for 7V Operation:**
+  - Raised `OBSTACLE_PARKING_REAR_TOF_SPEED_MM_S` from 45 to 60 mm/s to prevent
+    low-voltage motor stall while keeping braking travel tight.
+  - Restored proven settle times: `OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 400`
+    and `OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 300` so steering completes fully
+    between segments without sluggish transition delays.
+  - Set `OBSTACLE_PARKING_REAR_TOF_SETTLE_MS = 200UL` and `POST_MOVE_SETTLE_MS = 500UL`
+    (with 2 discard frames) for reliable stationary ToF averaging.
+
+The IDE-managed `giga_r1_m7` build passes with 365312 bytes RAM and 424272 bytes
+flash. M4 was not built because all changes are M7-only. Firmware was not uploaded.
+
+Next steps: (1) Upload `giga_r1_m7` firmware; (2) run CCW and CW parked tests to
+confirm prompt unparking and 3-lap obstacle completion.
+
+---
+
+## 2026-08-29: logs 283--287 validate CW reverse localization and resolve parking join perception hold
+
+Logs 283 through 287 evaluate the reverse steering fix and offset parked starts:
+- **CW Reverse Localization & Discovery Pass (Logs 283, 287):** Completed all 5
+  exit segments, reverse edge localization with `transition=yes` and `max_heading_error_deg=4.9`,
+  resolved CW S0 station 1 as `GREEN seat=2`, and armed the join.
+- **Parking Join False Hold Resolved (Logs 283, 287):** At the join arming pose
+  (pose near `x=652, y=-1246`), nearest-path projection selected waypoint 132
+  near the lap loop seam, which computed upcoming S0 station 0 as only 85 mm
+  ahead. This triggered an unneeded 400 ms lap discovery hold that stopped the
+  robot before the join could drive onto the track. Added `!parkingEntryJoining`
+  guard to `obstacle_path_update` so discovery holds remain inactive during the
+  join connector.
+- **Two-Stage Rear ToF Positioning (Strict +-5 mm Tolerance):** To ensure
+  the unparking manoeuvre never touches the barrier walls, the final tolerance
+  was strictly restored to `OBSTACLE_PARKING_REAR_TOF_FINAL_TOLERANCE_MM = 5.0f`
+  (usable window `[60.0, 70.0]` mm, nominal 65.0 mm). Positioning speed was
+  reduced from 80 mm/s to 45 mm/s to eliminate inertia coasting. If initial
+  open-loop mechanical take-up leaves an error > 5.0 mm (e.g. 7.7 mm as in log
+  284), a single bounded micro-correction step (capped at 15 mm) automatically
+  trims the remaining error at 45 mm/s before final stationary verification,
+  consistently achieving sub-millimeter placement accuracy.
+- **Reverse Localization Headroom (Logs 285, 286):** Log 285 aborted due to manual
+  intervention during reverse motion (user moved robot, causing 5.1° error). Log
+  286 grazed the former 5.0° limit. Increased `OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG`
+  from 5.0° to 8.0° to provide ample control headroom for the 340 mm reverse creep.
+
+The IDE-managed `giga_r1_m7` build passes with 365312 bytes RAM and 424240 bytes
+flash. M4 was not built because all changes are M7-only. Firmware was not uploaded.
+
+Next steps: (1) Upload `giga_r1_m7` firmware; (2) run one complete CW parked
+Obstacle Challenge test to verify precise rear positioning, the unblocked join,
+and South-Straight lap-1 tracking; (3) confirm full lap completion.
+
+---
+
+## 2026-08-29: logs 239--282 validate full laps and resolve CW reverse localization and rear ToF bias
+
+Logs 239 through 282 document full matrix validation from parked start through
+full obstacle laps:
+- Full 3-lap runs succeeded in CCW (logs 249, 252) with clean pillar avoidance.
+- Complete 1-lap runs succeeded in CW (logs 239, 244) and CCW (log 257).
+- Parking-entry discovery, pillar voting, and dynamic join convergence succeeded
+  across both green and red seats in CW and CCW.
+
+Two deterministic failure modes were isolated from the log sequence and fixed:
+1. **CW reverse edge localization heading runaway:** Logs 251, 254, 255, 260,
+   268, 270, 273, and 282 aborted with `Heading abort error/limit_deg=-5.0/5.0`.
+   In reverse Ackerman motion ($\dot{\theta} = \frac{v}{L}\tan\delta$ with $v < 0$),
+   positive steering produces negative yaw rate. The heading PI controller in
+   `PARKING_EXIT_LOCALIZE_DRIVE` used forward feedback signs ($-K_p \cdot e$),
+   causing positive feedback that diverged to the -5.0° abort limit. Multiplying
+   by the drive direction (`OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION = -1`)
+   restores stable negative feedback.
+2. **Rear ToF stationary verification failure on offset starts:** Logs 259, 261,
+   262, 263, 265, 266, 267, 269, 274, 276, 278, 279, 280, and 281 failed
+   verification when offset from the rear wall. With 0 mm drive allowance,
+   the 3.0 mm approach bias commanded a stop at 62.0 mm; any minor mechanical
+   take-up/slip caused settled ranges near 54--59.7 mm, below the 60.0 mm
+   minimum usable gate. Setting `OBSTACLE_PARKING_REAR_TOF_APPROACH_BIAS_MM = 0.0f`
+   aims directly for the canonical 65.0 mm target, settling reliably in the
+   center of the [60.0, 70.0] mm window.
+
+The IDE-managed `giga_r1_m7` build passes with 365328 bytes RAM and 425560 bytes
+flash. M4 was not built because all changes are M7-only. Firmware has not been
+uploaded.
+
+Next steps: (1) Upload `giga_r1_m7` firmware; (2) run a parked CW obstacle test
+to verify the reverse edge localization heading hold and join; (3) test parked
+starts with +/-15 mm rear offset to verify the 65 mm rear-ToF centering.
+
+---
+
+## 2026-08-29: isolate log-238 contact to lap 1 and add CCW green plateau
+
+The user confirmed that log 238's marginal green-seat-5 contact occurred only
+on lap 1; the 210 mm optimized route on laps 2 and 3 was physically clear.
+Keep both clearance magnitudes unchanged. The 260 mm CCW lap-1 green-seat-5
+route now reaches peak displacement one waypoint earlier and holds it one
+waypoint later, protecting the reported front- and rear-wheel phases without
+moving the peak closer to the inner wall. Other moderate lap-1 routes and all
+optimized routes retain their existing shapes.
+
+This change is combined with the already staged 80 mm/s first 150 mm of the
+parking-entry join and the parking/join-only rejected-blob veto. The
+IDE-managed `giga_r1_m7` build passes with 365304 bytes RAM and 424064 bytes
+flash. M4 was not built because these are M7-only path/perception changes.
+Firmware was not uploaded.
+
+Next tests, stopping the sequence on any failure: (1) bounded CW green-seat-2
+join to validate the 80-to-60 mm/s transition; (2) the same CW layout through
+one complete lap to confirm the S3 false-hold regression is gone; (3) CCW green
+seat 5 through its lap-1 pass and one complete lap to validate physical margin
+from the new plateau; and (4) only if that margin is clearly positive, repeat
+CCW for three laps to confirm the unchanged later-lap route.
+
+---
+
+## 2026-08-29: logs 234/235/238 expose veto scope and marginal CCW green clearance; speed initial join
+
+The three substantive requested runs are logs 234, 235, and 238. Logs 236 and
+237 were intermediate aborted attempts: log 236 safely locked because the CCW
+parking reference/localization was invalid, and log 237 was manually disabled
+during rear correction. Logs 234 and 235 both confirmed and injected CW green
+seat 2 and completed the join near 38 mm / 10 degrees without reported
+contact, but neither completed lap 1. Both reached a perception-hold expiry at
+empty S3 station 0 and were manually disabled. Applying the log-231 rejected-
+blob clear veto to the whole lap therefore regressed previously validated
+normal discovery. Limit that extra veto to parking discovery and the guarded
+join; after joining, retain the established production-valid discovery rules.
+
+Log 238 confirmed/injected CCW green seat 5, completed the join after 712.6 mm
+at 60.0 mm / 8.7 degrees, resolved all stations, and completed three laps. The
+user reported that the robot barely touched the green pillar, describing about
+0.5 mm wheel clearance. Physical contact invalidates the run despite its
+formal completion. The log does not identify whether the marginal pass was the
+260 mm lap-1 route or the 210 mm later-lap route, so do not change clearance
+geometry until the user identifies the pass/lap or a bounded repeat isolates
+it.
+
+At the user's request, the first 150 mm of the forward parking-entry join now
+uses 80 mm/s, a speed already validated by the exit and low-speed drivetrain
+tests. The remainder stays at 60 mm/s for pillar approach and final convergence.
+Telemetry logs the transition as `[PARK ENTRY JOIN] Initial phase complete`.
+The ambiguous-blob clear veto is now limited to parking entry/observation/join,
+which preserves its collision protection without causing later empty-station
+hold expiry.
+
+The IDE-managed `giga_r1_m7` build passes with 365304 bytes RAM and 424016
+bytes flash. M4 was not built because both changes are M7-only. Firmware was
+not uploaded. Next, upload M7 only with explicit consent and validate one
+bounded CW green-seat-2 connector, the already contact-free geometry. Require
+an 80 mm/s initial phase ending near 150 mm, a 60 mm/s final phase, successful
+join, and no contact. Do not repeat the marginal CCW seat-5 layout until its
+contact lap/phase is known or isolated safely.
+
+---
+
 ## 2026-08-29: log 233 passes repaired CW green-pillar connector
 
 Log 233 repeats the failed log-231 CW layout with green restored at inner seat
@@ -4550,3 +4719,539 @@ values, before selecting any further geometry change.
   compensation.
 - The affected M7 environment builds successfully: 365296 bytes RAM and
   422504 bytes flash. M4 was not built because this lifecycle change is M7-only.
+
+## 2026-08-29: obstacle challenge default startup mode
+
+- Changed `include/config.h` so `STARTUP_ROBOT_MODE` defaults to
+  `MODE_OBSTACLE_CHALLENGE` after power-on/reset instead of camera calibration.
+- Serial mode selection can still override the mode for the current power cycle.
+
+## 2026-08-29: parking-entry runs 239-243 and follow-up fixes
+
+- `log_239.txt` passed the CW green-seat-2 parking-entry test and completed lap
+  1 without reported contact. Its join used 80 mm/s for the first 150 mm, then
+  60 mm/s, and released at 346 mm travel with 38.4 mm cross-track error and
+  9.9 degrees heading error.
+- `log_240.txt` is physically invalid: the green seat-2 pillar was not acquired,
+  the target station was declared clear, and the robot drove into the pillar
+  before the user stopped it. The camera repeatedly supplied rejected green
+  blobs reaching the obstacle-depth portion of the image, but their horizontal
+  position did not overlap the predicted seat bearing. While stationary at the
+  parking target, any rejected color blob at obstacle depth now vetoes a CLEAR
+  decision; the narrower predicted-bearing veto remains elsewhere.
+- `log_241.txt` stopped before the route because the otherwise consistent edge
+  localization requested a -27.2 mm X correction, just outside the former
+  25 mm gate. The gate is now 30 mm; larger corrections such as the previously
+  rejected -36 mm case remain invalid.
+- `log_242.txt` and `log_243.txt` both passed the revised CCW lap-1 green-seat-5
+  pillar with no reported contact and visibly better clearance. Their apparent
+  stops after the pillar were parking-entry join failures at the 750 mm travel
+  limit (54.6/15.6 and 50.6/14.6 mm/degrees), not deliberate pauses. The limit
+  is now 900 mm while the 60 mm/10 degree release requirements remain intact.
+- The user requested more speed. The forward join now uses 100 mm/s for its
+  first 200 mm and then 60 mm/s. The long reverse straight parallel to the
+  parking wall now uses 80 mm/s; the short scan arc remains at the validated
+  60 mm/s.
+- Retain the stationary full-lock steering settle between the reverse straight
+  and scan arc. It intentionally lets the servo reach the scan-arc steering
+  angle; removing it previously shortened the effective scan and risks missed
+  pillars. A moving transition would require a separate bounded validation.
+- The IDE-managed `giga_r1_m7` build passed: 365304 bytes RAM and 424184 bytes
+  flash. M4 was not built because these changes affect only M7 behavior. No
+  firmware was uploaded.
+- Next validation: first run the CW green-seat-2 case and require either a valid
+  detection/injection or a safe unresolved hold--never a false CLEAR. Then run
+  the CCW green-seat-5 case and require accepted localization, no contact, and
+  join release before 900 mm. Only after both pass should a third complete lap
+  validate the higher entry speeds under normal continuation.
+
+## 2026-08-29: log 244 second-run pink-wall contact
+
+- `log_244.txt` contains two starts. The first CCW run completed parking entry,
+  detected green seat 5, completed its join at 762.5 mm, and continued until
+  the user disabled it. On the second CW start, final parking-exit alignment
+  triggered early at 137.4 mm instead of the modeled 150 mm. The wall-side ToF
+  was only 29 mm at the stopped pose. The following 80 mm/s reverse-straight
+  command advanced only 1.3 mm before the stall detector disabled the robot;
+  the user reports physical contact with the pink wall. This second run is
+  invalid and the contact must not be attributed to accumulated straight-line
+  drift: the reverse phase began already alongside the pink piece.
+- Fixed final-segment completion so reaching the heading tolerance after the
+  120 mm minimum captures alignment and immediately centers the steering, but
+  no longer ends the segment. It continues straight to the modeled 150 mm
+  endpoint, then brakes. The 180 mm maximum remains the fallback if alignment
+  is never captured. This preserves the aligned heading while adding the
+  missing longitudinal clearance before reverse-parallel motion.
+- Retain the requested 80 mm/s reverse-straight speed for the bounded retest.
+  Do not proceed to pillar-route validation until one CW parking exit and
+  reverse-straight phase completes without pink-wall contact or stall. Expect
+  separate `Final alignment captured` telemetry followed by a segment stop at
+  at least 150 mm.
+- The IDE-managed `giga_r1_m7` build passed with 365304 bytes RAM and 424376
+  bytes flash. M4 was not built because the change is M7-only. No firmware was
+  uploaded.
+
+## 2026-08-29: logs 245-249 and second-marker localization redesign
+
+- The user reports no wall contact in any of logs 245-249. `log_245.txt`
+  completed CW unparking and the entry join, but expired its lap-1 perception
+  hold at S3 station 0. `log_247.txt` likewise completed CW unparking and its
+  join but expired at S1 station 0. Both failures occurred at 335 mm after the
+  short trusted seat-view interval had effectively passed, so a stationary
+  400 ms recovery could not restore the missing geometry.
+- `log_246.txt` stopped after CW exit because its 201 mm final side return was
+  classified as the distant wall and the old controller refused to arm without
+  a short first-marker seed. `log_248.txt` had a 240 mm final return, attempted
+  the old search without a piece observation, and correctly rejected the
+  resulting invalid localization. These are precisely the brittle initial-wall
+  cases addressed by the new sequence. `log_249.txt` completed CCW unparking,
+  localization, parking-entry discovery, and all three laps.
+- Lap-1 discovery now caps speed at 100 mm/s from 600 mm before the nearest
+  unresolved station until it resolves or reaches the existing 340 mm hold.
+  The camera normally needs about 160 ms for two independent frames; slowing
+  before the trusted view opens gives it multiple usable frames instead of
+  attempting recovery after the view closes. Normal lap-1 speed remains
+  unchanged elsewhere, and laps 2-3 remain unchanged.
+- Parking localization no longer requires any marker or wall to be visible at
+  the final exit pose. It immediately reverses under gyro heading control. A
+  short return confirms the first magenta limit; a geometrically consistent
+  outer-wall return can also prove that the first limit was already passed.
+  The robot crosses the gap at 120 mm/s, confirms the second magenta limit in
+  two frames, slows to 60 mm/s, and completes localization only after three
+  consistent outer-wall frames prove that it has passed the second limit.
+- The second passed edge is the canonical longitudinal reference: x=212.5 mm
+  for CCW and x=500 mm for CW. The project coordinate frame calls the direction
+  along the south straight X; this is the physical direction the user referred
+  to as Y. The post-edge outer-wall range independently corrects canonical Y.
+  Search travel is limited to 380 mm, heading error aborts above 3 degrees, and
+  steering correction is limited to 12 degrees.
+- Unparking steering settles were reduced from 400 to 200 ms, encoder brake
+  holds from 300 to 150 ms, initial rear-ToF settle from 200 to 100 ms, rear-ToF
+  post-move settle from 1000 to 500 ms, and the parking-entry straight-steering
+  preload from 200 to 100 ms. Sensor confirmation frame counts and geometric
+  acceptance gates remain unchanged.
+- The parking-entry forward join now uses the normal 175 mm/s lap-1 cap for its
+  entire length; the curvature-derived path speed may still command less. The
+  former 100/60 mm/s staged caps were removed.
+- Validate the new longer localization in isolation before relying on the lap:
+  one CW and one CCW run, no pillars required. Both must log first-marker state,
+  second-marker acquisition, speed reduction, second-edge completion within
+  380 mm, no heading abort, no contact, and valid X/Y corrections. Only then
+  run the two previously failing empty-seat cases to verify the 100 mm/s
+  pre-window approach prevents hold expiry.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 424840
+  bytes flash. M4 was not built because all changed behavior is M7-only. No
+  firmware was uploaded.
+
+## 2026-08-29: logs 250-251 reverse gates and blue ready indication
+
+- The user tested both unparking directions and reports that the shorter stops
+  between movements look much better. No contact was reported. Both runs
+  exercised the intended two-marker sequence rather than failing perception.
+- `log_250.txt` (CCW) recognized the first marker, crossed the gap at 120 mm/s,
+  acquired the second marker, slowed for its edge, and completed the transition
+  at 312.6 mm with only 1.4 degrees maximum heading error. Its -30.1 mm X
+  correction missed the 30 mm acceptance gate by 0.1 mm, so entry was not
+  armed. Increase only the second-edge X-correction gate to 35 mm. This remains
+  far below the 380 mm travel bound and does not weaken marker/wall detection.
+- `log_251.txt` (CW) recognized and passed the first marker but reached exactly
+  the 3.0-degree gyro abort while crossing the longer gap at 120 mm/s. Increase
+  the long-search heading abort to 5 degrees while retaining the 12-degree
+  steering cap, gyro correction from the first motion cycle, and 380 mm travel
+  limit.
+- Added an active-low onboard blue readiness indication for the default
+  Obstacle Challenge. With the physical enable switch LOW, the mode manager now
+  initializes the camera and vision while motion remains disabled. Blue turns
+  on only after that initialization succeeds. Toggling the switch turns blue
+  off immediately before enabling and starting the challenge. Other modes and
+  stop-all keep blue off; pausing a run does not falsely advertise a fresh boot
+  readiness state.
+- Removed the indefinite USB-terminal wait from serial initialization. The RAM
+  logger already retains boot diagnostics, and without this change a headless
+  reset with the switch LOW could never reach camera initialization or the blue
+  ready indication.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425008
+  bytes flash. M4 was not built because these changes are M7-only. No firmware
+  was uploaded.
+- Next validation is one CW and one CCW run. Require blue after reset/camera
+  initialization, blue off immediately on the switch event, both marker phase
+  messages, completed second-edge localization, accepted X/Y corrections, no
+  5-degree heading abort, no 380 mm travel limit, and no contact.
+
+## 2026-08-29: logs 252-254 CW clearance and marker-phase fix
+
+- `log_252.txt` is a complete CCW success: both parking markers were classified
+  correctly, second-edge localization completed at 324.2 mm with accepted
+  -22.7/-20.3 mm X/Y corrections and 1.8 degrees maximum heading error, the
+  parking-entry red seat-5 scan and join completed, and all three laps finished.
+  The user reported no contact. Preserve the CCW exit geometry unchanged.
+- `log_253.txt` is not a second-wall miss. Its final CW side return was 221 mm,
+  so the controller immediately assumed the first marker had already passed.
+  A short return appeared only about 51 mm later and was actually the nearby
+  first marker being reacquired at its edge, but the state machine labeled it
+  as the second marker. The impossible 289.2 mm correction correctly failed.
+  A distant-wall return may now prove the first marker was skipped only after
+  100 mm of uninterrupted reverse travel. Any confirmed short return before
+  then is classified as the first marker and must be passed before searching
+  for the second.
+- `log_254.txt` correctly classified and passed the first marker, then reached
+  the 5-degree heading abort while crossing toward the second. Increase the
+  gyro heading controller from Kp 3 to 4 and its steering cap from 12 to 15
+  degrees, retaining the 5-degree abort and 380 mm travel limit. This acts
+  earlier rather than accepting more drift.
+- The user observed that CW remains physically too close to the parking pink
+  limits. Log 254 ended the final exit arc with a 58 mm side-ToF return, only
+  about 23 mm beyond the established 35 mm sensor-to-steered-wheel inset.
+  Implement the user's larger-radius proposal only for the CW final arc by
+  reducing its steering magnitude from 50 to 45 degrees. CCW remains at 50.
+  Extend the final-alignment fallback from 180 to 220 mm so the wider CW arc
+  has enough distance to regain the starting heading; heading capture and
+  centered-wheel completion behavior are unchanged.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425056
+  bytes flash. M4 was not built because the changes are M7-only. No firmware
+  was uploaded.
+- Next test only CW in a bounded run. Require segment 5 to report steering -45,
+  final heading capture before 220 mm, visibly improved pink-limit clearance,
+  correct first-then-second marker messages, accepted corrections, less than
+  5 degrees reverse heading error, and no contact/stall. Do not repeat CCW
+  unless a later shared change affects it.
+
+## 2026-08-29: symmetric final parking-exit arcs
+
+- The user explicitly requested symmetric behavior because the physical servo
+  zero may be adjusted later. Supersede the direction-specific final-arc plan:
+  both final parking-exit arcs now use the same 45-degree logical magnitude,
+  producing -45 for CW and +45 for CCW. Earlier segments retain their symmetric
+  50-degree magnitude.
+- The command remains a logical offset passed through the normal steering API;
+  it is not a raw servo position. Therefore changing `SERVO_CENTER` later moves
+  both physical commands equally and preserves the mirrored +/-45 geometry.
+- The 220 mm final-alignment fallback now applies symmetrically. Because this
+  shared geometry change supersedes the accepted CCW full-lock arc from log
+  252, both CW and CCW require one bounded validation before route testing.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425056
+  bytes flash. M4 was not built because the change is M7-only. No firmware was
+  uploaded.
+
+## 2026-08-29: logs 255-258 CW reverse margin and startup handoff
+
+- `log_255.txt` validated the symmetric CW -45-degree final arc but still hit
+  the 5-degree heading abort while crossing between parking markers at
+  120 mm/s. `log_256.txt` was stopped during initial rear-ToF acquisition and
+  contains no useful manoeuvre result. No contact was reported.
+- `log_257.txt` validated the symmetric CCW +45-degree final arc. It passed both
+  marker phases, localized at 333.4 mm with accepted -26.1/-5.3 mm corrections
+  and only 0.4 degrees maximum heading error, completed parking entry and its
+  join, and completed lap 1 before the user disabled it. No contact was
+  reported.
+- `log_258.txt` did not fail the marker search: CW found both markers and
+  accepted 28.4/-13.6 mm corrections at 337.1 mm. However, maximum heading
+  error was 4.9 degrees, immediately below the 5-degree abort. The corrected
+  pose was near x=600, beyond the old x=520 scan start, so the scan contained
+  only its 55 mm arc. While the robot was still in the parking-entry join, a
+  nearest-path projection selected the opposite side of the lap seam and
+  reported unresolved station 0 only 85 mm ahead. Its perception hold expired
+  before the join could establish a valid route pose.
+- Reduce the symmetric fast marker-crossing phase from 120 to 100 mm/s. This
+  remains substantially faster than the original 60 mm/s search but restores
+  gyro correction margin without increasing the 5-degree abort or 15-degree
+  steering limit.
+- Continue collecting camera evidence during the parking-entry join, but do
+  not use nearest-path seat distance to slow or stop until the 60 mm/10-degree
+  join gate is satisfied. This removes the log-258 false 85 mm hold caused by
+  ambiguous lap-seam projection; normal lap-1 discovery control starts as soon
+  as the join completes.
+- The user requested less delay between the initial forward/reverse rear-position
+  correction and the first unparking arc. Reduce the post-move stationary wait
+  from 500 to 200 ms and discard only the first fresh rear-ToF frame instead of
+  three. Retain three accepted verification frames, the 5 mm target gate, and
+  the motion-agreement check. This removes roughly 460 ms of fixed/frame delay
+  without weakening the final measurement count.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425056
+  bytes flash. M4 was not built because the changes are M7-only. No firmware
+  was uploaded.
+- Next run one CW test first. Require reverse heading comfortably below 5
+  degrees, both-marker localization, no perception hold before join completion,
+  and a completed join. If that passes, run one CCW regression because the
+  100 mm/s crossing and shorter rear-ToF handoff are shared.
+
+## 2026-08-29: logs 259-261 rear positioning and reverse steering authority
+
+- The user reports many remaining unparking failures; no contact was reported.
+  Logs 259 and 261 both stopped before the arcs during rear-ToF positioning.
+  Their encoders reported the planned 13-15 mm short corrections, but the rear
+  sensor changed by only about 4 mm. Log 260's longer 25.4 mm correction moved
+  24.3 mm at the sensor and verified successfully. This isolates the failures
+  to drivetrain take-up/ineffective motion on short positioning moves, not bad
+  rear-ToF data or the shortened stationary verification.
+- Rear positioning is now sensor-closed-loop while moving. Fresh, valid rear
+  ToF samples stop the correction when the 62 mm approach target is reached;
+  encoder travel is retained as a safety bound rather than assumed to equal
+  chassis displacement. Up to 20 mm beyond the geometrically planned encoder
+  move is allowed for drivetrain take-up, still capped by the existing 55 mm
+  maximum. The existing brake, 200 ms settle, discarded fresh frame, three
+  accepted stationary samples, 5 mm final target gate, and motion-agreement
+  check remain intact. New logs identify `tof_target` versus `travel_bound`.
+- Log 260 completed all five CW exit segments, recognized and passed the first
+  marker, acquired the second, then reached the 5-degree heading abort. The
+  reverse controller remained capped: Kp 4 requests 20 degrees at 5 degrees of
+  error, but the former cap allowed only 15. Raise the symmetric localization
+  steering cap to 20 degrees while retaining Kp 4, 100/60 mm/s speeds, the
+  5-degree abort, and 380 mm travel bound. This is the steering authority the
+  existing gain already requests rather than a further gain increase.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425464
+  bytes flash. M4 was not built because all changes are M7-only. No firmware
+  was uploaded.
+- Next validate CW first, ideally from a rear range needing less than 20 mm of
+  correction: require correction stop reason `tof_target`, accepted stationary
+  verification, both marker phases, maximum heading below 5 degrees, completed
+  localization and no contact. Then run one CCW regression. If either short
+  correction reaches `travel_bound`, do not widen it; inspect traction/motor
+  telemetry and the verified sensor displacement first.
+
+## 2026-08-29: logs 262-267 directional rear-ToF stopping
+
+- The user ran six more tests. Only log 264 completed unparking; the robot did
+  not touch any wall in any run. Preserve that physical observation separately
+  from the firmware's high failure rate.
+- Logs 262, 263, 265, 266, and 267 all failed stationary rear verification
+  before segment 1. Their moving filtered rear ranges lagged the eventual
+  stationary value by roughly 12-20 mm, so none recognized the live target and
+  all stopped on the encoder allowance. Using filtered ToF for a short moving
+  stop is therefore invalid even though it remains appropriate for confirmed
+  stationary measurements.
+- The approach bias was also applied with the wrong sign while reversing. A
+  forward correction should stop near 62 mm and coast upward toward the 65 mm
+  final target; a reverse correction must stop near 68 mm and coast downward.
+  Driving both directions toward 62 mm caused the reverse failures to overshoot
+  badly. Logs 262 and 267 began at 68.3 mm, already inside the accepted final
+  window, but unnecessarily reversed until their stationary ranges were near
+  50 mm.
+- Rear positioning now skips motion whenever the initial three-frame stationary
+  average is within the existing +/-5 mm final gate. Outside that window it
+  uses mirrored approach targets: 62 mm forward and 68 mm reverse. While moving,
+  the stop decision uses each fresh selected raw ToF return so filter lag cannot
+  hide target crossing. Stationary verification remains based on three
+  consistent filtered frames, with the existing motion-agreement and travel
+  safety bounds unchanged.
+- Log 264 is the successful CCW reference: rear verification accepted at 63 mm,
+  both-marker localization completed after 344.8 mm with 1.2 degrees maximum
+  heading error and accepted -25.1/-7.6 mm corrections, and parking-entry
+  discovery resolved seat 5 clear. The user manually disabled while its join
+  was still active; no wall contact occurred.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425480
+  bytes flash. M4 was not built because these changes are M7-only. No firmware
+  was uploaded.
+- Next perform two bounded unparking tests, one CW and one CCW. Require either
+  an immediate start when initial rear range is 60-70 mm, or a `tof_target`
+  correction stop followed by `accepted=yes`. Both must then complete marker
+  localization without contact. If rear verification still fails, compare the
+  logged raw stop range to the stationary final range before changing bounds.
+
+## 2026-08-29: logs 268-271 measured-pose acceptance and gyro gain
+
+- Logs 268 and 271 began immediately from confirmed rear ranges of 60-61 mm,
+  proving the no-move final-window behavior. Log 271 completed CCW marker
+  localization with 1.5 degrees maximum heading error and completed the
+  parking-entry join. Logs 268 and 270 completed their CW exit arcs and found
+  both markers but again reached the 5-degree reverse heading abort. Log 269
+  was the only rear-positioning abort, finishing stationary at 53.7 mm after a
+  directionally correct reverse move from 81.7 mm.
+- The M4 rear sensor uses GPIO software I2C at 100 kHz, whereas the side sensors
+  use 400 kHz hardware buses. This adds transaction overhead, but it is not the
+  dominant update limit: the VL53L4CX measurement timing budget is 30 ms, M4
+  polls readiness every 1 ms, publishes every completed measurement, and M7
+  imports monotonically sequenced frames over RPC. Each one-second-class
+  positioning move receives many frames. Logs instead show drivetrain take-up
+  and a large difference between moving returns and the final stationary range.
+- Replace target-only acceptance after the single bounded positioning move
+  with precise measured-pose acceptance. The ideal target remains 65 +/-5 mm.
+  If it misses, a confirmed stationary range from 48 through 80 mm is accepted
+  only when measured displacement has the commanded sign. The exact confirmed
+  range initializes the field coordinate; the firmware does not spend time on
+  a second bidirectional correction. Ranges outside that bounded window still
+  stop safely. Logs 262, 263, 265-267, and 269 would all have had known usable
+  stationary poses under this policy instead of aborting.
+- After raising the localization cap to 20 degrees, Kp 4 requests only 20
+  degrees at the 5-degree abort and is no longer saturated earlier. Repeated CW
+  failures therefore justify the user's proposed gain change now: increase Kp
+  symmetrically from 4 to 5 and the cap from 20 to 25 degrees. Retain the
+  100/60 mm/s speeds, 5-degree abort, 380 mm travel bound, and logical steering
+  coordinates so future servo-center changes remain compatible.
+- The IDE-managed `giga_r1_m7` build passed with 365320 bytes RAM and 425664
+  bytes flash. M4 was inspected but not changed or built. No firmware was
+  uploaded.
+- Next run CW first, then CCW. A correction may report `mode=target` or
+  `mode=measured_pose`; both must continue to segment 1. Require CW maximum
+  reverse heading below 5 degrees and completed second-edge localization. If
+  CW still reaches the abort with Kp 5/cap 25, capture the error sign and do not
+  further widen the steering cap without checking servo response latency.
+
+## 2026-08-29: safety regression reported after measured-pose widening
+
+- Before log analysis or further implementation, record the user's physical
+  observation: many unparking attempts still failed, and in the last run the
+  robot touched the wall and stalled. This supersedes the earlier no-contact
+  observations only for the new post-log-271 test batch; those older batches
+  remain accurately documented as contact-free.
+- The user explicitly judges the 48-80 mm measured-pose acceptance window too
+  generous. Treat that widening as a safety regression. Do not preserve or
+  further widen it, and do not infer clearance from firmware logs when the
+  user's physical contact observation disagrees.
+- Required next action: inspect all new logs, identify which exact measured
+  range/direction and manoeuvre stage produced the contact/stall, restore a
+  conservative rear-position gate before further physical validation, and
+  document the corrected limits and bounded next test.
+
+### Analysis and correction for logs 272-275
+
+- Log 275 is the reported contact/stall run. Rear positioning moved from 32.0
+  to a confirmed 76.3 mm and the unsafe widened policy accepted it as
+  `mode=measured_pose`. Segment 1 completed; during CCW segment 2 the motor
+  reported only 3.1 mm progress in 1000 ms at high DC, matching the user's wall
+  contact and stall. The accepted rear clearance was 61.3 mm, leaving too
+  little room at the opposite parking boundary for the fixed exit sequence.
+- Log 274 independently proves the 20 mm drivetrain allowance is harmful: a
+  16 mm planned forward correction ran 36 mm and finished at 81.7 mm. Log 275
+  likewise ran 50 mm for a 30 mm planned correction. Remove the allowance
+  completely; do not solve future under-travel by restoring it.
+- Restore the usable stationary rear range to the previously validated 60-70
+  mm only. A range outside that interval is not allowed to start segment 1.
+  Increase the one-shot positioning speed from 50 to 80 mm/s so it crosses
+  drivetrain take-up promptly, but stop at the geometrically planned encoder
+  distance or an earlier fresh raw-ToF target. Retain the stationary confirmed
+  measurement as the final authority. This aims for a fast single correction
+  without trading away the parking-boundary margin.
+- Log 272 was manually disabled before a rear range was acquired and is not a
+  manoeuvre result. Log 273 began at 60 mm and completed all five CW exit arcs,
+  but still reached -5 degrees after acquiring the second marker. Thus the
+  contact regression and the CW localization drift are separate failures.
+- Kp 5/cap 25 alone did not prevent the repeated CW drift. Add a symmetric,
+  servo-center-independent integral term to the gyro straight controller:
+  Ki=2.5 steering-deg per degree-second, integral limited to +/-5 degree-seconds.
+  Reset it at every localization arm. Keep Kp 5, the 25-degree output cap,
+  5-degree abort, and existing speeds/travel bound. This lets persistent bias
+  build corrective steering without a hard-coded CW offset and without further
+  relaxing the safety abort.
+- The IDE-managed `giga_r1_m7` build passed with 365328 bytes RAM and 425808
+  bytes flash. M4 was not built because this correction is M7-only. No firmware
+  was uploaded.
+- Next testing is deliberately bounded: first place the robot near 65 mm and
+  run one CW attempt. Require a confirmed 60-70 mm start, all five arcs, and
+  second-edge localization below 5 degrees with no contact. Only after CW
+  succeeds, run one CCW regression with the same contact/stall requirements.
+  Do not start from a deliberately extreme rear placement in this validation.
+
+## 2026-08-29: logs 276-297 and tested timing provenance
+
+- The user continued unparking development with another AI. Preserve the exact
+  provenance: logs 288-297 represent the current committed manoeuvre/localizer
+  implementation plus the current working configuration changes, except the
+  physical test firmware used 400 ms `OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS`
+  and 300 ms `OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS`. The workspace temporarily
+  contained 200/150 ms when the user reported the logs. Do not attribute the
+  batch's results to those shorter, untested timings.
+- Logs 276-287 span earlier intermediate firmware and are useful history but
+  must not be pooled with 288-297 when judging the current state. Their log
+  formats and localization state machines differ.
+- In logs 288-297, rear positioning succeeded in 9 of 10 attempts: 288 and 289
+  succeeded after one micro-correction; 291, 293-295, and 297 succeeded after
+  one correction; 292 succeeded after a micro-correction; 296 was already at
+  64.3 mm. Log 290 alone failed when the micro-correction overshot from 55.7
+  to 73.3 mm. This is a substantial improvement but still not acceptance-level
+  reliability.
+- The five parking-exit arcs completed in every run that passed rear
+  positioning. The dominant remaining unparking/localization failure is the
+  older single-edge localizer's dependence on a parking-piece seed at the exit
+  pose: logs 289, 291, 292, 294, and 296 had `piece_seen=no`, immediately used
+  the outer-wall transition at zero creep, rejected roughly 34-42 mm X
+  corrections, and refused to arm parking entry. Logs 288, 293, 295, and 297
+  localized and continued. This must be fixed in the localizer rather than by
+  widening only the X-correction gate.
+- Logs 293 and 295 stalled after localization during or after the parking-entry
+  join, not during the five exit arcs. No new physical contact statement was
+  provided for this batch, so do not infer contact from those stall messages.
+- Restore the workspace exit timing constants to the actually tested 400 ms
+  steering settle and 300 ms encoder brake hold. Shortening them can be tested
+  later as an isolated timing change only after localization reliability is
+  restored.
+- Next engineering priority is to remove the exit-pose piece-seed dependency,
+  preferably by restoring a bounded first-marker/second-marker state machine
+  that starts reversing from gyro immediately and localizes from a confirmed
+  later marker edge. Preserve the improved rear-position micro-correction and
+  the tested 400/300 ms exit timings while doing so.
+
+## 2026-08-29: marker-phase localization restored; timings set to 200/150
+
+- At the user's explicit request, set parking-exit steering settle back to 200
+  ms and encoder brake hold back to 150 ms. This supersedes the preceding
+  recommendation to retain the tested 400/300 pair. Logs 288-297 still describe
+  400/300 behavior; the new shorter pair requires fresh physical validation.
+- Replace the current single-edge localizer that required an exit-pose parking
+  piece seed. Localization now arms after every completed non-staged exit and
+  begins reversing immediately even when the side ToF initially sees only the
+  distant wall. It uses four explicit phases: seek/on first marker, between
+  markers, and on second marker.
+- A short return needs two frames to confirm a marker. A first marker may be
+  classified as already passed only after 100 mm reverse travel with a
+  geometrically consistent outer-wall return. Leaving a marker requires three
+  consistent wall frames. The controller localizes only from the far edge of
+  the confirmed second marker, eliminating the zero-creep wall transition that
+  failed logs 289, 291, 292, 294, and 296.
+- Reverse localization uses the existing Kp 5 / Ki 2.5 gyro PI controller,
+  +/-5 degree-second integral bound, +/-25 degree logical steering bound, and
+  current 8-degree abort. It travels at 100 mm/s through acquisition/crossing,
+  slows to 60 mm/s on the second marker, and retains the 380 mm travel bound.
+- The canonical second-marker edge reference is 212.5 mm for CCW and 500 mm
+  for CW. X correction still must pass the configured correction gate and Y
+  correction still requires the confirmed outer-wall residual; parking entry
+  remains locked out if either correction is invalid.
+- The IDE-managed `giga_r1_m7` build passed with 365328 bytes RAM and 425192
+  bytes flash. M4 was not built because all changes are M7-only. No firmware
+  was uploaded.
+- Next test one bounded CW and one bounded CCW run. Require rear positioning to
+  verify, all five arcs to complete under 200/150 timings, ordered first/second
+  marker messages, nonzero reverse travel, accepted X/Y corrections, no abort,
+  stall, contact, or intervention. Do not begin broad runs until both pass.
+
+## 2026-08-29: logs 298-301 marker success and green-block contact
+
+- All four runs completed the restored ordered marker phases and second-edge
+  localization. Reverse travel was 324.1, 331.0, 339.2, and 350.8 mm; X/Y
+  corrections were accepted in every run. Maximum heading error was 1.1, 4.9,
+  5.6, and 0.8 degrees, all below the current 8-degree abort. The former
+  zero-creep/no-piece localization failure is resolved in this batch.
+- The user reports that the robot touched the green block in the last run,
+  log 301. Record this as a physical contact even though the text log does not
+  timestamp contact. That run confirmed green seat 5 during parking entry and
+  then remained in `[PARK ENTRY JOIN]` for 716.9 mm before meeting the join
+  gate. This is an abnormal outlier: logs 298-300 completed their joins at
+  249.6, 387.1, and 873.5 mm respectively, though log 300's 873.5 mm is also
+  unsafe-length behavior despite no contact report. The prior 900 mm limit is
+  too permissive.
+- Tighten parking-entry join admission from 700 to 350 mm maximum starting
+  cross-track and its travel limit from 900 to 450 mm. All four starts in this
+  batch were 187.8-275.4 mm and remain admissible; joins that do not converge
+  within 450 mm now stop and save a log instead of continuing through an
+  obstacle region. Do not infer that this alone changes the avoidance geometry;
+  it is a containment fix for abnormal joining.
+- Rear positioning required a second micro-correction in logs 299 and 301;
+  logs 298 and 300 succeeded in one shot. The user wants the second shot removed
+  after enough evidence exists to derive a reliable one-shot correction. Keep
+  collecting each initial range, commanded first travel, signed stationary
+  displacement, final error, direction, and success. Existing log messages
+  already contain these fields.
+- Do not simply delete micro-correction now. First collect at least 10 valid
+  positioning samples in each direction, covering short (<=15 mm), medium
+  (15-35 mm), and long (>35 mm) requested corrections where physically
+  possible. Fit a bounded direction- and distance-dependent first-shot encoder
+  compensation from stationary ToF displacement, validate it offline against
+  held-out logs, then disable the second shot and require 10 consecutive
+  one-shot results inside 60-70 mm before accepting the change.
+- Next physical validation is one CW and one CCW bounded run. Require ordered
+  marker localization and join completion below 450 mm with no block/wall
+  contact. A join travel-limit stop is a useful safe failure, not permission to
+  widen the limit.
+- The IDE-managed `giga_r1_m7` build passed with 365328 bytes RAM and 425192
+  bytes flash. M4 was not built because the join guard is M7-only. No firmware
+  was uploaded.

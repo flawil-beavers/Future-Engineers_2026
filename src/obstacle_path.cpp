@@ -2465,7 +2465,11 @@ void obstacle_path_update(bool new_camera_frame)
             safeSpeed,
             OBSTACLE_PARKING_ENTRY_JOIN_SPEED_MM_S);
     }
-    if (!runtimeTestMode && completedLaps == 0)
+    // Before the parking-entry join completes, nearest-path projection can
+    // select the other side of the lap seam (logs 258/283/287 reported an
+    // unresolved station only 85 mm ahead). Keep collecting camera evidence,
+    // but do not slow or stop for projected seat distance until the join completes.
+    if (!runtimeTestMode && completedLaps == 0 && !parkingEntryJoining)
     {
         float unresolvedForward = 0.0f;
         const int unresolvedStation =

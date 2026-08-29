@@ -29,9 +29,18 @@ static float debug_loop_time_sum_us = 0.0f;
 static float debug_loop_time_max_us = 0.0f;
 static unsigned long debug_last_print_time = 0;
 static int pending_manual_speed_mm_s = 0;
+static bool obstacle_ready_led_on = false;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
+
+static void set_obstacle_ready_led(bool ready)
+{
+    pinMode(LEDB, OUTPUT);
+    // The onboard RGB LED channels are active-low.
+    digitalWrite(LEDB, ready ? LOW : HIGH);
+    obstacle_ready_led_on = ready;
+}
 
 static bool obstacle_camera_setup()
 {
@@ -228,6 +237,9 @@ static bool start_mode(RobotMode mode)
 
 void mode_switch(RobotMode new_mode)
 {
+    if (new_mode != MODE_OBSTACLE_CHALLENGE && obstacle_ready_led_on)
+        set_obstacle_ready_led(false);
+
     if (new_mode != MODE_MANUAL)
         pending_manual_speed_mm_s = 0;
 
@@ -266,6 +278,22 @@ void mode_switch(RobotMode new_mode)
 #endif
 
     if (!system_enabled) {
+        if (new_mode == MODE_OBSTACLE_CHALLENGE)
+        {
+            // Finish the expensive camera initialization while motion is
+            // disabled. Blue means the switch can now safely start the run.
+            if (!obstacle_camera_setup())
+            {
+                pending_mode = MODE_NONE;
+                set_obstacle_ready_led(false);
+                Serial.println(
+                    "Obstacle Challenge initialization failed; blue ready light remains off.");
+                return;
+            }
+            set_obstacle_ready_led(true);
+            Serial.println(
+                "Obstacle Challenge initialized; BLUE ready light ON.");
+        }
         pending_mode = new_mode;
         Serial.print("System disabled. Pending mode: ");
         Serial.println(mode_name(new_mode));
@@ -273,6 +301,7 @@ void mode_switch(RobotMode new_mode)
     }
 
     pending_mode = MODE_NONE;
+    set_obstacle_ready_led(false);
     // Hardware enable is mode-agnostic; the selected mode owns controller setup.
     system_enable();
     if (!start_mode(new_mode)) {
@@ -451,6 +480,9 @@ void mode_pause()
 
 void mode_resume()
 {
+    // Turn readiness feedback off at the switch event, before any controller
+    // setup or motion can begin.
+    set_obstacle_ready_led(false);
     system_enable();
 
     if (pending_mode == MODE_NONE) {
@@ -475,6 +507,7 @@ void mode_resume()
 
 void mode_stop_all()
 {
+    set_obstacle_ready_led(false);
     stop_mode(current_mode);
     current_mode = MODE_NONE;
     pending_mode = MODE_NONE;

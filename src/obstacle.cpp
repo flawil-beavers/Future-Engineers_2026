@@ -62,6 +62,14 @@ enum ParkingExitState : uint8_t
     PARKING_EXIT_DONE
 };
 
+enum ParkingLocalizationPhase : uint8_t
+{
+    PARKING_LOCALIZE_SEEK_FIRST_MARKER,
+    PARKING_LOCALIZE_ON_FIRST_MARKER,
+    PARKING_LOCALIZE_BETWEEN_MARKERS,
+    PARKING_LOCALIZE_ON_SECOND_MARKER
+};
+
 struct ParkingExitSegment
 {
     int8_t direction;
@@ -104,6 +112,7 @@ static float oc_parking_rear_cumulative_travel = 0.0f;
 static float oc_parking_rear_last_encoder_distance = 0.0f;
 static int8_t oc_parking_rear_direction = 0;
 static bool oc_parking_rear_verifying = false;
+static uint8_t oc_parking_rear_corrections = 0;
 static uint8_t oc_parking_rear_discard_frames = 0;
 static TofSensor oc_parking_localization_sensor = TOF_RIGHT;
 static float oc_parking_localization_start_distance = 0.0f;
@@ -116,6 +125,13 @@ static uint32_t oc_parking_localization_tof_sequence = 0;
 static uint8_t oc_parking_localization_wall_frames = 0;
 static bool oc_parking_localization_transition_found = false;
 static bool oc_parking_localization_piece_seen = false;
+static ParkingLocalizationPhase oc_parking_localization_phase =
+    PARKING_LOCALIZE_SEEK_FIRST_MARKER;
+static uint8_t oc_parking_localization_marker_frames = 0;
+static float oc_parking_localization_heading = 0.0f;
+static float oc_parking_localization_heading_integral = 0.0f;
+static float oc_parking_localization_max_heading_error = 0.0f;
+static uint32_t oc_parking_localization_control_ms = 0;
 
 static uint8_t oc_current_section = 0;
 static uint8_t oc_current_lap = 0;
@@ -153,6 +169,15 @@ static float distanceSince(
 {
     return fabsf(
         get_distance() - startDistance);
+}
+
+static float wrappedHeadingError(float value)
+{
+    while (value > 180.0f)
+        value -= 360.0f;
+    while (value < -180.0f)
+        value += 360.0f;
+    return value;
 }
 
 static float applyWallGuard(float steering)
@@ -225,6 +250,7 @@ static void resetParkingExit()
     oc_parking_rear_last_encoder_distance = get_distance();
     oc_parking_rear_direction = 0;
     oc_parking_rear_verifying = false;
+    oc_parking_rear_corrections = 0;
     oc_parking_rear_discard_frames = 0;
     oc_parking_localization_start_distance = get_distance();
     oc_parking_localization_initial_piece_range = 0.0f;
@@ -234,6 +260,12 @@ static void resetParkingExit()
     oc_parking_localization_wall_frames = 0;
     oc_parking_localization_transition_found = false;
     oc_parking_localization_piece_seen = false;
+    oc_parking_localization_phase = PARKING_LOCALIZE_SEEK_FIRST_MARKER;
+    oc_parking_localization_marker_frames = 0;
+    oc_parking_localization_heading = get_angle();
+    oc_parking_localization_heading_integral = 0.0f;
+    oc_parking_localization_max_heading_error = 0.0f;
+    oc_parking_localization_control_ms = millis();
 }
 
 static void initializeParkingFieldPose(float rearTofRangeMm)
@@ -768,42 +800,44 @@ static void finishParkingExit(bool stagedTest)
         return;
     }
 
-    if (
-        !stagedTest &&
-        OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED &&
-        localizationSeedUsable)
+    if (!stagedTest && OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED)
     {
         oc_parking_localization_sensor = referenceSensor;
         oc_parking_localization_initial_piece_range =
-            referenceUsable
-                ? referenceRange
-                : OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
-        oc_parking_localization_last_piece_range =
-            referenceUsable ? referenceRange : 0.0f;
+            OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
+        oc_parking_localization_last_piece_range = 0.0f;
         oc_parking_localization_last_piece_pose = fieldPose;
         oc_parking_localization_wall_range = 0.0f;
         oc_parking_localization_wall_frames = 0;
         oc_parking_localization_transition_found = false;
-        oc_parking_localization_piece_seen = referenceUsable;
+        oc_parking_localization_piece_seen = false;
+        oc_parking_localization_phase = PARKING_LOCALIZE_SEEK_FIRST_MARKER;
+        oc_parking_localization_marker_frames = 0;
+        oc_parking_localization_heading = get_angle();
+        oc_parking_localization_heading_integral = 0.0f;
+        oc_parking_localization_max_heading_error = 0.0f;
+        oc_parking_localization_control_ms = millis();
         TofDiagnosticSnapshot snapshot;
         oc_parking_localization_tof_sequence =
             get_tof_diagnostic_snapshot(referenceSensor, snapshot)
                 ? snapshot.sequence
                 : 0;
-        oc_parking_exit_settle_start_ms = millis();
-        oc_parking_exit_state = PARKING_EXIT_LOCALIZE_SETTLE;
+        oc_parking_localization_start_distance = get_distance();
+        oc_parking_exit_state = PARKING_EXIT_LOCALIZE_DRIVE;
         Serial.print("[PARK LOCALIZE] Armed sensor=");
         Serial.print(referenceSensor == TOF_LEFT ? "L" : "R");
-        Serial.print(" piece_range_mm=");
-        Serial.print(
-            referenceUsable ? referenceRange : 0.0f,
-            1);
+        Serial.print(" initial_range_mm=");
+        Serial.print(referenceRange, 1);
         Serial.print(" direction=");
         Serial.print(
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION < 0
                 ? "reverse"
                 : "forward");
-        Serial.print(" max_creep_mm=");
+        Serial.print(" approach/detection_speed_mm_s=");
+        Serial.print(OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED);
+        Serial.print("/");
+        Serial.print(OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED);
+        Serial.print(" max_travel_mm=");
         Serial.println(OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM, 1);
         return;
     }
@@ -844,14 +878,7 @@ static void finishParkingEdgeLocalization()
             oc_parking_localization_last_piece_range,
             transitionPose);
         const bool counterClockwiseExit = oc_parking_exit_steering < 0;
-        const bool reverseSearch =
-            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION < 0;
-        if (counterClockwiseExit && !reverseSearch)
-        {
-            predictedEdgeX = footprint.minimumX;
-            knownEdgeX = OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM;
-        }
-        else if (!counterClockwiseExit && !reverseSearch)
+        if (counterClockwiseExit)
         {
             predictedEdgeX = footprint.maximumX;
             knownEdgeX =
@@ -859,17 +886,10 @@ static void finishParkingEdgeLocalization()
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM -
                 OBSTACLE_PARKING_LIMIT_THICKNESS_MM;
         }
-        else if (counterClockwiseExit)
-        {
-            predictedEdgeX = footprint.maximumX;
-            knownEdgeX = OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM;
-        }
         else
         {
             predictedEdgeX = footprint.minimumX;
-            knownEdgeX =
-                OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
-                OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM;
+            knownEdgeX = OBSTACLE_PARKING_FIXED_DOTTED_LINE_X_MM;
         }
         xCorrection = knownEdgeX - predictedEdgeX;
         applyX =
@@ -941,7 +961,9 @@ static void finishParkingEdgeLocalization()
     Serial.print(" wall_y_correction_mm=");
     Serial.print(yCorrection, 1);
     Serial.print(" apply_y=");
-    Serial.println(applyY ? "yes" : "no");
+    Serial.print(applyY ? "yes" : "no");
+    Serial.print(" max_heading_error_deg=");
+    Serial.println(oc_parking_localization_max_heading_error, 1);
 
     Serial.print("[PARK LOCALIZE POSE] x_y_heading=");
     Serial.print(finalPose.x_mm, 1);
@@ -979,10 +1001,9 @@ static void processParkingEdgeLocalizationTof()
     oc_parking_localization_tof_sequence = snapshot.sequence;
     const float rawRange = snapshot.selected_raw_distance_mm;
     const PositionEstimate samplePose = get_position_struct();
-    const float markerRangeMaximum = fminf(
-        OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM,
-        oc_parking_localization_initial_piece_range +
-            OBSTACLE_PARKING_EXIT_MARKER_RANGE_MARGIN_MM);
+    const bool markerRange =
+        rawRange > 0.0f &&
+        rawRange <= OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
     const float expectedWallRange = expectedParkingOuterWallRange(
         oc_parking_localization_sensor, samplePose);
     const bool wallRangeConsistent =
@@ -991,32 +1012,108 @@ static void processParkingEdgeLocalizationTof()
         expectedWallRange > 0.0f &&
         fabsf(rawRange - expectedWallRange) <=
             OBSTACLE_PARKING_EXIT_WALL_RANGE_RESIDUAL_MM;
-    if (rawRange > 0.0f && rawRange <= markerRangeMaximum)
+    if (oc_parking_localization_phase ==
+        PARKING_LOCALIZE_SEEK_FIRST_MARKER)
     {
-        oc_parking_localization_piece_seen = true;
-        oc_parking_localization_last_piece_range = rawRange;
-        oc_parking_localization_last_piece_pose = samplePose;
-        oc_parking_localization_wall_frames = 0;
+        if (markerRange)
+        {
+            if (++oc_parking_localization_marker_frames >=
+                OBSTACLE_PARKING_EXIT_MARKER_CONFIRM_FRAMES)
+            {
+                oc_parking_localization_phase =
+                    PARKING_LOCALIZE_ON_FIRST_MARKER;
+                oc_parking_localization_marker_frames = 0;
+                Serial.println(
+                    "[PARK LOCALIZE] First marker present at search start");
+            }
+        }
+        else if (
+            wallRangeConsistent &&
+            distanceSince(oc_parking_localization_start_distance) >=
+                OBSTACLE_PARKING_EXIT_FIRST_MARKER_SKIP_CONFIRM_MM)
+        {
+            oc_parking_localization_phase =
+                PARKING_LOCALIZE_BETWEEN_MARKERS;
+            oc_parking_localization_marker_frames = 0;
+            Serial.println(
+                "[PARK LOCALIZE] First marker already passed; searching second");
+        }
+        else
+        {
+            oc_parking_localization_marker_frames = 0;
+        }
     }
-    else if (wallRangeConsistent)
+    else if (oc_parking_localization_phase ==
+             PARKING_LOCALIZE_ON_FIRST_MARKER)
     {
-        // Confirm a sequence, then localize from its newest sample. The first
-        // in-range return can still contain the fading edge of the magenta
-        // piece even though it passes the residual gate.
-        oc_parking_localization_latest_wall_pose = samplePose;
-        oc_parking_localization_wall_range = rawRange;
-        ++oc_parking_localization_wall_frames;
+        if (markerRange)
+        {
+            oc_parking_localization_wall_frames = 0;
+        }
+        else if (wallRangeConsistent)
+        {
+            if (++oc_parking_localization_wall_frames >=
+                OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES)
+            {
+                oc_parking_localization_phase =
+                    PARKING_LOCALIZE_BETWEEN_MARKERS;
+                oc_parking_localization_wall_frames = 0;
+                Serial.println(
+                    "[PARK LOCALIZE] First marker passed; searching second");
+            }
+        }
+        else
+        {
+            oc_parking_localization_wall_frames = 0;
+        }
+    }
+    else if (oc_parking_localization_phase ==
+             PARKING_LOCALIZE_BETWEEN_MARKERS)
+    {
+        if (markerRange)
+        {
+            oc_parking_localization_last_piece_range = rawRange;
+            oc_parking_localization_last_piece_pose = samplePose;
+            if (++oc_parking_localization_marker_frames >=
+                OBSTACLE_PARKING_EXIT_MARKER_CONFIRM_FRAMES)
+            {
+                oc_parking_localization_phase =
+                    PARKING_LOCALIZE_ON_SECOND_MARKER;
+                oc_parking_localization_piece_seen = true;
+                oc_parking_localization_marker_frames = 0;
+                oc_parking_localization_wall_frames = 0;
+                Serial.println(
+                    "[PARK LOCALIZE] Second marker acquired; slowing for edge");
+            }
+        }
+        else
+        {
+            oc_parking_localization_marker_frames = 0;
+        }
     }
     else
     {
-        // Intermediate oblique returns are neither the short magenta end nor
-        // a wall range consistent with the current pose.
-        oc_parking_localization_wall_frames = 0;
-    }
+        if (markerRange)
+        {
+            oc_parking_localization_last_piece_range = rawRange;
+            oc_parking_localization_last_piece_pose = samplePose;
+            oc_parking_localization_wall_frames = 0;
+        }
+        else if (wallRangeConsistent)
+        {
+            oc_parking_localization_latest_wall_pose = samplePose;
+            oc_parking_localization_wall_range = rawRange;
+            ++oc_parking_localization_wall_frames;
+        }
+        else
+        {
+            oc_parking_localization_wall_frames = 0;
+        }
 
-    oc_parking_localization_transition_found =
-        oc_parking_localization_wall_frames >=
-        OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
+        oc_parking_localization_transition_found =
+            oc_parking_localization_wall_frames >=
+            OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES;
+    }
 }
 
 static bool updateParkingExit()
@@ -1087,7 +1184,7 @@ static bool updateParkingExit()
                 {
                     oc_parking_rear_start_range = averageRange;
                     const float signedCorrection =
-                        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM -
+                        OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM -
                         averageRange;
                     oc_parking_rear_planned_travel =
                         fabsf(signedCorrection);
@@ -1117,11 +1214,7 @@ static bool updateParkingExit()
                     Serial.print(
                         "[PARK REAR] One-shot correction start_range_mm=");
                     Serial.print(averageRange, 1);
-                    Serial.print(" approach/verify_target_mm=");
-                    Serial.print(
-                        OBSTACLE_PARKING_REAR_TOF_APPROACH_RANGE_MM,
-                        1);
-                    Serial.print("/");
+                    Serial.print(" target_range_mm=");
                     Serial.print(
                         OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM,
                         1);
@@ -1164,6 +1257,38 @@ static bool updateParkingExit()
 
                 if (!accepted)
                 {
+                    if (oc_parking_rear_corrections < 1 &&
+                        targetError <= OBSTACLE_PARKING_REAR_TOF_MAX_MICRO_CORRECTION_MM)
+                    {
+                        oc_parking_rear_corrections++;
+                        oc_parking_rear_start_range = averageRange;
+                        oc_parking_rear_direction =
+                            averageRange <
+                                    OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM
+                                ? 1
+                                : -1;
+                        oc_parking_rear_planned_travel = targetError;
+                        oc_parking_rear_start_distance = get_distance();
+                        oc_parking_rear_last_encoder_distance = get_distance();
+                        oc_parking_rear_cumulative_travel = 0.0f;
+                        oc_parking_exit_state = PARKING_EXIT_REAR_DRIVE;
+                        Serial.print(
+                            "[PARK REAR] Micro-correction start_range_mm=");
+                        Serial.print(averageRange, 1);
+                        Serial.print(" target_mm=");
+                        Serial.print(
+                            OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM,
+                            1);
+                        Serial.print(" direction=");
+                        Serial.print(
+                            oc_parking_rear_direction > 0
+                                ? "forward"
+                                : "reverse");
+                        Serial.print(" planned_mm=");
+                        Serial.println(oc_parking_rear_planned_travel, 1);
+                        return true;
+                    }
+
                     holdParkingRearPositioning(
                         "stationary_verification_failed");
                     return true;
@@ -1267,12 +1392,57 @@ static bool updateParkingExit()
 
     if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_DRIVE)
     {
+        processParkingEdgeLocalizationTof();
+
+        const float headingError = wrappedHeadingError(
+            get_angle() - oc_parking_localization_heading);
+        const uint32_t controlNowMs = millis();
+        const float controlDtSeconds = fminf(
+            static_cast<float>(controlNowMs -
+                               oc_parking_localization_control_ms) /
+                1000.0f,
+            0.1f);
+        oc_parking_localization_control_ms = controlNowMs;
+        oc_parking_localization_heading_integral = clampValue(
+            oc_parking_localization_heading_integral +
+                headingError * controlDtSeconds,
+            -OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S,
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_INTEGRAL_LIMIT_DEG_S);
+        oc_parking_localization_max_heading_error = fmaxf(
+            oc_parking_localization_max_heading_error,
+            fabsf(headingError));
+        if (fabsf(headingError) >
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG)
+        {
+            stop(false);
+            oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+            Serial.print(
+                "[PARK LOCALIZE] Heading abort error/limit_deg=");
+            Serial.print(headingError, 1);
+            Serial.print("/");
+            Serial.println(
+                OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG,
+                1);
+            robot_logger.write_to_usb();
+            return true;
+        }
+
+        const float steering = clampValue(
+            -OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KP *
+                    headingError -
+                OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_KI *
+                    oc_parking_localization_heading_integral,
+            -OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG,
+            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_STEERING_DEG);
+        const bool onSecondMarker =
+            oc_parking_localization_phase ==
+            PARKING_LOCALIZE_ON_SECOND_MARKER;
         set_speed(
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_DIRECTION *
-            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED);
-        set_steering(0);
-
-        processParkingEdgeLocalizationTof();
+            (onSecondMarker
+                 ? OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED
+                 : OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED));
+        set_steering(static_cast<int>(roundf(steering)));
 
         const float creepDistance =
             distanceSince(oc_parking_localization_start_distance);

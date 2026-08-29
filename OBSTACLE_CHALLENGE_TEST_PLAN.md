@@ -104,7 +104,24 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 - [ ] Only after both bounded joins pass, run one complete obstacle lap from a
       parked start in each direction before enabling three-lap validation.
       CCW already completed three laps in `log_230`; next run one complete CW
-      lap with green restored at seat 2 and stop manually after lap 1.
+      lap with green restored at seat 2 and stop manually after lap 1. Logs
+      234/235 did not complete lap 1 because the rejected-blob veto caused an
+      empty S3 station-0 hold expiry; the veto is now limited to parking/join.
+      Log 238 completed three CCW laps with green seat 5 but is physically
+      invalid because the user reported a marginal pillar touch.
+- [ ] Upload the revised M7 build with consent and first validate the staged
+      join speed in the already contact-free CW green-seat-2 layout. Require
+      80 mm/s for only the first 150 mm, then 60 mm/s through join completion,
+      with no contact or abnormal steering. Stop after the bounded join.
+- [x] Establish whether log 238's marginal touch occurred on the 260 mm lap-1
+      route or the 210 mm later-lap route. The user confirmed lap 1 only; laps
+      2-3 were clear. Keep both displacement values and add a one-waypoint
+      approach/exit plateau only to CCW lap-1 green seat 5.
+- [ ] After the staged-speed CW checks pass, repeat CCW green seat 5 for one
+      lap. Require clearly positive physical front- and rear-wheel clearance;
+      firmware completion alone does not accept the route.
+- [ ] Only after that one-lap clearance test passes, repeat the same CCW layout
+      for three laps to confirm the unchanged 210 mm optimized route.
 
 ## Completed foundations
 
@@ -528,6 +545,211 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       the field without contact or a false localization jump.
 
 ## Remaining route coverage
+
+### Immediate parking-entry validation after logs 239-243
+
+- [ ] Upload the current M7 firmware only after explicit user consent.
+- [ ] Before the pillar tests, repeat one CW parking exit after the `log_244`
+      pink-wall contact. Require final alignment to be captured at or after
+      120 mm, centered-wheel continuation to at least 150 mm, and successful
+      reverse-parallel motion with no contact or stall. Stop testing if this
+      bounded regression fails.
+- [ ] Run CW with the same green pillar at parking-entry seat 2. Require a
+      valid green injection and clean passage; if the view remains ambiguous,
+      the robot must hold/abort instead of declaring the station clear. Confirm
+      the forward join starts at 100 mm/s and changes to 60 mm/s after 200 mm.
+- [ ] Run CCW with the green pillar at seat 5. Require the edge-localization
+      correction to be accepted, no physical contact, and join completion
+      before the new 900 mm travel limit.
+- [ ] If both bounded runs pass, run one complete lap in either direction to
+      confirm that the 80 mm/s reverse straight and faster initial join do not
+      regress detection, localization, or continuation.
+- [ ] Keep the stationary full-lock steering settle before the scan arc. Test a
+      moving steering transition separately before considering its removal.
+
+### Immediate validation after logs 245-249
+
+- [ ] First run one bounded CW unparking/localization test without relying on a
+      pillar result. Require unconditional gyro-guided reverse, recognition
+      that the first marker is present or already passed, two-frame acquisition
+      of the second marker, a 120-to-60 mm/s change, its far-edge transition
+      within 380 mm, less than 3 degrees heading error, valid corrections, and
+      no contact or stall.
+- [ ] Repeat the same bounded localization test CCW. Do not proceed if either
+      direction misses the second marker or reaches the travel/heading limit.
+- [ ] After both directions pass, repeat the layouts that failed at S3 station
+      0 in log 245 and S1 station 0 in log 247. Confirm the robot slows to
+      100 mm/s before the trusted seat-view window and resolves both seats
+      before the 340 mm hold line.
+- [ ] Confirm the forward parking-entry join runs with the 175 mm/s lap-1 cap
+      throughout and still meets the 60 mm cross-track/10 degree heading gate
+      before 900 mm.
+
+### Immediate validation after logs 250-251
+
+- [ ] Reset with the enable switch LOW and no serial connection required.
+      Require the onboard LED to turn blue only after camera/vision setup is
+      complete. Toggle the switch and require blue to turn off immediately
+      before motion begins.
+- [ ] Repeat CCW second-marker localization. Require the correction to remain
+      within the new 35 mm gate and be applied, with no 5-degree heading abort,
+      380 mm travel limit, contact, or stall.
+- [ ] Repeat the same bounded check CW and require acquisition and passage of
+      the second marker, not merely passage of the first marker.
+
+### Immediate CW validation after logs 252-254
+
+- [ ] Run one bounded CW unparking test. Require final segment steering -45,
+      heading capture before the 220 mm fallback, and visibly more clearance
+      than the roughly 23 mm wheel-side estimate from log 254.
+- [ ] If the initial side return is the distant outer wall, require any marker
+      reacquired within the first 100 mm to be labeled as the first marker.
+      Require a later, separate second-marker acquisition and edge transition.
+- [ ] Require maximum reverse heading error below 5 degrees with the 4.0 Kp / 15
+      degree steering correction, accepted X/Y corrections, and no contact,
+      stall, travel-limit stop, or intervention.
+- [ ] Treat CCW as currently accepted from log 252; do not spend another run on
+      it unless a shared localization change later affects both directions.
+
+### Symmetric final-arc validation
+
+- [ ] This section supersedes the direction-specific instruction immediately
+      above: run one bounded CW and one bounded CCW exit because both final arcs
+      now use the shared logical 45-degree magnitude.
+- [ ] Require segment 5 steering to be -45 in CW and +45 in CCW, with heading
+      capture before the symmetric 220 mm fallback and no pink-limit contact.
+- [ ] If `SERVO_CENTER` is recalibrated later, do not retune these signs or
+      magnitudes merely to compensate for zero; confirm that the steering API
+      still produces mirrored physical angles around the new center.
+
+### Immediate validation after logs 255-258
+
+- [ ] Run CW first. Require the between-marker phase to use 100 mm/s, maximum
+      heading error below the unchanged 5-degree abort, both markers and the
+      second edge to resolve, and no contact, stall, or travel-limit stop.
+- [ ] Require no seat-distance perception hold while `[PARK ENTRY JOIN]` is
+      active. The join must first meet its 60 mm cross-track and 10-degree
+      heading gates; normal unresolved-seat slowdown/hold resumes afterwards.
+- [ ] Observe the handoff after any initial rear-position correction. Confirm
+      that the 200 ms post-move settle plus one discarded frame feels shorter,
+      while `[PARK REAR VERIFY]` still reports `accepted=yes` before segment 1.
+- [ ] If CW passes, repeat once CCW because marker-crossing speed and rear-ToF
+      handoff timing are shared, even though log 257 accepted its geometry.
+
+### Immediate validation after logs 259-261
+
+- [ ] Run CW first from a placement needing a short rear correction (less than
+      20 mm if practical). Require `[PARK REAR] Correction stop reason=tof_target`
+      and `[PARK REAR VERIFY] ... accepted=yes`; `travel_bound` is a failure to
+      investigate, not a reason to widen the bound.
+- [ ] Require the CW reverse localization to pass both markers and complete the
+      second edge with maximum heading below 5 degrees. The controller remains
+      Kp 4 but can now use the full requested 20-degree steering correction.
+- [ ] If CW succeeds, run one CCW regression because rear closed-loop stopping
+      and the 20-degree reverse steering cap are symmetric shared changes.
+- [ ] Report any physical contact explicitly. Otherwise, stop after these two
+      bounded runs; do not spend a three-lap attempt until unparking passes.
+
+### Immediate validation after logs 262-267
+
+- [ ] Run one bounded CW and one bounded CCW test. If the initial confirmed
+      rear range is 60-70 mm, require the arcs to begin without an unnecessary
+      rear correction. This entire interval is inside the final +/-5 mm gate.
+- [ ] For a starting range outside that interval, require a raw-ToF moving stop
+      at approximately 62 mm when driving forward or 68 mm when reversing,
+      followed by `[PARK REAR VERIFY] ... accepted=yes`.
+- [ ] Both runs must complete the first-marker, second-marker, and second-edge
+      phases without a heading abort, travel-bound stop, intervention, or wall
+      contact. The user confirmed no wall contact in logs 262-267.
+
+### Immediate validation after logs 268-271
+
+- [ ] Run CW first. After at most one rear correction, accept either
+      `mode=target` or `mode=measured_pose`; both must proceed directly to the
+      exit arcs using the confirmed stationary rear range as the exact pose.
+- [ ] Require CW second-edge localization to complete below the unchanged
+      5-degree abort with Kp 5 and at most 25 degrees logical steering.
+- [ ] If CW succeeds, run one CCW regression. Log 271 is the current CCW
+      reference with 1.5 degrees maximum error and a completed entry join.
+- [ ] Do not tune the M4 software-I2C clock from these logs. Its 100 kHz bus is
+      slower than hardware I2C, but the 30 ms sensor integration and mechanical
+      take-up dominate this positioning behavior; the new policy avoids live
+      sensor chasing instead.
+
+### Safety stop after the post-log-271 batch
+
+- [ ] The 48-80 mm measured-pose window is rejected: the user reports that the
+      last run touched the wall and stalled. Analyze the new logs and tighten
+      the range before another physical run.
+- [ ] Do not run broad reliability or three-lap tests until one bounded CW and
+      one bounded CCW unparking complete without contact, stall, or intervention
+      under the corrected conservative positioning gate.
+- [ ] Log 275 identifies the unsafe case: 76.3 mm was accepted, then CCW
+      segment 2 contacted the wall and stalled. Require 60-70 mm before segment
+      1; no `measured_pose` outside that range is acceptable.
+- [ ] Validate one CW run first from a placement already near 65 mm. Confirm the
+      bounded PI gyro controller completes the second edge below 5 degrees.
+- [ ] Only after CW succeeds, run one CCW regression. Both runs must complete
+      without contact, stall, or intervention before testing extreme initial
+      rear offsets again.
+
+### Current baseline after logs 288-297
+
+- [ ] Treat 400 ms steering settle and 300 ms brake hold as the tested exit
+      baseline. The batch did not validate the temporary 200/150 ms workspace
+      values.
+- [ ] Preserve the rear-position improvement (9/10 accepted starts), but repeat
+      the micro-correction case near 55 mm because log 290 overshot to 73.3 mm.
+- [ ] Repair localization before more broad runs. Logs 289, 291, 292, 294, and
+      296 completed all five arcs but failed because the exit pose had no
+      parking-piece seed and the old localizer accepted an immediate wall
+      transition at zero creep.
+- [ ] Do not solve those five failures only by widening the X correction gate.
+      Require confirmed marker/wall phase ordering and nonzero bounded reverse
+      travel before accepting a longitudinal reference.
+
+### Validate restored marker phases with requested shorter timings
+
+- [ ] Treat 200 ms steering settle and 150 ms brake hold as a new requested
+      test configuration; logs 288-297 used 400/300 and do not validate it.
+- [ ] Run one bounded CW and one bounded CCW attempt. Require ordered first
+      marker, first-marker passed, second-marker acquired, and confirmed second
+      edge messages with nonzero reverse travel.
+- [ ] Require accepted X/Y correction, completed localization, and no heading
+      abort, 380 mm travel limit, stall, wall contact, or intervention.
+- [ ] If both pass, repeat each direction once before resuming broader obstacle
+      layouts. If either fails, stop and inspect that log rather than widening
+      the localization correction gates.
+
+### Remove the rear-position second shot after evidence collection
+
+- [ ] Keep the micro-correction temporarily while collecting one-shot model
+      data. For every attempt retain initial stationary range, direction,
+      requested first travel, encoder travel, signed stationary ToF change,
+      final range/error, and whether a micro-correction was required.
+- [ ] Collect at least 10 valid samples per direction and cover short (<=15
+      mm), medium (15-35 mm), and long (>35 mm) requested first corrections
+      where the physical starting placement permits it.
+- [ ] Fit a bounded direction- and distance-dependent compensation that maps
+      desired physical range change to first-shot encoder travel. Use stationary
+      ToF displacement as ground truth; do not fit against moving ToF values.
+- [ ] Validate the candidate model offline on held-out logs. Reject it if it
+      predicts a final range outside the conservative 60-70 mm window or needs
+      an unsafe travel allowance.
+- [ ] Implement the accepted one-shot model and remove/disable the second
+      micro-correction. Then require 10 consecutive one-shot positioning results
+      inside 60-70 mm across both directions before calling it reliable.
+- [ ] Optimize its time only after reliability: retain one stationary verified
+      measurement, but avoid any second movement or second settle cycle.
+
+### Green-block contact containment after log 301
+
+- [ ] Record log 301 as physical green-block contact. Require parking-entry
+      join completion below the new 450 mm travel limit; never widen the limit
+      based only on odometry or a late successful gate.
+- [ ] Run one bounded CW and one CCW test. A join-limit stop is an acceptable
+      safe diagnostic failure; contact, stall, or continuing beyond 450 mm is
+      not.
 
 - [ ] Decide whether the unlikely 500 mm outer-extreme opposing pair
       (seat 6 followed by seat 9) needs competition acceptance testing; ask the
