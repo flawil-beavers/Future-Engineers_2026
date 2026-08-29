@@ -19,6 +19,7 @@
 #include "position_estimator.h"
 #include "camera_distance_calibration.h"
 #include "logger.h"
+#include "reverse_gyro_test.h"
 #define Serial robot_logger
 
 extern bool nav_debug_enabled;
@@ -128,6 +129,10 @@ static void stop_mode(RobotMode mode)
         motor_min_cal_stop();
         break;
 
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_stop();
+        break;
+
     case MODE_NONE:
         break;
     }
@@ -226,6 +231,10 @@ static bool start_mode(RobotMode mode)
 
     case MODE_MOTOR_MIN_CAL:
         motor_min_cal_start();
+        break;
+
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_start();
         break;
 
     case MODE_NONE:
@@ -423,6 +432,13 @@ static ModeResult update_active_mode()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
 
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_update();
+        drive_loop();
+        return reverse_gyro_test_finished()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
+
     case MODE_NONE:
         // Service steering output while stopped without energizing the motor.
         drive_loop();
@@ -550,6 +566,7 @@ const char* mode_name(RobotMode mode)
     case MODE_SERVO_CENTER_CAL:   return "SERVO_CENTER_CAL";
     case MODE_PID_AUTOTUNE:       return "PID_AUTOTUNE";
     case MODE_MOTOR_MIN_CAL:      return "MOTOR_MIN_CAL";
+    case MODE_REVERSE_GYRO_TEST:  return "REVERSE_GYRO_TEST";
     default:                      return "UNKNOWN";
     }
 }

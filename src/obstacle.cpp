@@ -972,6 +972,18 @@ static void finishParkingEdgeLocalization()
     Serial.print("/");
     Serial.println(finalPose.heading_deg, 1);
 
+    if (OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY)
+    {
+        stop(false);
+        set_steering(0);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        Serial.println(
+            "[PARK LOCALIZE] Reverse-straight test complete - "
+            "drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
+
     if (OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
         (!oc_parking_localization_transition_found || !applyX || !applyY))
     {
@@ -1442,7 +1454,20 @@ static bool updateParkingExit()
             (onSecondMarker
                  ? OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED
                  : OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED));
-        set_steering(static_cast<int>(roundf(steering)));
+        const int steeringCommand = static_cast<int>(roundf(steering));
+        servo_disabled = false;
+        set_steering(steeringCommand);
+        steer(steeringCommand);
+
+        static uint32_t lastReverseControlLogMs = 0;
+        if (millis() - lastReverseControlLogMs >= 100UL)
+        {
+            lastReverseControlLogMs = millis();
+            Serial.print("[PARK LOCALIZE CONTROL] heading_error/steering_deg=");
+            Serial.print(headingError, 2);
+            Serial.print("/");
+            Serial.println(steeringCommand);
+        }
 
         const float creepDistance =
             distanceSince(oc_parking_localization_start_distance);
