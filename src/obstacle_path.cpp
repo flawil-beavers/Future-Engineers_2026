@@ -2092,6 +2092,28 @@ void updateDiscoveryCoverage(
 
 void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
 {
+    const bool primaryResolved =
+        parkingEntryTargetStation >= 0 &&
+        stationResolved(static_cast<uint8_t>(parkingEntryTargetStation));
+    const bool scoutResolved =
+        parkingEntryTargetStation <= 0 ||
+        stationResolved(static_cast<uint8_t>(parkingEntryTargetStation - 1));
+    if (!primaryResolved || !scoutResolved)
+    {
+        parkingEntryTestHold = true;
+        Serial.print(
+            "[PARK ENTRY CONNECTOR] Rejected unresolved prerequisite primary/scout=");
+        Serial.print(primaryResolved ? "yes" : "no");
+        Serial.print("/");
+        Serial.println(scoutResolved ? "yes" : "no");
+        if (!parkingEntryUsbWritten)
+        {
+            robot_logger.write_to_usb();
+            parkingEntryUsbWritten = true;
+        }
+        return;
+    }
+
     const PathPoint *route = optimizedBuilt ? optimizedPath : livePath;
     uint16_t mergeIndex = 0;
     if (!buildParkingEntryConnector(pose, route, mergeIndex))
@@ -2118,6 +2140,42 @@ void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
     Serial.print(mergeIndex);
     Serial.print(" points=");
     Serial.println(parkingEntryConnectorLength);
+}
+
+void restoreParkingEntryPrimaryScanTarget()
+{
+    discoveryScanStation = parkingEntryTargetStation;
+    discoveryScanSide = -1;
+    if (parkingEntryTargetStation < 0)
+        return;
+
+    const uint8_t firstSeat = static_cast<uint8_t>(
+        parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
+    discoveryScanSide = seats[firstSeat].y > seats[firstSeat + 1].y
+        ? 0
+        : 1;
+}
+
+void startParkingEntryPrimaryRetry()
+{
+    if (parkingEntryTargetStation < 0)
+    {
+        parkingEntryTestHold = true;
+        Serial.println(
+            "[PARK ENTRY] Primary retry rejected without target station");
+        return;
+    }
+
+    restoreParkingEntryPrimaryScanTarget();
+    parkingEntryActive = false;
+    parkingEntryObserving = true;
+    parkingEntryObserveStartMs = millis();
+    servo_disabled = false;
+    set_steering(0);
+    steer(0);
+    Serial.print(
+        "[PARK ENTRY] Primary stationary retry armed station=");
+    Serial.println(parkingEntryTargetStation);
 }
 
 bool preflightParkingEntryScout(
@@ -2190,7 +2248,16 @@ void startParkingEntryScout(const PositionEstimate &pose)
     {
         Serial.print("[PARK ENTRY SCOUT] Station already resolved station=");
         Serial.println(parkingEntryScoutStation);
-        armParkingEntryConnectorFromPose(pose);
+        if (stationResolved(static_cast<uint8_t>(parkingEntryTargetStation)))
+            armParkingEntryConnectorFromPose(pose);
+        else if (parkingEntryPrimaryRetryUsed)
+            startParkingEntryPrimaryRetry();
+        else
+        {
+            parkingEntryTestHold = true;
+            Serial.println(
+                "[PARK ENTRY] Primary unresolved without retry - drive motor locked off");
+        }
         return;
     }
 
@@ -2270,6 +2337,9 @@ void updateParkingEntryScout(bool newCameraFrame)
 
     case PARKING_ENTRY_SCOUT_OBSERVE:
         stop(true);
+        if (millis() - parkingEntryScoutPhaseStartMs <
+            OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS)
+            return;
         if (!resolved &&
             millis() - parkingEntryScoutPhaseStartMs <
                 OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS)
@@ -2331,14 +2401,8 @@ void updateParkingEntryScout(bool newCameraFrame)
             OBSTACLE_PARKING_ENTRY_SCOUT_BRAKE_MS)
             return;
         parkingEntryScouting = false;
-        discoveryScanStation = parkingEntryTargetStation;
+        restoreParkingEntryPrimaryScanTarget();
         {
-            const uint8_t targetFirstSeat = static_cast<uint8_t>(
-                parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
-            discoveryScanSide =
-                seats[targetFirstSeat].y > seats[targetFirstSeat + 1].y
-                    ? 0
-                    : 1;
             const PositionEstimate returnedPose = get_position_struct();
             Serial.print(
                 "[PARK ENTRY SCOUT] Returned pose_error/heading_deg=");
@@ -2349,7 +2413,24 @@ void updateParkingEntryScout(bool newCameraFrame)
             Serial.println(fabsf(wrap180(
                 returnedPose.heading_deg -
                     parkingEntryScoutReturnPose.heading_deg)), 1);
-            armParkingEntryConnectorFromPose(returnedPose);
+            if (parkingEntryTargetStation >= 0 &&
+                stationResolved(
+                    static_cast<uint8_t>(parkingEntryTargetStation)))
+            {
+                armParkingEntryConnectorFromPose(returnedPose);
+            }
+            else if (parkingEntryPrimaryRetryUsed)
+            {
+                Serial.println(
+                    "[PARK ENTRY] Primary still unresolved after scout return");
+                startParkingEntryPrimaryRetry();
+            }
+            else
+            {
+                parkingEntryTestHold = true;
+                Serial.println(
+                    "[PARK ENTRY] Primary unresolved without retry - drive motor locked off");
+            }
         }
         return;
     }
@@ -2434,13 +2515,24 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         parkingEntryObserving = false;
         if (!resolved)
         {
-            parkingEntryTestHold = true;
-            Serial.println(
-                "[PARK ENTRY] Discovery unresolved - drive motor locked off");
-            if (!parkingEntryUsbWritten)
+            if (!parkingEntryPrimaryRetryUsed &&
+                parkingEntryTargetStation > 0)
             {
-                robot_logger.write_to_usb();
-                parkingEntryUsbWritten = true;
+                parkingEntryPrimaryRetryUsed = true;
+                Serial.println(
+                    "[PARK ENTRY] Primary unresolved; scouting preceding station before one retry");
+                startParkingEntryScout(pose);
+            }
+            else
+            {
+                parkingEntryTestHold = true;
+                Serial.println(
+                    "[PARK ENTRY] Discovery unresolved after retry - drive motor locked off");
+                if (!parkingEntryUsbWritten)
+                {
+                    robot_logger.write_to_usb();
+                    parkingEntryUsbWritten = true;
+                }
             }
         }
         else if (OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY)
@@ -2875,6 +2967,7 @@ void obstacle_path_reset()
     parkingEntryConnectorActive = false;
     parkingEntryConnectorReplanPending = false;
     parkingEntryScouting = false;
+    parkingEntryPrimaryRetryUsed = false;
     parkingEntryScoutPhase = PARKING_ENTRY_SCOUT_STEER_SETTLE;
     parkingEntryScoutStation = -1;
     parkingEntryScoutStartEncoderDistance = 0.0f;

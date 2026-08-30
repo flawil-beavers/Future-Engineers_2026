@@ -567,7 +567,11 @@ constexpr auto OBSTACLE_PARKING_ENTRY_MAX_OVERRUN_MM = 20.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1600UL;
 // Extend the settled reverse scan arc to aim at the preceding station, use
 // normal lap-1 seat voting there, and retrace the arc before joining the route.
-constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM = 75.0f;
+// Offline replay of logs 364/365/369 left a 75 mm CCW scout at 27.7--29.6
+// degrees, still outside the validated 26.4-degree clear-evidence window.
+// At 85 mm those same poses are 19.0--20.9 degrees with positive swept wall
+// and legal-pillar clearance; CW log poses also remain inside the window.
+constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM = 85.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S = 60.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS = 400UL;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS = 1600UL;

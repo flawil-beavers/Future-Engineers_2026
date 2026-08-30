@@ -1,5 +1,104 @@
 # Agent documentation and engineering handoffs
 
+## 2026-08-30: logs 362--369 complete the scout/retry state machine
+
+The newest local validation set is `local_workspace/logs/log_362.txt` through
+`log_369.txt`. No new USB read was required. Physical-contact reports were not
+provided with this set, so even the runs that completed three laps are
+telemetry successes only and must not be treated as proof of physical
+clearance.
+
+The individual outcomes are:
+
+- Log 362 is CW. Parking exit/localization and the 55 mm primary scan arc
+  completed, but target station 1 timed out UNKNOWN at
+  637.1/-1214.7/152.3. This firmware stopped permanently without attempting
+  the preceding-station scout.
+- Log 363 is CW. The primary target resolved CLEAR. The 55 mm scout marked
+  station 0 CLEAR before reaching its scan pose, then confirmed/injected green
+  seat 0 during the forward retrace. The retrace returned within 3.9 mm/1.2
+  degrees and the connector completed at merge index 138 with 60.0 mm/11.3
+  degrees endpoint error. Its preflight nevertheless logged
+  `hidden_guard_seat=-1`, because the earlier CLEAR latch took priority over
+  the later confirmed pillar. The current source retains the correction that
+  gives a confirmed seat priority over `observedClear`. Log 363 subsequently
+  completed lap 1 before manual disable.
+- Log 364 is CCW. The primary scan confirmed/injected green seat 5, but the
+  55 mm preceding-station scout never resolved station 1 and stopped safely.
+- Log 365 is CCW. The primary target resolved CLEAR; the same 55 mm scout again
+  left station 1 unresolved and stopped safely.
+- Log 366 is CW. Primary station 1 and scout station 0 resolved CLEAR, the
+  retrace returned within 4.0 mm/0.1 degrees, and the connector completed at
+  merge index 141 with 60.0 mm/7.3 degrees endpoint error. The user manually
+  disabled the run later at S1 station 2 after 2531 mm; this is not a completed
+  lap or a connector failure.
+- Log 367 is CW. Primary station 1 and scout station 0 resolved CLEAR, the
+  connector completed at merge index 140 with 59.6 mm/9.3 degrees endpoint
+  error, and the run completed all three laps. It recorded green seat 6, red
+  seats 4/5/12, and green seat 17 in the final map.
+- Log 368 is a repeat CW run. The connector completed at merge index 141 with
+  59.5 mm/7.5 degrees endpoint error, all three laps completed, and the normal
+  controlled stop completed. It recorded the same seat set as log 367.
+- Log 369 is CCW. The primary target resolved CLEAR and red seat 7 was
+  independently confirmed/injected during parking-entry observation. The
+  55 mm scout still failed to resolve its intended preceding station 1 and
+  stopped safely. The unrelated confirmed seat is not proof that the scout
+  target was visible.
+
+The repeated CCW stop is a visibility problem, not a reason to weaken seat
+voting or bypass the unresolved hold. An exact offline replay of the logged
+primary scan poses showed that the previously prepared 75 mm scout would still
+leave logs 364/365/369 at 28.4/27.7/29.6 degrees to the preceding inner seat,
+outside the validated 26.4-degree clear-evidence window. The scout is therefore
+85 mm. At 85 mm, replay of every log 362--369 pose puts the intended preceding
+seat at 6.5--20.9 degrees and 244--309 mm range. The minimum modeled swept
+clearance over all eight outbound arcs is 139.5 mm to a field wall and 166.1
+mm to the legal guarded pillar position. The ideal same-steering forward
+retrace returns exactly to the start pose. The replay script is
+`local_workspace/parking_entry_scout_sim.py`; it is a geometry/state check,
+not evidence about wheel slip, camera segmentation, tracking error, or contact.
+
+The parking-entry state machine now also implements the pieces that were
+declared but unused in commit 4ad1fe9:
+
+- After reaching the scout scan pose, the robot stays stopped and continues
+  processing camera frames for at least 400 ms even if the station was marked
+  CLEAR during the outbound arc. A confirmed pillar may therefore supersede a
+  premature CLEAR latch before the return begins.
+- If the initial primary scan times out UNKNOWN, the controller performs the
+  safe preceding-station scout instead of immediately ending the run. After
+  the 85 mm retrace, it retries the primary stationary observation once from
+  the returned pose if the primary station is still unresolved. A second
+  primary timeout or an unresolved scout locks the drive off.
+- Connector arming now has an independent hard gate requiring both the primary
+  target station and the preceding scout station to be resolved. A violated
+  gate logs `Rejected unresolved prerequisite primary/scout` and writes the
+  stopped-run log; it cannot fall through to connector construction.
+- The retry-used flag is reset in `obstacle_path_reset()`. Connector geometry,
+  Pure Pursuit steering, clearance limits, the 500 mm travel limit, legal seat
+  coordinates, and the fixed field frame are unchanged.
+
+The untouched commit-4ad1fe9 baseline built successfully with the IDE-managed
+`giga_r1_m7` environment at 366688 bytes RAM and 436592 bytes flash; it warned
+that `parkingEntryPrimaryRetryUsed` was unused. After the implementation above,
+the M7 build succeeds at 366688 bytes RAM and 437568 bytes flash and that
+warning is gone. Existing `Serial` redefinition and two unused legacy
+`obstacle.cpp` function warnings remain. M4 was not built and no firmware was
+uploaded.
+
+Next physical validation still starts CW/red with the opposite green pillar
+present. Require an 85 mm scout outbound and return, at least 400 ms stopped at
+the scout pose, green confirmation/injection rather than an uncorroborated
+CLEAR, small returned-pose error, resolved primary/scout prerequisites,
+confirmed-seat hidden guarding, connector PASS/completion, normal green then
+red avoidance, and the user's explicit report of no contact or stall. Only
+after that physical pass, test CCW/green with the opposite red pillar and
+require station 1 to resolve at the 85 mm scout pose. A primary retry may arm a
+connector only after both stations resolve; otherwise the safe stop is the
+expected result.
+
+---
+
 ## 2026-08-29: add preceding-station observation track before connector
 
 At the user's direction, the parking transition now resolves the pillar hidden

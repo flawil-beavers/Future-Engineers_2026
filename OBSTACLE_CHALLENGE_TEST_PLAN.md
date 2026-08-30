@@ -76,23 +76,60 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 
 ## Next: validate the parking-entry-to-lap connector
 
-- [x] Implement the user-selected observation-track architecture. After the
-      primary parking station resolves, preflight and traverse another 55 mm
+- [x] Analyze logs 362--369. Logs 364/365/369 all left the CCW preceding
+      station unresolved after the 55 mm scout; log 362 timed out the primary
+      CW scan without a retry. Log 363 marked the scout station CLEAR before
+      the scan pose, then confirmed green during the return while connector
+      telemetry still omitted its guard. Logs 367/368 completed three CW laps,
+      but no physical-contact report accompanies this set.
+- [x] Replay the eight logged scan poses against the fixed field, legal inner
+      pillar, complete robot capsule, and calibrated camera window. Reject the
+      prepared 75 mm distance because the three CCW cases remain at
+      27.7--29.6 degrees. Use 85 mm: all eight cases model at 6.5--20.9 degrees
+      and 244--309 mm, with at least 139.5 mm wall and 166.1 mm legal-pillar
+      clearance. This is not physical proof.
+- [x] Finish the parking-entry transition: enforce at least 400 ms stopped
+      observation at the scout pose, perform one scout-and-return plus one
+      stationary primary retry after an initial primary UNKNOWN, reset the
+      retry state between runs, and refuse connector arming unless both primary
+      and preceding stations are resolved. Preserve confirmed-seat priority
+      over an earlier CLEAR latch.
+- [x] Build only `giga_r1_m7` with the IDE-managed PlatformIO Core. The revised
+      firmware builds at 366688 bytes RAM and 437568 bytes flash. Offline
+      geometry/state simulation passes 8/8 logged poses. M4 was not built and
+      no firmware was uploaded.
+- [ ] Obtain explicit upload permission. Then test CW/red first with the
+      opposite green station-0 pillar present. Require scout preflight PASS,
+      about 85 mm outbound travel, at least 400 ms stopped observation, green
+      confirmation/injection, about 85 mm forward retrace, small return error,
+      resolved primary/scout connector prerequisites, confirmed hidden guard,
+      connector completion, and the user's report of no contact or stall.
+- [ ] If the initial primary scan times out, require the exact bounded sequence
+      `Primary unresolved; scouting` -> resolved scout -> return ->
+      `Primary stationary retry armed`. Connector arming before both stations
+      resolve is a failure; a second timeout must remain stopped.
+- [ ] Only after the new CW transition is physically contact-free, test
+      CCW/green with the opposite red pillar. Require preceding station 1 to
+      resolve at the 85 mm scout pose, an accurate retrace, connector PASS and
+      completion, confirmed green avoidance, and no wall/pillar contact,
+      reversal, stall, premature lap boundary, or unresolved-seat failure.
+
+- [x] Initial implementation of the user-selected observation-track
+      architecture. After the primary parking station resolves, preflight and
+      traverse another 55 mm
       full-lock reverse arc at 60 mm/s, use the normal lap-1 voting/CLEAR and
       route-injection pipeline on the preceding station, then retrace the arc
       forward before building the connector from the returned measured pose.
-      M7 builds at 366688 bytes RAM and 436592 bytes flash; no upload occurred.
-- [ ] After explicit upload permission, run CW/red with the green station-0
-      pillar restored. Require `[PARK ENTRY SCOUT] Preflight PASS`, a settled
-      reverse scan, about 55 mm outbound travel, station 0 GREEN confirmation
-      and live-route injection, about 55 mm forward return, and no wall/pillar
-      contact. An unresolved scout must stop safely and is not a pass.
+      This 55 mm calibration is superseded by the 85 mm implementation above.
+      Its M7 build used 366688 bytes RAM and 436592 bytes flash.
+- [x] Superseded before acceptance: the planned 55 mm CW/red-plus-green
+      validation is replaced by the ordered 85 mm validation above.
 - [ ] Require the post-return connector to preflight against the updated
       red-plus-green live route, start forward without an immediate inward
       turn, complete within the unchanged endpoint/travel gates, and continue
       through the normal green then red avoidances without contact or stall.
-- [ ] Only after the complete CW/red-plus-green transition is physically
-      contact-free, repeat the mirrored CCW/green-plus-red case.
+- [x] Superseded before acceptance: the mirrored 55 mm CCW test is replaced by
+      the ordered 85 mm validation above.
 
 - [x] Analyze logs 358--361. Log 358's unguarded CW/red connector stalled after
       104 mm while turning immediately inward; log 360 safely rejected the same
