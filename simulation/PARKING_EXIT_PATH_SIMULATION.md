@@ -55,8 +55,10 @@ from the outer wall at `y=-1500`.
 | Minimum checked gap | 242.5 mm |
 | Placement tolerance | approximately +/-5 mm |
 
-The three August 2026 top-down photographs in `local_workspace` were used to
-identify which regions are actually occupied. The robot is therefore not
+The three August 2026 top-down photographs documented in
+[`evidence/parking_exit/`](evidence/parking_exit/README.md) were used to
+identify which regions are actually
+occupied. The robot is therefore not
 treated as a solid 165-by-135 mm rectangle. Its footprint is the union of:
 
 1. A central chassis rectangle.
@@ -212,7 +214,7 @@ end a useful candidate field reference.
 The script uses only the Python standard library:
 
 ```powershell
-py -3 CAD/parking_exit_swept_search.py
+python simulation/parking_exit_swept_search.py
 ```
 
 Re-run and physically revalidate the path whenever any of these changes:

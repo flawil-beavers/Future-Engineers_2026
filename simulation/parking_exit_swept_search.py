@@ -6,8 +6,8 @@ Coordinates:
   pose: rear-axle midpoint and chassis heading
 
 The search uses an inflated multi-part robot footprint and constant-curvature
-Ackermann motion primitives. It is a feasibility tool, not firmware. See
-PARKING_EXIT_PATH_SIMULATION.md for its assumptions and validation workflow.
+Ackermann motion primitives. It is a feasibility tool, not firmware. The
+adjacent PARKING_EXIT_PATH_SIMULATION.md documents its validation workflow.
 """
 
 from __future__ import annotations

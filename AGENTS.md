@@ -14,6 +14,18 @@
   `local_workspace/`, which is intentionally gitignored. Do not create a
   separate `tmp/` working tree in the repository.
 
+## Competition rules
+
+- Use the official links recorded in `WRO_2026_RULES.md` as the canonical rules
+  reference.
+- Agents are authorized to download the official rules PDF without additional
+  permission when a task materially involves competition rules. If it is not
+  already present, save it under `local_workspace/` so repeated searching and
+  page inspection can use the faster local copy.
+- Before relying on a local PDF, verify its source and version against
+  `WRO_2026_RULES.md` and check the official Questions & Answers for newer
+  clarifications. Keep the download gitignored and never commit it.
+
 ## PlatformIO builds
 
 - Always build and compile this project with the PlatformIO Core installation managed by the IDE on the current machine.

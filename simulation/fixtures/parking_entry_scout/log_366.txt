@@ -1,0 +1,1104 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=UNSET parking_length=1.5*robot_length prototype_only=yes
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=96 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=52.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK REAR] One-shot correction start_range_mm=52.0 target_range_mm=65.0 direction=forward planned_mm=13.0
+[PARK REAR VERIFY] final_range_mm=62.0 target_error_mm=3.0 measured/expected_change_mm=10.0/13.6 accepted=yes
+Position initialized: (393.00, -1369.00), heading=180.00°
+[PARK FIELD START] turn=CW fixed_line_x=500.0 rear_axle_x_y_heading=393.0/-1369.0/180.0 start_y_source=outer_wall_tof range_mm=96.0 start_x_source=rear_tof rear_range/clearance_mm=62.0/47.0
+[PARK REAR RESULT] start/final_range_mm=52.0/62.0 start/final_clearance_mm=37.0/47.0 correction_travel_mm=13.6
+[PARK EXIT] Segment 1 direction=reverse steering=-50 target_mm=20.0
+[PARK EXIT] Segment 1 stopped target_mm=20.0 actual_mm=20.2 heading_delta_deg=-10.4
+[PARK EXIT] Segment 2 direction=forward steering=50 target_mm=25.0
+[PARK EXIT] Segment 2 stopped target_mm=25.0 actual_mm=25.5 heading_delta_deg=-22.7
+[PARK EXIT] Segment 3 direction=reverse steering=-50 target_mm=20.0
+[PARK EXIT] Segment 3 stopped target_mm=20.0 actual_mm=20.1 heading_delta_deg=-32.6
+[PARK EXIT] Segment 4 direction=forward steering=50 target_mm=85.0
+[SLIP] deviation=-100.0%, angle=50, expected_arc=1.0, actual_arc=0.0, radius=108.7 mm
+[PARK EXIT] Segment 4 stopped target_mm=85.0 actual_mm=85.9 heading_delta_deg=-73.4
+[PARK EXIT] Segment 5 direction=forward steering=-50 target_mm=150.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/58.9 deficit_mm_s=21.1 compensation_dc=0.6 output_dc=85.5
+[PARK EXIT] Final alignment distance_mm=147.5 heading_error_deg=1.6 aligned=yes
+[PARK EXIT] Segment 5 stopped target_mm=150.0 actual_mm=148.8 heading_delta_deg=1.6
+[PARK EXIT RESULT] completed_segments=5/5 travel_mm=219.8 heading_error_deg=1.6 tof_start_left_right_mm=96/9999 tof_end_left_right_mm=109/9999
+[PARK EXIT TOF REF] sensor=L filtered/raw_mm=109.0/109.0 signal_mcps=16.72 sigma_mm=2.1 rear_beyond_parking_end_mm=145.1 remaining_to_centerline_mm=154.9 beam_x_mm=208.0 beam_footprint_x_mm=187.2..228.8 expected_piece_x_mm=212.5..232.5 beam_over_piece=yes usable=yes localization_seed=yes apply_y=no
+[PARK EXIT FIELD POSE] x_y_heading=243.8/-1222.3/181.7 tof_y_correction_mm=0.0
+[PARK LOCALIZE] Armed sensor=L initial_range_mm=109.0 direction=reverse approach/detection_speed_mm_s=100/60 max_travel_mm=430.0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK LOCALIZE] First marker present at search start
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.12/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.19/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.36/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.43/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.40/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.44/3
+[PARK LOCALIZE] First marker passed; searching second
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.39/3
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-100/-100.0/-75.2 deficit_mm_s=24.8 compensation_dc=-2.4 output_dc=-81.7
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.36/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.32/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.26/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.20/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.14/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.11/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.06/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.11/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.16/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.09/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.03/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/1
+[PARK LOCALIZE] Second marker acquired; slowing for edge
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.04/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.09/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.11/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.13/1
+[PARK LOCALIZE RESULT] transition=yes creep_mm=304.8 piece_range_mm=180.0 piece_seen=yes wall_range_mm=247.0 expected_wall_range_mm=250.0 wall_residual_mm=-3.0 predicted/known_edge_x_mm=472.4/500.0 x_correction_mm=27.6 apply_x=yes wall_y_correction_mm=-3.0 apply_y=yes max_heading_error_deg=0.4
+[PARK LOCALIZE POSE] x_y_heading=576.1/-1217.1/181.5
+[PARK EXIT] Complete - parking-entry discovery next
+
+======================
+VISION
+======================
+Processing: 2.00 ms
+
+RED:
+X: 72
+Y: 135
+Width: 23
+Height: 113
+Bottom Y: 192
+Area: 1240
+
+GREEN:
+X: 209
+Y: 88
+Width: 67
+Height: 7
+Bottom Y: 90
+Area: 208
+BLUE debug area: 2028
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=180.0
+[PARK ENTRY] Localization reached arc start; steering preload=-50
+[PARK ENTRY] Pure Pursuit discovery armed turn=CW target=S0 station=1 points=7 reverse_mm=55.0 start_x_y_heading=576.1/-1217.1/181.5
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=0.0 steering=-50 arc_mm/radius_mm=55.0/109.0
+
+======================
+VISION
+======================
+Processing: 1.88 ms
+
+RED:
+X: 66
+Y: 135
+Width: 19
+Height: 111
+Bottom Y: 190
+Area: 1220
+
+GREEN:
+X: 189
+Y: 87
+Width: 73
+Height: 9
+Bottom Y: 92
+Area: 296
+BLUE debug area: 1532
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PATH] Live avoidance injected seat=4 color=RED clearance_mm=260
+[MAP] Confirmed S0 station=2 side=RIGHT color=RED
+
+======================
+VISION
+======================
+Processing: 1.64 ms
+
+RED:
+X: 184
+Y: 90
+Width: 19
+Height: 25
+Bottom Y: 104
+Area: 372
+
+GREEN:
+X: 132
+Y: 87
+Width: 29
+Height: 7
+Bottom Y: 90
+Area: 92
+BLUE debug area: 1636
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PARK ENTRY] Scan pose reached error_mm=5.4 heading_error_deg=4.9 travel/planned_mm=50.8/55.0 target_station=1
+
+======================
+VISION
+======================
+Processing: 1.65 ms
+
+RED:
+X: 121
+Y: 91
+Width: 15
+Height: 25
+Bottom Y: 104
+Area: 360
+
+GREEN:
+X: 155
+Y: 85
+Width: 43
+Height: 7
+Bottom Y: 88
+Area: 208
+BLUE debug area: 1112
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MAP] Clear S0 station=1
+[PARK ENTRY RESULT] resolved=yes station=1 result=CLEAR pose_x_y_heading=626.0/-1225.0/155.4 target_inner_seat=2 bearing_range_deg_mm=-3.4/580.5
+[PARK ENTRY SCOUT] Preflight PASS station/seat=0/0 arc/wall/pillar_mm=55.0/170.7/198.4
+[PARK ENTRY SCOUT] Armed station/seat steering=0/0 -50
+[PARK ENTRY SCOUT] Steering settled; reverse scan
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+
+RED:
+X: 120
+Y: 91
+Width: 15
+Height: 25
+Bottom Y: 104
+Area: 360
+
+GREEN:
+X: 140
+Y: 84
+Width: 21
+Height: 5
+Bottom Y: 86
+Area: 92
+BLUE debug area: 1516
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.82 ms
+
+RED:
+X: 35
+Y: 91
+Width: 17
+Height: 27
+Bottom Y: 106
+Area: 368
+
+GREEN:
+X: 162
+Y: 95
+Width: 75
+Height: 19
+Bottom Y: 106
+Area: 388
+BLUE debug area: 2444
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MAP] Clear S0 station=0
+[PARK ENTRY SCOUT] Scan pose reached travel_mm=55.0
+[PARK ENTRY SCOUT] Resolved station/result=0CLEAR
+
+======================
+VISION
+======================
+Processing: 1.67 ms
+
+GREEN:
+X: 157
+Y: 103
+Width: 79
+Height: 15
+Bottom Y: 110
+Area: 444
+BLUE debug area: 1860
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.57 ms
+
+GREEN:
+X: 147
+Y: 96
+Width: 105
+Height: 21
+Bottom Y: 108
+Area: 660
+BLUE debug area: 636
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MOTOR LOAD COMP] target/profile/measured_mm_s=60/60.0/39.4 deficit_mm_s=20.6 compensation_dc=0.3 output_dc=85.4
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 86
+Y: 89
+Width: 21
+Height: 25
+Bottom Y: 104
+Area: 392
+
+GREEN:
+X: 164
+Y: 88
+Width: 137
+Height: 25
+Bottom Y: 104
+Area: 708
+BLUE debug area: 76
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PARK ENTRY SCOUT] Return complete travel_mm=55.0
+[PARK ENTRY SCOUT] Returned pose_error/heading_deg=4.0/0.1
+[PARK ENTRY CONNECTOR] Preflight PASS merge_index=141 merge/seat_distance_mm=6992/0 pillar_seat=-1 hidden_guard_seat=-1 merge_forward/lateral/before_pillar_mm=527/-2/150 path_mm=540 lookahead_mm=150.0 points=23
+[PARK ENTRY CONNECTOR] Armed merge_index=141 points=23
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/60.1/6.8 deficit_mm_s=53.3 compensation_dc=16.6 output_dc=110.0
+
+======================
+VISION
+======================
+Processing: 1.57 ms
+
+RED:
+X: 121
+Y: 90
+Width: 15
+Height: 23
+Bottom Y: 102
+Area: 352
+
+GREEN:
+X: 217
+Y: 90
+Width: 89
+Height: 25
+Bottom Y: 104
+Area: 436
+BLUE debug area: 552
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+
+RED:
+X: 109
+Y: 90
+Width: 15
+Height: 23
+Bottom Y: 102
+Area: 340
+
+GREEN:
+X: 154
+Y: 82
+Width: 75
+Height: 9
+Bottom Y: 88
+Area: 292
+BLUE debug area: 284
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 92
+Y: 89
+Width: 23
+Height: 23
+Bottom Y: 102
+Area: 376
+
+GREEN:
+X: 137
+Y: 82
+Width: 77
+Height: 7
+Bottom Y: 86
+Area: 360
+BLUE debug area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.49 ms
+
+RED:
+X: 70
+Y: 90
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 404
+
+GREEN:
+X: 174
+Y: 85
+Width: 59
+Height: 15
+Bottom Y: 94
+Area: 300
+BLUE debug area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.47 ms
+
+RED:
+X: 54
+Y: 90
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 392
+
+GREEN:
+X: 188
+Y: 90
+Width: 71
+Height: 25
+Bottom Y: 104
+Area: 392
+BLUE debug area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+
+RED:
+X: 39
+Y: 90
+Width: 19
+Height: 25
+Bottom Y: 104
+Area: 440
+
+GREEN:
+X: 205
+Y: 96
+Width: 59
+Height: 23
+Bottom Y: 108
+Area: 344
+BLUE debug area: 72
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+
+RED:
+X: 35
+Y: 91
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 480
+
+GREEN:
+X: 178
+Y: 91
+Width: 137
+Height: 31
+Bottom Y: 110
+Area: 704
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+RED:
+X: 37
+Y: 92
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 532
+
+GREEN:
+X: 176
+Y: 90
+Width: 127
+Height: 29
+Bottom Y: 108
+Area: 628
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+RED:
+X: 51
+Y: 93
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 584
+
+GREEN:
+X: 200
+Y: 95
+Width: 53
+Height: 25
+Bottom Y: 106
+Area: 308
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+RED:
+X: 72
+Y: 94
+Width: 21
+Height: 31
+Bottom Y: 110
+Area: 624
+
+GREEN:
+X: 129
+Y: 84
+Width: 85
+Height: 9
+Bottom Y: 88
+Area: 356
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+RED:
+X: 105
+Y: 94
+Width: 23
+Height: 33
+Bottom Y: 112
+Area: 664
+
+GREEN:
+X: 132
+Y: 85
+Width: 29
+Height: 7
+Bottom Y: 88
+Area: 104
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+RED:
+X: 130
+Y: 95
+Width: 21
+Height: 33
+Bottom Y: 112
+Area: 676
+
+GREEN:
+X: 163
+Y: 83
+Width: 45
+Height: 11
+Bottom Y: 90
+Area: 252
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PARK ENTRY CONNECTOR] Complete merge_index=141 endpoint_error/heading_deg=60.0/7.3
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+RED:
+X: 172
+Y: 96
+Width: 23
+Height: 37
+Bottom Y: 116
+Area: 772
+
+GREEN:
+X: 147
+Y: 86
+Width: 31
+Height: 11
+Bottom Y: 90
+Area: 180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+RED:
+X: 176
+Y: 99
+Width: 25
+Height: 41
+Bottom Y: 120
+Area: 1020
+
+GREEN:
+X: 151
+Y: 87
+Width: 25
+Height: 9
+Bottom Y: 92
+Area: 100
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PATH] Lap boundary reached with unresolved stations
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+RED:
+X: 147
+Y: 106
+Width: 35
+Height: 55
+Bottom Y: 134
+Area: 1740
+
+GREEN:
+X: 181
+Y: 90
+Width: 35
+Height: 7
+Bottom Y: 92
+Area: 132
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 2.05 ms
+
+RED:
+X: 77
+Y: 120
+Width: 57
+Height: 87
+Bottom Y: 166
+Area: 4140
+
+GREEN:
+X: 155
+Y: 91
+Width: 35
+Height: 7
+Bottom Y: 94
+Area: 136
+ORANGE debug area: 100
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+ORANGE debug area: 716
+BLUE debug area: 192
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.91 ms
+
+RED:
+X: 32
+Y: 182
+Width: 39
+Height: 7
+Bottom Y: 184
+Area: 136
+ORANGE debug area: 2020
+BLUE debug area: 732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.75 ms
+
+GREEN:
+X: 150
+Y: 98
+Width: 35
+Height: 5
+Bottom Y: 100
+Area: 92
+BLUE debug area: 2940
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.81 ms
+
+GREEN:
+X: 153
+Y: 101
+Width: 47
+Height: 11
+Bottom Y: 106
+Area: 212
+BLUE debug area: 3212
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MAP] Clear S1 station=0
+
+======================
+VISION
+======================
+Processing: 1.96 ms
+
+GREEN:
+X: 157
+Y: 102
+Width: 139
+Height: 23
+Bottom Y: 112
+Area: 1080
+BLUE debug area: 3352
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.94 ms
+
+GREEN:
+X: 165
+Y: 103
+Width: 147
+Height: 27
+Bottom Y: 114
+Area: 1180
+BLUE debug area: 2944
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[SLIP] deviation=-100.0%, angle=30, expected_arc=2.0, actual_arc=0.0, radius=224.4 mm
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 158
+Y: 105
+Width: 169
+Height: 33
+Bottom Y: 120
+Area: 1512
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+GREEN:
+X: 147
+Y: 110
+Width: 175
+Height: 33
+Bottom Y: 128
+Area: 1220
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[SLIP] deviation=-100.0%, angle=30, expected_arc=2.0, actual_arc=0.0, radius=224.4 mm
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 140
+Y: 99
+Width: 53
+Height: 9
+Bottom Y: 104
+Area: 200
+BLUE debug area: 100
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MAP] Clear S1 station=1
+[PATH] Live avoidance injected seat=8 color=GREEN clearance_mm=260
+[MAP] Confirmed S1 station=1 side=RIGHT color=GREEN
+
+======================
+VISION
+======================
+Processing: 1.64 ms
+
+GREEN:
+X: 270
+Y: 109
+Width: 39
+Height: 59
+Bottom Y: 138
+Area: 1372
+BLUE debug area: 432
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MOTOR LOAD COMP] target/profile/measured_mm_s=257/101.1/70.1 deficit_mm_s=31.1 compensation_dc=5.5 output_dc=103.0
+
+======================
+VISION
+======================
+Processing: 1.70 ms
+
+GREEN:
+X: 295
+Y: 121
+Width: 51
+Height: 59
+Bottom Y: 148
+Area: 1920
+BLUE debug area: 536
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+BLUE debug area: 1296
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.47 ms
+BLUE debug area: 716
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+GREEN:
+X: 128
+Y: 107
+Width: 69
+Height: 19
+Bottom Y: 116
+Area: 248
+BLUE debug area: 900
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.86 ms
+BLUE debug area: 3036
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/72.5 deficit_mm_s=27.5 compensation_dc=3.7 output_dc=102.4
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+BLUE debug area: 628
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.51 ms
+BLUE debug area: 1260
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+BLUE debug area: 892
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.77 ms
+BLUE debug area: 2320
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+BLUE debug area: 544
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.90 ms
+ORANGE debug area: 32
+BLUE debug area: 2880
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PATH] Perception hold at S1 station=2 forward_mm=300 grace_ms=800
+
+======================
+VISION
+======================
+Processing: 2.02 ms
+BLUE debug area: 3328
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[PATH] Perception hold expired at S1 station=2
+
+======================
+VISION
+======================
+Processing: 2.10 ms
+BLUE debug area: 1924
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 2.09 ms
+BLUE debug area: 2052
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.65 ms
+BLUE debug area: 664
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.65 ms
+BLUE debug area: 812
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.64 ms
+BLUE debug area: 412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 2.11 ms
+BLUE debug area: 2236
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 2.12 ms
+BLUE debug area: 3856
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 2.08 ms
+BLUE debug area: 3420
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.67 ms
+BLUE debug area: 792
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.78 ms
+BLUE debug area: 1164
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+
+======================
+VISION
+======================
+Processing: 1.78 ms
+BLUE debug area: 1152
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 262.49
+[STATE CHANGE] Manual disable -> IDLE
+  LEFT:  Dist: 53 mm (Raw: 53) | Sig: 27.33 | Sigma: 1.16
+  RIGHT: Dist: 546 mm (Raw: 546) | Sig: 0.57 | Sigma: 13.72
+  Current angle: -97.8°
+  Distance since last state: 2531 mm
+Navigation controller disabled
+Paused. Pending mode: OBSTACLE_CHALLENGE
+SYSTEM DISABLED

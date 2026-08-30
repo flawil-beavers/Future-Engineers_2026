@@ -98,6 +98,10 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       firmware builds at 366688 bytes RAM and 437568 bytes flash. Offline
       geometry/state simulation passes 8/8 logged poses. M4 was not built and
       no firmware was uploaded.
+- [x] Move drive simulations out of `CAD/` into `simulation/`; track the
+      log-362--369 regression fixtures and the three parking-exit footprint
+      photographs with provenance/limitation READMEs, and record official WRO
+      rules links in `WRO_2026_RULES.md`.
 - [ ] Obtain explicit upload permission. Then test CW/red first with the
       opposite green station-0 pillar present. Require scout preflight PASS,
       about 85 mm outbound travel, at least 400 ms stopped observation, green
