@@ -27,6 +27,7 @@
  *   C      : TURN RADIUS CALIBRATION mode
  *   B      : SERVO CENTER CALIBRATION mode
  *   y      : PID AUTOTUNE mode
+ *   reversegyro : Reverse gyro speed sweep (40/60/80 mm/s)
  *   M      : MOTOR MIN DC CALIBRATION mode
  *   z      : STOP active mode
  *   u<val> : Set wall distance (mm)
@@ -52,6 +53,7 @@
 #include "tof_diagnostic_test.h"
 #include "tof_pose_diagnostic.h"
 #include "camera_distance_calibration.h"
+#include "reverse_gyro_test.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -168,7 +170,7 @@ static bool handle_pid_command(const char *message)
       return true;
     }
     mode_switch(MODE_MANUAL);
-    set_speed((int)roundf(speed));
+    mode_manual_set_speed((int)roundf(speed));
     Serial.print("PID test running at "); Serial.print(speed, 1);
     Serial.println(" mm/s. Send 'z' to stop.");
     return true;
@@ -312,7 +314,8 @@ static void print_serial_command_info()
   Serial.println("O          : Start OBSTACLE CHALLENGE mode");
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
-  Serial.println("Y1 / Y-1   : One-lap LIVE obstacle path test (left/right)");
+  Serial.println("Y1 / Y-1   : LIVE path test; PARKING EXIT IS BYPASSED");
+  Serial.println("               Never use Y while the robot is in the parking lot");
   Serial.println("Y0         : Stop LIVE obstacle path test");
   Serial.println("S1 / S-1   : Stationary seat-snap test (left/right geometry)");
   Serial.println("S0         : Stop and clear stationary seat-snap test");
@@ -421,6 +424,10 @@ void processMessage()
 
 void parseMessage(char *msg)
 {
+  if (strcmp(msg, "reversegyro") == 0) {
+    select_temporary_mode(MODE_REVERSE_GYRO_TEST);
+    return;
+  }
   if (handle_pid_command(msg))
     return;
   if (handle_seat_command(msg))
@@ -454,7 +461,7 @@ void parseMessage(char *msg)
   case 'd':
     // Direct drive commands consistently select manual mode.
     mode_switch(MODE_MANUAL);
-    set_speed(value);
+    mode_manual_set_speed(value);
     break;
 
   case 's':
@@ -526,7 +533,9 @@ void parseMessage(char *msg)
     Serial.print("LEFT: ");
     Serial.print(get_tof_distance(TOF_LEFT), 1);
     Serial.print(" RIGHT: ");
-    Serial.println(get_tof_distance(TOF_RIGHT), 1);
+    Serial.print(get_tof_distance(TOF_RIGHT), 1);
+    Serial.print(" REAR: ");
+    Serial.println(get_tof_distance(TOF_REAR), 1);
     break;
 
   case 'a':
@@ -638,6 +647,9 @@ void parseMessage(char *msg)
     }
     else if (value == 1 || value == -1 || value == 3 || value == -3)
     {
+      Serial.println(
+          "WARNING: LIVE path test bypasses parking exit. Robot must already "
+          "be at the validated field-path start pose.");
       if (current_mode == MODE_OBSTACLE_LIVE_TEST ||
           pending_mode == MODE_OBSTACLE_LIVE_TEST)
         mode_stop_all();
@@ -768,6 +780,12 @@ void pid_config_print()
     Serial.print(accel_pid_integral);
     Serial.print(" dc_out: ");
     Serial.print(dc_out);
+    Serial.print(" low_speed_pulse_density: ");
+    Serial.print(low_speed_pulse_density_active ? "active" : "off");
+    Serial.print(" pulse_slots/on: ");
+    Serial.print(low_speed_pulse_density_slots);
+    Serial.print("/");
+    Serial.print(low_speed_pulse_density_powered_slots);
     Serial.print(" pid_before_checking: ");
     Serial.print(pid_before_checking);
     Serial.print("\r\n");
@@ -782,15 +800,9 @@ void serial_setup()
 {
   Serial.begin(SERIAL_BAUD);
   
-  // Wait for serial only if the robot isn't already enabled via the physical switch
-  // This allows the robot to run without a PC if the switch is ON, 
-  // but blocks for debugging if the switch is OFF.
-  while (!Serial && !system_enabled)
-  {
-    // Re-check switch in case user toggles it to skip waiting
-    system_enabled = digitalRead(ENABLE_SWITCH_PIN);
-    delay(10);
-  }
+  // Do not block autonomous startup waiting for a USB terminal. The RAM logger
+  // captures boot diagnostics, and the Obstacle Challenge blue-ready light can
+  // only become meaningful after the rest of setup (including the camera) runs.
 
   Serial.println("===== SERIAL INITIALIZED =====");
 }

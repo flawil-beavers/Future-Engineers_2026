@@ -55,8 +55,10 @@ from the outer wall at `y=-1500`.
 | Minimum checked gap | 242.5 mm |
 | Placement tolerance | approximately +/-5 mm |
 
-The three August 2026 top-down photographs in `local_workspace` were used to
-identify which regions are actually occupied. The robot is therefore not
+The three August 2026 top-down photographs documented in
+[`evidence/parking_exit/`](evidence/parking_exit/README.md) were used to
+identify which regions are actually
+occupied. The robot is therefore not
 treated as a solid 165-by-135 mm rectangle. Its footprint is the union of:
 
 1. A central chassis rectangle.
@@ -212,7 +214,7 @@ end a useful candidate field reference.
 The script uses only the Python standard library:
 
 ```powershell
-py -3 CAD/parking_exit_swept_search.py
+python simulation/parking_exit_swept_search.py
 ```
 
 Re-run and physically revalidate the path whenever any of these changes:
@@ -253,7 +255,7 @@ The full corrected pose is logged before any Pure Pursuit join is enabled.
 The active x-localization implementation retains the ruler-validated 50 mm
 rear placement for departure safety. After final alignment and the magenta-end
 y reference, the robot centres its steering and reverses at 60 mm/s for at
-most 60 mm. This crosses the opposite edge of the same magenta piece and also
+most 70 mm. This crosses the opposite edge of the same magenta piece and also
 leaves additional forward approach distance for the later starting-section
 discovery connector. Only returns no more than 50 mm beyond the initial
 magenta range can update the last marker observation. Intermediate oblique
@@ -267,3 +269,34 @@ and the minimum x edge of the footprint. X and wall-derived y corrections are
 each bounded to 25 mm. The swept model includes the complete 60 mm reverse and
 passes all 16 gap/placement/heading tolerance cases. The movement must still
 be physically accepted in both directions before joining the lap.
+
+After logs 136 and 137 physically accepted that reverse, the model was extended
+with a test-only starting-section discovery path. It does not assume that the
+parking section is empty: under Figure 8e only the outer member of each seat
+pair is known clear, while the inner member remains unknown.
+
+The parking position is asymmetric along the 1000 mm straight, so two entry
+paths are required:
+
+- CCW reverses straight until the corrected rear-axle field coordinate reaches
+  approximately `x=60 mm`, then follows a 55 mm reverse arc toward S0 station 2.
+- CW reverses straight until approximately `x=520 mm`, then follows the mirrored
+  55 mm reverse arc toward S0 station 1.
+
+The arc radius is 109 mm and is sampled as Pure Pursuit waypoints; firmware
+commands negative speed rather than using a steering override. Both complete
+exit-plus-discovery envelopes pass all 16 gap, placement, and heading tolerance
+cases. At the final pose the relevant inner seat is inside the calibrated
+camera angle and 230--600 mm range. The first powered version stops there,
+waits up to 1200 ms for two clear frames or colour votes, logs
+`CLEAR`, `RED`, `GREEN`, or `UNKNOWN`, and locks the motor. A colour-dependent
+forward join is intentionally deferred until this scan motion and observation
+are physically validated.
+
+The model also validates rear-ToF start normalization. For each modeled
+parking gap, it starts the robot at the longitudinal middle and at +/-20 mm,
+adds +/-5 mm lateral placement and +/-1 degree heading error, moves straight
+to 50 mm rear body clearance, and then executes the complete five-segment
+exit. All 24 combinations pass collision checking. This establishes modeled
+feasibility only; the initial firmware stops after the straight correction so
+both movement directions can be physically checked before enabling the exit.

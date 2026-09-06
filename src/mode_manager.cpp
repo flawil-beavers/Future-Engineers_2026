@@ -19,6 +19,7 @@
 #include "position_estimator.h"
 #include "camera_distance_calibration.h"
 #include "logger.h"
+#include "reverse_gyro_test.h"
 #define Serial robot_logger
 
 extern bool nav_debug_enabled;
@@ -28,9 +29,19 @@ static unsigned long debug_loop_count = 0;
 static float debug_loop_time_sum_us = 0.0f;
 static float debug_loop_time_max_us = 0.0f;
 static unsigned long debug_last_print_time = 0;
+static int pending_manual_speed_mm_s = 0;
+static bool obstacle_ready_led_on = false;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
+
+static void set_obstacle_ready_led(bool ready)
+{
+    pinMode(LEDB, OUTPUT);
+    // The onboard RGB LED channels are active-low.
+    digitalWrite(LEDB, ready ? LOW : HIGH);
+    obstacle_ready_led_on = ready;
+}
 
 static bool obstacle_camera_setup()
 {
@@ -53,6 +64,7 @@ static void stop_mode(RobotMode mode)
 {
     switch (mode) {
     case MODE_MANUAL:
+        pending_manual_speed_mm_s = 0;
         stop(false);
         set_steering(0);
         break;
@@ -117,6 +129,10 @@ static void stop_mode(RobotMode mode)
         motor_min_cal_stop();
         break;
 
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_stop();
+        break;
+
     case MODE_NONE:
         break;
     }
@@ -127,7 +143,20 @@ static bool start_mode(RobotMode mode)
     switch (mode) {
     case MODE_MANUAL:
         stop(false);
+        // stop(false) de-energizes both actuators. Manual mode must restore
+        // the steering servo so subsequent `s<angle>` commands reach the
+        // hardware while direct-drive testing is active.
+        servo_disabled = false;
         set_steering(0);
+        if (pending_manual_speed_mm_s != 0)
+        {
+            const int armed_speed = pending_manual_speed_mm_s;
+            pending_manual_speed_mm_s = 0;
+            set_speed(armed_speed);
+            Serial.print("Armed manual speed applied: ");
+            Serial.print(armed_speed);
+            Serial.println(" mm/s");
+        }
         break;
 
     case MODE_HOLD:
@@ -204,6 +233,10 @@ static bool start_mode(RobotMode mode)
         motor_min_cal_start();
         break;
 
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_start();
+        break;
+
     case MODE_NONE:
         break;
     }
@@ -213,6 +246,12 @@ static bool start_mode(RobotMode mode)
 
 void mode_switch(RobotMode new_mode)
 {
+    if (new_mode != MODE_OBSTACLE_CHALLENGE && obstacle_ready_led_on)
+        set_obstacle_ready_led(false);
+
+    if (new_mode != MODE_MANUAL)
+        pending_manual_speed_mm_s = 0;
+
     if (new_mode == current_mode) {
         Serial.print("Already in mode: ");
         Serial.println(mode_name(new_mode));
@@ -248,6 +287,22 @@ void mode_switch(RobotMode new_mode)
 #endif
 
     if (!system_enabled) {
+        if (new_mode == MODE_OBSTACLE_CHALLENGE)
+        {
+            // Finish the expensive camera initialization while motion is
+            // disabled. Blue means the switch can now safely start the run.
+            if (!obstacle_camera_setup())
+            {
+                pending_mode = MODE_NONE;
+                set_obstacle_ready_led(false);
+                Serial.println(
+                    "Obstacle Challenge initialization failed; blue ready light remains off.");
+                return;
+            }
+            set_obstacle_ready_led(true);
+            Serial.println(
+                "Obstacle Challenge initialized; BLUE ready light ON.");
+        }
         pending_mode = new_mode;
         Serial.print("System disabled. Pending mode: ");
         Serial.println(mode_name(new_mode));
@@ -255,6 +310,7 @@ void mode_switch(RobotMode new_mode)
     }
 
     pending_mode = MODE_NONE;
+    set_obstacle_ready_led(false);
     // Hardware enable is mode-agnostic; the selected mode owns controller setup.
     system_enable();
     if (!start_mode(new_mode)) {
@@ -376,6 +432,13 @@ static ModeResult update_active_mode()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
 
+    case MODE_REVERSE_GYRO_TEST:
+        reverse_gyro_test_update();
+        drive_loop();
+        return reverse_gyro_test_finished()
+            ? MODE_RESULT_COMPLETED
+            : MODE_RESULT_RUNNING;
+
     case MODE_NONE:
         // Service steering output while stopped without energizing the motor.
         drive_loop();
@@ -433,6 +496,9 @@ void mode_pause()
 
 void mode_resume()
 {
+    // Turn readiness feedback off at the switch event, before any controller
+    // setup or motion can begin.
+    set_obstacle_ready_led(false);
     system_enable();
 
     if (pending_mode == MODE_NONE) {
@@ -457,12 +523,29 @@ void mode_resume()
 
 void mode_stop_all()
 {
+    set_obstacle_ready_led(false);
     stop_mode(current_mode);
     current_mode = MODE_NONE;
     pending_mode = MODE_NONE;
+    pending_manual_speed_mm_s = 0;
     stop(false);
     set_steering(0);
     Serial.println("All modes stopped.");
+}
+
+void mode_manual_set_speed(int speed_mm_s)
+{
+    if (system_enabled && current_mode == MODE_MANUAL)
+    {
+        pending_manual_speed_mm_s = 0;
+        set_speed(speed_mm_s);
+        return;
+    }
+
+    pending_manual_speed_mm_s = speed_mm_s;
+    Serial.print("Manual speed armed for enable: ");
+    Serial.print(speed_mm_s);
+    Serial.println(" mm/s");
 }
 
 const char* mode_name(RobotMode mode)
@@ -483,6 +566,7 @@ const char* mode_name(RobotMode mode)
     case MODE_SERVO_CENTER_CAL:   return "SERVO_CENTER_CAL";
     case MODE_PID_AUTOTUNE:       return "PID_AUTOTUNE";
     case MODE_MOTOR_MIN_CAL:      return "MOTOR_MIN_CAL";
+    case MODE_REVERSE_GYRO_TEST:  return "REVERSE_GYRO_TEST";
     default:                      return "UNKNOWN";
     }
 }
@@ -516,6 +600,16 @@ void general_debug_print()
     // Base telemetry (Speed, Steer, Heading, Position, ToF, Distance)
     Serial.print(" | Speed: ");
     Serial.print(current_speed, 1);
+    Serial.print("/");
+    Serial.print(measured_speed, 1);
+    Serial.print(" | DC req/applied: ");
+    Serial.print(dc_current_dc, 1);
+    Serial.print("/");
+    Serial.print(dc_out);
+    Serial.print(" | PDM slots/on: ");
+    Serial.print(low_speed_pulse_density_slots);
+    Serial.print("/");
+    Serial.print(low_speed_pulse_density_powered_slots);
     Serial.print(" | Steer: ");
     Serial.print(set_degree);
     Serial.print(" | Angle: ");
@@ -529,10 +623,12 @@ void general_debug_print()
     Serial.print(py, 0);
     Serial.print(")");
 
-    Serial.print(" | Tof L/R: ");
+    Serial.print(" | Tof L/R/B: ");
     Serial.print(get_tof_distance(TOF_LEFT), 0);
     Serial.print("/");
     Serial.print(get_tof_distance(TOF_RIGHT), 0);
+    Serial.print("/");
+    Serial.print(get_tof_distance(TOF_REAR), 0);
     Serial.print(" | Dist: ");
     Serial.print(get_distance(), 0);
 

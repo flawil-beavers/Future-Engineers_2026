@@ -1,0 +1,4809 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=UNSET parking_length=1.5*robot_length prototype_only=yes
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=98 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=50.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK REAR] One-shot correction start_range_mm=50.3 target_range_mm=65.0 direction=forward planned_mm=14.7
+[PARK REAR VERIFY] final_range_mm=59.3 target_error_mm=5.7 measured/expected_change_mm=9.0/14.8 accepted=no
+[PARK REAR] Micro-correction start_range_mm=59.3 target_mm=65.0 direction=forward planned_mm=5.7
+[PARK REAR VERIFY] final_range_mm=65.3 target_error_mm=0.3 measured/expected_change_mm=6.0/5.8 accepted=yes
+Position initialized: (389.67, -1369.00), heading=180.00°
+[PARK FIELD START] turn=CW fixed_line_x=500.0 rear_axle_x_y_heading=389.7/-1369.0/180.0 start_y_source=outer_wall_tof range_mm=96.0 start_x_source=rear_tof rear_range/clearance_mm=65.3/50.3
+[PARK REAR RESULT] start/final_range_mm=59.3/65.3 start/final_clearance_mm=44.3/50.3 correction_travel_mm=5.8
+[PARK EXIT] Segment 1 direction=reverse steering=-50 target_mm=20.0
+[PARK EXIT] Segment 1 stopped target_mm=20.0 actual_mm=20.5 heading_delta_deg=-9.4
+[PARK EXIT] Segment 2 direction=forward steering=50 target_mm=25.0
+[PARK EXIT] Segment 2 stopped target_mm=25.0 actual_mm=25.5 heading_delta_deg=-22.5
+[PARK EXIT] Segment 3 direction=reverse steering=-50 target_mm=20.0
+[PARK EXIT] Segment 3 stopped target_mm=20.0 actual_mm=20.4 heading_delta_deg=-34.1
+[PARK EXIT] Segment 4 direction=forward steering=50 target_mm=85.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/58.8 deficit_mm_s=21.2 compensation_dc=0.6 output_dc=90.3
+[PARK EXIT] Segment 4 stopped target_mm=85.0 actual_mm=85.9 heading_delta_deg=-75.1
+[PARK EXIT] Segment 5 direction=forward steering=-50 target_mm=150.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/55.5 deficit_mm_s=24.5 compensation_dc=2.3 output_dc=97.0
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.0, actual_arc=0.0, radius=108.7 mm
+[PARK EXIT] Final alignment distance_mm=150.1 heading_error_deg=1.8 aligned=yes
+[PARK EXIT] Segment 5 stopped target_mm=150.0 actual_mm=150.4 heading_delta_deg=-0.0
+[PARK EXIT RESULT] completed_segments=5/5 travel_mm=220.8 heading_error_deg=0.0 tof_start_left_right_mm=98/9999 tof_end_left_right_mm=106/9999
+[PARK EXIT TOF REF] sensor=L filtered/raw_mm=106.0/106.0 signal_mcps=14.58 sigma_mm=1.4 rear_beyond_parking_end_mm=141.0 remaining_to_centerline_mm=159.0 beam_x_mm=204.9 beam_footprint_x_mm=184.6..225.1 expected_piece_x_mm=212.5..232.5 beam_over_piece=yes usable=yes localization_seed=yes apply_y=no
+[PARK EXIT FIELD POSE] x_y_heading=245.1/-1216.8/179.9 tof_y_correction_mm=0.0
+[PARK LOCALIZE] Armed sensor=L initial_range_mm=106.0 direction=reverse approach/detection_speed_mm_s=100/60 max_travel_mm=430.0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK LOCALIZE] First marker present at search start
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.06/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.18/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.30/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.31/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.31/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.29/2
+[PARK LOCALIZE] First marker passed; searching second
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.23/2
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-100/-100.0/-78.3 deficit_mm_s=21.7 compensation_dc=-0.9 output_dc=-81.7
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.18/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.16/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.15/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.15/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.15/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.15/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.13/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.11/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.14/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.13/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.12/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.08/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.03/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.03/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.02/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.08/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.09/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.07/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.07/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.07/1
+[PARK LOCALIZE] Second marker acquired; slowing for edge
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.06/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.05/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/1
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-60/-60.0/-38.0 deficit_mm_s=22.0 compensation_dc=-1.0 output_dc=-89.8
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.05/1
+[PARK LOCALIZE RESULT] transition=yes creep_mm=312.3 piece_range_mm=153.0 piece_seen=yes wall_range_mm=247.0 expected_wall_range_mm=247.2 wall_residual_mm=-0.2 predicted/known_edge_x_mm=476.8/500.0 x_correction_mm=23.2 apply_x=yes wall_y_correction_mm=-0.2 apply_y=yes max_heading_error_deg=0.3
+[PARK LOCALIZE POSE] x_y_heading=580.6/-1218.1/179.9
+[PARK EXIT] Complete - parking-entry discovery next
+
+======================
+VISION
+======================
+Processing: 1.92 ms
+
+RED:
+X: 67
+Y: 131
+Width: 17
+Height: 109
+Bottom Y: 188
+Area: 912
+
+GREEN:
+X: 188
+Y: 89
+Width: 45
+Height: 7
+Bottom Y: 92
+Area: 132
+BLUE debug area: 1896
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=180.0
+[PARK ENTRY] Localization reached arc start; steering preload=-50
+[PARK ENTRY] Pure Pursuit discovery armed turn=CW target=S0 station=1 points=7 reverse_mm=55.0 start_x_y_heading=580.6/-1218.1/179.9
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=0.0 steering=-50 arc_mm/radius_mm=55.0/109.0
+
+======================
+VISION
+======================
+Processing: 1.89 ms
+
+RED:
+X: 55
+Y: 132
+Width: 13
+Height: 103
+Bottom Y: 182
+Area: 824
+
+GREEN:
+X: 178
+Y: 87
+Width: 85
+Height: 13
+Bottom Y: 92
+Area: 348
+BLUE debug area: 1660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Live avoidance injected seat=4 color=RED clearance_mm=260
+[MAP] Confirmed S0 station=2 side=RIGHT color=RED
+
+======================
+VISION
+======================
+Processing: 1.66 ms
+
+RED:
+X: 165
+Y: 89
+Width: 21
+Height: 25
+Bottom Y: 104
+Area: 364
+
+GREEN:
+X: 203
+Y: 85
+Width: 35
+Height: 13
+Bottom Y: 92
+Area: 236
+BLUE debug area: 1368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PARK ENTRY] Scan pose reached error_mm=5.1 heading_error_deg=4.7 travel/planned_mm=52.3/55.0 target_station=1
+[MAP] Clear S0 station=1
+[PARK ENTRY RESULT] resolved=yes station=1 result=CLEAR pose_x_y_heading=631.8/-1227.7/153.1 target_inner_seat=2 bearing_range_deg_mm=-0.6/586.8
+[PARK ENTRY SCOUT] Preflight PASS station/seat=0/0 arc/wall/pillar_mm=55.0/166.4/201.3
+[PARK ENTRY SCOUT] Armed station/seat steering=0/0 -50
+
+======================
+VISION
+======================
+Processing: 1.67 ms
+
+RED:
+X: 111
+Y: 91
+Width: 17
+Height: 25
+Bottom Y: 104
+Area: 364
+
+GREEN:
+X: 157
+Y: 86
+Width: 33
+Height: 15
+Bottom Y: 94
+Area: 224
+BLUE debug area: 1180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PARK ENTRY SCOUT] Steering settled; reverse scan
+
+======================
+VISION
+======================
+Processing: 1.67 ms
+
+RED:
+X: 98
+Y: 91
+Width: 17
+Height: 25
+Bottom Y: 104
+Area: 372
+
+GREEN:
+X: 140
+Y: 86
+Width: 47
+Height: 15
+Bottom Y: 94
+Area: 288
+BLUE debug area: 1644
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-60/-60.0/-34.0 deficit_mm_s=26.0 compensation_dc=-3.0 output_dc=-94.7
+
+======================
+VISION
+======================
+Processing: 1.77 ms
+
+RED:
+X: 35
+Y: 92
+Width: 15
+Height: 27
+Bottom Y: 106
+Area: 392
+
+GREEN:
+X: 147
+Y: 93
+Width: 39
+Height: 13
+Bottom Y: 102
+Area: 184
+BLUE debug area: 1932
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S0 station=0
+[PARK ENTRY SCOUT] Scan pose reached travel_mm=55.0
+[PARK ENTRY SCOUT] Resolved station/result=0CLEAR
+
+======================
+VISION
+======================
+Processing: 1.79 ms
+
+GREEN:
+X: 152
+Y: 102
+Width: 51
+Height: 13
+Bottom Y: 108
+Area: 232
+BLUE debug area: 2716
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.62 ms
+
+GREEN:
+X: 141
+Y: 100
+Width: 121
+Height: 19
+Bottom Y: 110
+Area: 684
+BLUE debug area: 648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=60/60.0/34.6 deficit_mm_s=25.4 compensation_dc=2.7 output_dc=92.4
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+RED:
+X: 24
+Y: 91
+Width: 17
+Height: 27
+Bottom Y: 106
+Area: 384
+
+GREEN:
+X: 166
+Y: 93
+Width: 125
+Height: 29
+Bottom Y: 108
+Area: 688
+BLUE debug area: 112
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.48 ms
+
+RED:
+X: 73
+Y: 90
+Width: 21
+Height: 25
+Bottom Y: 104
+Area: 380
+
+GREEN:
+X: 158
+Y: 87
+Width: 145
+Height: 25
+Bottom Y: 104
+Area: 876
+BLUE debug area: 68
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PARK ENTRY SCOUT] Return complete travel_mm=55.6
+[PARK ENTRY SCOUT] Returned pose_error/heading_deg=3.3/0.7
+[PARK ENTRY CONNECTOR] Preflight PASS merge_index=140 merge/seat_distance_mm=6942/0 pillar_seat=-1 hidden_guard_seat=-1 merge_forward/lateral/before_pillar_mm=488/2/200 path_mm=502 lookahead_mm=150.0 points=21
+[PARK ENTRY CONNECTOR] Armed merge_index=140 points=21
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/60.1/1.9 deficit_mm_s=58.1 compensation_dc=19.1 output_dc=107.0
+
+======================
+VISION
+======================
+Processing: 1.48 ms
+
+RED:
+X: 110
+Y: 89
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 344
+
+GREEN:
+X: 152
+Y: 85
+Width: 25
+Height: 15
+Bottom Y: 94
+Area: 196
+BLUE debug area: 68
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+RED:
+X: 97
+Y: 90
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 352
+
+GREEN:
+X: 209
+Y: 91
+Width: 59
+Height: 25
+Bottom Y: 104
+Area: 340
+BLUE debug area: 188
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+
+RED:
+X: 78
+Y: 90
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 356
+
+GREEN:
+X: 165
+Y: 87
+Width: 155
+Height: 27
+Bottom Y: 106
+Area: 952
+BLUE debug area: 108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 62
+Y: 90
+Width: 17
+Height: 23
+Bottom Y: 102
+Area: 364
+
+GREEN:
+X: 183
+Y: 87
+Width: 61
+Height: 17
+Bottom Y: 96
+Area: 332
+BLUE debug area: 168
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.47 ms
+
+RED:
+X: 41
+Y: 90
+Width: 19
+Height: 23
+Bottom Y: 102
+Area: 396
+
+GREEN:
+X: 190
+Y: 89
+Width: 79
+Height: 25
+Bottom Y: 104
+Area: 460
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 18
+Y: 91
+Width: 19
+Height: 25
+Bottom Y: 104
+Area: 452
+
+GREEN:
+X: 179
+Y: 91
+Width: 87
+Height: 27
+Bottom Y: 106
+Area: 520
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 13
+Y: 91
+Width: 19
+Height: 25
+Bottom Y: 104
+Area: 468
+
+GREEN:
+X: 174
+Y: 91
+Width: 115
+Height: 29
+Bottom Y: 108
+Area: 616
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+
+RED:
+X: 15
+Y: 92
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 512
+
+GREEN:
+X: 180
+Y: 90
+Width: 87
+Height: 27
+Bottom Y: 106
+Area: 540
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 28
+Y: 92
+Width: 21
+Height: 27
+Bottom Y: 106
+Area: 504
+
+GREEN:
+X: 180
+Y: 91
+Width: 111
+Height: 29
+Bottom Y: 108
+Area: 544
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+RED:
+X: 57
+Y: 93
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 580
+
+GREEN:
+X: 139
+Y: 83
+Width: 75
+Height: 15
+Bottom Y: 94
+Area: 360
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+RED:
+X: 94
+Y: 93
+Width: 21
+Height: 31
+Bottom Y: 110
+Area: 580
+
+GREEN:
+X: 159
+Y: 84
+Width: 51
+Height: 15
+Bottom Y: 94
+Area: 304
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+RED:
+X: 116
+Y: 94
+Width: 21
+Height: 31
+Bottom Y: 110
+Area: 580
+
+GREEN:
+X: 193
+Y: 85
+Width: 15
+Height: 15
+Bottom Y: 94
+Area: 180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PARK ENTRY CONNECTOR] Complete merge_index=140 endpoint_error/heading_deg=59.6/9.3
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 169
+Y: 95
+Width: 23
+Height: 33
+Bottom Y: 112
+Area: 672
+
+GREEN:
+X: 250
+Y: 86
+Width: 13
+Height: 17
+Bottom Y: 96
+Area: 168
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+RED:
+X: 173
+Y: 98
+Width: 27
+Height: 39
+Bottom Y: 118
+Area: 904
+
+GREEN:
+X: 259
+Y: 88
+Width: 17
+Height: 17
+Bottom Y: 96
+Area: 180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+RED:
+X: 153
+Y: 104
+Width: 31
+Height: 51
+Bottom Y: 130
+Area: 1532
+
+GREEN:
+X: 250
+Y: 88
+Width: 17
+Height: 21
+Bottom Y: 100
+Area: 256
+ORANGE debug area: 44
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Lap boundary reached with unresolved stations
+
+======================
+VISION
+======================
+Processing: 1.96 ms
+
+RED:
+X: 101
+Y: 116
+Width: 51
+Height: 77
+Bottom Y: 156
+Area: 3240
+
+GREEN:
+X: 224
+Y: 90
+Width: 21
+Height: 25
+Bottom Y: 104
+Area: 396
+ORANGE debug area: 44
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.09 ms
+
+RED:
+X: 12
+Y: 155
+Width: 33
+Height: 135
+Bottom Y: 214
+Area: 3228
+
+GREEN:
+X: 191
+Y: 93
+Width: 27
+Height: 31
+Bottom Y: 110
+Area: 604
+ORANGE debug area: 396
+BLUE debug area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.86 ms
+
+GREEN:
+X: 165
+Y: 97
+Width: 27
+Height: 39
+Bottom Y: 118
+Area: 888
+ORANGE debug area: 1524
+BLUE debug area: 424
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.90 ms
+
+GREEN:
+X: 167
+Y: 103
+Width: 37
+Height: 51
+Bottom Y: 130
+Area: 1548
+BLUE debug area: 2276
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Live avoidance injected seat=6 color=GREEN clearance_mm=260
+[MAP] Confirmed S1 station=0 side=RIGHT color=GREEN
+
+======================
+VISION
+======================
+Processing: 2.43 ms
+
+GREEN:
+X: 195
+Y: 112
+Width: 49
+Height: 71
+Bottom Y: 150
+Area: 2760
+BLUE debug area: 4204
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.98 ms
+
+GREEN:
+X: 162
+Y: 99
+Width: 145
+Height: 29
+Bottom Y: 108
+Area: 948
+BLUE debug area: 3252
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.92 ms
+
+GREEN:
+X: 164
+Y: 102
+Width: 141
+Height: 29
+Bottom Y: 114
+Area: 1220
+BLUE debug area: 2984
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.01 ms
+
+GREEN:
+X: 163
+Y: 104
+Width: 165
+Height: 33
+Bottom Y: 120
+Area: 1456
+BLUE debug area: 2968
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=24, expected_arc=2.7, actual_arc=0.0, radius=291.0 mm
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+GREEN:
+X: 152
+Y: 114
+Width: 183
+Height: 41
+Bottom Y: 134
+Area: 1496
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.57 ms
+
+GREEN:
+X: 155
+Y: 116
+Width: 181
+Height: 47
+Bottom Y: 144
+Area: 1688
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.60 ms
+
+GREEN:
+X: 133
+Y: 109
+Width: 203
+Height: 61
+Bottom Y: 148
+Area: 1764
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/76.1 deficit_mm_s=23.9 compensation_dc=2.0 output_dc=99.7
+
+======================
+VISION
+======================
+Processing: 1.48 ms
+
+GREEN:
+X: 129
+Y: 103
+Width: 157
+Height: 51
+Bottom Y: 136
+Area: 1176
+BLUE debug area: 44
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+GREEN:
+X: 87
+Y: 112
+Width: 59
+Height: 33
+Bottom Y: 130
+Area: 380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+
+GREEN:
+X: 104
+Y: 105
+Width: 81
+Height: 29
+Bottom Y: 120
+Area: 360
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.27 ms
+
+GREEN:
+X: 72
+Y: 109
+Width: 25
+Height: 9
+Bottom Y: 114
+Area: 84
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.19 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.23 ms
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.24 ms
+
+RED:
+X: 232
+Y: 87
+Width: 13
+Height: 17
+Bottom Y: 96
+Area: 188
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Perception hold at S1 station=1 forward_mm=300 grace_ms=800
+[MAP] Clear S1 station=1
+[PATH] Perception hold resolved at station=4
+
+======================
+VISION
+======================
+Processing: 1.29 ms
+
+RED:
+X: 212
+Y: 87
+Width: 13
+Height: 19
+Bottom Y: 98
+Area: 244
+
+GREEN:
+X: 189
+Y: 86
+Width: 25
+Height: 7
+Bottom Y: 90
+Area: 104
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+
+RED:
+X: 209
+Y: 88
+Width: 13
+Height: 19
+Bottom Y: 98
+Area: 260
+
+GREEN:
+X: 187
+Y: 87
+Width: 35
+Height: 11
+Bottom Y: 92
+Area: 132
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+RED:
+X: 209
+Y: 88
+Width: 13
+Height: 19
+Bottom Y: 98
+Area: 272
+
+GREEN:
+X: 190
+Y: 86
+Width: 27
+Height: 13
+Bottom Y: 92
+Area: 168
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.28 ms
+
+RED:
+X: 210
+Y: 89
+Width: 15
+Height: 21
+Bottom Y: 100
+Area: 300
+
+GREEN:
+X: 188
+Y: 90
+Width: 21
+Height: 9
+Bottom Y: 94
+Area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S1 station=2
+
+======================
+VISION
+======================
+Processing: 1.23 ms
+
+GREEN:
+X: 28
+Y: 98
+Width: 21
+Height: 5
+Bottom Y: 100
+Area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+ORANGE debug area: 76
+BLUE debug area: 64
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+ORANGE debug area: 432
+BLUE debug area: 316
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.62 ms
+
+RED:
+X: 181
+Y: 198
+Width: 31
+Height: 9
+Bottom Y: 202
+Area: 100
+ORANGE debug area: 356
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.49 ms
+
+GREEN:
+X: 193
+Y: 98
+Width: 109
+Height: 27
+Bottom Y: 106
+Area: 768
+BLUE debug area: 80
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.65 ms
+
+GREEN:
+X: 136
+Y: 93
+Width: 37
+Height: 31
+Bottom Y: 110
+Area: 308
+BLUE debug area: 860
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/67.1 deficit_mm_s=32.9 compensation_dc=6.4 output_dc=112.7
+
+======================
+VISION
+======================
+Processing: 2.00 ms
+
+GREEN:
+X: 108
+Y: 100
+Width: 23
+Height: 19
+Bottom Y: 110
+Area: 144
+BLUE debug area: 3940
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.72 ms
+
+RED:
+X: 315
+Y: 121
+Width: 9
+Height: 69
+Bottom Y: 154
+Area: 344
+
+GREEN:
+X: 93
+Y: 92
+Width: 27
+Height: 29
+Bottom Y: 108
+Area: 224
+BLUE debug area: 2408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S2 station=0
+[PATH] Live avoidance injected seat=12 color=RED clearance_mm=230
+[MAP] Confirmed S2 station=0 side=RIGHT color=RED
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+RED:
+X: 286
+Y: 126
+Width: 19
+Height: 77
+Bottom Y: 164
+Area: 736
+
+GREEN:
+X: 278
+Y: 87
+Width: 11
+Height: 17
+Bottom Y: 96
+Area: 132
+BLUE debug area: 128
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=34, expected_arc=1.7, actual_arc=0.0, radius=192.1 mm
+
+======================
+VISION
+======================
+Processing: 2.54 ms
+
+RED:
+X: 165
+Y: 133
+Width: 103
+Height: 121
+Bottom Y: 200
+Area: 6376
+
+GREEN:
+X: 273
+Y: 84
+Width: 29
+Height: 9
+Bottom Y: 88
+Area: 136
+BLUE debug area: 344
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 243
+Y: 100
+Width: 41
+Height: 45
+Bottom Y: 124
+Area: 492
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 229
+Y: 104
+Width: 49
+Height: 53
+Bottom Y: 132
+Area: 540
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 239
+Y: 107
+Width: 47
+Height: 55
+Bottom Y: 134
+Area: 496
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/70.0 deficit_mm_s=30.0 compensation_dc=5.0 output_dc=88.5
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 246
+Y: 105
+Width: 45
+Height: 51
+Bottom Y: 130
+Area: 464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+GREEN:
+X: 37
+Y: 91
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 360
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 78
+Y: 91
+Width: 25
+Height: 27
+Bottom Y: 106
+Area: 380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Live avoidance injected seat=17 color=GREEN clearance_mm=260
+[MAP] Confirmed S2 station=2 side=LEFT color=GREEN
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 109
+Y: 92
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 472
+BLUE debug area: 68
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Perception hold at S2 station=1 forward_mm=300 grace_ms=800
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 136
+Y: 91
+Width: 23
+Height: 27
+Bottom Y: 106
+Area: 428
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Perception hold expired at S2 station=1
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 139
+Y: 91
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 420
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 140
+Y: 92
+Width: 23
+Height: 29
+Bottom Y: 108
+Area: 448
+BLUE debug area: 88
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 428
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 33
+Height: 29
+Bottom Y: 108
+Area: 476
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 23
+Height: 29
+Bottom Y: 108
+Area: 464
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 140
+Y: 92
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 436
+BLUE debug area: 80
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 436
+BLUE debug area: 44
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 31
+Height: 29
+Bottom Y: 108
+Area: 476
+BLUE debug area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 27
+Height: 29
+Bottom Y: 108
+Area: 444
+BLUE debug area: 68
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 139
+Y: 91
+Width: 21
+Height: 27
+Bottom Y: 106
+Area: 428
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 140
+Y: 92
+Width: 21
+Height: 29
+Bottom Y: 108
+Area: 468
+BLUE debug area: 44
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 29
+Height: 29
+Bottom Y: 108
+Area: 456
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 139
+Y: 92
+Width: 19
+Height: 29
+Bottom Y: 108
+Area: 416
+BLUE debug area: 152
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 140
+Y: 91
+Width: 23
+Height: 27
+Bottom Y: 106
+Area: 456
+BLUE debug area: 156
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 139
+Y: 91
+Width: 21
+Height: 27
+Bottom Y: 106
+Area: 432
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+GREEN:
+X: 140
+Y: 92
+Width: 25
+Height: 29
+Bottom Y: 108
+Area: 468
+BLUE debug area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 142
+Y: 92
+Width: 19
+Height: 29
+Bottom Y: 108
+Area: 464
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 173
+Y: 91
+Width: 23
+Height: 27
+Bottom Y: 106
+Area: 392
+BLUE debug area: 76
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 202
+Y: 90
+Width: 23
+Height: 25
+Bottom Y: 104
+Area: 396
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S2 station=1
+[PATH] Perception hold resolved at station=7
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 230
+Y: 90
+Width: 23
+Height: 25
+Bottom Y: 104
+Area: 428
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 248
+Y: 92
+Width: 23
+Height: 29
+Bottom Y: 108
+Area: 436
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+GREEN:
+X: 285
+Y: 96
+Width: 27
+Height: 37
+Bottom Y: 116
+Area: 624
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 311
+Y: 110
+Width: 15
+Height: 39
+Bottom Y: 128
+Area: 428
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+
+GREEN:
+X: 145
+Y: 93
+Width: 39
+Height: 29
+Bottom Y: 108
+Area: 224
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 113
+Y: 122
+Width: 27
+Height: 23
+Bottom Y: 134
+Area: 164
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 104
+Y: 149
+Width: 21
+Height: 17
+Bottom Y: 156
+Area: 104
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+GREEN:
+X: 94
+Y: 154
+Width: 31
+Height: 61
+Bottom Y: 180
+Area: 512
+BLUE debug area: 420
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=18, expected_arc=3.7, actual_arc=0.0, radius=398.7 mm
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 50
+Y: 149
+Width: 43
+Height: 51
+Bottom Y: 174
+Area: 340
+ORANGE debug area: 124
+BLUE debug area: 132
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 192
+Y: 88
+Width: 57
+Height: 21
+Bottom Y: 100
+Area: 428
+ORANGE debug area: 888
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.76 ms
+
+RED:
+X: 118
+Y: 206
+Width: 157
+Height: 13
+Bottom Y: 212
+Area: 868
+
+GREEN:
+X: 138
+Y: 94
+Width: 43
+Height: 13
+Bottom Y: 100
+Area: 140
+ORANGE debug area: 1236
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/77.1 deficit_mm_s=22.9 compensation_dc=1.5 output_dc=97.2
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 307
+Y: 97
+Width: 23
+Height: 39
+Bottom Y: 118
+Area: 732
+ORANGE debug area: 144
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S3 station=0
+
+======================
+VISION
+======================
+Processing: 1.22 ms
+BLUE debug area: 64
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+BLUE debug area: 264
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.96 ms
+BLUE debug area: 4460
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.21 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+
+RED:
+X: 281
+Y: 95
+Width: 21
+Height: 31
+Bottom Y: 110
+Area: 516
+BLUE debug area: 564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S3 station=1
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+RED:
+X: 209
+Y: 94
+Width: 39
+Height: 35
+Bottom Y: 114
+Area: 800
+
+GREEN:
+X: 302
+Y: 213
+Width: 21
+Height: 23
+Bottom Y: 228
+Area: 120
+BLUE debug area: 368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+RED:
+X: 216
+Y: 99
+Width: 33
+Height: 43
+Bottom Y: 122
+Area: 1188
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.61 ms
+
+RED:
+X: 253
+Y: 109
+Width: 47
+Height: 61
+Bottom Y: 140
+Area: 2364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.80 ms
+
+RED:
+X: 299
+Y: 125
+Width: 47
+Height: 89
+Bottom Y: 168
+Area: 3448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[MAP] Clear S3 station=2
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 310
+Y: 177
+Width: 19
+Height: 19
+Bottom Y: 186
+Area: 152
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.26 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+GREEN:
+X: 212
+Y: 89
+Width: 21
+Height: 13
+Bottom Y: 94
+Area: 124
+BLUE debug area: 172
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+RED:
+X: 288
+Y: 89
+Width: 11
+Height: 17
+Bottom Y: 96
+Area: 112
+BLUE debug area: 280
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.48 ms
+
+RED:
+X: 289
+Y: 88
+Width: 21
+Height: 13
+Bottom Y: 96
+Area: 124
+
+GREEN:
+X: 178
+Y: 86
+Width: 49
+Height: 13
+Bottom Y: 92
+Area: 288
+ORANGE debug area: 108
+BLUE debug area: 64
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+
+RED:
+X: 292
+Y: 89
+Width: 21
+Height: 17
+Bottom Y: 96
+Area: 160
+
+GREEN:
+X: 185
+Y: 89
+Width: 75
+Height: 15
+Bottom Y: 94
+Area: 416
+ORANGE debug area: 768
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.90 ms
+
+RED:
+X: 263
+Y: 89
+Width: 35
+Height: 21
+Bottom Y: 100
+Area: 504
+
+GREEN:
+X: 175
+Y: 88
+Width: 107
+Height: 19
+Bottom Y: 98
+Area: 724
+ORANGE debug area: 1888
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.61 ms
+
+RED:
+X: 220
+Y: 90
+Width: 43
+Height: 25
+Bottom Y: 104
+Area: 852
+
+GREEN:
+X: 149
+Y: 88
+Width: 95
+Height: 23
+Bottom Y: 102
+Area: 604
+BLUE debug area: 152
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.95 ms
+
+RED:
+X: 149
+Y: 93
+Width: 47
+Height: 31
+Bottom Y: 110
+Area: 1292
+
+GREEN:
+X: 95
+Y: 102
+Width: 41
+Height: 11
+Bottom Y: 108
+Area: 124
+BLUE debug area: 1180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.73 ms
+
+RED:
+X: 139
+Y: 93
+Width: 59
+Height: 31
+Bottom Y: 110
+Area: 1596
+
+GREEN:
+X: 280
+Y: 81
+Width: 41
+Height: 5
+Bottom Y: 84
+Area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+
+RED:
+X: 43
+Y: 99
+Width: 61
+Height: 39
+Bottom Y: 118
+Area: 1368
+
+GREEN:
+X: 304
+Y: 81
+Width: 23
+Height: 7
+Bottom Y: 86
+Area: 100
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+RED:
+X: 194
+Y: 87
+Width: 19
+Height: 21
+Bottom Y: 100
+Area: 268
+
+GREEN:
+X: 47
+Y: 89
+Width: 95
+Height: 23
+Bottom Y: 102
+Area: 400
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+RED:
+X: 151
+Y: 88
+Width: 17
+Height: 21
+Bottom Y: 100
+Area: 304
+
+GREEN:
+X: 232
+Y: 84
+Width: 15
+Height: 13
+Bottom Y: 92
+Area: 136
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+RED:
+X: 133
+Y: 91
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 428
+
+GREEN:
+X: 224
+Y: 86
+Width: 17
+Height: 15
+Bottom Y: 94
+Area: 160
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Live avoidance injected seat=5 color=RED clearance_mm=260
+[MAP] Confirmed S0 station=2 side=LEFT color=RED
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+RED:
+X: 125
+Y: 95
+Width: 21
+Height: 33
+Bottom Y: 112
+Area: 656
+
+GREEN:
+X: 231
+Y: 85
+Width: 13
+Height: 17
+Bottom Y: 96
+Area: 156
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 101
+Y: 99
+Width: 29
+Height: 43
+Bottom Y: 122
+Area: 1104
+
+GREEN:
+X: 227
+Y: 88
+Width: 15
+Height: 21
+Bottom Y: 100
+Area: 244
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Completed lap 1
+[PATH] Later-lap avoidance seat=4 color=RED clearance_mm=210
+[PATH] Later-lap avoidance seat=5 color=RED clearance_mm=260
+[PATH] Later-lap avoidance seat=6 color=GREEN clearance_mm=260
+[PATH] Later-lap avoidance seat=12 color=RED clearance_mm=210
+[PATH] Later-lap avoidance seat=17 color=GREEN clearance_mm=210
+[PATH] Optimized laps 2-3 path built clearance_policy=validated-layout
+
+======================
+VISION
+======================
+Processing: 1.74 ms
+
+RED:
+X: 48
+Y: 107
+Width: 43
+Height: 59
+Bottom Y: 138
+Area: 2304
+
+GREEN:
+X: 211
+Y: 89
+Width: 21
+Height: 23
+Bottom Y: 102
+Area: 284
+ORANGE debug area: 56
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+
+GREEN:
+X: 174
+Y: 92
+Width: 23
+Height: 27
+Bottom Y: 106
+Area: 456
+ORANGE debug area: 140
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+
+GREEN:
+X: 121
+Y: 95
+Width: 29
+Height: 35
+Bottom Y: 114
+Area: 704
+ORANGE debug area: 704
+BLUE debug area: 368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.13 ms
+
+RED:
+X: 166
+Y: 235
+Width: 125
+Height: 9
+Bottom Y: 238
+Area: 592
+
+GREEN:
+X: 78
+Y: 101
+Width: 33
+Height: 47
+Bottom Y: 126
+Area: 1160
+ORANGE debug area: 40
+BLUE debug area: 2928
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.72 ms
+
+GREEN:
+X: 97
+Y: 109
+Width: 41
+Height: 65
+Bottom Y: 144
+Area: 2196
+BLUE debug area: 832
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=-27, expected_arc=2.2, actual_arc=0.0, radius=254.2 mm
+
+======================
+VISION
+======================
+Processing: 1.91 ms
+
+GREEN:
+X: 176
+Y: 116
+Width: 109
+Height: 85
+Bottom Y: 164
+Area: 4052
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.93 ms
+
+GREEN:
+X: 170
+Y: 98
+Width: 139
+Height: 29
+Bottom Y: 112
+Area: 1232
+BLUE debug area: 2800
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.85 ms
+
+GREEN:
+X: 142
+Y: 100
+Width: 87
+Height: 21
+Bottom Y: 110
+Area: 568
+BLUE debug area: 2656
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=27, expected_arc=2.5, actual_arc=0.0, radius=254.2 mm
+
+======================
+VISION
+======================
+Processing: 1.87 ms
+
+GREEN:
+X: 169
+Y: 103
+Width: 195
+Height: 39
+Bottom Y: 122
+Area: 1556
+BLUE debug area: 2064
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.65 ms
+
+GREEN:
+X: 152
+Y: 112
+Width: 197
+Height: 43
+Bottom Y: 134
+Area: 2092
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=28, expected_arc=2.6, actual_arc=0.0, radius=243.6 mm
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 147
+Y: 116
+Width: 153
+Height: 37
+Bottom Y: 138
+Area: 1068
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.29 ms
+
+GREEN:
+X: 139
+Y: 100
+Width: 35
+Height: 11
+Bottom Y: 106
+Area: 136
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.20 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+BLUE debug area: 608
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.28 ms
+
+RED:
+X: 218
+Y: 89
+Width: 15
+Height: 21
+Bottom Y: 100
+Area: 320
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.28 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+ORANGE debug area: 56
+BLUE debug area: 88
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+ORANGE debug area: 308
+BLUE debug area: 308
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.72 ms
+
+RED:
+X: 19
+Y: 156
+Width: 27
+Height: 7
+Bottom Y: 160
+Area: 100
+ORANGE debug area: 264
+BLUE debug area: 284
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 184
+Y: 100
+Width: 71
+Height: 11
+Bottom Y: 104
+Area: 336
+BLUE debug area: 124
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.76 ms
+
+GREEN:
+X: 214
+Y: 96
+Width: 191
+Height: 31
+Bottom Y: 110
+Area: 2008
+BLUE debug area: 440
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=29, expected_arc=2.3, actual_arc=0.0, radius=233.7 mm
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 314
+Y: 119
+Width: 15
+Height: 79
+Bottom Y: 158
+Area: 484
+
+GREEN:
+X: 88
+Y: 94
+Width: 31
+Height: 29
+Bottom Y: 108
+Area: 288
+BLUE debug area: 116
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.84 ms
+
+RED:
+X: 131
+Y: 138
+Width: 109
+Height: 131
+Bottom Y: 210
+Area: 8004
+
+GREEN:
+X: 27
+Y: 88
+Width: 49
+Height: 21
+Bottom Y: 100
+Area: 336
+BLUE debug area: 276
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 260
+Y: 101
+Width: 51
+Height: 45
+Bottom Y: 124
+Area: 552
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 250
+Y: 107
+Width: 51
+Height: 63
+Bottom Y: 142
+Area: 676
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+GREEN:
+X: 262
+Y: 100
+Width: 71
+Height: 47
+Bottom Y: 126
+Area: 464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 133
+Y: 89
+Width: 35
+Height: 27
+Bottom Y: 106
+Area: 420
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 221
+Y: 93
+Width: 31
+Height: 33
+Bottom Y: 112
+Area: 640
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+GREEN:
+X: 275
+Y: 102
+Width: 33
+Height: 49
+Bottom Y: 128
+Area: 1076
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.28 ms
+
+GREEN:
+X: 315
+Y: 122
+Width: 11
+Height: 41
+Bottom Y: 142
+Area: 232
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+
+GREEN:
+X: 120
+Y: 113
+Width: 27
+Height: 19
+Bottom Y: 124
+Area: 124
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 186
+Y: 96
+Width: 23
+Height: 13
+Bottom Y: 104
+Area: 100
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.46 ms
+
+GREEN:
+X: 257
+Y: 108
+Width: 39
+Height: 13
+Bottom Y: 114
+Area: 212
+BLUE debug area: 108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.64 ms
+
+GREEN:
+X: 80
+Y: 157
+Width: 35
+Height: 73
+Bottom Y: 188
+Area: 864
+ORANGE debug area: 140
+BLUE debug area: 500
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-65.9%, angle=21, expected_arc=3.0, actual_arc=1.0, radius=337.5 mm
+
+======================
+VISION
+======================
+Processing: 1.40 ms
+
+GREEN:
+X: 49
+Y: 157
+Width: 23
+Height: 25
+Bottom Y: 168
+Area: 204
+ORANGE debug area: 352
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+
+GREEN:
+X: 166
+Y: 85
+Width: 31
+Height: 13
+Bottom Y: 92
+Area: 164
+ORANGE debug area: 944
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.24 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.26 ms
+BLUE debug area: 96
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+BLUE debug area: 1976
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.20 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.19 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.20 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+RED:
+X: 298
+Y: 100
+Width: 35
+Height: 43
+Bottom Y: 122
+Area: 1156
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+RED:
+X: 249
+Y: 104
+Width: 55
+Height: 55
+Bottom Y: 134
+Area: 2088
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.83 ms
+
+RED:
+X: 242
+Y: 113
+Width: 53
+Height: 71
+Bottom Y: 150
+Area: 3524
+
+GREEN:
+X: 161
+Y: 87
+Width: 31
+Height: 7
+Bottom Y: 90
+Area: 104
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.59 ms
+
+RED:
+X: 284
+Y: 136
+Width: 85
+Height: 117
+Bottom Y: 196
+Area: 7612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+RED:
+X: 263
+Y: 86
+Width: 21
+Height: 15
+Bottom Y: 94
+Area: 256
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+RED:
+X: 234
+Y: 87
+Width: 15
+Height: 17
+Bottom Y: 96
+Area: 204
+
+GREEN:
+X: 172
+Y: 90
+Width: 53
+Height: 11
+Bottom Y: 94
+Area: 220
+ORANGE debug area: 32
+BLUE debug area: 380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.46 ms
+
+RED:
+X: 258
+Y: 87
+Width: 21
+Height: 17
+Bottom Y: 96
+Area: 236
+
+GREEN:
+X: 185
+Y: 89
+Width: 49
+Height: 15
+Bottom Y: 96
+Area: 264
+ORANGE debug area: 68
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+
+RED:
+X: 280
+Y: 87
+Width: 21
+Height: 13
+Bottom Y: 94
+Area: 112
+
+GREEN:
+X: 196
+Y: 89
+Width: 69
+Height: 11
+Bottom Y: 94
+Area: 368
+ORANGE debug area: 208
+BLUE debug area: 436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+
+RED:
+X: 291
+Y: 88
+Width: 21
+Height: 17
+Bottom Y: 96
+Area: 156
+
+GREEN:
+X: 211
+Y: 91
+Width: 45
+Height: 7
+Bottom Y: 94
+Area: 148
+ORANGE debug area: 480
+BLUE debug area: 88
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.88 ms
+
+RED:
+X: 280
+Y: 91
+Width: 31
+Height: 23
+Bottom Y: 102
+Area: 364
+
+GREEN:
+X: 181
+Y: 92
+Width: 107
+Height: 19
+Bottom Y: 100
+Area: 672
+ORANGE debug area: 1412
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.72 ms
+
+RED:
+X: 231
+Y: 91
+Width: 43
+Height: 25
+Bottom Y: 104
+Area: 776
+
+GREEN:
+X: 156
+Y: 92
+Width: 93
+Height: 25
+Bottom Y: 104
+Area: 672
+BLUE debug area: 260
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.08 ms
+
+RED:
+X: 166
+Y: 94
+Width: 47
+Height: 33
+Bottom Y: 112
+Area: 1388
+
+GREEN:
+X: 118
+Y: 98
+Width: 23
+Height: 11
+Bottom Y: 104
+Area: 120
+BLUE debug area: 1664
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.84 ms
+
+RED:
+X: 90
+Y: 98
+Width: 55
+Height: 43
+Bottom Y: 122
+Area: 1840
+
+GREEN:
+X: 295
+Y: 82
+Width: 31
+Height: 9
+Bottom Y: 88
+Area: 104
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.56 ms
+
+RED:
+X: 96
+Y: 95
+Width: 69
+Height: 35
+Bottom Y: 114
+Area: 2020
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+RED:
+X: 252
+Y: 86
+Width: 17
+Height: 19
+Bottom Y: 98
+Area: 240
+
+GREEN:
+X: 51
+Y: 91
+Width: 77
+Height: 27
+Bottom Y: 106
+Area: 388
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+RED:
+X: 195
+Y: 88
+Width: 19
+Height: 21
+Bottom Y: 100
+Area: 284
+
+GREEN:
+X: 274
+Y: 84
+Width: 17
+Height: 13
+Bottom Y: 92
+Area: 136
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+RED:
+X: 145
+Y: 90
+Width: 17
+Height: 25
+Bottom Y: 104
+Area: 384
+
+GREEN:
+X: 226
+Y: 84
+Width: 29
+Height: 13
+Bottom Y: 92
+Area: 180
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+RED:
+X: 121
+Y: 93
+Width: 21
+Height: 31
+Bottom Y: 110
+Area: 572
+
+GREEN:
+X: 162
+Y: 83
+Width: 59
+Height: 9
+Bottom Y: 88
+Area: 240
+BLUE debug area: 76
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.46 ms
+
+RED:
+X: 105
+Y: 97
+Width: 23
+Height: 37
+Bottom Y: 116
+Area: 856
+
+GREEN:
+X: 153
+Y: 84
+Width: 61
+Height: 11
+Bottom Y: 90
+Area: 264
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+
+RED:
+X: 79
+Y: 103
+Width: 33
+Height: 49
+Bottom Y: 128
+Area: 1504
+
+GREEN:
+X: 147
+Y: 84
+Width: 61
+Height: 11
+Bottom Y: 90
+Area: 320
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Completed lap 2
+
+======================
+VISION
+======================
+Processing: 1.89 ms
+
+RED:
+X: 18
+Y: 116
+Width: 43
+Height: 73
+Bottom Y: 152
+Area: 2768
+
+GREEN:
+X: 197
+Y: 90
+Width: 27
+Height: 25
+Bottom Y: 104
+Area: 388
+ORANGE debug area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.57 ms
+
+GREEN:
+X: 156
+Y: 93
+Width: 59
+Height: 31
+Bottom Y: 110
+Area: 644
+ORANGE debug area: 484
+BLUE debug area: 168
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.96 ms
+
+GREEN:
+X: 111
+Y: 97
+Width: 29
+Height: 39
+Bottom Y: 118
+Area: 812
+ORANGE debug area: 732
+BLUE debug area: 1252
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.21 ms
+
+GREEN:
+X: 76
+Y: 102
+Width: 35
+Height: 53
+Bottom Y: 132
+Area: 1292
+BLUE debug area: 4612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.75 ms
+
+GREEN:
+X: 99
+Y: 112
+Width: 45
+Height: 71
+Bottom Y: 150
+Area: 2516
+BLUE debug area: 108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=-27, expected_arc=2.3, actual_arc=0.0, radius=254.2 mm
+
+======================
+VISION
+======================
+Processing: 2.23 ms
+
+GREEN:
+X: 181
+Y: 123
+Width: 163
+Height: 105
+Bottom Y: 184
+Area: 5928
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.96 ms
+
+GREEN:
+X: 166
+Y: 93
+Width: 161
+Height: 33
+Bottom Y: 112
+Area: 1544
+BLUE debug area: 2696
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.97 ms
+
+GREEN:
+X: 176
+Y: 97
+Width: 181
+Height: 37
+Bottom Y: 116
+Area: 1664
+BLUE debug area: 2696
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.87 ms
+
+GREEN:
+X: 173
+Y: 102
+Width: 175
+Height: 43
+Bottom Y: 124
+Area: 1764
+BLUE debug area: 1684
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=27, expected_arc=2.3, actual_arc=0.0, radius=254.2 mm
+
+======================
+VISION
+======================
+Processing: 1.77 ms
+
+GREEN:
+X: 157
+Y: 109
+Width: 201
+Height: 57
+Bottom Y: 136
+Area: 2668
+BLUE debug area: 64
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=28, expected_arc=2.3, actual_arc=0.0, radius=243.6 mm
+
+======================
+VISION
+======================
+Processing: 1.70 ms
+
+GREEN:
+X: 147
+Y: 114
+Width: 193
+Height: 63
+Bottom Y: 152
+Area: 2224
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 136
+Y: 98
+Width: 55
+Height: 21
+Bottom Y: 110
+Area: 316
+BLUE debug area: 52
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.22 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=14, expected_arc=5.0, actual_arc=0.0, radius=519.6 mm
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+RED:
+X: 217
+Y: 87
+Width: 11
+Height: 17
+Bottom Y: 96
+Area: 148
+BLUE debug area: 88
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.48 ms
+
+RED:
+X: 185
+Y: 89
+Width: 13
+Height: 21
+Bottom Y: 100
+Area: 292
+
+GREEN:
+X: 234
+Y: 85
+Width: 31
+Height: 11
+Bottom Y: 90
+Area: 176
+BLUE debug area: 444
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.77 ms
+
+RED:
+X: 218
+Y: 89
+Width: 15
+Height: 21
+Bottom Y: 100
+Area: 276
+BLUE debug area: 2408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.00 ms
+BLUE debug area: 2732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.87 ms
+BLUE debug area: 2476
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.85 ms
+ORANGE debug area: 44
+BLUE debug area: 2644
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.11 ms
+ORANGE debug area: 92
+BLUE debug area: 3228
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 32
+Y: 213
+Width: 73
+Height: 27
+Bottom Y: 226
+Area: 568
+BLUE debug area: 184
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.72 ms
+
+GREEN:
+X: 184
+Y: 97
+Width: 107
+Height: 29
+Bottom Y: 108
+Area: 1120
+BLUE debug area: 404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-95.1%, angle=26, expected_arc=2.4, actual_arc=0.1, radius=265.6 mm
+
+======================
+VISION
+======================
+Processing: 2.54 ms
+
+GREEN:
+X: 139
+Y: 93
+Width: 45
+Height: 31
+Bottom Y: 110
+Area: 484
+BLUE debug area: 5472
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.05 ms
+
+RED:
+X: 247
+Y: 124
+Width: 79
+Height: 103
+Bottom Y: 182
+Area: 4304
+
+GREEN:
+X: 63
+Y: 85
+Width: 21
+Height: 15
+Bottom Y: 94
+Area: 132
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=25, expected_arc=2.6, actual_arc=0.0, radius=277.8 mm
+
+======================
+VISION
+======================
+Processing: 2.42 ms
+
+RED:
+X: 27
+Y: 152
+Width: 63
+Height: 159
+Bottom Y: 238
+Area: 6136
+
+GREEN:
+X: 294
+Y: 99
+Width: 55
+Height: 45
+Bottom Y: 124
+Area: 588
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 241
+Y: 106
+Width: 59
+Height: 59
+Bottom Y: 138
+Area: 636
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+GREEN:
+X: 254
+Y: 103
+Width: 57
+Height: 57
+Bottom Y: 136
+Area: 676
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.43 ms
+
+GREEN:
+X: 77
+Y: 90
+Width: 33
+Height: 29
+Bottom Y: 108
+Area: 460
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+
+GREEN:
+X: 166
+Y: 91
+Width: 31
+Height: 29
+Bottom Y: 108
+Area: 404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 235
+Y: 96
+Width: 29
+Height: 39
+Bottom Y: 118
+Area: 736
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 288
+Y: 109
+Width: 41
+Height: 53
+Bottom Y: 134
+Area: 1336
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.27 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+
+GREEN:
+X: 141
+Y: 100
+Width: 21
+Height: 13
+Bottom Y: 106
+Area: 108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+GREEN:
+X: 112
+Y: 133
+Width: 37
+Height: 31
+Bottom Y: 148
+Area: 236
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 100
+Y: 158
+Width: 25
+Height: 25
+Bottom Y: 170
+Area: 228
+BLUE debug area: 192
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.60 ms
+
+GREEN:
+X: 75
+Y: 152
+Width: 37
+Height: 73
+Bottom Y: 186
+Area: 760
+ORANGE debug area: 132
+BLUE debug area: 456
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[SLIP] deviation=-100.0%, angle=20, expected_arc=3.2, actual_arc=0.0, radius=355.9 mm
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+GREEN:
+X: 16
+Y: 148
+Width: 29
+Height: 21
+Bottom Y: 160
+Area: 160
+ORANGE debug area: 1012
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.71 ms
+
+RED:
+X: 53
+Y: 207
+Width: 89
+Height: 9
+Bottom Y: 212
+Area: 264
+
+GREEN:
+X: 196
+Y: 89
+Width: 65
+Height: 19
+Bottom Y: 98
+Area: 408
+ORANGE debug area: 872
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.22 ms
+BLUE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+BLUE debug area: 240
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.90 ms
+BLUE debug area: 4012
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.24 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.22 ms
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.25 ms
+
+RED:
+X: 314
+Y: 98
+Width: 11
+Height: 37
+Bottom Y: 116
+Area: 312
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 281
+Y: 100
+Width: 45
+Height: 45
+Bottom Y: 124
+Area: 1432
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.63 ms
+
+RED:
+X: 241
+Y: 108
+Width: 41
+Height: 59
+Bottom Y: 138
+Area: 2348
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.09 ms
+
+RED:
+X: 248
+Y: 119
+Width: 67
+Height: 85
+Bottom Y: 164
+Area: 4928
+ORANGE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.47 ms
+
+RED:
+X: 297
+Y: 157
+Width: 15
+Height: 45
+Bottom Y: 178
+Area: 228
+
+GREEN:
+X: 166
+Y: 88
+Width: 49
+Height: 9
+Bottom Y: 92
+Area: 200
+BLUE debug area: 56
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+RED:
+X: 225
+Y: 86
+Width: 17
+Height: 17
+Bottom Y: 96
+Area: 244
+
+GREEN:
+X: 177
+Y: 89
+Width: 69
+Height: 17
+Bottom Y: 96
+Area: 340
+BLUE debug area: 48
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.49 ms
+
+RED:
+X: 244
+Y: 87
+Width: 17
+Height: 17
+Bottom Y: 96
+Area: 228
+
+GREEN:
+X: 181
+Y: 91
+Width: 61
+Height: 11
+Bottom Y: 96
+Area: 296
+ORANGE debug area: 36
+BLUE debug area: 316
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.68 ms
+
+RED:
+X: 266
+Y: 89
+Width: 19
+Height: 19
+Bottom Y: 98
+Area: 136
+
+GREEN:
+X: 184
+Y: 91
+Width: 79
+Height: 13
+Bottom Y: 96
+Area: 348
+ORANGE debug area: 32
+BLUE debug area: 1272
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.66 ms
+
+RED:
+X: 289
+Y: 87
+Width: 11
+Height: 13
+Bottom Y: 92
+Area: 80
+
+GREEN:
+X: 192
+Y: 91
+Width: 35
+Height: 5
+Bottom Y: 94
+Area: 104
+ORANGE debug area: 180
+BLUE debug area: 724
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.70 ms
+
+RED:
+X: 289
+Y: 89
+Width: 21
+Height: 19
+Bottom Y: 98
+Area: 196
+
+GREEN:
+X: 183
+Y: 91
+Width: 95
+Height: 15
+Bottom Y: 98
+Area: 428
+ORANGE debug area: 1144
+BLUE debug area: 120
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.83 ms
+
+RED:
+X: 108
+Y: 204
+Width: 151
+Height: 29
+Bottom Y: 218
+Area: 656
+
+GREEN:
+X: 172
+Y: 91
+Width: 87
+Height: 21
+Bottom Y: 102
+Area: 600
+ORANGE debug area: 68
+BLUE debug area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.67 ms
+
+RED:
+X: 217
+Y: 91
+Width: 41
+Height: 27
+Bottom Y: 106
+Area: 952
+
+GREEN:
+X: 145
+Y: 92
+Width: 89
+Height: 25
+Bottom Y: 104
+Area: 516
+BLUE debug area: 332
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 2.28 ms
+
+RED:
+X: 153
+Y: 94
+Width: 49
+Height: 35
+Bottom Y: 114
+Area: 1424
+
+GREEN:
+X: 282
+Y: 87
+Width: 57
+Height: 7
+Bottom Y: 90
+Area: 184
+BLUE debug area: 3344
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.81 ms
+
+RED:
+X: 78
+Y: 99
+Width: 49
+Height: 45
+Bottom Y: 124
+Area: 1732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.62 ms
+
+RED:
+X: 70
+Y: 97
+Width: 69
+Height: 39
+Bottom Y: 118
+Area: 2028
+
+GREEN:
+X: 228
+Y: 81
+Width: 25
+Height: 3
+Bottom Y: 82
+Area: 84
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.42 ms
+
+RED:
+X: 236
+Y: 87
+Width: 17
+Height: 21
+Bottom Y: 100
+Area: 260
+
+GREEN:
+X: 38
+Y: 93
+Width: 79
+Height: 29
+Bottom Y: 108
+Area: 448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+RED:
+X: 190
+Y: 88
+Width: 19
+Height: 21
+Bottom Y: 100
+Area: 268
+
+GREEN:
+X: 271
+Y: 84
+Width: 17
+Height: 13
+Bottom Y: 92
+Area: 144
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+RED:
+X: 145
+Y: 91
+Width: 15
+Height: 25
+Bottom Y: 104
+Area: 384
+
+GREEN:
+X: 228
+Y: 84
+Width: 13
+Height: 13
+Bottom Y: 92
+Area: 116
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.39 ms
+
+RED:
+X: 131
+Y: 94
+Width: 19
+Height: 31
+Bottom Y: 110
+Area: 592
+
+GREEN:
+X: 172
+Y: 82
+Width: 63
+Height: 9
+Bottom Y: 88
+Area: 340
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.44 ms
+
+RED:
+X: 106
+Y: 98
+Width: 27
+Height: 39
+Bottom Y: 118
+Area: 968
+
+GREEN:
+X: 218
+Y: 88
+Width: 19
+Height: 19
+Bottom Y: 98
+Area: 232
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.66 ms
+
+RED:
+X: 77
+Y: 105
+Width: 35
+Height: 55
+Bottom Y: 134
+Area: 1752
+
+GREEN:
+X: 178
+Y: 88
+Width: 119
+Height: 23
+Bottom Y: 102
+Area: 736
+ORANGE debug area: 44
+BLUE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+[PATH] Completed lap 3
+[OC] Three laps complete; final parking is not implemented
+
+======================
+VISION
+======================
+Processing: 2.02 ms
+
+RED:
+X: 35
+Y: 114
+Width: 53
+Height: 73
+Bottom Y: 152
+Area: 3420
+
+GREEN:
+X: 151
+Y: 88
+Width: 67
+Height: 13
+Bottom Y: 94
+Area: 340
+ORANGE debug area: 44
+BLUE debug area: 72
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13
+
+======================
+VISION
+======================
+Processing: 1.97 ms
+
+RED:
+X: 14
+Y: 126
+Width: 35
+Height: 95
+Bottom Y: 174
+Area: 2852
+
+GREEN:
+X: 215
+Y: 92
+Width: 21
+Height: 27
+Bottom Y: 106
+Area: 388
+ORANGE debug area: 152
+BLUE debug area: 168
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.13

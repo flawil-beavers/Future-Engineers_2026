@@ -6,8 +6,8 @@ Coordinates:
   pose: rear-axle midpoint and chassis heading
 
 The search uses an inflated multi-part robot footprint and constant-curvature
-Ackermann motion primitives. It is a feasibility tool, not firmware. See
-PARKING_EXIT_PATH_SIMULATION.md for its assumptions and validation workflow.
+Ackermann motion primitives. It is a feasibility tool, not firmware. The
+adjacent PARKING_EXIT_PATH_SIMULATION.md documents its validation workflow.
 """
 
 from __future__ import annotations
@@ -300,21 +300,78 @@ def validate_segments(start, segments):
     return sum(scenarios), len(scenarios)
 
 
+def validate_rear_tof_positioning():
+    """Check the supported middle +/-20 mm starts and the complete exit.
+
+    The rear sensor measures longitudinal position, then firmware moves
+    straight to 50 mm rear body clearance before running the existing path.
+    Include the existing gap, lateral-placement, and +/-1 degree heading cases.
+    """
+    scenarios = []
+    for gap in (MIN_GAP_MM, NOMINAL_GAP_MM + PLACEMENT_ERROR_MM):
+        middle_clearance = (gap - ROBOT_FRONT_MM - ROBOT_REAR_MM) * 0.5
+        for offset in (-20.0, 0.0, 20.0):
+            initial_clearance = middle_clearance + offset
+            for y_error in (-PLACEMENT_ERROR_MM, PLACEMENT_ERROR_MM):
+                for heading_error in (-HEADING_ERROR_DEG, HEADING_ERROR_DEG):
+                    pose = Pose(
+                        ROBOT_REAR_MM + initial_clearance,
+                        PARKING_DEPTH_MM - 62.5 + y_error,
+                        heading_error)
+                    valid = not collision(pose, 0, gap)
+                    correction = 50.0 - initial_clearance
+                    direction = 1 if correction >= 0.0 else -1
+                    for _ in range(int(math.ceil(abs(correction)))):
+                        step = min(1.0, abs(correction))
+                        pose = advance(pose, direction, 0, step)
+                        correction -= direction * step
+                        if collision(pose, 0, gap):
+                            valid = False
+                            break
+                    if valid:
+                        for segment_direction, steering, distance in SELECTED_CONTROLS:
+                            for _ in range(int(round(distance))):
+                                pose = advance(
+                                    pose, segment_direction, steering, 1.0)
+                                if collision(pose, steering, gap):
+                                    valid = False
+                                    break
+                            if not valid:
+                                break
+                    scenarios.append(valid)
+    return sum(scenarios), len(scenarios)
+
+
 SELECTED_CONTROLS = (
     (-1, +50, 20.0),
     (+1, -50, 25.0),
     (-1, +50, 20.0),
-    (+1, -50, 75.0),
+    (+1, -50, 85.0),
     # Model distance to return from about 73.6 degrees to parallel. Firmware
     # terminates this final arc from gyro alignment within bounded distance.
-    (+1, +50, 140.0),
+    (+1, +50, 150.0),
 )
 
 # Test-only straight reverse after the five exit segments. Firmware may stop
 # sooner when two wall frames confirm that the side-ToF cone has crossed the
 # opposite magenta-piece edge.
 SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
-    (-1, 0, 60.0),
+    (-1, 0, 70.0),
+)
+
+# Direction-specific test-only discovery envelopes. The firmware stops the
+# first straight segment when the corrected field x reaches 60 mm (CCW) or
+# 520 mm (CW); these nominal controls reproduce those endpoints from the
+# selected prototype start. The simulation's +y always points away from the
+# outer wall, so its CW local frame is reflected; the physical firmware mirrors
+# the steering even though the local swept-envelope control retains +50.
+CCW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
+    (-1, 0, 400.0),
+    (-1, +50, 55.0),
+)
+CW_ENTRY_DISCOVERY_CONTROLS = SELECTED_CONTROLS + (
+    (-1, 0, 260.0),
+    (-1, +50, 55.0),
 )
 
 
@@ -450,10 +507,23 @@ def report_selected():
           f"{localized_pose.heading_deg:.1f}deg)")
     print("  exit_plus_reverse_tolerance_scenarios="
           f"{reverse_passed}/{reverse_total}")
+    ccw_segments = build_segments(start, CCW_ENTRY_DISCOVERY_CONTROLS)
+    ccw_passed, ccw_total = validate_segments(start, ccw_segments)
+    cw_segments = build_segments(start, CW_ENTRY_DISCOVERY_CONTROLS)
+    cw_passed, cw_total = validate_segments(start, cw_segments)
+    print(f"  ccw_entry_discovery_tolerance_scenarios="
+          f"{ccw_passed}/{ccw_total}")
+    print(f"  cw_entry_discovery_tolerance_scenarios="
+          f"{cw_passed}/{cw_total}")
+    rear_passed, rear_total = validate_rear_tof_positioning()
+    print(f"  rear_tof_middle_plus_minus_20_exit_scenarios="
+          f"{rear_passed}/{rear_total}")
     output = Path(__file__).with_name("parking_exit_path.svg")
     write_svg(start, output)
     print(f"  diagram={output}")
-    return passed == total and reverse_passed == reverse_total
+    return (passed == total and reverse_passed == reverse_total and
+            ccw_passed == ccw_total and cw_passed == cw_total and
+            rear_passed == rear_total)
 
 
 def search_alternatives():

@@ -44,6 +44,7 @@ enum RobotMode {
     MODE_SERVO_CENTER_CAL,      ///< Straight servo-center calibration
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
     MODE_MOTOR_MIN_CAL,         ///< Motor minimum DC calibration
+    MODE_REVERSE_GYRO_TEST,     ///< Automatic reverse gyro speed sweep
 };
 
 enum ModeResult {
@@ -101,6 +102,15 @@ void mode_resume();
  * Motors are stopped and no mode will resume on switch toggle.
  */
 void mode_stop_all();
+
+/**
+ * @brief Apply a manual speed now or arm it for the next manual-mode start.
+ *
+ * A command entered while the physical enable switch is LOW is consumed once
+ * when pending manual mode starts. Pausing a running manual test does not arm
+ * an automatic restart.
+ */
+void mode_manual_set_speed(int speed_mm_s);
 
 /**
  * @brief Get a human-readable name for a mode

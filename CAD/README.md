@@ -18,10 +18,10 @@ This folder contains the Fusion 360 model, the scripts used to characterize the 
 | `PARKING_EXIT_PATH_SIMULATION.md` | Geometry, Ackermann motion, collision checking, search method, selected route, limitations, and physical-validation procedure for the parking exit. |
 | `PARKING_ENTRY_DESIGN.md` | Rules-backed geometry, rejected reverse-exit baseline, sensor-localization concept, safety gates, and ordered work for final parallel parking. |
 
-The parking-exit simulation is documented separately in
-[`PARKING_EXIT_PATH_SIMULATION.md`](PARKING_EXIT_PATH_SIMULATION.md). It reuses
-the Ackermann steering results but models the complete swept robot footprint
-against the wall and both magenta parking blocks.
+Driving simulations use these Ackermann results but are maintained separately
+in [`simulation/`](../simulation/README.md). That folder contains motion and
+collision models, generated paths, log fixtures, physical reference images,
+and their validation documentation.
 
 The final-parking design basis is documented in
 [`PARKING_ENTRY_DESIGN.md`](PARKING_ENTRY_DESIGN.md). It intentionally does not
