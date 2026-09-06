@@ -1130,15 +1130,52 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
-- [ ] Determine the parking-place pose from field localization plus direct
-      detection of both magenta parking pieces; do not depend on odometry alone.
-- [ ] Track localization uncertainty through all three laps and decide when a
-      final wall/parking-feature correction is required before parking.
-- [ ] Select and approach the correct parking gap after completing lap 3.
-- [ ] Reverse without touching either magenta boundary.
-- [ ] Finish fully inside the parking rectangle.
-- [ ] Keep the difference between the two side distances at or below 20 mm.
-- [ ] Validate parking after both CW and CCW obstacle runs.
+- [ ] Immediate full isolated practice: remove all obstacle pillars, keep
+      `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=true`, CCW turn sign `+1`, and
+      segment limit `7`. Place the rear axle at canonical
+      `(-500,-1000,0 degrees)`, centred across the lane on the boundary from
+      the last corner to the parking straight. Require both
+      markers, valid gap/pose corrections, all seven segments, strict final
+      containment, no contact, and final motor hold.
+
+- [ ] Cover all four possible physical starting-section/parking-lot rotations.
+      Canonical rotation may share geometry, but test both real direction cases:
+      parking ahead after the current CCW wrap and behind after the CW wrap.
+- [ ] Keep obeying red/green pass sides through the official third lap. Once
+      the complete vehicle has left the last corner, parking-route signs may be
+      passed on either side but must still not be touched or moved.
+- [x] Confirm the 125 mm front, 40 mm rear, 165 mm length, 125 mm
+      straight-wheel width, approximately 135 mm steering envelope, and
+      approximately 109 mm full-lock radius. The resulting gap is 247.5 mm and
+      the centred local rear-axle target is `(81.25,100,0 degrees)`.
+- [x] Extend the parking swept-envelope model from the fully contained target
+      outward. Do not reverse the current exit unchanged: its parked pose has
+      zero nominal margin at the open boundary, and a centred target failed all
+      16 current-path tolerance cases.
+- [x] Require positive wall/marker clearance and strict final containment for
+      every gap/placement/heading tolerance case in both mirrored directions.
+- [ ] Track localization uncertainty through all three laps, then approach the
+      outer scan line using the known start-section pillar map.
+- [ ] Directly scan both magenta pieces with fresh raw side-ToF frames, recover
+      the fixed field edge and outer-wall reference, and verify the measured
+      inside-face gap against `1.5 * measured robot length`. Do not depend on
+      odometry alone and do not enter the bay if either piece is unresolved.
+- [x] Implement the calculated path behind an isolated test-only segment gate,
+      with the existing steer-settle, bounded-distance, brake, gyro-health, and
+      motor-lock safety pattern.
+- [ ] With `OBSTACLE_FINAL_PARKING_ENTRY_ARMED=false`, validate the complete
+      connector and dual-marker scan first. Require both inside edges, a gap
+      within 15 mm of 247.5 mm, pose corrections within 25 mm, and capture
+      error within +/-5 mm and +/-1 degree in both CCW and CW.
+- [ ] After the capture gate passes in both directions, set
+      `OBSTACLE_FINAL_PARKING_ENTRY_ARMED=true` and raise
+      `OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT` one segment per reviewed run.
+- [ ] Validate one parking segment at a time without pillars, then repeat with
+      every legal starting-section pillar placement without moving a sign.
+- [ ] Finish with steering centred, complete projection strictly inside the
+      detected rectangle, heading error at most 2 degrees, and permanent motor
+      hold. This is stricter than the rule's 20 mm wheel-distance difference.
+- [ ] Validate complete final parking after both CW and CCW three-lap runs.
 
 ## Final end-to-end reliability
 

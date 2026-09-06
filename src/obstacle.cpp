@@ -8,6 +8,7 @@
 #include "obstacle_path.h"
 #include "logger.h"
 #include "position_estimator.h"
+#include "final_parking.h"
 
 #define Serial robot_logger
 
@@ -43,7 +44,6 @@ static float oa_last_camera_error = 0.0f;
 
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
-static bool oc_finish_requested = false;
 static bool oc_complete = false;
 
 enum ParkingExitState : uint8_t
@@ -226,7 +226,8 @@ static float obstacleSectionDistance()
 static void resetParkingExit()
 {
     oc_parking_exit_state =
-        OBSTACLE_PARKING_EXIT_ENABLED
+        OBSTACLE_PARKING_EXIT_ENABLED &&
+                !OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED
             ? PARKING_EXIT_IDLE
             : PARKING_EXIT_DONE;
     oc_parking_exit_state_distance = get_distance();
@@ -2835,7 +2836,7 @@ void obstacle_challenge_setup()
     resetParkingExit();
     obstacle_avoidance_reset();
     obstacle_path_reset();
-    oc_finish_requested = false;
+    final_parking_reset();
     oc_complete = false;
 
     Serial.println(
@@ -2925,7 +2926,7 @@ void obstacle_challenge_update(
             false;
         resetParkingExit();
         obstacle_path_reset();
-        oc_finish_requested = false;
+        final_parking_reset();
         oc_complete = false;
 
         return;
@@ -2950,8 +2951,8 @@ void obstacle_challenge_update(
 
         obstacle_avoidance_reset();
         obstacle_path_reset();
+        final_parking_reset();
         course_map_reset();
-        oc_finish_requested = false;
         oc_complete = false;
 
         oc_current_section = 0;
@@ -2978,7 +2979,23 @@ void obstacle_challenge_update(
 
         Serial.println(
             "[OC] New obstacle run");
-        printParkingExitGeometry();
+        if (OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED)
+        {
+            final_parking_start_practice(
+                OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN);
+            Serial.println(
+                "[OC] Isolated final-parking practice; exit and laps bypassed");
+        }
+        else
+            printParkingExitGeometry();
+    }
+
+    if (OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED)
+    {
+        final_parking_update(
+            OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN);
+        oc_complete = final_parking_complete();
+        return;
     }
 
     // This path exists only in the Obstacle Challenge. While it owns the
@@ -3018,24 +3035,20 @@ void obstacle_challenge_update(
         return;
     }
 
-    // End-of-run parking is intentionally not guessed here: the repository
-    // only contains the start parking exit. Stop safely in the start section
-    // until a separately calibrated parking state machine is supplied.
+    const int8_t parkingTurnSign =
+        OBSTACLE_PARKING_EXIT_ENABLED
+            ? (oc_parking_exit_steering > 0 ? -1 : 1)
+            : OBSTACLE_DEFAULT_TURN_SIGN;
+    if (final_parking_update(parkingTurnSign))
+    {
+        oc_complete = final_parking_complete();
+        return;
+    }
+
+    // Explicit fallback when final parking is disabled in config.h.
     set_steering(0);
-    set_speed(0);
-    if (!oc_finish_requested)
-    {
-        oc_finish_requested = true;
-        Serial.println(
-            "[OC] Three laps complete; final parking is not implemented");
-    }
-    if (!oc_complete &&
-        fabsf(current_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS &&
-        fabsf(measured_speed) <= SOFT_STOP_SPEED_THRESHOLD_MMS)
-    {
-        stop(false);
-        oc_complete = true;
-        robot_logger.write_to_usb();
-        Serial.println("[OC] Controlled stop complete");
-    }
+    stop(false);
+    oc_complete = true;
+    robot_logger.write_to_usb();
+    Serial.println("[OC] Final parking disabled; stopped after three laps");
 }

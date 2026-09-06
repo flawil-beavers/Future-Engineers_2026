@@ -2522,6 +2522,145 @@ official pillar is placed at the target inner seat.
 
 ---
 
+## 2026-08-27 - Final-parking controller implemented behind physical gates
+
+The robot remains unchanged at the confirmed `165 mm` length (`125 mm` front
+and `40 mm` rear of the rear axle). The rule-defined bay is `247.5 x 200 mm`; the centred
+rear-axle target is parking-local `(81.25,100,0 degrees)`, with `41.25 mm`
+longitudinal and `37.5 mm` lateral nominal clearance.
+
+`CAD/parking_entry_swept_search.py` searches from that contained target outward
+with added search clearance, reverses the result for entry, and passes all
+`16/16` combinations of `242.5/252.5 mm` gap, `+/-5 mm` capture translation,
+and `+/-1 degree` capture heading. The resulting seven entry controls are
+`R0/20, R+50/120, R0/80, R-50/65, F+50/20, R-50/35, F0/25` in local parking
+coordinates. The nominal capture pose is `(270.26,274.60,0 degrees)`.
+
+`src/final_parking.cpp` handles the conservative three-lap handoff for both
+mirrors, takes an inner-safe `y=-1120 mm` connector past the parking pieces,
+shifts outside only after `x=550`, scans west from `x=900`, requires both
+magenta pieces and the intervening wall, corrects x from the fixed inside face
+and y from the outer wall, returns to the mirrored capture pose, runs bounded
+segments, and verifies the full final footprint plus heading. Every geometry,
+gyro, distance, marker-order, gap, correction, capture, segment-pose, and final
+containment failure stops the motor.
+
+No firmware was uploaded and no commit was created. For the requested
+parking-only run, `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=true` bypasses the
+exit and all laps, selects CCW, and initializes the rear axle at canonical
+`(-500,-1000,0 degrees)`: centred across the lane and exactly on the boundary
+between the last corner and the parking straight. Run with no obstacle pillars.
+The controller must perform its full
+approach, outer shift, westbound two-marker scan, pose correction, capture, all
+seven searched entry segments, strict footprint/heading/speed verification,
+and final motor hold. Practice mode deliberately bypasses the production
+`ENTRY_ARMED` gate; the seven-segment test limit remains active. Approach,
+scan, capture, and every individual segment also have independent timeouts so
+an encoder stall cannot command motion indefinitely. The IDE-managed practice
+build passed with 361240 bytes RAM and 371208 bytes flash.
+
+---
+
+## 2026-08-27 - Parking rotations and final-section signs
+
+Rules Figures 8d/8e and Appendix A were visually rechecked. Two coin tosses can
+place the starting section and its parking lot on any of the four physical
+straights. Within that straight the bay is not at either of two arbitrary
+offsets: the right piece is fixed at the right dotted boundary and the left
+piece moves for `1.5 * robot length`. Canonical rotation still needs two real
+handoffs at the current path wrap near x=0: CCW/east has the bay ahead at
+positive x, while CW/west has already passed it and must approach it in reverse
+or via a separately modelled legal turnaround.
+
+The third lap is officially complete when the complete vehicle projection has
+left the last corner section. Only after that point may the remaining
+start-section signs be passed on either side; none may be moved. The current
+progress-wrap completion happens later and is conservative. Keep that safer
+handoff initially, but make the CCW-forward and CW-reverse approaches explicit.
+Do not introduce an earlier transition until the full footprint plus pose
+uncertainty can be proven beyond the corner boundary.
+
+The IDE-managed PlatformIO Python executable successfully reran
+`CAD/parking_exit_swept_search.py`: the unchanged five-segment path and its
+60 mm reverse-localization limit both still pass 16/16 checked scenarios, and
+the generated SVG was unchanged. `CAD/PARKING_ENTRY_DESIGN.md` now records the
+four rotations, two direction cases, sign-rule boundary, required measurements,
+and optimizer inputs for the unchanged 165 mm robot.
+No firmware or geometry constant was changed.
+
+Exact next action: use the confirmed 165 mm geometry to search a dedicated
+fully-contained entry path, then validate the dual-marker ToF scan and the
+direction-specific CCW/CW approach before any powered entry test.
+
+---
+
+## 2026-08-27 - Final-parking rules and geometry design established
+
+The current official WRO 2026 rules and 11 August international Q&A were
+rechecked before designing final parking. Full points require the complete
+vehicle projection inside the `200 mm`-deep, `1.5 * robot length` gap, parallel
+to the outer wall with no more than `20 mm` wheel-distance difference; touching
+a magenta limit ends the round with no parking points. After three laps the
+prescribed sign-passing side no longer applies, but signs still cannot be
+moved. The Q&A permits the opposite parking orientation and prohibits changing
+the robot size. The WRO Switzerland task page currently points to the
+international rules, and its FAQ contains no parking-specific override.
+
+For the current `165 mm` length and `125 mm` straight-wheel width, the centred
+prototype target has `41.25 mm` longitudinal clearance at each end and
+`37.5 mm` lateral clearance. Its parking-local rear-axle pose is
+`(81.25,100,0 degrees)`, mirrored in the canonical field to
+`(313.75,-1400,0 degrees)` for east/CCW orientation and
+`(398.75,-1400,180 degrees)` for west/CW orientation. A 2-degree error across
+the 100 mm wheelbase creates only `3.49 mm` wall-distance difference and safely
+fits the 20 mm rule gate.
+
+Do not implement final parking by blindly reversing the current exit. Its
+parked local pose `(90,137.5,0 degrees)` puts the 125 mm straight footprint
+exactly on the open `y=200` boundary, leaving zero nominal scoring margin. A
+same-model cross-check of the existing five controls passed `16/16` tolerance
+cases only at that zero-margin y; it passed `13/16` at `y=132.5` (5 mm nominal
+margin) and `0/16` at the centred `y=100`. Ackermann reversibility remains a
+valid method, but a new swept search must begin at the fully contained target,
+find a collision-free exit, and reverse that newly calculated control list.
+
+The selected architecture is documented in `CAD/PARKING_ENTRY_DESIGN.md` and
+the ordered gates are reflected in `OBSTACLE_CHALLENGE_TEST_PLAN.md`. After lap
+three, use a low-speed connector which respects the known inner-row pillar map,
+scan both magenta pieces with fresh raw outer-side ToF frames, recover absolute
+x from the fixed piece and y from the outer wall, verify the measured gap, and
+only then enter using the generated bounded multi-point state machine. Final
+acceptance requires both markers, consistent gap, heading within 2 degrees,
+the complete uncertainty-inflated footprint strictly inside, centred steering,
+and a permanent motor hold. Any failed gate stops outside the bay.
+
+No production firmware was changed. Exact next steps are to measure the final
+straight and full-lock projections, physically accept reverse exit localization
+and the missing discovery connector, then extend the swept model for the
+centred target before adding a test-only parking state machine. Python remains
+unavailable on this workstation, so no checked-in Python search was run during
+this design session.
+
+---
+
+## 2026-08-27 - Pure-pursuit integrated into main and reviewed
+
+Local `main` now contains the exact source tree from `pure-pursuit` commit
+`57612568c64348654329ed6e366275f3e6af47aa` via merge commit `dcc3d70`; the
+`pure-pursuit` branch itself was not changed. The IDE-managed `giga_r1_m7`
+build passed with 361224 bytes RAM and 371488 bytes flash. Static review found
+no new compile or control-flow blocker, but the parking exit intentionally
+remains in test-only mode: reverse edge localization is not physically tested,
+the start-section discovery connector and final parking are still missing, and
+the final robot-length correction remains unset. Do not disable the test-only
+lockout before those items are resolved. The Python swept-path model could not
+be rerun on this workstation because no Python launcher is installed; its
+latest checked-in handoff reports all 16 scenarios passing. Next, physically
+validate the reverse localization without pillars in both directions, then
+implement and test the direction-specific low-speed discovery connector.
+
+---
+
 ## 2026-08-27 - Reverse parking-edge localization prepared
 
 `D:\log_134.txt` physically passed the mirrored CW forward-edge-search run
