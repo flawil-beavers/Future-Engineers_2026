@@ -6370,3 +6370,41 @@ This change is not physically validated and must be built before upload.
   merge at a saved forward route index, and prevent lap counting/discovery
   holds until the exact merge occurs. After offline swept-envelope validation,
   test CW/red then CCW/green before changing camera evidence timing again.
+
+---
+
+## 2026-09-06: reproducible WRO documentation PDF pipeline
+
+The WRO documentation PDF is now produced by one repository-root command:
+`& .\scripts\build-documentation.ps1`. Pandoc/XeLaTeX builds `README.md`, inserts
+`docs/pdf/title-page.tex` as page one, and writes all intermediates below the
+ignored `local_workspace/pdf-build/` directory. MiKTeX Ghostscript downsamples
+printed photographs to 150 DPI at JPEG quality 82 while retaining text and
+vector content. `pdfinfo` then checks that the candidate is a valid multi-page
+PDF below 50 MiB, and `pdftoppm` renders every page before the candidate replaces
+the tracked root `README.pdf`.
+
+The former standalone `title_page.tex` was converted into an includable Pandoc
+fragment and moved under `docs/pdf/`; the generated standalone `title_page.pdf`
+is removed and ignored. PDF-only Lua filters constrain images in three-column
+tables, assign those tables equal wrapping column widths, give ordinary BOM
+tables wrapping column widths, and replace Unicode glyphs unsupported by the
+default XeLaTeX fonts without changing GitHub's rendering of `README.md`. The
+explicit image-table widths are required because Pandoc otherwise emits `lll`
+columns; long assembly captions then push columns two and three beyond the PDF
+page. The broken in-document BOM anchor was also corrected.
+
+The final verification build succeeds with 22 A4 pages at approximately
+0.6 MiB. Pandoc and XeLaTeX emit no content, missing-glyph, or
+undefined-reference warnings.
+All 22 rendered pages were visually reviewed: the title page is first; all
+three columns of the assembly instructions render with wrapped captions, and
+the other photo tables, BOM tables, diagrams, code blocks, headers, footers,
+and page numbers remain within their margins and legible. A GitHub Actions guard
+now requires `README.pdf` to change when its sources change and rejects a
+missing, non-PDF, or over-50-MiB artifact. Full build requirements and usage are
+recorded in `docs/pdf/README.md`.
+
+This is documentation/tooling work only. No PlatformIO build or firmware upload
+is required. The working tree is intentionally left uncommitted for the user to
+review and commit.

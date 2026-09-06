@@ -65,7 +65,7 @@ Stefan Gemperli
 
 # Assembly
 
-Gather all required materials according to the [**Bill of Materials (BOM)**](#bill-of-materials) and print all necessary **[3D‑Printed‑Parts](./CAD/Car_v71.3mf)**. Just use 0.2 mm layer height and no support.  
+Gather all required materials according to the [**Bill of Materials (BOM)**](#bill-of-materials-bom) and print all necessary **[3D‑Printed‑Parts](./CAD/Car_v71.3mf)**. Just use 0.2 mm layer height and no support.\
 Use **M3 screws** and **M3nS/M3n nuts** for all mechanical components, and **M2 and M 2.5 screws** with **M2n and M2.5n nuts** for electronic parts.
 
 Start by building the base and then working your way up to the second stage. Always wire all components you add. See the following images for a better understanding:

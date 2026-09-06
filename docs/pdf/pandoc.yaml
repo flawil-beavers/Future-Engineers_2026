@@ -1,0 +1,27 @@
+from: gfm
+standalone: true
+pdf-engine: xelatex
+
+resource-path:
+  - .
+
+include-before-body:
+  - docs/pdf/title-page.tex
+
+filters:
+  - docs/pdf/pdf-compatibility.lua
+  - docs/pdf/fit-table-images.lua
+
+variables:
+  papersize: a4
+  fontsize: 11pt
+  geometry:
+    - margin=1in
+  colorlinks: true
+  linkcolor: blue
+  urlcolor: blue
+
+metadata:
+  title-meta: WRO Future Engineers 2026 - Flawil Beavers
+  author-meta: Flawil Beavers
+  lang: en-GB

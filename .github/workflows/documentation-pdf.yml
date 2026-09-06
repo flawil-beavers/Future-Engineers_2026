@@ -1,0 +1,72 @@
+name: Documentation PDF guard
+
+on:
+  pull_request:
+    paths:
+      - README.md
+      - README.pdf
+      - docs/pdf/**
+      - scripts/build-documentation.ps1
+      - Photos/**
+      - .github/workflows/documentation-pdf.yml
+  workflow_dispatch:
+
+jobs:
+  verify-documentation-pdf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require a regenerated PDF when its sources change
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          source_changed=false
+          pdf_changed=false
+
+          while IFS= read -r file; do
+            case "$file" in
+              README.pdf)
+                pdf_changed=true
+                ;;
+              README.md|docs/pdf/title-page.tex|docs/pdf/pandoc.yaml|docs/pdf/*.lua|scripts/build-documentation.ps1|Photos/*)
+                source_changed=true
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA"...HEAD)
+
+          if [[ "$source_changed" == true && "$pdf_changed" != true ]]; then
+            echo "README.pdf must be regenerated when documentation sources change."
+            echo "Run: ./scripts/build-documentation.ps1"
+            exit 1
+          fi
+
+      - name: Validate committed PDF size and signature
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          pdf = Path("README.pdf")
+          if not pdf.is_file():
+              raise SystemExit("README.pdf is missing")
+
+          size = pdf.stat().st_size
+          if size > 50 * 1024 * 1024:
+              raise SystemExit(
+                  f"README.pdf is {size / 1024 / 1024:.2f} MiB; maximum is 50 MiB"
+              )
+
+          if not pdf.read_bytes().startswith(b"%PDF-"):
+              raise SystemExit("README.pdf does not have a valid PDF signature")
+
+          print(f"README.pdf: {size / 1024 / 1024:.2f} MiB")
+          PY
