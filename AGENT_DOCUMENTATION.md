@@ -6408,3 +6408,54 @@ recorded in `docs/pdf/README.md`.
 This is documentation/tooling work only. No PlatformIO build or firmware upload
 is required. The working tree is intentionally left uncommitted for the user to
 review and commit.
+
+## 2026-09-13: automatic PDF-only repository and video QR codes
+
+The PDF build now uses `docs/pdf/qr-codes.lua` and the LaTeX `qrcode` package
+to generate vector QR codes without remote QR services or generated image
+assets. The canonical repository destination is `repository-url` in
+`docs/pdf/pandoc.yaml`, not the local Git remote. Its QR appears on the first
+title page. Distinct YouTube links within the Video section receive a labelled
+28 mm QR matrix and readable URL immediately after the original link/preview.
+The current Open Challenge destination is `https://youtu.be/7w7cAxLPb28`.
+The final Obstacle Challenge link is still absent: add its subsection and link
+to README.md and its QR will be generated automatically. HTML is unchanged.
+
+Visual verification caught title-page overflow and distorted QR modules from
+paragraph-based matrix layout. Title spacing/photo size were adjusted, and
+`qr-layout.tex` explicitly boxes matrix rows with a four-module white quiet
+zone. The matrix is black regardless of hyperlink colours. The PDF guard now
+includes all PDF-template `.tex` sources, including this new layout helper.
+
+`python scripts/test-documentation-qr.py` passes five insertion, deduplication,
+missing-video, HTML and metadata tests. A scratch PDF with both challenge links
+was rendered and each QR decoded to its intended destination. The final full
+preview is 31 pages, approximately 0.63 MiB; the compressed cover and Video
+page (physical page 25) were inspected, and cropped rendered QR codes decoded
+to the canonical repository and current Open Challenge URLs with OpenCV.
+
+Run `scripts/build-documentation.ps1 -Preview` to compile, compress and render
+under `local_workspace/pdf-build/` without replacing README.pdf. Run without
+`-Preview` for publication. README.pdf was deliberately not replaced, and no
+files were staged or committed. Next: supply final challenge links, regenerate
+the published PDF, inspect the rendered pages and scan the printed QR codes.
+
+## 2026-09-13: engineering evidence table PDF layout
+
+The PDF table filter previously treated the engineering testing table like a
+BOM, assigning 48% / 14% / 38% widths and squeezing the prose-heavy evidence
+column. `fit-table-images.lua` now recognizes its exact three column headings
+and assigns 18% / 42% / 40%, with left-aligned LaTeX cell text. Other BOM and
+image-table layouts are unchanged. Table content and README.md were not edited
+for this fix.
+
+`python scripts/test-documentation-tables.py` passes both evidence-layout and
+BOM-layout regressions; the five QR tests also pass. The rebuilt full preview
+has 29 pages at approximately 0.63 MiB. Physical page 21 (printed page 20) was
+rendered and visually inspected: the entire engineering table fits on one
+page, all three columns wrap legibly, and its heading, links and following
+paragraph stay within the margins. The preview also includes the user's
+earlier removal of standalone README section separators. The preview did not
+replace README.pdf; its existing working-tree modification predates this build
+and was preserved. Nothing was staged or committed. Publish with the regular build
+without `-Preview` only when ready to update the committed PDF.
