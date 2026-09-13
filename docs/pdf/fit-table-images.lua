@@ -31,7 +31,29 @@ function Table(table)
   -- compact so long BOM results remain inside the page margins.
   local column_count = #adjusted.colspecs
   local widths = nil
-  if column_count == 2 then
+  local engineering_evidence = column_count == 3
+    and adjusted.head.rows[1] ~= nil
+    and pandoc.utils.stringify(adjusted.head.rows[1].cells[1].contents) == "Subsystem"
+    and pandoc.utils.stringify(adjusted.head.rows[1].cells[2].contents) == "Test evidence"
+    and pandoc.utils.stringify(adjusted.head.rows[1].cells[3].contents) == "Decision or improvement"
+  if engineering_evidence then
+    -- This is not a BOM: both evidence and decisions contain long prose.
+    widths = { 0.18, 0.42, 0.40 }
+    if FORMAT:match("latex") then
+      local function align_row(row)
+        for _, cell in ipairs(row.cells) do
+          if #cell.contents > 0 then
+            cell.contents:insert(1, pandoc.RawBlock("latex", "\\raggedright"))
+          end
+        end
+      end
+      for _, row in ipairs(adjusted.head.rows) do align_row(row) end
+      for _, body in ipairs(adjusted.bodies) do
+        for _, row in ipairs(body.head) do align_row(row) end
+        for _, row in ipairs(body.body) do align_row(row) end
+      end
+    end
+  elseif column_count == 2 then
     widths = { 0.68, 0.32 }
   elseif column_count == 3 then
     widths = { 0.48, 0.14, 0.38 }

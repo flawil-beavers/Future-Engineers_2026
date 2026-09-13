@@ -1,0 +1,23 @@
+% Box each matrix row explicitly: normal paragraph layout must not stretch,
+% centre or break the individual QR modules. Keep a four-module quiet zone.
+\makeatletter
+\def\qr@printsavedbinarymatrix#1{%
+  \edef\qr@binarystring{#1\relax\relax}%
+  \setlength{\qr@modulesize}{\qr@desiredheight}%
+  \divide\qr@modulesize by \qr@size\relax
+  \setlength{\fboxsep}{4\qr@modulesize}%
+  \setlength{\fboxrule}{0pt}%
+  \fcolorbox{white}{white}{\vbox{\offinterlineskip
+    \qr@for \i = 1 to \qr@size by 1{%
+      \hbox{\qr@for \j = 1 to \qr@size by 1{%
+        \edef\qr@theargument{(\qr@binarystring)}%
+        \expandafter\qr@printsavedbinarymatrix@int\qr@theargument
+      }}%
+    }%
+  }}%
+}
+\def\qr@printmatrix#1{%
+  \qr@matrixtobinary{#1}%
+  \expandafter\qr@printsavedbinarymatrix\expandafter{\qr@binarymatrix@result}%
+}
+\makeatother

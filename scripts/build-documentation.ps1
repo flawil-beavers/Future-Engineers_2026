@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param()
+param(
+    # Build and render the candidate without replacing the committed artifact.
+    [switch]$Preview
+)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -75,6 +78,12 @@ if (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $xelatexDirectory) 
 
 New-Item -ItemType Directory -Path $workingDirectory -Force | Out-Null
 if (Test-Path -LiteralPath $renderDirectory) {
+    $resolvedRenderDirectory = (Resolve-Path -LiteralPath $renderDirectory).Path
+    if (-not $resolvedRenderDirectory.StartsWith(
+        $workingDirectory + [IO.Path]::DirectorySeparatorChar,
+        [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Refusing to remove rendered files outside the PDF working directory.'
+    }
     Remove-Item -LiteralPath $renderDirectory -Recurse -Force
 }
 New-Item -ItemType Directory -Path $renderDirectory -Force | Out-Null
@@ -160,9 +169,13 @@ try {
         throw "Rendered $renderedPageCount pages, but pdfinfo reported $pageCount pages."
     }
 
-    Copy-Item -LiteralPath $candidatePdf -Destination $publishedPdf -Force
-
-    Write-Host "Generated README.pdf"
+    if ($Preview) {
+        Write-Host "Generated preview: $candidatePdf (README.pdf unchanged)"
+    }
+    else {
+        Copy-Item -LiteralPath $candidatePdf -Destination $publishedPdf -Force
+        Write-Host "Generated README.pdf"
+    }
     Write-Host "Pages: $pageCount"
     Write-Host "Size: $([math]::Round($candidate.Length / 1MB, 2)) MiB"
     Write-Host "Rendered pages: $renderDirectory"

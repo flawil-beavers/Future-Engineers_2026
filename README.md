@@ -6,8 +6,6 @@ We are the **Flawil Beavers**, a team from Switzerland competing in the WRO Futu
 
 This documentation presents our autonomous vehicle, including its mechanical design, electronics and software. Our goal was to build a reliable and efficient robot capable of successfully completing the competition challenges.
 
----
-
 ## Team Members
 
 <table>
@@ -34,8 +32,6 @@ Stefan Gemperli
 
 ![Team Photo](Photos/Team-photo.JPG)
 
----
-
 ## Table of Contents
 
 - [Team Introduction](#team-introduction)
@@ -61,14 +57,12 @@ Stefan Gemperli
 - [Failure Mode Analysis](#failure-mode-analysis)
 - [Conclusion](#conclusion)
 
----
-
 <!-- TODO (World Final documentation):
 Keep DOCUMENTATION_TODO.md synchronized with the physical robot and competition
 software. Complete its checklist before the final repository deadline, then
 regenerate README.pdf and remove or resolve the remaining inline TODO comments. -->
 
-World Final documentation maintenance is tracked separately in the [Documentation TODO](DOCUMENTATION_TODO.md).
+<!-- World Final documentation maintenance is tracked separately in the [Documentation TODO](DOCUMENTATION_TODO.md). -->
 
 <!-- TODO: Consider moving the Bill of Materials closer to the Assembly section
 so builders can find the required parts before starting. -->
@@ -88,8 +82,6 @@ Start by building the base and then working your way up to the second stage. Alw
 | ![Lego Build Step](Photos/build-instructions/PXL_20260531_072809927.MP.jpg) Connect the lego gears, axles and wheels | ![Second Stage Sensor montage](Photos/build-instructions/PXL_20260531_074835064.MP.jpg) Now fasten the sensors to the Second Stage using M2.5 screws and nuts | ![M2.5 Nuts location](Photos/build-instructions/PXL_20260531_074841767.MP.jpg) The ToF sensors are mounted via the ToF Mounts that are fastened with M3 screws |
 | ![Arduino Connection](Photos/build-instructions/PXL_20260531_075033876.MP.jpg) Place the Arduino Giga on top of the Arduino Spacer and fasten with M3 Screws | ![Cable Management](Photos/build-instructions/PXL_20260601_121901176.MP.jpg) Wire the DC-DC-Converter and the Logic Level Shifter according to the schematics | ![Cables moving up](Photos/build-instructions/PXL_20260601_121915804.MP.jpg) Thread the wires to the arduino through the Second stage |
 | ![Connecting both stages](Photos/build-instructions/PXL_20260601_123524626.MP.jpg) Screw the second stage onto the first one | | |
-
----
 
 # Mechanical Design
 
@@ -112,8 +104,6 @@ By constructing our own steering mechanism, we could focus on creating a very ti
 
 One major difficulty in designing the steering was calculating the exact spacing between servo and base plate. We had to make sure that all the connections between 3D printed parts were parallel so to minimise friction when steering.
 
----
-
 ## Battery System
 
 ### Custom Battery Holders
@@ -126,57 +116,59 @@ This arrangement also improved the vehicle's weight distribution by placing the 
 
 Overall, the self-designed battery holders provided a more **compact**, **practical** and **competition-ready solution** than the original commercial holders.
 
----
-
 # Mobility System
 
 ## Drive Motor
 
-Two different drive motors were tested to compare their performance and driving characteristics. After evaluating speed, torque and controllability, the motor that provided the best overall performance for our vehicle was selected.
+We use the [DFRobot 6 V 530 RPM micro gear motor with encoder](https://www.bastelgarage.ch/6v-530rpm-30-1-micro-gear-motor-with-encoder). It has the same base motor type as our earlier drive motor, but a different gearbox. Its 1:30 reduction means the motor shaft turns 30 times for one gearbox-output revolution.
 
-### Option 1
+The supplier lists these specifications:
 
-DFRobot Micro Metal Geared Motor
+- Rated voltage: 6 V
+- No-load gearbox-output speed: 530 RPM
+- Gearbox-output speed under load: 300 RPM at 6 V
+- Torque: 0.2 kg·cm (approximately 0.02 N·m)
+- No-load current: 60 mA; current under load: 170 mA
 
-- 310 RPM
-- 50:1 Gear Ratio
-- 0.35 kg·cm Torque
+Our firmware uses `GEAR_RATIO = 30` and counts both edges on both encoder channels, giving 840 counts per gearbox-output revolution (`30 × 7 × 4`). We account for the separate wheel gearing in `include/config.h` when converting encoder counts to travel distance.
 
-### Option 2
+### World Final Speed Requirement and Low-Speed Trade-Off
 
-DFRobot Micro Metal Geared Motor
+We changed from 100:1 to 30:1 to obtain the higher speed needed for the international World Final. Less reduction increases output speed but reduces torque multiplication, making precise low-speed parking and observation manoeuvres more demanding.
 
-- 155 RPM
-- 100:1 Gear Ratio
-- 0.70 kg·cm Torque
+During testing, we observed low-speed surging and chassis shaking. Our former minimum-PWM cutoff switched the motor off whenever the controller requested too little power, then switched it back on as the robot slowed. Battery charge and tyre scrub during steering also affected the effort needed to keep moving, so tests with lifted wheels did not adequately represent driving on the floor.
 
----
+We introduced pulse-density drive for targets up to 120 mm/s. Short powered slots overcome breakaway friction, while their frequency of occurrence controls average power. We use a 120-PWM carrier with 5 ms slots (200 Hz), encoder-based PI feedback and compensation for steering load. Tuning the pulse strength and integral response improved speed tracking without the excessive noise and overspeed of our earlier settings.
 
-## Testing Results
+We achieved better low-speed control, although some speed ripple remains. The faster gearbox represents a deliberate compromise between competitive driving speed and smooth creeping motion.
 
-The faster motor initially appeared advantageous because of its higher theoretical speed.
+<!-- TODO: Revalidate the current 30:1 drivetrain at low speeds in forward and
+reverse, straight and full-lock, with charged and lower-voltage packs. Record
+mean speed, speed ripple, shaking/noise, stalls, stopping behaviour and current
+consumption. Do not treat the earlier mean-speed passes as proof that the
+currently reported low-speed problems are resolved. See DOCUMENTATION_TODO.md. -->
 
-However practical testing revealed:
+### Earlier Motor Selection
 
-- Lower torque and the robot had difficulty driving with the faster motor.
+Before choosing the current 30:1 gearbox, we tested both 50:1 and 100:1 versions on the robot. The specifications below describe those earlier prototypes.
 
-The slower motor consistently produced better results.
+#### Option 1 — 50:1 Gearbox
 
----
+- Output speed: 310 RPM
+- Torque: 0.35 kg·cm
 
-## Final Decision
+We tried this version for its higher speed, but its lower torque made driving under load less consistent.
 
-The 155 RPM motor was selected.
+#### Option 2 — 100:1 Gearbox
 
-Reasons:
+- Output speed: 155 RPM
+- Torque: 0.70 kg·cm
 
-- Higher torque
+This version provided more torque and more consistent driving, although its maximum speed was lower.
 
-Although the maximum speed is lower, the overall challenge performance is more consistent and the motor no longer stalls unexpectedly.
+#### Testing Results and Initial Decision
 
-This decision demonstrates a trade-off between speed and reliability.
-
----
+We initially selected the 100:1 gearbox after comparing both versions under realistic driving conditions. For the international World Final, we subsequently changed to 30:1 to gain more speed, with the low-speed control trade-off described above.
 
 # Steering System
 
@@ -202,8 +194,6 @@ The MG90S was selected because it provides:
 
 The more powerful servo drive significantly improved navigation accuracy but requires a bit more space. However, it's worth it.
 
----
-
 # Power Budget
 
 ## Power System Overview
@@ -221,7 +211,7 @@ The robot carries two 14500 Li-Ion cells wired in series. This creates a 2S pack
 | Rear VL53L4CX ToF Sensor | 40 mA |
 | Arducam BO462 Camera | 120 mA |
 | MG90S Servo (average) | 250 mA |
-| Drive Motor 155 RPM | 300 mA |
+| Drive Motor | 300 mA |
 | MC33926 Motor Driver | 10 mA |
 | LM2596S-5 DC-DC Converter | 5 mA |
 | TXS0104E Logic Level Converter | 2 mA |
@@ -238,8 +228,6 @@ During acceleration, steering corrections and obstacle avoidance, the motor and 
 | MG90S Servo | 700 mA |
 | Remaining Electronics | 492 mA |
 | **Estimated peak current** | **≈ 2.0 A** |
-
----
 
 # Electronics Architecture
 
@@ -270,7 +258,11 @@ The M7 core manages:
 
 The M4 core owns the rear VL53L4CX through a dedicated 100 kHz software-I2C bus on pins A3/A4. It filters measurements and sends fixed-size status frames to the M7 over OpenAMP/RPC. If the M4 or rear sensor stops responding, the M7 receives an invalid status instead of blocking the control loop.
 
----
+All three hardware-I2C ports were already in use: one for each side ToF sensor and the third for the camera's configuration connection. Adding the rear ToF to a shared port would require extra sensor-selection and startup sequencing, because the ToF sensors initially use the same address. We would have to enable them separately and assign different addresses, then handle possible address conflicts after a sensor reset. To avoid this additional wiring and shared-bus complexity, we chose a separate software-I2C bus for the rear sensor and assigned its communication and measurement processing to M4.
+
+We use the second core to isolate sensor communication from time-sensitive motion control. Software-I2C generates the bus signals in software, and reading a measurement requires several synchronous transactions. Running those transactions on M7 would add work and variable delays to the same loop that processes camera images, estimates position and updates motor and steering commands. M4 instead handles rear-sensor initialization, readiness polling, measurement retrieval and filtering independently. M7 reads the latest published result rather than waiting for a new measurement, so adding the rear sensor does not add its individual bus transactions to the navigation loop.
+
+This separation also makes failures explicit. Frames carry a sequence number and sensor status; missing or stale frames and initialization/bus failures make the rear reading unavailable. The parking controller can stop instead of treating an old distance as current. The benefit is predictable control-loop timing and independent sensor servicing, not a faster optical measurement: the rear sensor still uses its own 30 ms timing budget. The side sensors remain on M7, and the rear bus has a single owner, avoiding competing access from both cores.
 
 # Sensor Architecture
 
@@ -290,38 +282,39 @@ The accelerometer is not used for position or speed estimation. Instead, we rely
 
 By focusing on the gyroscope data, we achieved accurate turn control while avoiding the limitations of the other sensors in our specific robot design.
 
----
-
 # Distance Sensors
 
-## Initial Design
+## Selection and Design Evolution
 
-The first version of the vehicle used VL53L3CX Time-of-Flight sensors. While these sensors performed well, they required direct soldering of wires to the module, making integration and maintenance more difficult.
+We use three Adafruit VL53L4CX Time-of-Flight (ToF) modules. Our original VL53L3CX modules worked, but required directly soldered wiring; damaging one during soldering exposed a maintenance risk. The replacement modules offer improved range and signal performance, while Qwiic/STEMMA QT connectors simplify cable routing and allow replacement without soldering. We therefore chose them for both sensing performance and serviceability.
 
-During development, one of the sensors was damaged during the soldering process. This highlighted the need for a more robust and serviceable solution.
+## Placement and Roles
 
-## Final Design
+- **Left and right:** Side-facing sensors measure wall distance and obstacle clearance. This arrangement supports either track direction and provides wall-following and wall-loss evidence in the Open Challenge.
+- **Rear:** A rear-facing sensor measures the magenta parking boundary during parking-exit positioning. It is mounted 25 mm behind the rear axle, so we account for its offset when converting sensor range into body clearance. M4 handles this sensor independently, as explained in the controller section.
 
-### Adafruit VL53L4CX
+## Measurement Timing and Filtering
 
-The team replaced the original sensors with three Adafruit VL53L4CX modules. Two side-facing sensors measure the track walls and obstacle clearance. A third sensor faces rearward and measures the magenta parking boundary while leaving the parking lot. In addition to offering improved range and signal performance, these modules support Qwiic/STEMMA QT connectors.
+We poll the side sensors asynchronously with a normal 30 ms timing budget. Initial direction discovery uses 300 ms to improve returns from dark walls at the cost of slower updates; the switching logic is described in the Open Challenge section.
 
-Advantages of the new design:
+The software checks hardware status, signal strength and measurement uncertainty, then selects the furthest acceptable return. Configured range limits are 600 mm for normal side sensing and 370 mm for the rear sensor; these are control limits, not the sensor's advertised maximum range. Side readings beyond the active limit are marked out of range (`9999`).
 
-- Improved sensing range
-- Stronger and more reliable signal quality
-- No direct soldering required
-- Fast sensor replacement
-- Cleaner cable management
-- More flexible integration
+We clamp changes between consecutive valid, in-range side-sensor control values to 100 mm to reduce abrupt steering corrections from noise or target switching. For example, a 500 mm reading after a filtered 250 mm value produces 350 mm. Invalid previous readings and transitions to or from out of range bypass the limiter, preserving gap detection and reacquisition. The trade-off is delayed response to genuine large in-range changes; this filter is not a clearance requirement or collision guarantee.
 
-Using connector-based modules significantly improved reliability and maintainability. Sensors can now be connected or replaced within seconds, reducing the risk of damage and making the overall system more robust for competition use.
+## Parking Calibration and Verification
 
-During normal driving the side sensors use a 30 ms timing budget and are polled asynchronously. The software rejects invalid status values, readings outside the reliable range and changes larger than 100 mm between consecutive samples. Long-range wall discovery temporarily uses a 300 ms timing budget to collect more reflected light from dark surfaces.
+The rear sensor sits 15 mm ahead of the back of the robot, so its 65 mm target corresponds to 50 mm body clearance from the inside face of the magenta parking piece. Before allowing the parking exit to start, we require three fresh stationary samples spanning no more than 4 mm, a final range within 5 mm of the target, and agreement between ToF-measured movement and encoder travel within 8 mm. These checks prevent a single unstable reading or drivetrain take-up from defining the starting position. Parking tests and the resulting adjustments are summarized in the engineering testing section.
 
-The rear sensor is mounted 25 mm behind the rear axle and is used only in its calibrated parking window. A reading of 65 mm corresponds to 50 mm clearance between the back of the robot and the inside face of the magenta parking piece. The controller requires several fresh stationary samples, a final range within 5 mm of the target and agreement between ToF movement and encoder movement before the parking exit is allowed to start.
+## Wall Edges and Detection Limits
 
----
+The sensor observes a cone rather than a single ray: it may still see the old wall after its centreline passes an edge, or detect a perpendicular wall obliquely. [ST's datasheet](https://www.st.com/resource/en/datasheet/vl53l4cx.pdf) reports an approximately 18–22 degree detection angle under specified conditions; actual coverage depends on the surface, lighting and configuration. Wall loss therefore does not mark the exact geometric corner.
+
+An out-of-range return bypasses the 100 mm clamp, while a valid return from another surface remains subject to it. In the Open Challenge, we combine wall-distance evidence with encoder travel and gyro heading rather than treating the ToF transition alone as the corner position.
+
+<!-- TODO: Measure the actual wall-loss position and any perpendicular-wall
+returns on the competition-like black walls in both directions, at the intended
+wall distances and speeds. Compare raw and filtered ranges with encoder travel
+and heading; do not assume the centreline crossing is the detection point. -->
 
 # Camera System
 
@@ -342,24 +335,33 @@ The camera is used for real-time red and green traffic-sign detection. Its main 
 - Suitable for real-time object and colour detection
 - Continuous DMA capture keeps image acquisition separate from navigation
 
-The relatively low resolution is an advantage for our application because it reduces the amount of data that must be processed by the microcontroller. The project-owned camera driver runs the GC2145 from a 24 MHz external clock while using the sensor's input divider to preserve the proven internal timing. Continuous DCMI capture alternates between two SDRAM buffers: DMA fills one buffer while the M7 processes the other.
+The relatively low resolution is an advantage for our application because it reduces the amount of data that must be processed by the microcontroller. Our tested GC2145 configuration uses a 24 MHz external clock with input divide-by-two, preserving the nominal internal timing of a 12 MHz input without that divider. This clock setting provides no demonstrated frame-rate advantage. Continuous DCMI capture alternates between two SDRAM buffers: DMA fills one buffer while the M7 processes the other.
 
 ### Challenges
 
-Camera calibration includes HSV colour thresholds, valid blob geometry, horizontal field of view, principal point and a ground-plane distance model. A detected blob is transformed from image coordinates into the fixed field frame and snapped to the closest legal pillar seat. Consecutive colour votes are required before the route is changed, which prevents a single noisy image from altering the path.
+**Blocking image acquisition.** The original camera library's synchronous `grabFrame()` waited for acquisition before navigation could continue. Capture plus image processing blocked the M7 loop for roughly 149 ms per result, leaving motion control without timely updates. We introduced a project-owned driver with asynchronous DCMI/DMA capture and two frame buffers in external SDRAM. DMA fills one buffer while vision processes the completed other buffer, reducing control-loop blockage to approximately 6.5–7.6 ms per result. Keeping the buffers outside internal RAM also leaves more room for the controller's stacks and other allocations. Explicit buffer ownership and M7 cache invalidation prevent vision from reading a partly written or stale image.
+
+**Missed frames during snapshot restart.** Asynchronous snapshots removed the blocking wait, but stopping and restarting capture sometimes missed the next sensor frame boundary. Instead of the normal approximately 79.62 ms interval, some updates arrived after approximately 159.25 ms. Exposure diagnostics showed that these doubled intervals were restart misses, not longer exposure in dark lighting. We changed to uninterrupted continuous DCMI capture with DMA double buffering. Interrupts publish completion information; cache handling and image processing remain outside the interrupt. This removed the doubled intervals in the recorded acceptance tests without reducing exposure and weakening dark-scene detection.
+
+**Field of view and distance estimation.** The earlier centred-crop image did not preserve the full optical view, reducing the opportunity to observe pillars at the sides of a station. We configured the GC2145 to subsample the full 1616 × 1208 sensor window into a 320 × 240 image, retaining the wider view without transferring a large high-resolution frame. We then recalibrated horizontal field of view, principal point and focal length using known pillar placements. Bounding-box height was unsuitable for range estimation because the obstacle region can clip the pillar's top. A calibrated ground-plane model instead estimates range from the visible foot of the pillar. Full-view measurements also showed that the earlier crop-specific off-axis correction overcorrected distances, so that correction was removed.
+
+**Unreliable clock changes and lighting bands.** Our faster-clock experiments initially produced displaced or fragmented pillar images. Enabling input divide-by-two at 24 MHz restored the proven internal and pixel-stream timing. Increasing the internal PLL speed still caused lighting bands and partial or missing pillars despite anti-flicker adjustments, so we rejected that profile. We retained 24 MHz with the divider because it passed our tests, not because it outperformed 12 MHz without the divider. Continuous capture removed missed-frame delays; a later reduction in idle vertical blanking shortened the frame interval slightly further, from approximately 79.6 ms to 76.5 ms.
+
+<!-- TODO: If reverting to 12 MHz without the input divider, compare the current
+full-FOV configuration under varied lighting and motion before claiming
+equivalent reliability. No performance benefit from 24 MHz itself has been
+demonstrated. -->
+
+**Reliable colour and seat confirmation.** Small coloured background blobs or a single noisy classification must not immediately change the robot's route. We calibrate HSV colour thresholds and valid blob geometry, transform accepted detections into the fixed field frame, and associate them with legal pillar seats. Consecutive colour votes are required before the route changes. A wider optical view alone does not guarantee usable evidence: the complete pillar must remain in the calibrated range and angle window long enough for independent frames.
 
 <!-- TODO: Validate the camera calibration under competition-like lighting and
 add the measured detection and reliability results. See DOCUMENTATION_TODO.md. -->
 
-In a stationary reliability test under the available indoor lighting, both official pillar colours remained production-valid for 2025 of 2025 processed frames. Frame completion stayed at approximately 79.62-79.63 ms with no discarded frames or DMA/DCMI errors. Vision processing occupied approximately 6.5-7.6 ms of the main loop instead of the roughly 149 ms required by the earlier synchronous capture path. A subsequent 175 mm/s single-red-pillar driving test completed without contact. Competition-venue lighting validation is tracked in the [Documentation TODO](DOCUMENTATION_TODO.md).
-
----
+In a stationary reliability test under the available indoor lighting, both official pillar colours remained production-valid for 2025 of 2025 processed frames. Frame completion stayed at approximately 79.62-79.63 ms with no discarded frames or DMA/DCMI errors. Vision processing occupied approximately 6.5-7.6 ms of the main loop instead of the roughly 149 ms required by the earlier synchronous capture path. A subsequent 175 mm/s single-red-pillar driving test completed without contact.
 
 # Wiring Diagram
 
 ![Wiring Diagram](Electronics/Wiring_Diagram_FE2026.png)
----
-
 # Bill of Materials (BOM)
 
 ## Electronics
@@ -377,13 +379,11 @@ In a stationary reliability test under the available indoor lighting, both offic
 | SVM330-Y Digital Voltmeter          | 1        | Battery voltage monitoring              |
 | MTS-102 ON-ON Toggle Switch         | 2        | Power and subsystem switching           |
 
----
-
 ## Drive System
 
 | Component                                        | Quantity | Purpose                 |
 | ------------------------------------------------ | -------- | ----------------------- |
-| DFRobot Micro Metal Geared Motor 155 RPM (100:1) | 1        | Main drive motor        |
+| DFRobot 6 V 530 RPM Encoder Motor (1:30 reduction) | 1        | Main drive motor        |
 | Rear Drive Wheels (43.2 mm diameter)             | 2        | Vehicle propulsion      |
 | Axles and Bearings                               | Various  | Mechanical transmission |
 
@@ -392,8 +392,6 @@ In a stationary reliability test under the available indoor lighting, both offic
 | Component                                       | Quantity | Result                                                            |
 | ----------------------------------------------- | -------- | ----------------------------------------------------------------- |
 | DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1        | Rejected due to insufficient torque and lower driving consistency |
-
----
 
 ## Steering System
 
@@ -406,8 +404,6 @@ In a stationary reliability test under the available indoor lighting, both offic
 | Component                         | Quantity | Result                                       |
 | --------------------------------- | -------- | -------------------------------------------- |
 | PDI-1102HB 2g Digital Micro Servo | 1        | Rejected due to insufficient steering torque |
-
----
 
 ## Power System
 
@@ -423,8 +419,6 @@ In a stationary reliability test under the available indoor lighting, both offic
 | ------------------------------ | -------- | -------------------------------------------------------------- |
 | Commercial 2xAA Battery Holder | 1        | Replaced due to inefficient mounting and reduced accessibility |
 
----
-
 ## Mechanical Components
 
 | Component                 | Quantity | Purpose               |
@@ -433,8 +427,6 @@ In a stationary reliability test under the available indoor lighting, both offic
 | Custom Sensor Mounts      | Multiple | Sensor positioning    |
 | Custom Battery Holders    | 2        | Battery retention     |
 | Screws, Nuts and Spacers  | Various  | Assembly and mounting |
-
----
 
 ## Robot Specifications
 
@@ -450,8 +442,6 @@ In a stationary reliability test under the available indoor lighting, both offic
 | Drive Configuration    | Rear-Wheel Drive     |
 | Steering Configuration | Front-Wheel Steering |
 
----
-
 ## Cost Overview
 
 | Component                      | Approximate Cost (CHF) |
@@ -461,7 +451,7 @@ In a stationary reliability test under the available indoor lighting, both offic
 | VL53L4CX Sensors (3x)          | 59.70                  |
 | Qwiic Cables                   | 23.10                  |
 | MG90S Servo                    | 7.90                   |
-| DFRobot 155 RPM Motor          | 10.90                  |
+| DFRobot 530 RPM Encoder Motor | 13.90                  |
 | 14500 Batteries (4x)           | 31.60                  |
 | Voltmeter                      | ~5.00                  |
 | Switches                       | 7.60                   |
@@ -473,7 +463,7 @@ In a stationary reliability test under the available indoor lighting, both offic
 
 ### Estimated Total Cost
 
-**Approximately 298-328 CHF**
+**Approximately 301-331 CHF**
 
 (The exact total depends on manufacturing costs, spare parts and shipping fees.)
 
@@ -508,8 +498,6 @@ The central mode manager ensures that only one autonomous or calibration mode ow
 - **Fail-safe decisions:** Sensor freshness, travel, timeout, wall clearance, steering and path-feasibility gates stop the robot when evidence is insufficient.
 - **Reproducible telemetry:** Important decisions include pose, sensor quality, selected seat, path clearance and controller result in the USB run log.
 
----
-
 # Navigation Strategy
 
 ## Open Challenge
@@ -533,7 +521,7 @@ The steering output is the sum of two PD (Proportional-Derivative) controllers:
 - **Primary Control:** Gyroscope-based PD maintains a global grid heading (0°, 90°, 180°, 270°).
 - **Secondary Control:** ToF-based PD nudges the robot to maintain exactly 300 mm from the followed wall.
 
-The side ToF runs with a 30 ms timing budget while a wall is being followed. When the wall is lost at a corner, the robot temporarily selects the 300 ms discovery budget, completes a gyro-controlled 90 degree turn, finds the next wall and returns to the normal fast budget. Encoder feedback keeps the requested speed consistent as battery voltage and steering load change.
+At the start, while `nav_following_wall == SIDE_UNKNOWN`, the controller selects a 300 ms side-ToF timing budget for long-range discovery of the track direction. As soon as it determines which side to follow, it restores the normal 30 ms budget before the first turn. Subsequent wall following, gyro-controlled 90 degree turns and wall reacquisition all retain the 30 ms budget; losing the wall at a later corner does not make the followed side unknown again. Encoder feedback keeps the requested speed consistent as battery voltage and steering load change.
 
 ## Obstacle Challenge
 
@@ -559,8 +547,6 @@ After the exit, side-ToF measurements of the magenta piece and a bounded reverse
 ### Final parking
 
 After three laps, the final-parking controller approaches the parking section from the established field frame. It scans across the fixed and movable magenta pieces, measures their inside faces, checks that their separation agrees with `1.5 * robot length`, and constructs the bay coordinate frame. A mirrored seven-segment path places the robot in the centre of the bay for either driving direction. The final state is accepted only when the complete footprint is inside the parking lot, steering is straight and the gyro confirms that the vehicle is parallel.
-
----
 
 # State Machine
 
@@ -597,8 +583,6 @@ Final approach, bay scan, seven-segment parking and verification
 Controlled hold (or immediate safe abort from any failed gate)
 ```
 
----
-
 # Engineering Testing and Iteration
 
 The development process follows a repeated **plan - build - test - analyse - improve** cycle. Simulation predictions are kept separate from physical observations, and a contact or manual intervention is always treated as a failed run even if telemetry reaches its nominal endpoint.
@@ -607,14 +591,12 @@ The development process follows a repeated **plan - build - test - analyse - imp
 |---|---|---|
 | Steering geometry | Physical turning-radius measurements across practical steering angles gave approximately 2.35% mean prediction error after compensating a +0.6 degree servo-neutral offset. | Use measured Ackermann geometry and gyro-bounded final alignment instead of relying only on CAD angles. See [Ackermann calibration](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md). |
 | Low-speed drive | At an 80 mm/s target, average measured speed improved from 59.4 to 71.0 mm/s after increasing integral adaptation. At a 60 mm/s target, straight and full-lock tests stayed within the defined +/-10 mm/s mean tolerance across charged and lower-voltage packs. | Retain a 120 PWM, 200 Hz pulse-density carrier, closed-loop speed PI and a small full-lock load feed-forward term. |
-| Camera pipeline | Both official colours were valid in 2025/2025 consecutive frames, with 79.62-79.63 ms frame intervals and no DMA errors. | Keep continuous double-buffer DCMI capture and the reliable 24 MHz input-divider profile; reject the faster PLL profile that produced lighting bands. |
+| Camera pipeline | Both official colours were valid in 2025/2025 consecutive frames, with 79.62-79.63 ms frame intervals and no DMA errors. | Keep continuous double-buffer capture and the tested 24 MHz input-divider profile, which preserves rather than increases internal speed; reject the faster PLL profile that produced lighting bands. |
 | Parking exit | The five-segment physical exit completed without contact. Gyro-controlled final alignment stopped after 162.6 mm with 0.9 degree final heading error. | Replace a fixed-distance final turn with bounded heading feedback and preserve swept-envelope preflight checks. See [parking-exit validation](simulation/PARKING_EXIT_PATH_SIMULATION.md). |
 | Rear parking reference | A 7.16 V test corrected rear range from 46.3 to 60.7 mm and passed the 5 mm canonical tolerance and encoder/ToF agreement gates. Consecutive mirrored runs also completed without contact. | Use stationary multi-sample verification and a bounded micro-correction rather than accepting one noisy reading. |
 | Obstacle route | Physical runs demonstrated camera-controlled single-pillar avoidance, complete laps in both directions and three-lap execution. Later difficult adjacent-pillar and parking-entry cases were retained as regression evidence. | Build the first-lap route from live seat evidence, use a confirmed map for later laps, and stop safely when a seat or connector cannot be proven. |
 
 These tests also exposed interactions between subsystems. Lower battery voltage increased drivetrain breakaway effort; steering load changed motor speed; camera timing affected control-loop availability; and parking accuracy depended on the robot footprint, Ackermann radius, encoder stopping distance, ToF geometry and gyro error together. The software therefore records these quantities in the same run instead of evaluating each component in isolation.
-
----
 
 # Build, Upload and Operation
 
@@ -640,8 +622,6 @@ The serial monitor runs at 115200 baud. `STARTUP_ROBOT_MODE` in `include/config.
 
 Dedicated modes are provided for servo centre, turn radius, motor minimum drive, speed PI, ToF diagnostics, camera colour/distance calibration and isolated obstacle-path tests. Their results are applied through `include/config.h`, and the same production code paths are then used by the challenge modes.
 
----
-
 # Video
 
 <!-- TODO: Replace the historical Open Challenge video and add the final
@@ -650,13 +630,9 @@ are frozen. Requirements are tracked in DOCUMENTATION_TODO.md. -->
 
 ## Open Challenge - Development Video
 
-The following video documents an earlier Open Challenge implementation and is retained as engineering-history evidence. Requirements for the final World Final recording are tracked in the [Documentation TODO](DOCUMENTATION_TODO.md).
+The following video documents an earlier Open Challenge implementation and is retained as engineering-history evidence.
 
 [![Watch the Open Challenge development video](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
-
-## Obstacle Challenge
-
-Requirements for the final Obstacle Challenge recording are tracked in the [Documentation TODO](DOCUMENTATION_TODO.md).
 
 # Robot Photos
 
@@ -667,8 +643,6 @@ DOCUMENTATION_TODO.md. -->
 | ![Left](Photos/robot/PXL_20260617_185159148.MP.jpg) | ![Back](Photos/robot/PXL_20260617_185207747.MP.jpg) | ![Right](Photos/robot/PXL_20260617_185218350.MP.jpg) |
 |---|---|---|
 | ![Front](Photos/robot/PXL_20260617_185228987.MP.jpg) | ![Top](Photos/robot/PXL_20260617_185256705.MP.jpg) | ![Bottom](Photos/robot/PXL_20260617_185318976.MP.jpg) |
-
----
 
 # Failure Mode Analysis
 
@@ -699,8 +673,6 @@ Several servos were evaluated and compared. The original servo was replaced with
 - Better control during turns
 - Increased mechanical durability
 
----
-
 ## Failure Mode 2 – Battery Holder Integration
 
 ### Problem
@@ -728,8 +700,6 @@ The team designed and manufactured two custom 3D-printed battery holders. This a
 - Lower centre of gravity
 - Faster battery replacement
 - Cleaner chassis integration
-
----
 
 ## Failure Mode 3 – ToF Sensor Damage During Assembly
 
@@ -759,8 +729,6 @@ The sensors were replaced with Adafruit VL53L4CX modules. These offered improved
 - Cleaner wiring
 - Easier maintenance
 
----
-
 ## Failure Mode 4 – Drive Motor Selection
 
 ### Problem
@@ -777,7 +745,7 @@ The motor prioritised speed over torque, making precise speed control and obstac
 
 ### Solution
 
-Both motors were tested on the vehicle under realistic conditions. After comparing acceleration, controllability and consistency, the 155 RPM motor with a 100:1 gearbox was selected.
+Both motors were tested on the vehicle under realistic conditions. After comparing acceleration, controllability and consistency, the 155 RPM motor with a 100:1 gearbox was initially selected. These results describe the earlier motor comparison; the current drivetrain has since changed to a 1:30 reduction, as described in the Mobility System section.
 
 ### Result
 
@@ -785,8 +753,6 @@ Both motors were tested on the vehicle under realistic conditions. After compari
 - Improved acceleration
 - Better speed control
 - More reliable autonomous driving
-
----
 
 ## Failure Mode 5 – Magnetometer Drift
 
@@ -813,8 +779,6 @@ The magnetometer was removed from the navigation system. Instead, the robot reli
 - More stable orientation measurements
 - Improved turning accuracy
 - Greater repeatability
-
----
 
 ## Failure Mode 6 – Sensor Connection Reliability
 
@@ -843,8 +807,6 @@ The team reduced the number of soldered connections wherever possible and adopte
 - Easier maintenance
 - Reduced risk of wiring faults
 
----
-
 ## Failure Mode 7 – Reduced ToF Performance on Black Surfaces
 
 ### Problem
@@ -863,7 +825,7 @@ The VL53L4CX measures distance using reflected infrared light. Black surfaces re
 
 ### Solution
 
-The measurement timing budget was increased, reducing the sampling rate and allowing the sensor to collect more reflected photons per measurement. Additional software filtering was implemented to reject measurements with poor signal quality.
+For the Open Challenge's initial direction discovery, the side-sensor timing budget is increased to 300 ms, reducing the sampling rate and allowing more reflected photons to be collected per measurement. After the followed side is determined, the controller restores 30 ms and retains it through later corners. Additional software filtering rejects measurements with poor signal quality.
 
 ### Result
 
@@ -871,8 +833,6 @@ The measurement timing budget was increased, reducing the sampling rate and allo
 - Better performance on dark surfaces
 - Reliable wall detection during normal operation
 - Consistent navigation close to walls
-
----
 
 ## Failure Mode 8 – Battery Voltage Drop
 
@@ -900,14 +860,12 @@ A closed-loop PID speed controller continuously adjusts the motor output using e
 - Improved repeatability
 - Consistent behaviour throughout a run
 
----
-
 # Conclusion
 
 The project showed that the best results come from consistent testing, evaluation and adjustment. Hardware and software issues were identified and resolved step by step, making the vehicle more stable, reliable and easier to operate.
 
-The final architecture combines Ackermann steering, encoder speed control, gyro heading, three ToF sensors, continuous camera perception, field-coordinate Pure Pursuit and bounded parking manoeuvres. Just as importantly, it preserves the measurements, failed tests and design trade-offs that led to those choices. This makes the robot easier to reproduce, evaluate and improve before the World Final.
-
----
+As a result, the team developed a vehicle that responds better to changing conditions through controlled motor management, a robust sensor setup and improved navigation. This work not only improved performance, but also increased repeatability and competition readiness of the system.
 
 ![Team funny](Photos/Funny-team-photo.JPG)
+
+**Switzerland’s national dish is fondue—usually with cheese, but we prefer robot fondue! 😎🤪**
