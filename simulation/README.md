@@ -13,11 +13,14 @@ contact testing.
 | `parking_exit_swept_search.py` | Standard-library swept-footprint search and validation for the parking-exit manoeuvre. |
 | `parking_exit_path.svg` | Generated top-down visualization of the selected parking-exit and localization path. |
 | `PARKING_EXIT_PATH_SIMULATION.md` | Parking-exit coordinate system, footprint, search, selected path, limitations, and physical-validation history. |
+| `analyze_parking_exit_pose.py` | Validates and analyzes automatic parking-exit pose, braking, reversal and servo-neutral diagnostics. |
+| `PARKING_EXIT_DIAGNOSTIC_LOGGING.md` | Firmware switch, schema, analysis workflow, physical handoff and limitations. |
 | `parking_scan_search.py` | Historical bounded search for a camera scan pose after parking exit. |
 | `parking_entry_scout_sim.py` | Current log-driven replay of the preceding-station scout and its camera/wall/pillar geometry. |
 | `PARKING_ENTRY_GEOMETRY_TOOLS.md` | Usage, inputs, results, limitations, and maintenance for both parking-entry tools. |
 | `fixtures/parking_entry_scout/` | Tracked logs 362--369 and metadata used by the default scout replay. |
 | `evidence/parking_exit/` | Straight and full-lock top-down robot photographs used to define the swept footprint. |
+| `evidence/parking_exit_diagnostics/` | Immutable returned parking-exit logs and their run metadata. |
 
 ## Parking-exit model
 
@@ -56,8 +59,8 @@ changing constants or interpreting a PASS.
 Inputs are kept separate from generated outputs:
 
 - `fixtures/` contains immutable text logs selected for a specific replay.
-- `evidence/` contains physical measurements or photographs used to define a
-  model.
+- `evidence/` contains physical measurements, photographs and immutable returned
+  validation logs used to define or assess a model.
 - Generated diagrams stay beside the script that produces them.
 
 Every fixture/evidence directory has its own README describing provenance and

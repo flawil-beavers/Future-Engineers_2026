@@ -332,6 +332,7 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
           ? static_cast<int8_t>(best_idx)
           : -1;
   frame.sequence = diagnostic.sequence + 1;
+  frame.sampled_ms = millis();
   diagnostic = frame;
 
   // Update signal rate and sigma only if a valid measurement was found
@@ -381,6 +382,7 @@ void update_lasers()
 
   TofDiagnosticSnapshot &diagnostic = tof_diagnostics[TOF_REAR];
   diagnostic.sequence = rear_frame.sequence;
+  diagnostic.sampled_ms = millis();
   diagnostic.filtered_distance_mm = rear_frame.filtered_distance_mm;
   diagnostic.selected_raw_distance_mm = rear_frame.raw_distance_mm;
   diagnostic.selected_signal_mcps = rear_frame.signal_mcps;

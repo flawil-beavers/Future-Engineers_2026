@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "position_estimator.h"
 #include "final_parking.h"
+#include "parking_exit_diagnostics.h"
 
 #define Serial robot_logger
 
@@ -89,9 +90,6 @@ static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
 
 static ParkingExitState oc_parking_exit_state =
     PARKING_EXIT_IDLE;
-static int parkingDiagnosticLastState = -1;
-static uint32_t parkingDiagnosticLastMs = 0;
-static uint16_t parkingDiagnosticSamples = 0;
 static float oc_parking_exit_state_distance = 0.0f;
 static float oc_parking_exit_run_start_distance = 0.0f;
 static float oc_parking_exit_start_heading = 0.0f;
@@ -228,9 +226,7 @@ static float obstacleSectionDistance()
 
 static void resetParkingExit()
 {
-    parkingDiagnosticLastState = -1;
-    parkingDiagnosticLastMs = 0;
-    parkingDiagnosticSamples = 0;
+    parking_exit_diagnostics_reset();
     oc_parking_exit_state =
         OBSTACLE_PARKING_EXIT_ENABLED &&
                 !OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED
@@ -326,6 +322,7 @@ static void initializeParkingFieldPose(float rearTofRangeMm)
     const float startHeading = turnSign > 0 ? 0.0f : 180.0f;
 
     position_reset(startX, startY, startHeading);
+    parking_exit_diagnostics_rebase("field_start");
     oc_parking_field_pose_initialized = true;
 
     Serial.print("[PARK FIELD START] turn=");
@@ -470,6 +467,7 @@ static void holdParkingRearPositioning(const char *reason)
     stop(false);
     set_steering(0);
     oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+    parking_exit_diagnostics_finish(reason);
     Serial.print("[PARK REAR] Failed reason=");
     Serial.print(reason);
     Serial.print(" range_mm=");
@@ -525,6 +523,7 @@ static void beginParkingExitSegments(float rearRangeMm)
         stop(false);
         set_steering(0);
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        parking_exit_diagnostics_finish("rear_positioning_test_complete");
         Serial.println(
             "[PARK REAR] Positioning test complete - drive motor locked off");
         robot_logger.write_to_usb();
@@ -604,6 +603,8 @@ static void completeParkingExit(bool stagedTest)
         (OBSTACLE_PARKING_EXIT_TEST_ONLY &&
          !OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED))
     {
+        parking_exit_diagnostics_finish(
+            stagedTest ? "staged_exit_complete" : "exit_test_complete");
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
             stagedTest
@@ -613,6 +614,7 @@ static void completeParkingExit(bool stagedTest)
         return;
     }
 
+    parking_exit_diagnostics_finish("unparking_complete");
     oc_parking_exit_state = PARKING_EXIT_DONE;
     if (!OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED)
         navigation_enable();
@@ -753,8 +755,11 @@ static void finishParkingExit(bool stagedTest)
             OBSTACLE_PARKING_EXIT_MAX_Y_CORRECTION_MM;
     if (applyFieldY)
     {
+        const PositionEstimate beforeCorrection = fieldPose;
         position_apply_xy_correction(0.0f, tofCorrectionY);
         fieldPose = get_position_struct();
+        parking_exit_diagnostics_correction(
+            "parking_end_y", beforeCorrection, fieldPose);
     }
 
     Serial.print("[PARK EXIT TOF REF] sensor=");
@@ -803,6 +808,7 @@ static void finishParkingExit(bool stagedTest)
     {
         stop(false);
         set_steering(0);
+        parking_exit_diagnostics_finish("rear_positioned_exit_test_complete");
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
             "[PARK EXIT] Rear-positioned exit test complete - "
@@ -858,6 +864,7 @@ static void finishParkingExit(bool stagedTest)
     if (!stagedTest && OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED)
     {
         stop(false);
+        parking_exit_diagnostics_finish("parking_end_reference_invalid");
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
             "[PARK ENTRY] Not armed - no usable parking-end reference; "
@@ -871,6 +878,7 @@ static void finishParkingExit(bool stagedTest)
 
 static void finishParkingEdgeLocalization()
 {
+    const PositionEstimate correctionBefore = get_position_struct();
     const float creepDistance =
         distanceSince(oc_parking_localization_start_distance);
     float xCorrection = 0.0f;
@@ -946,6 +954,9 @@ static void finishParkingEdgeLocalization()
     }
 
     const PositionEstimate finalPose = get_position_struct();
+    if (applyX || applyY)
+        parking_exit_diagnostics_correction(
+            "edge_localization", correctionBefore, finalPose);
     Serial.print("[PARK LOCALIZE RESULT] transition=");
     Serial.print(
         oc_parking_localization_transition_found ? "yes" : "no_max_distance");
@@ -989,6 +1000,7 @@ static void finishParkingEdgeLocalization()
     {
         stop(false);
         set_steering(0);
+        parking_exit_diagnostics_finish("localization_test_complete");
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
             "[PARK LOCALIZE] Reverse-straight test complete - "
@@ -1001,6 +1013,7 @@ static void finishParkingEdgeLocalization()
         (!oc_parking_localization_transition_found || !applyX || !applyY))
     {
         stop(false);
+        parking_exit_diagnostics_finish("localization_invalid");
         oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
         Serial.println(
             "[PARK ENTRY] Not armed - parking localization invalid; "
@@ -1141,68 +1154,56 @@ static void processParkingEdgeLocalizationTof()
     }
 }
 
-// Observe the existing maneuver without introducing motion or sensor reads.
-// The sample cap bounds RAM-log use even if a state remains active unusually long.
-static void logParkingExitDiagnostic()
+static const char *parkingExitDiagnosticStateName()
 {
-    const uint32_t now = millis();
-    const bool transition = parkingDiagnosticLastState != oc_parking_exit_state;
-    if (!transition && (oc_parking_exit_state == PARKING_EXIT_DONE ||
-                        oc_parking_exit_state == PARKING_EXIT_TEST_HOLD))
-        return;
-    if (!transition && (now - parkingDiagnosticLastMs < 200UL ||
-                        parkingDiagnosticSamples >= 150))
-        return;
-    if (parkingDiagnosticLastState < 0)
-    {
-        Serial.print("[PARK DIAG CONFIG] schema=1 build=");
-        Serial.print(__DATE__ " " __TIME__);
-        Serial.print(" center=");
-        Serial.print(SERVO_CENTER);
-        Serial.print(" mm_per_count=");
-        Serial.print(COUNTER_TO_MM, 6);
-        Serial.println(" period_ms=200 sample_cap=150 states=idle,rear_settle,rear_drive,rear_brake,segment_settle,segment_drive,segment_brake,localize_settle,localize_drive,localize_brake,test_hold,done");
-    }
-    parkingDiagnosticLastState = oc_parking_exit_state;
-    parkingDiagnosticLastMs = now;
-    if (!transition)
-        ++parkingDiagnosticSamples;
-    const PositionEstimate pose = get_position_struct();
-    Serial.print("[PARK DIAG] ms="); Serial.print(now);
-    Serial.print(" event="); Serial.print(transition ? "state" : "sample");
-    Serial.print(" state="); Serial.print(static_cast<int>(oc_parking_exit_state));
-    Serial.print(" segment="); Serial.print(oc_parking_exit_segment + 1);
-    Serial.print(" enc_mm="); Serial.print(get_distance(), 2);
-    Serial.print(" cmd_speed="); Serial.print(target_speed);
-    Serial.print(" speed="); Serial.print(measured_speed, 2);
-    Serial.print(" steer="); Serial.print(set_degree);
-    Serial.print(" dc_state="); Serial.print(static_cast<int>(dc_state));
-    Serial.print(" gyro="); Serial.print(get_angle(), 2);
-    Serial.print(" pose="); Serial.print(pose.x_mm, 2); Serial.print("/");
-    Serial.print(pose.y_mm, 2); Serial.print("/"); Serial.println(pose.heading_deg, 2);
-    for (uint8_t sensor = 0; sensor < TOF_COUNT; ++sensor)
-    {
-        TofDiagnosticSnapshot snapshot;
-        if (!get_tof_diagnostic_snapshot(static_cast<TofSensor>(sensor), snapshot))
-            continue;
-        Serial.print("[PARK DIAG TOF] ms="); Serial.print(now);
-        Serial.print(" sensor="); Serial.print(sensor);
-        Serial.print(" seq="); Serial.print(snapshot.sequence);
-        Serial.print(" raw="); Serial.print(snapshot.selected_raw_distance_mm, 2);
-        Serial.print(" filtered="); Serial.print(snapshot.filtered_distance_mm, 2);
-        Serial.print(" signal="); Serial.print(snapshot.selected_signal_mcps, 3);
-        Serial.print(" sigma="); Serial.print(snapshot.selected_sigma_mm, 2);
-        Serial.print(" selected="); Serial.print(snapshot.selected_object_index);
-        const int index = snapshot.selected_object_index;
-        const bool selected = index >= 0 && index < snapshot.stored_object_count;
-        Serial.print(" valid="); Serial.print(selected && snapshot.objects[index].hardware_valid);
-        Serial.print(" accepted="); Serial.println(selected && snapshot.objects[index].filter_accepted);
-    }
+    static const char *const names[] = {
+        "idle", "rear_settle", "rear_drive", "rear_brake",
+        "segment_settle", "segment_drive", "segment_brake",
+        "localize_settle", "localize_drive", "localize_brake",
+        "test_hold", "done"};
+    const uint8_t index = static_cast<uint8_t>(oc_parking_exit_state);
+    return index < sizeof(names) / sizeof(names[0]) ? names[index] : "unknown";
+}
+
+static float parkingExitDiagnosticTargetMm()
+{
+    if (oc_parking_exit_state == PARKING_EXIT_REAR_DRIVE)
+        return oc_parking_rear_planned_travel;
+    if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_DRIVE ||
+        oc_parking_exit_state == PARKING_EXIT_LOCALIZE_SETTLE ||
+        oc_parking_exit_state == PARKING_EXIT_LOCALIZE_BRAKE)
+        return OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM;
+    if (oc_parking_exit_segment < OBSTACLE_PARKING_EXIT_SEGMENT_COUNT)
+        return PARKING_EXIT_SEGMENTS[oc_parking_exit_segment].distanceMm;
+    return 0.0f;
+}
+
+static const char *parkingExitDiagnosticReference()
+{
+    if (oc_parking_exit_state == PARKING_EXIT_REAR_SETTLE ||
+        oc_parking_exit_state == PARKING_EXIT_REAR_DRIVE ||
+        oc_parking_exit_state == PARKING_EXIT_REAR_BRAKE)
+        return "rear_marker";
+    if (oc_parking_exit_state == PARKING_EXIT_LOCALIZE_SETTLE ||
+        oc_parking_exit_state == PARKING_EXIT_LOCALIZE_DRIVE ||
+        oc_parking_exit_state == PARKING_EXIT_LOCALIZE_BRAKE)
+        return "parking_edges";
+    return "none";
 }
 
 static bool updateParkingExit()
 {
-    logParkingExitDiagnostic();
+    if (oc_parking_exit_state != PARKING_EXIT_IDLE &&
+        oc_parking_exit_state != PARKING_EXIT_DONE &&
+        oc_parking_exit_state != PARKING_EXIT_TEST_HOLD)
+    {
+        parking_exit_diagnostics_update(
+            parkingExitDiagnosticStateName(),
+            oc_parking_exit_segment + 1,
+            oc_parking_exit_steering < 0 ? 1 : -1,
+            parkingExitDiagnosticTargetMm(),
+            parkingExitDiagnosticReference());
+    }
     if (oc_parking_exit_state == PARKING_EXIT_DONE)
         return false;
 
@@ -1500,6 +1501,7 @@ static bool updateParkingExit()
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_HEADING_ABORT_DEG)
         {
             stop(false);
+            parking_exit_diagnostics_finish("localization_heading_abort");
             oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
             Serial.print(
                 "[PARK LOCALIZE] Heading abort error/limit_deg=");

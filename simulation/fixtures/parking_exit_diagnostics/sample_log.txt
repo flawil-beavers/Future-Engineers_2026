@@ -1,0 +1,10 @@
+[PARK_DIAG_CONFIG] v=2 build=test turn=1 center=80 mm_per_count=0.115 period_ms=200 sample_limit=150 byte_limit=65536 buffer=196608
+[PARK_DIAG] v=2 type=sample t=100 state=rear_drive seg=1 turn=1 target=10 enc=0 emm=0 cmd=60 speed=30 steer=-2 dc=1 gyro=0.00 pose=0,0,0 nominal=0,0,0 ref=rear_marker s0=1,1,200,200,1,1,1,1 s1=1,1,200,200,1,1,1,1 s2=1,1,65,65,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=300 state=rear_drive seg=1 turn=1 target=10 enc=20 emm=2 cmd=60 speed=60 steer=-2 dc=1 gyro=0.20 pose=2,0,0.2 nominal=2,0,0 ref=rear_marker s0=2,1,200,200,1,1,1,1 s1=2,1,200,200,1,1,1,1 s2=2,1,63,63,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=500 state=localize_drive seg=6 turn=1 target=430 enc=40 emm=4 cmd=-100 speed=-60 steer=0 dc=1 gyro=0.10 pose=4,0,0.1 nominal=4,0,0 ref=parking_edges s0=3,1,210,210,1,1,1,1 s1=3,1,210,210,1,1,1,1 s2=2,201,63,63,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=700 state=localize_drive seg=6 turn=1 target=430 enc=20 emm=2 cmd=-100 speed=-60 steer=0 dc=1 gyro=0.00 pose=2,0,0 nominal=2,0,0 ref=parking_edges s0=4,1,220,220,1,1,1,1 s1=4,1,220,220,1,1,1,1 s2=3,1,64,64,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=900 state=localize_drive seg=6 turn=1 target=430 enc=0 emm=0 cmd=-100 speed=-60 steer=2 dc=1 gyro=0.20 pose=0,0,0.2 nominal=0,0,0 ref=parking_edges s0=5,1,230,230,1,1,1,1 s1=5,1,230,230,1,1,1,1 s2=4,1,65,65,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=1100 state=localize_drive seg=6 turn=1 target=430 enc=-20 emm=-2 cmd=-100 speed=-60 steer=2 dc=1 gyro=0.40 pose=-2,0,0.4 nominal=-2,0,0 ref=parking_edges s0=6,1,240,240,1,1,1,1 s1=6,1,240,240,1,1,1,1 s2=5,1,66,66,1,1,1,1
+[PARK_DIAG] v=2 type=sample t=1300 state=localize_brake seg=6 turn=1 target=430 enc=-22 emm=-2.2 cmd=0 speed=-5 steer=0 dc=2 gyro=0.42 pose=-2.2,0,0.42 nominal=-2.2,0,0 ref=parking_edges s0=7,1,245,245,1,1,1,1 s1=7,1,245,245,1,1,1,1 s2=6,1,66,66,1,1,1,1
+[PARK_DIAG] v=2 type=finish t=1400 detail=unparking_complete_bytes_2000_samples_7 enc=-22 emm=-2.2 gyro=0.42 steer=0 cmd=0
+

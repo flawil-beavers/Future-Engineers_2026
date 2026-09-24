@@ -37,6 +37,7 @@ struct TofObjectDiagnostic {
 
 struct TofDiagnosticSnapshot {
   uint32_t sequence;
+  uint32_t sampled_ms;
   float filtered_distance_mm;
   float selected_raw_distance_mm;
   float selected_signal_mcps;

@@ -3,8 +3,9 @@
 #include <Arduino.h>
 #include <Stream.h>
 #include <stdio.h>
+#include "parking_exit_diagnostics_config.h"
 
-#define LOG_BUFFER_SIZE (128 * 1024) // 128 KB RAM buffer
+#define LOG_BUFFER_SIZE ROBOT_LOG_BUFFER_SIZE
 
 /**
  * @brief USB Logger class that intercepts Serial output, buffers it in RAM,

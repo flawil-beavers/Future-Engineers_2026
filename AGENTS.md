@@ -9,12 +9,23 @@
   project history in `AGENT_DOCUMENTATION.md`.
 - For parking/unparking motion-error tests, also read
   `PARKING_POSE_IMPLEMENTATION_PLAN.md`. After each received test batch, append a
-  concise entry to `AGENT_DOCUMENTATION.md` with firmware identity, log
-  hashes/curated evidence paths, physical reports, measured findings, limitations
-  and exact next steps.
-  Use the normal Git workflow to synchronize findings and reproducible evidence;
-  do not assume ignored `local_workspace/` logs exist on another machine or
-  claim synchronization without verifying it.
+  concise entry to `AGENT_DOCUMENTATION.md` with firmware identity, committed
+  evidence paths and hashes, physical reports, measured findings, limitations
+  and exact next steps. Keep this history concise; do not paste full telemetry
+  into `AGENT_DOCUMENTATION.md`.
+- For every parking/unparking test batch, copy each complete original log,
+  unchanged, from the USB/source archive into
+  `simulation/evidence/parking_exit_diagnostics/`. Use the portable filename
+  format `YYYYMMDD_log_NNN_cw.txt` or `YYYYMMDD_log_NNN_ccw.txt`, and add its
+  metadata row to that directory's `README.md`. If a complete log cannot be
+  obtained, copy the exact available excerpt there with `_excerpt` in its name
+  and document the missing portion; never present an excerpt as a complete run.
+- Treat files below `local_workspace/` as working copies only. Analyzer reports
+  remain there because they are reproducible from the committed logs. Before
+  finishing the batch, verify that the evidence logs, evidence README and
+  `AGENT_DOCUMENTATION.md` are tracked by Git and contain no machine-specific
+  absolute paths. Do not claim the batch is synchronized merely because it
+  exists in ignored `local_workspace/` or on removable media.
 
 ## Temporary files
 

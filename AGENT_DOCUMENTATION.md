@@ -6580,3 +6580,40 @@ earlier removal of standalone README section separators. The preview did not
 replace README.pdf; its existing working-tree modification predates this build
 and was preserved. Nothing was staged or committed. Publish with the regular build
 without `-Preview` only when ready to update the committed PDF.
+
+---
+
+## 2026-09-24: automatic parking-exit motion diagnostics
+
+Parking-exit diagnostics are implemented behind
+`PARKING_EXIT_DIAGNOSTICS_ENABLED`. Normal `O` unparking now logs the existing
+rear positioning, five exit segments, braking/direction changes, cached ToF,
+pose corrections and localization without adding motion, waits, sensor reads or
+a separate save action. Records are schema 2, sampled at 200 ms, capped at 150
+samples and 64 KiB. Enabled builds use a 192 KiB logger; disabled builds compile
+the feature to inline no-ops and retain 128 KiB.
+
+`simulation/analyze_parking_exit_pose.py` validates saved logs and produces
+hashed Markdown, segment/reversal/repeatability CSVs and actual-versus-nominal
+SVG traces below `local_workspace/parking-exit-analysis/`. It reports effective
+lost motion only with a valid common rear-marker reference. Servo neutral is
+estimated from gyro curvature versus logical steering during stable straight
+motion, split by direction/exit/steering approach where evidence permits; it
+never changes `SERVO_CENTER`. The tracked fixture is synthetic and is not robot
+evidence.
+
+Verification: all five analyzer tests pass. IDE-managed PlatformIO M7 builds
+pass enabled at 432,216/523,624 bytes RAM (82.5%, 91,408 free) and disabled at
+366,640 bytes (70.0%); flash is 431,944 and 431,896 bytes respectively. No M4
+build was needed. No firmware was uploaded. Physical timing, coverage, buffer
+headroom, backlash and servo-centre results remain unknown until robot logs are
+returned.
+
+Next: upload only with explicit authorization. The tester should use the
+unchanged normal `O` run and normal save procedure, then provide repeated CW and
+CCW logs plus log number, firmware identity and physical outcome. Analyze each
+batch from an unchanged copy committed under
+`simulation/evidence/parking_exit_diagnostics/`, update that directory's
+metadata table and record concise hashes/findings here. Keep generated reports
+in `local_workspace/`. Change no steering or backlash compensation until
+repeatable evidence supports it.
