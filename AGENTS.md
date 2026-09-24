@@ -7,12 +7,23 @@
 - Append durable engineering findings and exact next steps there after a
   substantial session. Keep mandatory agent instructions in this file and
   project history in `AGENT_DOCUMENTATION.md`.
+- For parking/unparking motion-error tests, also read
+  `PARKING_POSE_IMPLEMENTATION_PLAN.md`. After each received test batch, append a
+  concise entry to `AGENT_DOCUMENTATION.md` with firmware identity, log
+  hashes/curated evidence paths, physical reports, measured findings, limitations
+  and exact next steps.
+  Use the normal Git workflow to synchronize findings and reproducible evidence;
+  do not assume ignored `local_workspace/` logs exist on another machine or
+  claim synchronization without verifying it.
 
 ## Temporary files
 
 - Store repository-task temporary and generated working files under
   `local_workspace/`, which is intentionally gitignored. Do not create a
   separate `tmp/` working tree in the repository.
+- Do not commit machine-specific absolute paths, including checkout locations or
+  removable-drive letters. Use repository-relative paths, portable filenames or
+  paths resolved at runtime.
 
 ## Competition rules
 

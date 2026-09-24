@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # 1. Flexible CSV Path Check
-primary_path = "C:/Users/Public/ackermann_data.csv"
+primary_path = os.path.join(os.path.expanduser("~"), "ackermann_data.csv")
 local_path = "ackermann_data.csv"
 
 if os.path.exists(primary_path):

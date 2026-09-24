@@ -1,4 +1,4 @@
-import adsk.core, adsk.fusion, traceback, csv, math
+import adsk.core, adsk.fusion, traceback, csv, math, os
 
 def run(context):
     ui = None
@@ -49,9 +49,9 @@ def run(context):
         wheel_l_motion = wheel_joint_l.jointMotion
         wheel_r_motion = wheel_joint_r.jointMotion
         
-        desktop_path = "C:/Users/Public/ackermann_data.csv"
+        export_path = os.path.join(os.path.expanduser("~"), "ackermann_data.csv")
         
-        with open(desktop_path, mode='w', newline='') as file:
+        with open(export_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Servo_Angle_Deg', 'Servo_Slide_mm', 'Left_Wheel_Deg', 'Right_Wheel_Deg'])
             
@@ -71,7 +71,7 @@ def run(context):
                 
                 writer.writerow([deg, round(slide_mm, 4), round(left_deg, 4), round(right_deg, 4)])
                 
-        ui.messageBox(f"Export Complete!\nSaved data from -{max_deg}° to +{max_deg}° to:\n{desktop_path}")
+        ui.messageBox(f"Export Complete!\nSaved data from -{max_deg}° to +{max_deg}° to:\n{export_path}")
 
     except:
         if ui:

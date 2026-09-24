@@ -144,7 +144,7 @@ capture implementation is therefore accepted for stationary operation and
 low-speed driving in the available lighting. Brighter competition-like light
 remains untested.
 
-The run's USB file, `D:\log_76.txt`, is incomplete because 4,645 stationary
+The run's USB file, `log_76.txt`, is incomplete because 4,645 stationary
 camera frames had nearly filled the logger's fixed 128 KiB RAM buffer before
 driving began. It confirms 79.62-79.63 ms frame intervals and zero missed,
 discarded, or errored captures before the drive, plus the correct RIGHT/CW

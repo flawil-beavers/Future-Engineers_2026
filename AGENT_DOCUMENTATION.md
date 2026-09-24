@@ -1,5 +1,126 @@
 # Agent documentation and engineering handoffs
 
+## 2026-09-24: removable diagnostics, servo neutral and buffer estimate
+
+The parking-exit plan now requires a focused compile-time-disabled diagnostics
+module, with guarded call sites and the original 128 KiB buffer when disabled.
+Enabled records have a 64 KiB hard budget and use a conditional 192 KiB buffer.
+Historical local logs peak at 74,048 bytes for reviewed complete parking runs and
+107,628 bytes for any non-overflow run; two 128 KiB logs overflowed. Adding the
+diagnostic budget needs about 170 KiB, so 192 KiB gives roughly 23 KiB over the
+largest observed non-overflow case. Based on the last 366,624-byte build, estimated
+enabled RAM is 432,160/523,624 bytes (82.5%), leaving 91,464 bytes. A 256 KiB
+buffer would leave only about 25,928 bytes and is rejected. Actual enabled and
+disabled M7 builds remain required.
+
+The analyzer will also estimate servo neutral from gyro curvature versus logical
+steering during naturally occurring near-straight rear-positioning/localization
+motion. It will split forward/reverse, CW/CCW and steering-approach groups, report
+hysteresis instead of a false single optimum when they disagree, and never update
+`SERVO_CENTER` automatically. No firmware logic changed in this planning update.
+
+## 2026-09-23: parking-exit diagnostic scope finalized
+
+The diagnostic plan covers the complete existing unparking pipeline: rear-ToF
+positioning, all exit segments with braking/direction changes, and wall/marker
+localization. Logging activates automatically during normal O unparking, uses
+existing cached encoder/gyro/ToF data, and must add no movements, waits, sensor
+acquisitions, control changes, early stop or save change. Normal execution and
+saving remain unchanged. Analysis uses measurements only where freshness,
+validity and feature geometry provide a reliable reference, and estimates
+effective reversal loss only where independent evidence exists. No firmware
+logic changed here.
+
+## 2026-09-23: unparking plan scoped to software and documentation
+
+The user requires normal O behavior with additional logging only and no manual
+ground-truth measurement. `PARKING_POSE_IMPLEMENTATION_PLAN.md` now specifies the
+firmware schema, drive/brake/reversal event capture, sensor-only observability,
+offline analyzer and tests, logging documentation, M7 verification and returned-log
+handoff. It separates continuous nominal-versus-estimated pose error from
+independent ToF residuals available only at identified features. Control and pose
+correction changes remain gated on repeatable material evidence. No firmware logic
+changed in this documentation edit.
+
+## 2026-09-23: concise remote unparking pose-error plan
+
+`PARKING_POSE_IMPLEMENTATION_PLAN.md` now focuses on development without local
+robot access: read-only firmware diagnostics, one friend-run coverage test,
+repeated normal O runs, automatic USB logs, offline drive/brake/reversal analysis,
+and evidence-gated pose or compensation changes. It explicitly distinguishes the
+internal estimated pose from independently measurable position error. No firmware
+logic changed in this edit; the earlier M7 diagnostic build remains the baseline.
+
+## 2026-09-23: remove machine-specific absolute paths
+
+Repository text no longer embeds local Windows checkout, USB drive, or Public
+user paths. Handoffs use the repository root, historical logs use portable
+filenames, and the Ackermann exporter/analyzer resolve the current user's home
+directory at runtime. The parking replay example uses `local_workspace/logs`.
+Literal scans found no machine-specific absolute paths outside ignored working
+storage. Both changed Python files pass AST syntax parsing;
+`git diff --check` passes apart from line-ending notices. No firmware build or
+upload was needed.
+
+## 2026-09-13: remote normal-run unparking diagnostics
+
+Supersedes the earlier dedicated-calibration plan below. Owner has no robot;
+`PARKING_POSE_IMPLEMENTATION_PLAN.md` now uses the friend's normal O unparking
+runs. `src/obstacle.cpp` automatically logs state transitions and bounded 200 ms
+motion/ToF snapshots without changing maneuver commands or limits. Save remains
+the existing automatic USB request on disable; logs must finish saving before
+reset. Build identity/schema accompany telemetry. Repeated snapshot sequences,
+unknown reflecting surfaces and limited sampling constrain backlash inference.
+
+Parking/unparking test batches are recorded directly as concise newest-first
+entries in this file, including firmware identity, reproducible evidence,
+physical reports, findings, limitations and exact next steps. The separate test
+findings document was removed to avoid duplicating this handoff history.
+IDE-managed M7 build passed (366624 bytes RAM, 431816 bytes flash), with existing
+Serial/library warnings; M4 was not built. Whitespace check passed. No
+synchronization, new physical test or firmware upload performed here.
+Next: authorized upload, first ordinary run and coverage
+check, then repeated CW/CCW logs and offline analyzer development. Control changes
+remain conditional on evidence; existing connector/parking validation gates apply.
+
+## 2026-09-13: parking pose and motion-error implementation plan
+
+`PARKING_POSE_IMPLEMENTATION_PLAN.md` records the proposed sequence: telemetry,
+independent reversal/arc measurements, trusted pose checkpoints, uncertainty-aware
+geometry, bounded trajectory adjustment and optional measured compensation.
+Current exit and final-entry arcs largely terminate by encoder distance; final
+parking already checks estimated segment endpoints. Motor take-up can bias that
+distance, while valid wall/marker references can correct observable pose components.
+First implementation is telemetry/analysis; first experiment is straight reversal
+measurement. Backlash compensation is conditional on repeatable material error.
+No firmware changed, built or uploaded.
+
+## 2026-09-13: steering neutral and backlash code review
+
+Current `include/config.h` uses SERVO_CENTER=80, with logical limits +/-50.
+`src/motor_control.cpp` applies this centre without wheel-angle feedback or
+backlash compensation. The B straight-calibration mode prints a recommended
+centre but does not automatically apply it. Gyro/encoder pose and driving
+feedback correct trajectory errors; parking steering-settle delays address
+movement time, not mechanical play. Live Pure Pursuit computes steering directly,
+so changing only `include/ackermann_kinematics.h` would not calibrate that path.
+The CAD report's +0.6 degree bias and centre 82 recommendation are historical,
+not proof that today's centre 80 is wrong.
+
+User reports straight-calibration results spanning approximately 2-3 servo
+degrees and selected their approximate middle. They recall moving steering
+left/right before calibration; the exact sequence and per-run approach are
+uncertain. This supports approximate neutral repeatability, not a measured
+backlash width. Servo degrees are not equivalent to wheel steering degrees.
+
+Next: retain the chosen middle pending evidence; compare repeated calibration
+runs approaching neutral from each direction on the same floor/setup. A
+consistent difference between groups could justify bounded backlash correction;
+similar scattered groups favour the current centre and feedback. Check parking
+sensitivity to roughly +/-1-1.5 servo degrees as a provisional range, not a
+validated physical bound. Keep future steering mappings, output limits and
+preflight geometry consistent. No firmware changed, built or uploaded.
+
 ## 2026-08-30: track simulation inputs and separate them from CAD
 
 Driving and parking geometry tools now live under `simulation/`, separate
@@ -1510,7 +1631,7 @@ applied` line immediately after enabling before assessing motion.
 
 ## 2026-08-28 - Logs 192--194 reject PID test command before motion
 
-The USB drive is `D:` with label `PHILIPP`; its timestamps are not reliable,
+The USB drive has label `PHILIPP`; its drive letter may vary and its timestamps are not reliable,
 so robot logs must be selected by the highest numeric filename. Logs 192, 193,
 and 194 contain the low-speed attempts at the user-reported 8.27 V. They prove
 the new firmware was uploaded because `DC req/applied` and `PDM slots/on`
@@ -2428,7 +2549,7 @@ clearly longer placement to return `9999.0`.
 
 ## 2026-08-27 - Log 139 overran the entry scan arc
 
-`D:\\log_139.txt` was physically contact-free, but the CCW parking-entry
+`log_139.txt` was physically contact-free, but the CCW parking-entry
 discovery still failed. The path was planned for 384.3 mm; the robot reached
 404.4 mm and logged `Scan path overrun` with 20.1 degrees heading error. The
 heading error at the overrun indicates that the reverse arc was commanded, but
@@ -2663,7 +2784,7 @@ implement and test the direction-specific low-speed discovery connector.
 
 ## 2026-08-27 - Reverse parking-edge localization prepared
 
-`D:\log_134.txt` physically passed the mirrored CW forward-edge-search run
+`log_134.txt` physically passed the mirrored CW forward-edge-search run
 without contact. The five exit segments aligned within 1.9 degrees and the
 pink-end reference was usable. Edge search transitioned after 29.2 mm, but its
 newest accepted wall sample was 219 mm against a 236.9 mm prediction. The
@@ -2697,7 +2818,7 @@ use the normal full six-seat discovery logic. No firmware was uploaded.
 
 ## 2026-08-27 - Corrected CCW edge search passes gates; start-section sign needs discovery
 
-`D:\log_133.txt` completed the corrected 60 mm parking-edge search in CCW
+`log_133.txt` completed the corrected 60 mm parking-edge search in CCW
 without a reported contact and reached the test-only motor lock. It preserved
 the last genuine 67 mm magenta return, rejected intermediate returns, and
 accepted two pose-consistent wall frames after 29.0 mm. The result applied
@@ -4135,7 +4256,7 @@ complete run, continuous motion, no contact, and substantially more clearance
 around the pillar than required. Treat this as a physical pass of the
 low-speed driving gate and the capped-lookahead regression.
 
-The corresponding newest USB file is `D:\log_76.txt`. It confirms continuous
+The corresponding newest USB file is `log_76.txt`. It confirms continuous
 camera capture remained at 79.62-79.63 ms with zero missed intervals, discarded
 frames, or capture errors through 4,645 stationary frames before the drive. It
 also confirms `OBSTACLE_LIVE_TEST`, RIGHT/CW, and the 175 mm/s cap, then records
@@ -4305,7 +4426,7 @@ and DVP timing, not to increase frame rate.
 The optional continuous-DCMI TODO in `CAMERA_24MHZ_DEVELOPMENT.md` is still
 unimplemented: both async starts in the project-owned Arducam driver use
 `DCMI_MODE_SNAPSHOT`. Snapshot restart misses remain measurable. Across the
-final counters of the instrumented post-24-MHz sessions in `D:\log_44.txt`,
+final counters of the instrumented post-24-MHz sessions in `log_44.txt`,
 `log_46.txt`, `log_49.txt`, `log_54.txt`, `log_56.txt`, and `log_61.txt`, there
 were 78 intervals over 120 ms among 975 measured inter-frame intervals (about
 8.0%). The long intervals consistently peak near 159.25 ms rather than the
@@ -4394,7 +4515,7 @@ disabled. Confirm `[CAM PERF]` reports `async=yes`, advancing frame numbers,
 stable detections, and no capture stalls. Only then resume the exact powered
 test described in the next handoff entry.
 
-`D:\log_39.txt` passed the async and official-pillar portions. Frames advanced
+`log_39.txt` passed the async and official-pillar portions. Frames advanced
 continuously through 1929; normal capture spans were about 76-84 ms, occasional
 missed sensor-frame spans were about 150-159 ms, service cost was 75-83 us, and
 typical processing/control blockage was about 6.2-6.8 ms. Seat 3 confirmed in
@@ -4412,8 +4533,8 @@ and injections remained zero. The mode was stopped and COM4 released. The next
 step is the user-operated, post-async red-left powered run; do not retune the
 nudge before analyzing it.
 
-Three post-async powered repetitions are now available as `D:\log_40.txt`
-through `D:\log_42.txt`. All three correctly injected red seat 5 exactly once,
+Three post-async powered repetitions are now available as `log_40.txt`
+through `log_42.txt`. All three correctly injected red seat 5 exactly once,
 then failed identically at S1 station 0: its right seat cleared, left seat 7
 never appeared in `vis`, observations remained `NONE`, and the 35-degree nudge
 cap arrived only after the viewing window. Maximum CTE was 69.0/67.9/67.8 mm
@@ -4438,7 +4559,7 @@ request separate consent before uploading to the robot.
 The local `giga_r1_m7` build passed at 291096 bytes RAM and 349952 bytes flash.
 No upload or robot connection was performed.
 
-The user subsequently uploaded and ran this firmware themselves. `D:\log_43.txt`
+The user subsequently uploaded and ran this firmware themselves. `log_43.txt`
 shows that the stronger single-seat response fixed the earlier first-corner
 failure: S1 stations 0, 1, and 2 all cleared. At S2 station 0 the right seat
 cleared, the nudge reached the unchanged 35-degree cap, and left seat 13 never
@@ -4464,7 +4585,7 @@ at 291096 bytes RAM and 350208 bytes flash. It has not been uploaded; explicit
 user consent is still required before uploading or connecting to the robot.
 
 The user uploaded the merged 24 MHz/diagnostic firmware and produced
-`D:\log_44.txt`. The geometry diagnostic isolates the S2 station 0 failure:
+`log_44.txt`. The geometry diagnostic isolates the S2 station 0 failure:
 left seat 13 first entered the angular window at `L27.3/272`, then was already
 below the current 260 mm range gate (`L25.3/238`) 201 ms later. Interpolation
 leaves only about 70 ms of valid overlap, less than one normal 79.62 ms frame
@@ -4515,7 +4636,7 @@ flash. No upload or robot connection occurred. After explicit upload consent,
 repeat one user-operated left/CCW run on the `log_44` layout and verify that S2
 station 0 reaches two left-seat clear frames rather than the 135 mm hold.
 
-The user uploaded this build and produced `D:\log_45.txt`. The 230 mm gate
+The user uploaded this build and produced `log_45.txt`. The 230 mm gate
 worked: S2 station 0 and every station in S1-S3 cleared. The run then failed at
 S0 station 0 with the analogous inside left seat. Its geometry changed from
 `L29.7/257` to `L26.2/216`, so angular entry occurred at essentially the 230 mm
@@ -4544,7 +4665,7 @@ user-operated left/CCW run on the `log_45` layout. S0 station 0 must clear, the
 lap must complete, and maximum CTE should not regress materially beyond 90.8
 mm.
 
-The user uploaded this build and produced `D:\log_46.txt`. They correctly
+The user uploaded this build and produced `log_46.txt`. They correctly
 observed that the robot physically completed a circuit. The full simultaneous
 gain fixed S0 station 0 and reduced maximum CTE to 78.5 mm; red was injected
 once. The formal result remained `FAIL`/lap 0 because the car stopped at S0
@@ -4580,7 +4701,7 @@ rejected-blob cases, and runs before movement. The IDE-managed build passed at
 upload consent, repeat one user-operated left/CCW run on the same layout and
 verify that S0 station 1 clears and the formal lap counter reaches one.
 
-`D:\log_38.txt` is the final pre-async powered result, not an async validation:
+`log_38.txt` is the final pre-async powered result, not an async validation:
 startup left camera calibration pending while the switch was LOW, proving the
 stationary async auto-start was absent. It verified the 850/650 mm discovery
 trigger but still failed on S2 left seat 13. Discovery started about 184 mm
@@ -4686,7 +4807,7 @@ passed (four CCW/left and three CW/right). Do not repeat the waived five-runs
 per direction matrix. Corner slowdown tuning is deliberately deferred until
 the end, when production speed is increased.
 
-Relevant full-FOV live logs on `D:\`:
+Relevant full-FOV live logs from the removable USB drive:
 
 - `log_33.txt`: correctly injected red seat 5 once; cleared all S1 stations;
   failed at S2 station 0 with the older narrow scan rule. Maximum CTE 104.8 mm.
@@ -4748,7 +4869,7 @@ $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
    the field. Toggle the enable switch when ready. `Y0` aborts and brakes.
 4. The user prefers to perform powered runs personally, then attach the USB
    logging stick and say `logs ready`. Analyze the highest-numbered
-   `D:\log_*.txt`.
+   `log_*.txt`.
 5. Primary success condition: S2 station 0 must show the left seat in `vis` and
    resolve instead of aborting. Also compare maximum CTE with `log_37`'s
    69.5 mm and check for wild steering or stop-start motion.

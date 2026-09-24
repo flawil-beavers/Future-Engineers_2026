@@ -89,6 +89,9 @@ static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
 
 static ParkingExitState oc_parking_exit_state =
     PARKING_EXIT_IDLE;
+static int parkingDiagnosticLastState = -1;
+static uint32_t parkingDiagnosticLastMs = 0;
+static uint16_t parkingDiagnosticSamples = 0;
 static float oc_parking_exit_state_distance = 0.0f;
 static float oc_parking_exit_run_start_distance = 0.0f;
 static float oc_parking_exit_start_heading = 0.0f;
@@ -225,6 +228,9 @@ static float obstacleSectionDistance()
 
 static void resetParkingExit()
 {
+    parkingDiagnosticLastState = -1;
+    parkingDiagnosticLastMs = 0;
+    parkingDiagnosticSamples = 0;
     oc_parking_exit_state =
         OBSTACLE_PARKING_EXIT_ENABLED &&
                 !OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED
@@ -1135,8 +1141,68 @@ static void processParkingEdgeLocalizationTof()
     }
 }
 
+// Observe the existing maneuver without introducing motion or sensor reads.
+// The sample cap bounds RAM-log use even if a state remains active unusually long.
+static void logParkingExitDiagnostic()
+{
+    const uint32_t now = millis();
+    const bool transition = parkingDiagnosticLastState != oc_parking_exit_state;
+    if (!transition && (oc_parking_exit_state == PARKING_EXIT_DONE ||
+                        oc_parking_exit_state == PARKING_EXIT_TEST_HOLD))
+        return;
+    if (!transition && (now - parkingDiagnosticLastMs < 200UL ||
+                        parkingDiagnosticSamples >= 150))
+        return;
+    if (parkingDiagnosticLastState < 0)
+    {
+        Serial.print("[PARK DIAG CONFIG] schema=1 build=");
+        Serial.print(__DATE__ " " __TIME__);
+        Serial.print(" center=");
+        Serial.print(SERVO_CENTER);
+        Serial.print(" mm_per_count=");
+        Serial.print(COUNTER_TO_MM, 6);
+        Serial.println(" period_ms=200 sample_cap=150 states=idle,rear_settle,rear_drive,rear_brake,segment_settle,segment_drive,segment_brake,localize_settle,localize_drive,localize_brake,test_hold,done");
+    }
+    parkingDiagnosticLastState = oc_parking_exit_state;
+    parkingDiagnosticLastMs = now;
+    if (!transition)
+        ++parkingDiagnosticSamples;
+    const PositionEstimate pose = get_position_struct();
+    Serial.print("[PARK DIAG] ms="); Serial.print(now);
+    Serial.print(" event="); Serial.print(transition ? "state" : "sample");
+    Serial.print(" state="); Serial.print(static_cast<int>(oc_parking_exit_state));
+    Serial.print(" segment="); Serial.print(oc_parking_exit_segment + 1);
+    Serial.print(" enc_mm="); Serial.print(get_distance(), 2);
+    Serial.print(" cmd_speed="); Serial.print(target_speed);
+    Serial.print(" speed="); Serial.print(measured_speed, 2);
+    Serial.print(" steer="); Serial.print(set_degree);
+    Serial.print(" dc_state="); Serial.print(static_cast<int>(dc_state));
+    Serial.print(" gyro="); Serial.print(get_angle(), 2);
+    Serial.print(" pose="); Serial.print(pose.x_mm, 2); Serial.print("/");
+    Serial.print(pose.y_mm, 2); Serial.print("/"); Serial.println(pose.heading_deg, 2);
+    for (uint8_t sensor = 0; sensor < TOF_COUNT; ++sensor)
+    {
+        TofDiagnosticSnapshot snapshot;
+        if (!get_tof_diagnostic_snapshot(static_cast<TofSensor>(sensor), snapshot))
+            continue;
+        Serial.print("[PARK DIAG TOF] ms="); Serial.print(now);
+        Serial.print(" sensor="); Serial.print(sensor);
+        Serial.print(" seq="); Serial.print(snapshot.sequence);
+        Serial.print(" raw="); Serial.print(snapshot.selected_raw_distance_mm, 2);
+        Serial.print(" filtered="); Serial.print(snapshot.filtered_distance_mm, 2);
+        Serial.print(" signal="); Serial.print(snapshot.selected_signal_mcps, 3);
+        Serial.print(" sigma="); Serial.print(snapshot.selected_sigma_mm, 2);
+        Serial.print(" selected="); Serial.print(snapshot.selected_object_index);
+        const int index = snapshot.selected_object_index;
+        const bool selected = index >= 0 && index < snapshot.stored_object_count;
+        Serial.print(" valid="); Serial.print(selected && snapshot.objects[index].hardware_valid);
+        Serial.print(" accepted="); Serial.println(selected && snapshot.objects[index].filter_accepted);
+    }
+}
+
 static bool updateParkingExit()
 {
+    logParkingExitDiagnostic();
     if (oc_parking_exit_state == PARKING_EXIT_DONE)
         return false;
 

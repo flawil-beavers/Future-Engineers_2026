@@ -1,16 +1,16 @@
 # Future Engineers parking-entry handoff
 
-Continue development in:
-
-`C:\Users\philk\Documents\GitHub\Future-Engineers_2026`
+Continue development from the repository root.
 
 Read first, in order:
 
 1. `AGENTS.md`
-2. the newest 2026-08-30 section at the top of `AGENT_DOCUMENTATION.md`
+2. the newest relevant sections of `AGENT_DOCUMENTATION.md`
 3. the top ordered connector section in `OBSTACLE_CHALLENGE_TEST_PLAN.md`
 4. `OBSTACLE_SEAT_NUMBERING.md`
 5. `OBSTACLE_CLEARANCE_LOGGING.md`
+6. `PARKING_POSE_IMPLEMENTATION_PLAN.md` for normal-run motion-error collection;
+   record each returned batch in `AGENT_DOCUMENTATION.md`
 
 Preserve all staged/unstaged changes. Do not reset, checkout, clean, or upload
 firmware without explicit user permission. Document every durable finding in

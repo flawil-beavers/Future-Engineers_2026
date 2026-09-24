@@ -1130,6 +1130,13 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
+- [ ] Follow [the parking pose implementation plan](PARKING_POSE_IMPLEMENTATION_PLAN.md)
+      for automatic diagnostics during the friend's normal O unparking runs;
+      record every batch concisely in `AGENT_DOCUMENTATION.md` and synchronize
+      curated evidence. Use returned logs to develop pose checkpoints and bounded
+      trajectory adjustment. Compensation requires repeatable material error;
+      preserve ordered validation and existing safety gates below.
+
 - [ ] Immediate full isolated practice: remove all obstacle pillars, keep
       `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=true`, CCW turn sign `+1`, and
       segment limit `7`. Place the rear axle at canonical

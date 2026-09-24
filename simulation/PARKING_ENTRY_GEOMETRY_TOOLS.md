@@ -30,7 +30,7 @@ through `log_369.txt`. A different directory or log range can be supplied:
 ```powershell
 python simulation/parking_entry_scout_sim.py
 python simulation/parking_entry_scout_sim.py `
-  --log-dir C:\path\to\logs --first-log 362 --last-log 369
+  --log-dir local_workspace/logs --first-log 362 --last-log 369
 ```
 
 The replay uses only the Python standard library. A successful exit status

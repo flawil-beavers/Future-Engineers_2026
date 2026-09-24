@@ -50,7 +50,7 @@ same swept-envelope and tolerance process.
    - The servo angle (°)
    - The pin-slot **slide distance** (mm)
    - The **left** and **right** wheel angles (°)
-5. Writes all samples to `C:/Users/Public/ackermann_data.csv`.
+5. Writes all samples to `ackermann_data.csv` in the current user's home directory.
 
 ### Requirements
 
@@ -66,7 +66,7 @@ same swept-envelope and tolerance process.
 
 ### What it does
 
-1. Loads `ackermann_data.csv` (from `C:/Users/Public/` or the current directory).
+1. Loads `ackermann_data.csv` (from the current user's home directory or the current directory).
 2. Normalizes the wheel angles from `[0, 360]` into the standard `[-180, +180]` range.
 3. Fits a **3rd-order polynomial** to the left and right wheel angle data:
    `Angle_Wheel = a·x³ + b·x² + c·x + d`
