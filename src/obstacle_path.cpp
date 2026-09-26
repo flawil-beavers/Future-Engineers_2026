@@ -113,6 +113,10 @@ bool extremeAdjacentReleasePending = false;
 int8_t deferredInjectionSeatIndex = -1;
 uint32_t lastDiscoveryNudgeUpdateMs = 0;
 ObstacleObservationResult lastDiscoveryObservation;
+PositionEstimate lastDiscoveryCoveragePose;
+uint32_t lastDiscoveryCoverageMs = 0;
+uint32_t lastDiscoveryTraceMs = 0;
+uint8_t discoveryTraceCount = 0;
 ObstacleTofCorrectionResult lastTofCorrectionResult;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
@@ -139,6 +143,8 @@ uint8_t parkingEntryConnectorProgress = 0;
 uint16_t parkingEntryConnectorMergeIndex = 0;
 float parkingEntryConnectorStartEncoderDistance = 0.0f;
 float parkingEntryConnectorLookaheadMm = 0.0f;
+uint32_t parkingEntryConnectorTraceMs = 0;
+uint8_t parkingEntryConnectorTraceCount = 0;
 uint32_t parkingEntryObserveStartMs = 0;
 bool parkingEntryUsbWritten = false;
 float parkingEntryStartEncoderDistance = 0.0f;
@@ -716,6 +722,98 @@ bool calculateClearanceAtPose(
     float headingDeg,
     ObstacleClearanceSample &sample);
 
+PathPoint connectorLookaheadFrom(uint8_t index, float lookaheadMm);
+
+float connectorRouteHeading(const PathPoint *route, uint16_t index)
+{
+    // Displacement changes XY but deliberately leaves baseline heading metadata
+    // intact. A connector must join the actual outgoing segment, not that metadata.
+    for (uint16_t step = 1; step < pathLength; ++step)
+    {
+        const uint16_t next = (index + step) % pathLength;
+        const float dx = route[next].x - route[index].x;
+        const float dy = route[next].y - route[index].y;
+        if (hypotf(dx, dy) >= 1.0f)
+            return atan2f(dy, dx) * 180.0f / PI;
+    }
+    return NAN;
+}
+
+bool connectorRolloutFeasible(
+    const PositionEstimate &start, float lookaheadMm,
+    uint8_t referenceSeat, int8_t confirmedSeat, int8_t guardSeat)
+{
+    constexpr float stepMm = 2.0f;
+    constexpr float clearanceMarginMm = 10.0f;
+    float x = start.x_mm, y = start.y_mm;
+    float heading = start.heading_deg * PI / 180.0f;
+    uint8_t progress = 0;
+    const PathPoint &end = parkingEntryConnector[parkingEntryConnectorLength - 1];
+    for (float travel = 0.0f;
+         travel <= OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM;
+         travel += stepMm)
+    {
+        // Check both existing front/rear capsules at every 2 mm of simulated
+        // motion, with a margin for the discrete footprint movement. This is
+        // a kinematic prediction, not a measured uncertainty bound.
+        for (uint8_t rear = 0; rear < 2; ++rear)
+        {
+            const float offset = rear ? OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM : 0.0f;
+            const float px = x - offset * cosf(heading);
+            const float py = y - offset * sinf(heading);
+            ObstacleClearanceSample clearance{};
+            if (!calculateClearanceAtPose(seats[referenceSeat], px, py,
+                    heading * 180.0f / PI, clearance) ||
+                clearance.wallMm <= clearanceMarginMm ||
+                (confirmedSeat >= 0 && clearance.pillarMm <= clearanceMarginMm))
+                return false;
+            for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+            {
+                if (!seats[seat].confirmed && seat != guardSeat)
+                    continue;
+                if (!calculateClearanceAtPose(seats[seat], px, py,
+                        heading * 180.0f / PI, clearance) ||
+                    clearance.pillarMm <= clearanceMarginMm)
+                    return false;
+            }
+        }
+        if (hypotf(x - end.x, y - end.y) <= OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
+            fabsf(wrap180(heading * 180.0f / PI - end.headingDeg)) <=
+                OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG)
+            return true;
+        if (travel + stepMm > OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM)
+            return false;
+        while (progress + 1 < parkingEntryConnectorLength &&
+               hypotf(x - parkingEntryConnector[progress + 1].x,
+                      y - parkingEntryConnector[progress + 1].y) <
+               hypotf(x - parkingEntryConnector[progress].x,
+                      y - parkingEntryConnector[progress].y))
+            ++progress;
+        const PathPoint target = connectorLookaheadFrom(progress, lookaheadMm);
+        const float dx = target.x - x, dy = target.y - y;
+        const float forward = dx * cosf(heading) + dy * sinf(heading);
+        const float lateral = -dx * sinf(heading) + dy * cosf(heading);
+        const float curvature = 2.0f * lateral / fmaxf(1.0f, dx * dx + dy * dy);
+        const float steering = -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
+        if (!isfinite(forward) || !isfinite(steering) || forward <= 1.0f ||
+            fabsf(steering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG)
+            return false;
+        const float nextHeading = heading + curvature * stepMm;
+        if (fabsf(curvature) > 1.0e-6f)
+        {
+            x += (sinf(nextHeading) - sinf(heading)) / curvature;
+            y += (cosf(heading) - cosf(nextHeading)) / curvature;
+        }
+        else
+        {
+            x += stepMm * cosf(heading);
+            y += stepMm * sinf(heading);
+        }
+        heading = nextHeading;
+    }
+    return false;
+}
+
 bool buildParkingEntryConnector(
     const PositionEstimate &start,
     const PathPoint *route,
@@ -828,7 +926,10 @@ bool buildParkingEntryConnector(
     if (bestScore >= 1.0e12f)
         return false;
 
-    const PathPoint &end = route[best];
+    PathPoint end = route[best];
+    end.headingDeg = connectorRouteHeading(route, best);
+    if (!isfinite(end.headingDeg))
+        return false;
     const float chord = hypotf(end.x - start.x_mm, end.y - start.y_mm);
     if (!isfinite(chord) || chord < OBSTACLE_PATH_SAMPLE_MM)
         return false;
@@ -1034,6 +1135,13 @@ bool buildParkingEntryConnector(
                 break;
             }
         }
+        if (feasible && !connectorRolloutFeasible(
+                start, candidateLookahead, referenceSeat, confirmedSeat, guardSeat))
+        {
+            feasible = false;
+            Serial.print("[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=");
+            Serial.println(candidateLookahead, 1);
+        }
         if (feasible)
         {
             parkingEntryConnectorLookaheadMm = candidateLookahead;
@@ -1084,6 +1192,43 @@ bool buildParkingEntryConnector(
     Serial.print(parkingEntryConnectorLookaheadMm, 1);
     Serial.print(" points=");
     Serial.println(parkingEntryConnectorLength);
+    Serial.print("[PARK ENTRY CONNECTOR] Tangent baseline/actual_deg=");
+    Serial.print(route[mergeIndex].headingDeg, 2);
+    Serial.print("/"); Serial.println(end.headingDeg, 2);
+    // Geometry is emitted while stopped, once per successful build. This
+    // allows offline replay without inventing the missing terminal pose.
+    parkingEntryConnectorTraceCount = 0;
+    parkingEntryConnectorTraceMs = 0;
+    Serial.print("[CONNECTOR_CONFIG] v=1 build=");
+    Serial.print(__DATE__);
+    Serial.print("_"); Serial.println(__TIME__);
+    for (uint8_t index = 0; index < parkingEntryConnectorLength; ++index)
+    {
+        const PathPoint &point = parkingEntryConnector[index];
+        Serial.print("[CONNECTOR_POINT] kind=connector index=");
+        Serial.print(index);
+        Serial.print(" x="); Serial.print(point.x, 2);
+        Serial.print(" y="); Serial.print(point.y, 2);
+        Serial.print(" h="); Serial.println(point.headingDeg, 2);
+    }
+    float routeTravel = 0.0f;
+    uint16_t routeIndex = mergeIndex;
+    for (uint8_t offset = 0; offset < 32; ++offset)
+    {
+        const PathPoint &point = route[routeIndex];
+        Serial.print("[CONNECTOR_POINT] kind=route index=");
+        Serial.print(offset);
+        Serial.print(" x="); Serial.print(point.x, 2);
+        Serial.print(" y="); Serial.print(point.y, 2);
+        Serial.print(" h="); Serial.println(point.headingDeg, 2);
+        if (routeTravel >= parkingEntryConnectorLookaheadMm + 50.0f)
+            break;
+        const uint16_t next = (routeIndex + 1) % pathLength;
+        if (next == mergeIndex)
+            break;
+        routeTravel += hypotf(route[next].x - point.x, route[next].y - point.y);
+        routeIndex = next;
+    }
     return parkingEntryConnectorLength >= 3;
 }
 
@@ -2090,6 +2235,56 @@ void updateDiscoveryCoverage(
     }
 }
 
+void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
+{
+    const uint32_t now = millis();
+    if (station >= OBSTACLE_SEAT_COUNT / COURSE_SEATS_PER_STATION ||
+        lastDiscoveryCoverageMs == 0 || discoveryTraceCount >= 40 ||
+        (!forced && (discoveryTraceCount >= 32 || now - lastDiscoveryTraceMs < 200)))
+        return;
+    ++discoveryTraceCount;
+    lastDiscoveryTraceMs = now;
+    const PositionEstimate &pose = lastDiscoveryCoveragePose;
+    const DiscoveryStation &coverage = discoveryStations[station];
+    const Blob *raw = getLargestObstacle();
+    Serial.print("[DISCOVERY_TRACE] v=1 t="); Serial.print(now);
+    Serial.print(" frame_t="); Serial.print(lastDiscoveryCoverageMs);
+    Serial.print(" reason="); Serial.print(reason);
+    Serial.print(" station="); Serial.print(station);
+    Serial.print(" pose="); Serial.print(pose.x_mm, 1);
+    Serial.print(","); Serial.print(pose.y_mm, 1);
+    Serial.print(","); Serial.print(pose.heading_deg, 2);
+    Serial.print(" nudge="); Serial.print(lastDiscoveryTargetNudgeDeg, 2);
+    Serial.print(" obs="); Serial.print(static_cast<uint8_t>(lastDiscoveryObservation.status));
+    Serial.print(" valid="); Serial.print(lastDiscoveryObservation.productionValid ? 1 : 0);
+    Serial.print(" obs_seat="); Serial.print(lastDiscoveryObservation.seatId);
+    Serial.print(" obs_range="); Serial.print(lastDiscoveryObservation.rangeMm, 1);
+    Serial.print(" evidence="); Serial.print(coverage.lastClearEvidenceMask);
+    for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
+    {
+        const uint8_t seat = station * COURSE_SEATS_PER_STATION + side;
+        float bearing = 0.0f, range = 0.0f;
+        seatCameraGeometry(seat, pose, bearing, range);
+        Serial.print(" s"); Serial.print(side); Serial.print("=");
+        Serial.print(bearing, 2); Serial.print(","); Serial.print(range, 1);
+        Serial.print(","); Serial.print(seatComfortablyVisible(seat, pose) ? 1 : 0);
+        Serial.print(","); Serial.print(rejectedBlobBlocksSeatClear(raw, bearing) ? 1 : 0);
+        Serial.print(","); Serial.print(observationAllowsClearAtGeometry(lastDiscoveryObservation, bearing, range) ? 1 : 0);
+        Serial.print(","); Serial.print(coverage.clearFrames[side]);
+        Serial.print(","); Serial.print(coverage.seatObservedClear[side] ? 1 : 0);
+    }
+    if (raw != nullptr && raw->found)
+    {
+        Serial.print(" raw="); Serial.print(static_cast<uint8_t>(raw->color));
+        Serial.print(","); Serial.print(raw->area);
+        Serial.print(","); Serial.print(raw->width());
+        Serial.print(","); Serial.print(raw->height());
+        Serial.print(","); Serial.print(raw->maxY);
+        Serial.print(","); Serial.print(obstacle_blob_valid_for_acquisition(raw) ? 1 : 0);
+    }
+    Serial.println();
+}
+
 void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
 {
     const bool primaryResolved =
@@ -2910,9 +3105,8 @@ PathPoint findLookahead(
     return path[index];
 }
 
-PathPoint findConnectorLookahead(float lookaheadMm)
+PathPoint connectorLookaheadFrom(uint8_t index, float lookaheadMm)
 {
-    uint8_t index = parkingEntryConnectorProgress;
     float accumulated = 0.0f;
     while (index + 1 < parkingEntryConnectorLength &&
            accumulated < lookaheadMm)
@@ -2925,6 +3119,11 @@ PathPoint findConnectorLookahead(float lookaheadMm)
         ++index;
     }
     return parkingEntryConnector[index];
+}
+
+PathPoint findConnectorLookahead(float lookaheadMm)
+{
+    return connectorLookaheadFrom(parkingEntryConnectorProgress, lookaheadMm);
 }
 } // namespace
 
@@ -2956,6 +3155,10 @@ void obstacle_path_reset()
     deferredInjectionSeatIndex = -1;
     lastDiscoveryNudgeUpdateMs = 0;
     lastDiscoveryObservation = ObstacleObservationResult();
+    lastDiscoveryCoveragePose = PositionEstimate();
+    lastDiscoveryCoverageMs = 0;
+    lastDiscoveryTraceMs = 0;
+    discoveryTraceCount = 0;
     parkingEntryLength = 0;
     parkingEntryProgress = 0;
     parkingEntryTargetStation = -1;
@@ -3180,6 +3383,8 @@ void obstacle_path_update(bool new_camera_frame)
                 observation,
                 pose,
                 getLargestObstacle());
+            lastDiscoveryCoveragePose = pose;
+            lastDiscoveryCoverageMs = millis();
         }
     }
 
@@ -3358,15 +3563,55 @@ void obstacle_path_update(bool new_camera_frame)
     // Positive geometric curvature is left; positive servo command is right.
     const float requiredSteering =
         -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
-    if (parkingEntryConnectorActive &&
+    const bool connectorTrackingRejected = parkingEntryConnectorActive &&
         (!isfinite(localX) || !isfinite(requiredSteering) ||
          localX <= 1.0f ||
-         fabsf(requiredSteering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG))
+         fabsf(requiredSteering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG);
+    if (connectorTrackingRejected)
     {
+        // Apply the existing safety action before formatting diagnostics.
         stop(false);
+        set_steering(0);
+    }
+    // Bounded read-only tail telemetry. A rejection always gets a record,
+    // even after the periodic budget is used. No extra sensor acquisition.
+    if (parkingEntryConnectorActive)
+    {
+        const bool rejected = connectorTrackingRejected;
+        const uint32_t now = millis();
+        if (rejected || (parkingEntryConnectorProgress + 4 >= parkingEntryConnectorLength &&
+                         parkingEntryConnectorTraceCount < 32 &&
+                         now - parkingEntryConnectorTraceMs >= 100))
+        {
+            parkingEntryConnectorTraceMs = now;
+            ++parkingEntryConnectorTraceCount;
+            const PathPoint &end = parkingEntryConnector[parkingEntryConnectorLength - 1];
+            Serial.print("[CONNECTOR_TRACK] t="); Serial.print(now);
+            Serial.print(" progress="); Serial.print(parkingEntryConnectorProgress);
+            Serial.print(" x="); Serial.print(pose.x_mm, 2);
+            Serial.print(" y="); Serial.print(pose.y_mm, 2);
+            Serial.print(" h="); Serial.print(pose.heading_deg, 2);
+            Serial.print(" tx="); Serial.print(target.x, 2);
+            Serial.print(" ty="); Serial.print(target.y, 2);
+            Serial.print(" forward="); Serial.print(localX, 2);
+            Serial.print(" lateral="); Serial.print(localY, 2);
+            Serial.print(" steering="); Serial.print(requiredSteering, 3);
+            Serial.print(" end_distance=");
+            Serial.print(hypotf(pose.x_mm - end.x, pose.y_mm - end.y), 2);
+            Serial.print(" end_heading=");
+            Serial.print(fabsf(wrap180(pose.heading_deg - end.headingDeg)), 2);
+            Serial.print(" lookahead="); Serial.print(lookahead, 2);
+            Serial.print(" wheelbase="); Serial.print(OBSTACLE_WHEELBASE_MM, 2);
+            Serial.print(" limit="); Serial.print(OBSTACLE_MAX_PURSUIT_STEERING_DEG, 2);
+            Serial.print(" gate_distance="); Serial.print(OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM, 2);
+            Serial.print(" gate_heading="); Serial.print(OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG, 2);
+            Serial.print(" rejected="); Serial.println(rejected ? 1 : 0);
+        }
+    }
+    if (connectorTrackingRejected)
+    {
         parkingEntryConnectorActive = false;
         parkingEntryTestHold = true;
-        set_steering(0);
         Serial.print(
             "[PARK ENTRY CONNECTOR] Forward tracking rejected - drive motor locked off forward_mm=");
         Serial.print(localX, 1);
@@ -3384,6 +3629,8 @@ void obstacle_path_update(bool new_camera_frame)
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
 
     set_steering(static_cast<int>(steering));
+    const char *discoveryTraceReason = nullptr;
+    int discoveryTraceStation = -1;
     float safeSpeed = commandedSpeed;
     if (parkingEntryConnectorActive)
         safeSpeed = fminf(
@@ -3407,6 +3654,8 @@ void obstacle_path_update(bool new_camera_frame)
                     discoveryHolding = true;
                     discoveryHoldStation = unresolvedStation;
                     discoveryHoldStartMs = now;
+                    discoveryTraceReason = "hold_start";
+                    discoveryTraceStation = unresolvedStation;
                     Serial.print("[PATH] Perception hold at S");
                     Serial.print(unresolvedStation /
                                  COURSE_STATIONS_PER_SECTION);
@@ -3424,6 +3673,8 @@ void obstacle_path_update(bool new_camera_frame)
                 {
                     discoveryBlocked = true;
                     discoveryBlockedStation = unresolvedStation;
+                    discoveryTraceReason = "hold_expired";
+                    discoveryTraceStation = unresolvedStation;
                     Serial.print("[PATH] Perception hold expired at S");
                     Serial.print(unresolvedStation /
                                  COURSE_STATIONS_PER_SECTION);
@@ -3450,6 +3701,19 @@ void obstacle_path_update(bool new_camera_frame)
         }
     }
     set_speed(static_cast<int>(safeSpeed));
+    // Format diagnostics after the motor command, especially at a hold. Use
+    // the last coverage-frame pose, not a later corrected pose; t/frame_t
+    // makes stale observations explicit. No additional camera/sensor reads.
+    if (discoveryTraceReason != nullptr)
+        logDiscoveryTrace(discoveryTraceStation, discoveryTraceReason, true);
+    else if (!runtimeTestMode && completedLaps == 0 && new_camera_frame &&
+             !parkingEntryConnectorActive)
+    {
+        float forward = 0.0f;
+        const int station = nearestUpcomingUnresolvedStation(forward);
+        if (station >= 0 && forward <= OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM)
+            logDiscoveryTrace(station, "approach", false);
+    }
 }
 
 bool obstacle_path_started()

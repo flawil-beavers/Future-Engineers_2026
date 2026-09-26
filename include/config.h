@@ -597,6 +597,9 @@ constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 450.0f;
 // the red pillar in log 311.
 constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S = 80.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM = 500.0f;
+// Current validation target: normal parked-start discovery through one complete
+// lap, then stop/save before final parking. Set false for the three-lap mission.
+constexpr bool OBSTACLE_FIRST_LAP_TEST_ENABLED = true;
 constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS = 64;
 constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM = 25.0f;
 // Select a route point by its spatial relationship to the measured parking
@@ -720,7 +723,7 @@ constexpr bool OBSTACLE_FINAL_PARKING_ENTRY_ARMED = false;
 // centreline exactly at the boundary from the last corner to the parking
 // straight, then approach, scan and park. Run without obstacle pillars.
 // +1 selects CCW/east; -1 selects CW/west.
-constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = true;
+constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = false;
 constexpr int8_t OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN = 1;
 constexpr auto OBSTACLE_FINAL_PARKING_SEGMENT_COUNT = 7;
 constexpr auto OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT = 7;
@@ -1268,3 +1271,6 @@ constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
 #define CAMERA_GC2145_HBLANK 0x011C
 #define CAMERA_GC2145_VBLANK 0x0000
 #define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
+// Obstacle is selected automatically on every boot. Start with the physical
+// enable switch after BLUE ready; serial O only selects the mode. A controller
+// safety hold is not resumed by sending O again (disable/reposition/start).

@@ -76,6 +76,44 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
 
 ## Next: validate the parking-entry-to-lap connector
 
+- [x] Logs 390/391 physically complete CW connector and first straight with no
+      reported contact. Endpoint errors 59.8/59.5 mm, heading 0.7/0.0 degrees.
+- [ ] Diagnose repeated first-curve perception hold at S1/0, forward 335 mm,
+      configured grace 800 ms. New bounded cached `DISCOVERY_TRACE` records
+      expose per-seat geometry and clear-block reasons; thresholds unchanged.
+      One same-setup CW diagnostic repeat before more motion changes. Complete
+      first-lap and CCW acceptance remain pending.
+
+- [x] User confirms logs 386--389 had no obstacle contact. Preserve their CW
+      runtime holds and CCW preflight rejections as failures of completion.
+- [x] Correct connector endpoint tangent to the outgoing displaced-route XY
+      direction, retaining baseline heading metadata elsewhere. Add stopped
+      kinematic preflight rollout with 2 mm steps, 10 mm capsule margin and
+      existing 42-degree / 60 mm / 15-degree / 500 mm limits.
+- [x] Prepare `OBSTACLE_FIRST_LAP_TEST_ENABLED=true`: normal discovery stops and
+      saves after one counted lap before final parking. Five rollout regressions,
+      324 assumed sensitivity cases and M7 compile pass.
+- [ ] Upload corrected M7 and run CW using the current photographed setup,
+      then repeat once if successful. Require connector Complete, stable route
+      following, all stations resolved and First-lap test complete/save before
+      CCW. Follow the current section of `CONNECTOR_NEXT_TEST.md`.
+
+- [x] Prepare bounded connector geometry/tail telemetry and offline finite-target
+      replay, with an assumed +/-10 mm XY / +/-2-degree heading candidate grid.
+      Five tool tests and M7 build pass. Motion targets/gates remain unchanged.
+- [ ] Perform one diagnostic repeat using `CONNECTOR_NEXT_TEST.md`; return the
+      complete original and overhead setup photo. Use actual terminal pose to
+      justify a correction before the subsequent official-layout test matrix.
+
+- [x] Analyze complete CW logs 383/384/385 from 2026-09-26. User reports
+      similar runs without obstacle contact. Exit/localization, red seat 2,
+      green seat 0, approximately 85 mm scout and guarded preflight passed.
+      Estimated return errors were 0.4/2.2/3.9 mm and 3.1/1.0/2.2 degrees.
+- [ ] Resolve repeated connector rejection at point 16/17 near the 42-degree
+      steering limit. Reproduce endpoint lookahead offline and validate any
+      route continuation against swept clearances before changing motion.
+      Keep CW acceptance pending; no CCW test until connector completion.
+
 - [x] Analyze logs 362--369. Logs 364/365/369 all left the CCW preceding
       station unresolved after the 55 mm scout; log 362 timed out the primary
       CW scan without a retry. Log 363 marked the scout station CLEAR before
@@ -108,6 +146,14 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       confirmation/injection, about 85 mm forward retrace, small return error,
       resolved primary/scout connector prerequisites, confirmed hidden guard,
       connector completion, and the user's report of no contact or stall.
+- [x] Pre-test review (2026-09-26): disable isolated final-parking practice so
+      O actually unparks; retain the final-entry lock. Scout replay passes 8/8.
+      The assumed-error grid passes all CW cases but loses the CCW bearing
+      window in 84/729 cases. Keep CW-first validation and unresolved holds;
+      do not change geometry/view limits without physical evidence. Diagnostic
+      byte/sample bounds and partial-record handling are corrected, with M7
+      enabled/disabled builds and 12 offline tests passing. First physical run
+      must check log coverage, loop timing and buffer capacity as well as motion.
 - [ ] If the initial primary scan times out, require the exact bounded sequence
       `Primary unresolved; scouting` -> resolved scout -> return ->
       `Primary stationary retry armed`. Connector arming before both stations

@@ -3091,7 +3091,7 @@ void obstacle_challenge_update(
             turnSign,
             false,
             firstCornerDistance,
-            0,
+            OBSTACLE_FIRST_LAP_TEST_ENABLED ? 1 : 0,
             0.0f,
             OBSTACLE_PARKING_EXIT_ENABLED &&
                 OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED);
@@ -3100,6 +3100,16 @@ void obstacle_challenge_update(
     if (!obstacle_path_complete())
     {
         obstacle_path_update(newCameraFrame);
+        return;
+    }
+
+    if (OBSTACLE_FIRST_LAP_TEST_ENABLED)
+    {
+        set_steering(0);
+        stop(false);
+        oc_complete = true;
+        Serial.println("[OC] First-lap test complete - stopped; final parking skipped");
+        robot_logger.write_to_usb();
         return;
     }
 

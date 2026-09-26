@@ -1,5 +1,318 @@
 # Agent documentation and engineering handoffs
 
+## 2026-09-26: CW connector physically passes; first-curve perception hold
+
+User reports two CW runs with successful exit/first straight, no contact, then
+stop after entering the first curve before the section with a later single red
+pillar. Complete originals are tracked under
+`simulation/evidence/parking_exit_diagnostics/`:
+
+- `20260926_log_390_cw.txt`, 65,187 bytes, SHA-256
+  `1e500f44c20a79bfac6b0a189eb00ed7d1bf90c14223b39a4ac06023ad48eb56`.
+- `20260926_log_391_cw.txt`, 57,647 bytes, SHA-256
+  `c879866174b624fe080a048dd92af9c723027ccab7d7ddb854c13604d89469b9`.
+
+Source/archive/evidence hashes verified. Exit header Sep_26_2026_16_38_05,
+connector header Sep 26 2026_16:38:04, matching the prior corrected build identity
+above; installed binary not read back. All five exit segments/localization finish,
+red seat 2 and green seat 0 inject, scout retrace estimated 5.4/4.4 mm and
+2.2/0.9 degrees. Connector completes merge 138 at 59.8/59.5 mm and 0.7/0.0 degrees;
+actual tangent 132.56 degrees. This is physical CW transition evidence, not CCW
+or full-lap acceptance. Exit diagnostics 80/78 samples, no overflow/truncation/
+duplicate ToF/ordering errors. Reports in `local_workspace/parking-exit-analysis-batch3/`.
+
+Both runs hold at S1 station 0 (global station 3), forward 335 mm, then expire
+the configured 800 ms perception grace. This is not the first-lap completion stop.
+Logs later end with manual disable. Small red regions during hold (areas
+248--268 < acquisition minimum 300) and broad rejected green regions occur.
+There is no coverage-frame pose, per-seat bearing/range/visibility or rejected
+clear-evidence reason, so view geometry versus image rejection is unresolved.
+The later red pillar must not be assumed to occupy this unresolved first station.
+Do not reduce colour thresholds, widen FOV or release the hold from these logs.
+
+Added bounded read-only `DISCOVERY_TRACE` to M7: last coverage-frame pose/time,
+observation status/validity/seat/range, target nudge, evidence mask, and per-seat
+bearing/range/visible/raw-overlap/clear-allowed/frame-count/stored-clear fields;
+raw colour/area/width/height/bottom/acquisition validity. At most 32 periodic
+records >=200 ms apart plus eight reserved forced hold records per run (40 total).
+Motor command is applied before formatting; cached data only, no camera/sensor
+read, no threshold/trajectory/hold/one-lap change. Frame timestamp distinguishes
+observation age; additional log timing/buffer coverage still needs physical check.
+
+IDE-managed M7 compile passes, RAM 432,416 / 523,624, flash 446,816 / 786,432.
+New diagnostic firmware SHA-256:
+`b05077b40fd6c5f7ad643a4b4c55b15e4fbdac699f74e88011c06d6d8823551f`.
+M4 unchanged/not built, no upload performed. Current procedure is the newest
+section of `CONNECTOR_NEXT_TEST.md`: upload M7 and perform one identical CW
+repeat, leave the automatic hold stationary about two seconds, disable normally,
+finish USB save and return the complete log/contact report. Use trace to design
+the first-curve acquisition correction before further route changes; complete
+first-lap and CCW verification remain pending.
+
+## 2026-09-26: actual-route tangent correction and first-lap build
+
+User now confirms all four runs 386--389 had no obstacle contact and authorizes
+continued work toward the full first-lap test. Evidence README updated; previous
+contact-pending notes are superseded, mechanical stall is not separately reported.
+
+Root mismatch found in the recorded geometry: live displacement changes XY,
+while `PathPoint.headingDeg` intentionally remains baseline metadata. At CW
+merge 138 it is -180 degrees, but outgoing XY tangent is 132.57 degrees.
+The connector previously forced this approximately 47-degree disagreement into
+its Hermite end tangent and heading gate. New `connectorRouteHeading` derives
+the first noncoincident outgoing live/optimized segment for the connector only;
+baseline/seat headings and live-route displacement are unchanged.
+
+Preflight additionally rolls its selected finite-path lookahead through an ideal
+bicycle model in 2 mm increments, checking both existing front/rear capsules
+against walls and every confirmed/guard pillar with 10 mm model margin. It must
+reach the existing 60 mm / 15-degree gate inside 500 mm, without exceeding
+42 degrees or targeting behind the axle. Runtime and rollout share the finite
+lookahead helper. No route-continuation target, steering-limit widening or
+forced handoff has been introduced. Prediction remains nominal, with no measured
+sensor/actuator uncertainty guarantee; rollout computation occurs while stopped.
+
+`simulation/connector_transition_sim.py` reproduces the corrected Hermite
+geometry and ideal closed-loop tracking for CW logs 386/387. Both choose 150 mm
+lookahead and reach the unchanged gates after 358/352 mm, with approximately
+1.85/1.12-degree heading error. All 324 assumed cases pass: two logged starts,
+reflection, +/-10 mm XY, +/-2 degrees heading and yaw gain 0.85/1/1.15. Modeled
+minimum wall/pillar clearance is 148.5/88.2 mm. Reflection is synthetic, not actual
+CCW replay; CCW logs contain no complete path geometry. Only adjacent pillars
+and field wall capsules are represented offline. No physical or full-lap success
+is claimed. Five rollout regression tests pass, including gate convergence,
+mirror, wall rejection and incomplete data.
+
+`OBSTACLE_FIRST_LAP_TEST_ENABLED=true` now requests one normal discovery lap,
+then stops/saves and skips final parking. Setting false restores the normal
+three-lap mission. Obstacle remains automatic startup mode with physical enable.
+IDE-managed M7 build succeeds: RAM 432,392 / 523,624, flash 445,568 / 786,432.
+Firmware SHA-256:
+`55a9dc3621f1a17e85bf991b804ad412747a97fb17485bf04cc02accd55c68f7`.
+M4 unchanged/not built; no firmware upload performed. Working-tree build,
+not independently verified robot-installed identity. Existing Serial and legacy
+unused-function warnings remain.
+
+Next: user uploads M7, starts CW from the photographed parking setup after BLUE
+ready, observes connector and complete first-lap discovery. Expected success
+marker `[OC] First-lap test complete - stopped; final parking skipped`, automatic
+USB save, no contact/stall. Wait for save before power-off. Repeat CW once only
+if clean, review complete logs before CCW. A safety hold remains a failed test;
+do not force it with O. Current procedure is `CONNECTOR_NEXT_TEST.md`; earlier
+diagnostic-only procedures there are marked historical. Preserve complete future
+logs with direction/hashes and physical report. No further unchanged diagnostic
+repeats are requested before uploading this corrected build.
+
+## 2026-09-26: second batch, two CW and two CCW; startup mode clarified
+
+User reports runs in CW/CW/CCW/CCW order, no further travel after selecting O,
+and supplies an oblique setup photo with parking bay and six pillars. Contact/
+mechanical-stall report requested, still pending; do not inherit the prior
+batch's no-contact statement. Photo is conversation evidence only, with no
+measured dimensions or archived image artifact.
+
+Complete unchanged originals, source/copy hashes verified, are tracked in
+`simulation/evidence/parking_exit_diagnostics/`:
+
+- `20260926_log_386_cw.txt`, 64,877 bytes, SHA-256
+  `11d5d56337b49fdc0ad57fedce7b8a54f33b95ce301a9377e1b86afcebcb661d`.
+- `20260926_log_387_cw.txt`, 51,671 bytes, SHA-256
+  `a0b579346f0a1a50c03d6bc5435ffca3380545970db64f46ca78577e9585afa4`.
+- `20260926_log_388_ccw.txt`, 51,102 bytes, SHA-256
+  `dd3831acb6c0e5d8683b60948ee97b5308387a46a577d39b681206eacb33c5ec`.
+- `20260926_log_389_ccw.txt`, 49,228 bytes, SHA-256
+  `8a40df45cdfe819f6ff4f65fdd6e62f3cc42340c2942e047f5cf9e557220c74e`.
+
+Exit header remains schema 2 `Sep_26_2026_12_06_07`. CW connector header v1
+`Sep 26 2026_16:00:28` matches the prepared source build; installed binary hash
+not read back. CCW failed preflight emits no connector header/geometry. All
+four complete exit/localization and scout. Estimated retrace errors
+4.6/3.3/5.0/5.5 mm and 0.1/0.7/3.2/2.8 degrees. No overflow/truncation.
+Log 389 has one event/sample ordering inversion (12489 then 12488 ms).
+
+CW logs each contain eight replayable tail poses. At rejection, endpoint
+distance 35.39/30.92 mm passes the 60 mm gate, heading error 23.80/22.22 deg
+fails the 15-degree gate; actual steering -42.026/-42.165 deg fails 42 degrees.
+CCW does not arm: nominal preflight tracking requires 43.2/42.9 degrees.
+Counterfactual route continuation yields +18.58/+21.07 degrees at the CW final
+poses, opposite steering, not demonstrated alignment. All 432 assumed XY/
+heading perturbations pass its forward/steering guard only. No closed-loop or
+swept collision proof and no full route completion. Preserve existing guards.
+
+Startup already selects `MODE_OBSTACLE_CHALLENGE` through `main.cpp`; physical
+enable after BLUE readiness starts the run. Serial O selects a mode; same-mode
+selection returns early and cannot release a connector hold. Added explanatory
+config comments only, no executable firmware change or build/upload in this
+batch. Analyzer distinguishes preflight rejection from missing telemetry and
+rejects neutral-zero extrapolation outside observed steering commands (log 388
+previously produced an absurd -963-degree centre). Eleven parking analyzer and
+six connector tests pass, including real CW replay and CCW rejection. Reports
+remain reproducible under ignored `local_workspace/`.
+
+Next: retain automatic Obstacle selection and physical-start semantics; stop
+repeating unchanged runs. Redesign/validate terminal alignment with closed-loop
+replay rather than steering feasibility alone; route continuation can turn away
+from the required heading. Capture CCW failed-preflight geometry in the next
+diagnostic revision or reconstruct it faithfully from firmware before claiming
+CCW coverage. Require shared preflight/runtime targeting, swept checks, heading
+convergence, bounded travel and CW/CCW validation before upload. Archive future
+originals and obtain explicit contact/stall reports.
+
+## 2026-09-26: connector diagnostic build and next-run procedure
+
+User authorized preparation for reliable transition testing. Added bounded
+`CONNECTOR_POINT` geometry snapshots at stopped successful preflight, a
+`CONNECTOR_CONFIG` source-build identity and `CONNECTOR_TRACK` cached tail
+pose/target/local XY/steering/endpoint-gate records. Up to 32 periodic samples
+at 100 ms in the last four waypoint positions, plus one rejection record.
+Motor stop/centering occurs before rejection formatting. Finite targets,
+42-degree guard, 60 mm / 15-degree handoff, speed and travel limits are unchanged.
+Snapshot overhead is roughly 20 KiB at maximum configured point counts;
+replans can add snapshots. Physical timing/overflow remains to be checked.
+
+`simulation/analyze_connector_tracking.py` replays finite targets and steering,
+compares route continuation counterfactually and evaluates an assumed 27-case
+grid (+/-10 mm XY, +/-2 degrees). Five tests pass, including complete synthetic
+record parsing, corrupt target rejection, clipping/continuation, mirroring and
+incomplete route handling. Old logs 383--385 correctly report missing tail pose/
+geometry; they cannot establish a correction. No closed-loop or swept collision
+acceptance is claimed, and no motion-target change has been made.
+
+IDE-managed M7 build succeeds: RAM 432,448 / 523,624, flash 450,432 / 786,432.
+Firmware SHA-256:
+`926c6a331d57e2dc46286ea699858f256d52ad57c5dbcb273344a1f3a68e1566`.
+M4 unchanged and not built. No upload performed. This is an uncommitted working
+tree build, not a robot-installed binary identity.
+
+Exact next steps are in `CONNECTOR_NEXT_TEST.md`: user uploads M7, photographs
+the unchanged diagnostic layout, performs one CW normal-O repeat, saves the
+complete log and reports hold/contact/next-pillar pass. A repeated rejection
+needs only one run. After geometry/gate analysis, validate any continuation with
+shared preflight/runtime selection, swept checks and closed-loop mirrored replay,
+then test identified official variants, start-position variation and CW/CCW.
+Reliability is expanded by that matrix; success in every disturbance is not
+guaranteed. Retain controlled holds for unresolved or infeasible scenes.
+
+## 2026-09-26: test-layout clarification and connector correction scope
+
+User identifies the two consecutive pillars as a deliberate position-recognition
+diagnostic layout, not a representative competition-layout acceptance test.
+Retain the recognition/no-contact evidence but do not equate it with legal-layout
+or route-completion acceptance. Exact physical placement is not established by
+the logs; an overhead photo was requested. Official rules section 8, figures
+8c/8e define layout variants and inward relocation in the parking section;
+two consecutive pillars alone are insufficient to decide legality.
+
+Source inspection confirms finite-end clipping in `findConnectorLookahead`.
+Tracking preflight checks ideal sampled poses and stops when the ideal endpoint
+distance/heading gate passes; actual tracking can remain outside that gate.
+The current rejection record lacks actual pose, target XY, lateral target,
+endpoint distance and endpoint heading error. Therefore the three originals
+cannot uniquely reproduce the final tracking state. Next software work: add
+those cached quantities to the rejection record, build a faithful offline
+controller replay with pose/heading perturbations, then validate a shared
+preflight/runtime lookahead continuation onto the checked live route. Preserve
+42-degree steering and endpoint gates. Next physical test must use an identified
+official placement variant, with diagnostic layout retained as a separate
+regression. No firmware change or upload in this clarification.
+
+## 2026-09-26: three CW robot tests, connector endpoint hold reproduced
+
+Complete unchanged originals are Git-tracked under
+`simulation/evidence/parking_exit_diagnostics/`:
+
+- `20260926_log_383_cw.txt`, 56,689 bytes, SHA-256
+  `541ac039b0ccf9d29b461475621f15b3a65ecef7baeb30392542c07bc5a2e8ca`.
+- `20260926_log_384_cw.txt`, 47,813 bytes, SHA-256
+  `f03911028f24c4300c5536ecb68f78fafe8f92c3c04cf40d5e82e1cb71463179`.
+- `20260926_log_385_cw.txt`, 50,366 bytes, SHA-256
+  `29332777168cf4fb004a40173adf4a9dc4476d8127dcd8d18ca28a2dcb8f3f86`.
+
+Source/copy hashes match. Build header is schema 2,
+`Sep_26_2026_12_06_07`, turn -1 (CW), centre 80, five exit segments,
+150 samples / 65,536 diagnostic bytes. This matches the prepared build identity
+above, but no installed-binary readback proves its hash. Date uses the session:
+source timestamps incorrectly indicated 2097/2098. User confirms all three CW,
+similar behaviour and no obstacle contact; ascending test-number mapping is
+inferred. Logs show automatic hold followed later by manual disable.
+
+All three completed rear positioning, five exit segments and localization;
+rear final range 62.3/61.7/65.0 mm for target 65.0 mm. Diagnostics contain
+87/82/87 samples and 36 events each, with no overflow/truncation/duplicate ToF
+or ordering errors. Red seat 2 and green seat 0 resolved. Scout outbound/return
+travel was about 85 mm; estimated return deviations were 0.4/2.2/3.9 mm and
+3.1/1.0/2.2 degrees. Connector preflight passed with the seat-0 hidden guard,
+but all runs rejected forward tracking at point 16/17: forward target
+33.8/31.2/32.0 mm, required steering -42.0/-42.2/-42.1 degrees (rounded),
+against the 42-degree guard. No connector completion or full-lap acceptance.
+
+Analyzer corrections isolate rear positioning from exit segment 1, use exact
+state/finish events for short brake intervals, correct CW sign and rear-range
+motion sign, and avoid fitting across state changes. Ten analyzer tests pass,
+including real-log phase/brake and report regressions. Reports are reproducible
+in ignored `local_workspace/parking-exit-analysis/`. Raw evidence disables Git
+text normalization. No motion firmware or compensation changed in this batch.
+
+Limitations: pose residuals/retrace/clearances are estimates, not ground truth.
+All 15 reversal-loss estimates are unobservable. Servo candidates and subgroups
+disagree and settling/feedback lag is unresolved: retain centre 80. Main-loop
+timing and actual stopped-scout duration cannot be established from these logs.
+
+Next: reproduce the final connector geometry offline, including the runtime
+42-degree guard and endpoint heading gate. Inspect `findConnectorLookahead`,
+which clips the 150 mm lookahead at the finite connector endpoint; continuation
+onto the saved live-route merge is a candidate, not yet a proven correction.
+Require swept collision checks for any continuation and regression replay of
+all three runs; preserve steering/heading guards. Obtain explicit upload
+authorization for any resulting firmware, then repeat CW with both pillars.
+Do not move to CCW until connector completion is physically validated.
+
+## 2026-09-26: pre-test configuration, bounded diagnostics and scout sensitivity
+
+The user disabled `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED` after review found
+that it bypassed unparking and laps and started isolated final-parking practice.
+Normal O now follows the parked-start pipeline; discovery is enabled, its
+test-only stop is disabled, all five exit segments are permitted, the scout
+remains 85 mm/60 mm/s with >=400 ms observation, and final bay entry remains
+locked. Earlier instructions to run a parked O test with practice enabled were
+incorrect. No motion geometry, speed or steering compensation was changed.
+
+Diagnostics now enforce 150 samples even at state changes, 57,000 sample bytes
+plus 8 KiB events including CRLF, and reserved truncation/finish space. The
+format buffer is 512 bytes; incomplete samples are rejected with timestamped
+truncation reasons. Cached-only inspection found no added sensor acquisitions,
+actuator commands, waits or save actions; actual timing/coverage still needs
+the robot. The analyzer rejects partial ToF records and exceeded declared limits
+and no longer reuses older valid ToF evidence after a newer invalid observation.
+Rear-ToF age is M7 receipt age, since protocol v1 has no M4 acquisition timestamp;
+short reversal estimates remain limited by that and 200 ms sampling.
+
+Scout replay passes all eight tracked fixtures. A new reproducible discrete
+sensitivity grid assumes +/-10 mm XY, +/-2 degrees heading, +/-5% radius and
+/-5 mm travel: all 1,215 CW combinations pass, but 84/729 CCW combinations fail
+the bearing window (worst margin -6.42 degrees). Modeled wall/pillar minima
+are 121.9/153.4 mm and range margin reaches 0.3 mm. These are assumptions,
+not measured error bounds or success probabilities. A disjoint-collinear
+intersection defect in the offline model was corrected without changing the
+eight nominal results. Output stays in `local_workspace/`; usage/results are
+in `simulation/PARKING_ENTRY_GEOMETRY_TOOLS.md`.
+
+Verification: four geometry and eight analyzer tests pass; analyzer CLI produces
+reports from the synthetic fixture. IDE-managed M7 builds pass disabled at
+366,816 bytes RAM / 443,968 flash and enabled at 432,448 / 448,976, leaving
+91,176 bytes RAM. Existing Serial/USB macro and legacy-unused-function warnings
+remain. M4 was not built. Final enabled `.pio/build/giga_r1_m7/firmware.bin`
+SHA-256: `66655013d709c983b12642488fc0a7852076ed5613b14a1011824f7e0a6582ff`.
+This is base `ad3a886` plus uncommitted changes, not an uploaded robot identity.
+No firmware uploaded, new physical logs received, files staged or commits made.
+
+Next: obtain explicit upload authorization, then first CW/red with green seat 0
+and red seat 2 using normal O. Check complete diagnostic coverage, loop timing,
+buffer headroom, scout confirmation/retrace, connector and physical no-contact/
+no-stall report before mirrored CCW. Do not widen view thresholds or lengthen
+the scout from sensitivity assumptions alone. Preserve complete returned logs
+under the mandatory evidence handoff; compensation remains evidence-gated.
+
 ## 2026-09-24: removable diagnostics, servo neutral and buffer estimate
 
 The parking-exit plan now requires a focused compile-time-disabled diagnostics

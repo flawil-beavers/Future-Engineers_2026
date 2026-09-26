@@ -97,6 +97,10 @@ def resolved_tof(samples: list[Sample], index: int, sensor: str,
             return (value[0], value[1], age) if age <= max_age_ms else None
         if samples[prior_index].raw.get(sensor, "none") == "none":
             return None
+        if samples[prior_index].raw.get(sensor) != "same":
+            # A newer invalid measurement supersedes an older valid one.
+            # Only an explicit unchanged sequence may reuse prior evidence.
+            return None
     return None
 
 
@@ -111,15 +115,18 @@ def parse_log(path: Path) -> ParsedLog:
     duplicates = 0
     ordering_errors = 0
     last_time = -1
+    diagnostic_bytes = 0
 
     for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         if "LOG BUFFER OVERFLOW" in raw_line:
             overflow = True
         if raw_line.startswith(CONFIG_PREFIX):
+            diagnostic_bytes += len(raw_line.encode("utf-8")) + 2
             config = fields(raw_line[len(CONFIG_PREFIX):])
             continue
         if not raw_line.startswith(PREFIX):
             continue
+        diagnostic_bytes += len(raw_line.encode("utf-8")) + 2
         record = fields(raw_line[len(PREFIX):])
         schema = int(record.get("v", "0"))
         if schema != SUPPORTED_SCHEMA:
@@ -147,9 +154,13 @@ def parse_log(path: Path) -> ParsedLog:
                 reference=record.get("ref", "none"), raw=record)
             samples.append(sample)
             for sensor in ("s0", "s1", "s2"):
-                value = record.get(sensor, "none")
+                if sensor not in record:
+                    raise ValueError(f"{path}: incomplete sample at {record_time}: missing {sensor}")
+                value = record[sensor]
                 if value in {"none", "same"}:
                     continue
+                if len(value.split(",")) != 8:
+                    raise ValueError(f"{path}: incomplete {sensor} at {record_time}")
                 sequence = int(value.split(",", 1)[0])
                 if last_sequences.get(sensor) == sequence:
                     duplicates += 1
@@ -161,6 +172,10 @@ def parse_log(path: Path) -> ParsedLog:
         raise ValueError(f"{path}: unsupported config schema")
     if not samples:
         raise ValueError(f"{path}: no diagnostic samples")
+    if len(samples) > int(config.get("sample_limit", "150")):
+        raise ValueError(f"{path}: sample count exceeds configured limit")
+    if diagnostic_bytes > int(config.get("byte_limit", "65536")):
+        raise ValueError(f"{path}: diagnostic bytes exceed configured limit")
     return ParsedLog(path, config, samples, events, corrections,
                      overflow, truncated, duplicates, ordering_errors)
 
@@ -174,7 +189,8 @@ def neutral_points(samples: list[Sample]) -> list[tuple[float, float, str, int, 
             last_approach = "increasing"
         elif steering_delta < 0:
             last_approach = "decreasing"
-        if current.state not in {"rear_drive", "localize_drive"}:
+        if (current.state not in {"rear_drive", "localize_drive"}
+                or previous.state != current.state):
             continue
         distance = current.encoder_mm - previous.encoder_mm
         if abs(distance) < 1.0 or abs(current.speed) < 20.0:
@@ -206,6 +222,10 @@ def fit_neutral(points: list[tuple[float, float, str, int, str]]) -> dict[str, f
         return None
     intercept = mean_y - slope * mean_x
     logical_zero = -intercept / slope
+    # A nearly flat fit can extrapolate to arbitrary servo angles. Such a
+    # zero outside the observed commands is not an identified neutral point.
+    if not math.isfinite(logical_zero) or not min(x for x, _ in xy) <= logical_zero <= max(x for x, _ in xy):
+        return None
     residuals = [y - (slope * x + intercept) for x, y in xy]
     return {
         "samples": float(len(xy)), "slope": slope, "intercept": intercept,
@@ -223,8 +243,8 @@ def grouped_neutral_points(points: list[tuple[float, float, str, int, str]]) -> 
     selectors = {
         "forward": lambda p: p[2] == "forward",
         "reverse": lambda p: p[2] == "reverse",
-        "clockwise-exit": lambda p: p[3] > 0,
-        "counterclockwise-exit": lambda p: p[3] < 0,
+        "clockwise-exit": lambda p: p[3] < 0,
+        "counterclockwise-exit": lambda p: p[3] > 0,
         "increasing-approach": lambda p: p[4] == "increasing",
         "decreasing-approach": lambda p: p[4] == "decreasing",
     }
@@ -263,7 +283,7 @@ def reversal_rows(parsed: ParsedLog) -> list[dict[str, object]]:
                 before = resolved_tof(parsed.samples, prior_index, "s2")
                 after = resolved_tof(parsed.samples, index, "s2")
                 if before and after:
-                    observed = -(after[0] - before[0])
+                    observed = after[0] - before[0]
                     encoder = sample.encoder_mm - prior_nonzero.encoder_mm
                     row["observed_motion_mm"] = observed
                     row["effective_lost_motion_mm"] = abs(encoder) - abs(observed)
@@ -276,22 +296,67 @@ def reversal_rows(parsed: ParsedLog) -> list[dict[str, object]]:
 
 def segment_rows(parsed: ParsedLog) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for segment in sorted({sample.segment for sample in parsed.samples}):
-        group = [sample for sample in parsed.samples if sample.segment == segment]
-        if not group:
+    def key(sample: Sample) -> tuple[str, int]:
+        if sample.state.startswith("rear_"):
+            return "rear_positioning", 0
+        if sample.state.startswith("localize_"):
+            return "localization", sample.segment
+        return "exit", sample.segment
+
+    # The firmware reuses seg=1 for rear positioning and the first exit arc.
+    # Keep phases separate. A brake may be shorter than one periodic sample,
+    # so use state/finish event boundaries instead of spanning all brake samples.
+    brake_motion: dict[tuple[str, int], float] = {}
+    boundaries = [event for event in parsed.events
+                  if event.get("type") in {"state", "finish"}]
+    for event, following in zip(boundaries, boundaries[1:]):
+        if "brake" not in event.get("detail", ""):
             continue
-        brake = [sample for sample in group if "brake" in sample.state]
+        candidates = [sample for sample in parsed.samples
+                      if sample.time_ms == int(event["t"])]
+        if candidates and "emm" in following:
+            phase_key = key(candidates[0])
+            brake_motion[phase_key] = brake_motion.get(phase_key, 0.0) + (
+                float(following["emm"]) - float(event["emm"]))
+
+    for phase, segment in sorted({key(sample) for sample in parsed.samples},
+                                 key=lambda value: (value[1], value[0])):
+        group = [sample for sample in parsed.samples if key(sample) == (phase, segment)]
+        endpoint = group[-1]
+        if phase == "exit" and endpoint.state == "segment_brake":
+            later = [sample for sample in parsed.samples if sample.time_ms > endpoint.time_ms]
+            if later and later[0].state in {"segment_settle", "localize_settle", "localize_drive"}:
+                endpoint = later[0]
+        brake = brake_motion.get((phase, segment))
+        # Synthetic/older fixtures may lack state events. Recover each brake
+        # episode separately from its first sample to the next state or finish.
+        if brake is None:
+            episodes = []
+            for index, sample in enumerate(parsed.samples):
+                if key(sample) != (phase, segment) or "brake" not in sample.state:
+                    continue
+                if index and parsed.samples[index - 1].state == sample.state:
+                    continue
+                next_states = [s for s in parsed.samples[index + 1:] if s.state != sample.state]
+                if next_states:
+                    episodes.append(next_states[0].encoder_mm - sample.encoder_mm)
+                else:
+                    finishes = [e for e in parsed.events if e.get("type") == "finish"
+                                and int(e.get("t", "0")) >= sample.time_ms and "emm" in e]
+                    if finishes:
+                        episodes.append(float(finishes[0]["emm"]) - sample.encoder_mm)
+            brake = sum(episodes) if episodes else "unobservable"
         rows.append({
             "file": parsed.path.name,
+            "phase": phase,
             "segment": segment,
             "samples": len(group),
-            "encoder_delta_mm": group[-1].encoder_mm - group[0].encoder_mm,
-            "brake_travel_mm": (brake[-1].encoder_mm - brake[0].encoder_mm)
-            if len(brake) > 1 else 0.0,
-            "heading_change_deg": wrap180(group[-1].gyro_deg - group[0].gyro_deg),
+            "encoder_delta_mm": endpoint.encoder_mm - group[0].encoder_mm,
+            "brake_travel_mm": brake,
+            "heading_change_deg": wrap180(endpoint.gyro_deg - group[0].gyro_deg),
             "max_position_error_mm": max(s.position_error_mm for s in group),
-            "settled_position_error_mm": group[-1].position_error_mm,
-            "settled_heading_error_deg": group[-1].heading_error_deg,
+            "last_position_error_mm": endpoint.position_error_mm,
+            "last_heading_error_deg": endpoint.heading_error_deg,
         })
     return rows
 
@@ -343,6 +408,12 @@ def write_report(parsed: list[ParsedLog], rows: list[dict[str, object]], output:
         writer.writerows(reversal_data)
 
     lines = ["# Parking-exit diagnostic analysis", ""]
+    lines.extend([
+        "Pose errors compare the onboard estimate with the nominal model; they are not independent ground truth.",
+        "Brake travel is signed encoder movement between brake-start and the following state/finish event.",
+        "Neutral fits use unchanged sampled steering, but do not establish physical servo settling or remove feedback/sensor lag. Treat candidates as exploratory.",
+        "Last endpoint errors are not necessarily settled measurements, especially during localization corrections.", "",
+    ])
     combined_points = [point for log in parsed for point in neutral_points(log.samples)]
     combined = fit_neutral(combined_points)
     if combined:
@@ -405,19 +476,20 @@ def write_report(parsed: list[ParsedLog], rows: list[dict[str, object]], output:
         write_pose_svg(log, output / f"{safe_name}_pose.svg")
 
     repeatability: list[dict[str, object]] = []
-    for segment in sorted({int(row["segment"]) for row in rows}):
-        group = [row for row in rows if row["segment"] == segment]
+    for phase, segment in sorted({(str(row["phase"]), int(row["segment"])) for row in rows}):
+        group = [row for row in rows if row["phase"] == phase and row["segment"] == segment]
         repeatability.append({
+            "phase": phase,
             "segment": segment,
             "runs": len(group),
             "position_error_mean_mm": statistics.fmean(
-                float(row["settled_position_error_mm"]) for row in group),
+                float(row["last_position_error_mm"]) for row in group),
             "position_error_spread_mm": statistics.pstdev(
-                float(row["settled_position_error_mm"]) for row in group),
+                float(row["last_position_error_mm"]) for row in group),
             "heading_error_mean_deg": statistics.fmean(
-                float(row["settled_heading_error_deg"]) for row in group),
+                float(row["last_heading_error_deg"]) for row in group),
             "heading_error_spread_deg": statistics.pstdev(
-                float(row["settled_heading_error_deg"]) for row in group),
+                float(row["last_heading_error_deg"]) for row in group),
         })
     repeatability_path = output / "parking_exit_repeatability.csv"
     repeatability_fields = list(repeatability[0]) if repeatability else ["segment"]
