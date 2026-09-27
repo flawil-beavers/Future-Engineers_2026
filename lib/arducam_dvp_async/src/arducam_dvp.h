@@ -518,6 +518,7 @@ class Camera {
             FrameBuffer *&completed,
             uint32_t &sequence,
             uint32_t &completedTimeUs);
+        int stopContinuous();
 
         /** DMA/DCMI errors observed during continuous capture. */
         uint32_t continuousErrorCount() const;

@@ -11,6 +11,12 @@ new safety limit, or reusable engineering finding.
 
 ## Safety for every powered run
 
+Current pending firmware test (2026-09-27): log398 has two successful straight
+corner retraces followed by a tiny-red-fragment CLEAR veto, not a motion failure.
+M7 now adds one optional90 mm reverse arc at section entry, with its own swept
+preflight and reciprocal return. See `CONNECTOR_NEXT_TEST.md` for the one CW
+same-layout trial. No physical acceptance of the new arc, CCW or complete lap yet.
+
 - [ ] Confirm the selected drive battery is within its safe operating-voltage
       range, secure it, and record pack identity and resting voltage.
 - [ ] Keep the disable switch reachable and cables clear of the robot.
@@ -75,6 +81,46 @@ with the robot inside the parking lot. `Y0` stops an active live-path test.
       contact, intervention, abnormal motion, watchdog, stall, or abort.
 
 ## Next: validate the parking-entry-to-lap connector
+
+- [x] Logs396/397: both entry peeks resolve/return, then stop at S2/2 after
+      confirmed middle green. Official Figure8c reviewed: middle excludes ends.
+      M7 now derives empty stations from confirmed official layouts, separate
+      from observed CLEAR, with contradiction revocation and practice switch.
+- [ ] Latest M7 same-layout CW regression: no obsolete S2/2 hold after middle
+      green; record full log and physical outcome. Correct contradictory S0
+      front+middle practice layout before claiming full-lap rule-valid acceptance.
+
+- [x] Logs394/395: both CW reverse attempts lock at heading/cross-track limit,
+      user estimates about2 cm reverse. stop(true) disables servo writes;
+      corrected corner holds now re-enable and physically command centre AFTER
+      stop. Limits unchanged; exact abort metrics added for the next test.
+- [ ] One same-layout CW repeat of corrected M7: inspect actual wheel centring
+      before reverse, observe reverse/scan/retrace and return the complete log.
+
+- [x] User selected bounded straight reverse corner peek. M7 implements stopped
+      all-seat swept preflight,170..220 mm reverse at60 mm/s, stopped observation,
+      measured retrace, heading/travel/time/return gates and unresolved hold.
+- [ ] Test one same-layout CW run with the new M7 build following the current
+      section of `CONNECTOR_NEXT_TEST.md`; preserve complete log and physical
+      outcome. Reverse/return and camera resolution are not physically accepted.
+
+- [x] Logs 392/393 identify first-curve deadlock: inner S1/0 seat has zero visible
+      approach records, then range 198.1/207.2 mm <230 and bearing -31.61/-41.18
+      degrees at hold. Outer seat is clear in 392 but rejected green overlap
+      blocks it in 393. Frame processing age 14/27 ms at hold, not stale-frame
+      evidence. Preserve perception gates; no more unchanged repeats.
+- [x] Evaluate simple earlier forward arcs, two sequential stops and ideal gyro
+      stops from logs 392/393. None passes all modeled pose/yaw/coast cases with
+      all 24 legal pillar seats occupied. This is a sampled model finding, not
+      proof that all forward approaches fail. Firmware unchanged.
+- [ ] Plan observation position and heading together, including the subsequent
+      merge. Deferred seats must remain UNKNOWN; the intervening route must be
+      checked against both possible pillar positions before releasing any hold.
+- [ ] Plan a bounded, collision-checked corner view manoeuvre that acquires the
+      empty/occupied seats before the view becomes too close. Offline reverse-view
+      search is a candidate only; require all known/possible obstacles, settling,
+      heading bounds, braking, measured retrace and no-clear fallback before
+      implementing or uploading. Do not hardcode the user's empty positions.
 
 - [x] Logs 390/391 physically complete CW connector and first straight with no
       reported contact. Endpoint errors 59.8/59.5 mm, heading 0.7/0.0 degrees.

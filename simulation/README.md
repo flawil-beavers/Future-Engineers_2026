@@ -10,12 +10,16 @@ contact testing.
 
 | File | Description |
 |------|-------------|
+| `corner_extra_view_check.py` | Additional90 mm reverse arc: both log398 scan poses,486 perturbed geometric cases, coast reserve, full-seat clearance and ideal reciprocal return; no camera or controller acceptance. |
 | `parking_exit_swept_search.py` | Standard-library swept-footprint search and validation for the parking-exit manoeuvre. |
 | `parking_exit_path.svg` | Generated top-down visualization of the selected parking-exit and localization path. |
 | `PARKING_EXIT_PATH_SIMULATION.md` | Parking-exit coordinate system, footprint, search, selected path, limitations, and physical-validation history. |
 | `analyze_parking_exit_pose.py` | Validates and analyzes automatic parking-exit pose, braking, reversal and servo-neutral diagnostics. |
 | `analyze_connector_tracking.py` | Replays recorded connector tail targets and compares an offline route-continuation candidate; physical run procedure is in `../CONNECTOR_NEXT_TEST.md`. |
 | `connector_transition_sim.py` | Ideal closed-loop connector rollout using actual outgoing route tangents, capsule clearances and assumed sensitivity cases; mirrored cases are synthetic. |
+| `analyze_discovery_trace.py` | Per-seat visibility and clear-block reasons from bounded cached first-lap discovery records. |
+| `corner_reverse_view_search.py` | Offline straight-reverse view candidates from recorded holds; all 24 legal seats, front/rear capsules, 40 mm margin and 20 mm braking reserve. Dynamic yaw, images and real retrace remain unmodeled. |
+| `corner_forward_view_search.py` | Forward-only first-corner arc candidates from recorded CW approach poses; all 24 legal seats, conservative front/rear envelope and assumed pose/yaw/braking deviations. No firmware control or route-join acceptance. |
 | `PARKING_EXIT_DIAGNOSTIC_LOGGING.md` | Firmware switch, schema, analysis workflow, physical handoff and limitations. |
 | `parking_scan_search.py` | Historical bounded search for a camera scan pose after parking exit. |
 | `parking_entry_scout_sim.py` | Current log-driven replay of the preceding-station scout and its camera/wall/pillar geometry. |

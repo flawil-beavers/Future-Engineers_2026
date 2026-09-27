@@ -103,6 +103,8 @@ struct VisionResult
 class Vision
 {
 public:
+    static constexpr bool rgb565MsbFirst() { return RGB565_MSB_FIRST; }
+    static constexpr bool rotates180() { return ROTATE_180; }
     Vision();
 
     void begin();

@@ -903,6 +903,12 @@ uint32_t Camera::continuousErrorCount() const
     return dcmi_continuous_error_count;
 }
 
+int Camera::stopContinuous()
+{
+    dcmi_continuous_active = false;
+    return HAL_DCMI_Stop(&hdcmi) == HAL_OK ? 0 : -1;
+}
+
 int Camera::setMotionDetectionThreshold(uint32_t threshold)
 {
   return this->sensor->setMotionDetectionThreshold(threshold);

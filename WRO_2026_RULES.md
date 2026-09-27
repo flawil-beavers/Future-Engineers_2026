@@ -25,3 +25,13 @@ confirm the applicable Swiss organizer's version and re-check the official Q&A
 for later clarifications.
 
 Links verified on 2026-08-30.
+
+On2026-09-26 the canonical PDF was rechecked:55 pages, January15_2026 version.
+Figure8c (printed page15) was rendered and visually inspected. Its36 cards
+contain middle-station pillars only as solitary signs; two-pillar cards occupy
+the two longitudinal ends. These imply empty ends after a confirmed middle,
+and an empty middle after confirmed signs at both ends. This inference assumes
+the official card layouts; it is not measured camera evidence and does not apply
+to arbitrary practice arrangements. Official Q&A was rechecked on the same date;
+current Future Engineers clarifications concern parking measurements/direction
+and constant vehicle size, with no amendment to this card-layout inference.

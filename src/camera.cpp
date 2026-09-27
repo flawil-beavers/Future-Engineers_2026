@@ -224,6 +224,28 @@ bool CameraSystem::capture()
 #endif
 }
 
+bool CameraSystem::pauseForDiagnostic()
+{
+#if CAMERA_ASYNC_CAPTURE_ENABLED && CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    return camera.stopContinuous() == 0;
+#else
+    return false;
+#endif
+}
+
+bool CameraSystem::resumeAfterDiagnostic()
+{
+#if CAMERA_ASYNC_CAPTURE_ENABLED && CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    acquiredFrameSequence = 0;
+    previousFrameCompletedUs = 0;
+    completedFrameCount = 0;
+    captureStartedUs = micros();
+    return camera.startContinuous(frameA, frameB) == 0;
+#else
+    return false;
+#endif
+}
+
 uint8_t* CameraSystem::getBuffer()
 {
     return frameForIndex(readyFrame).getBuffer();

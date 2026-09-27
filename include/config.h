@@ -1055,6 +1055,10 @@ constexpr auto OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG = 1.0f;
 // a single-frame dropout. Pillars use their separate two-vote geometry and
 // colour confirmation and can override an earlier clear observation.
 constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
+// Official2026 Figure8c excludes end pillars when the middle is occupied,
+// and excludes the middle when both ends are occupied. Disable for arbitrary
+// practice layouts or a locally adapted competition rule. M7 navigation only.
+constexpr bool OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT = true;
 // Parking-entry observation is already stationary and has a 1200 ms timeout.
 // Log 190 saw only floor-shaped green fragments, then declared the occupied
 // target clear after two pillar-dropout frames. Give the official pillar more

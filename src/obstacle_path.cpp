@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "course_map.h"
+#include "obstacle_section_layout.h"
 #include "motor_control.h"
 #include "obstacle.h"
 #include "position_estimator.h"
@@ -117,6 +118,26 @@ PositionEstimate lastDiscoveryCoveragePose;
 uint32_t lastDiscoveryCoverageMs = 0;
 uint32_t lastDiscoveryTraceMs = 0;
 uint8_t discoveryTraceCount = 0;
+// One bounded straight peek per corner station during discovery lap 1.
+enum CornerViewPhase : uint8_t { CORNER_VIEW_IDLE, CORNER_VIEW_SETTLE,
+    CORNER_VIEW_REVERSE, CORNER_VIEW_OBSERVE, CORNER_VIEW_RETURN,
+    CORNER_VIEW_RETURN_BRAKE, CORNER_VIEW_EXTRA_SETTLE, CORNER_VIEW_EXTRA_REVERSE,
+    CORNER_VIEW_EXTRA_OBSERVE, CORNER_VIEW_EXTRA_RETURN_SETTLE,
+    CORNER_VIEW_EXTRA_FORWARD, CORNER_VIEW_EXTRA_BRAKE, CORNER_VIEW_LOCKED };
+CornerViewPhase cornerViewPhase = CORNER_VIEW_IDLE;
+bool cornerViewAttempted[OBSTACLE_SEAT_COUNT / 2] = {};
+uint8_t cornerViewStation = 0;
+uint32_t cornerViewPhaseMs = 0;
+PositionEstimate cornerViewOrigin;
+float cornerViewOriginEncoder = 0.0f, cornerViewReturnEncoder = 0.0f;
+float cornerViewDistanceMm = 0.0f, cornerViewMeasuredReverseMm = 0.0f;
+uint8_t cornerViewStoppedFrames = 0;
+bool cornerViewCanResume = false;
+bool cornerViewExtraUsed = false;
+int cornerViewExtraSteering = 0;
+PositionEstimate cornerViewExtraOrigin, cornerViewExtraReturnPose;
+float cornerViewExtraStartEncoder = 0, cornerViewExtraReturnEncoder = 0;
+float cornerViewExtraMeasuredMm = 0;
 ObstacleTofCorrectionResult lastTofCorrectionResult;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
@@ -404,12 +425,32 @@ uint8_t stationIndexForSeat(uint8_t seatIndex)
     return seatIndex / 2;
 }
 
+uint8_t sectionInferredEmpty(uint8_t section)
+{
+    if (!OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT || section >= COURSE_SECTION_COUNT)
+        return 0;
+    // Preserve the explicit parking-exit/scout/connector checks, including
+    // arbitrary diagnostic layouts in the starting section. Layout inference
+    // is used only after joining the normal lap route. The reverse preflight
+    // still checks all legal seats, independently of this inference.
+    if (parkingEntryActive || parkingEntryObserving || parkingEntryScouting ||
+        parkingEntryJoining || parkingEntryConnectorActive || parkingEntryTestHold)
+        return 0;
+    uint8_t mask = 0;
+    for (uint8_t local = 0; local < 6; ++local)
+        if (seats[section * 6 + local].confirmed)
+            mask |= static_cast<uint8_t>(1U << local);
+    return obstacle_section_inferred_empty(mask);
+}
+
 bool stationResolved(uint8_t stationIndex)
 {
     if (stationIndex >= OBSTACLE_SEAT_COUNT / 2)
         return true;
     const uint8_t firstSeat = stationIndex * 2;
-    return discoveryStations[stationIndex].observedClear ||
+    return (sectionInferredEmpty(stationIndex / COURSE_STATIONS_PER_SECTION) &
+            (1U << (stationIndex % COURSE_STATIONS_PER_SECTION))) ||
+           discoveryStations[stationIndex].observedClear ||
            seats[firstSeat].confirmed || seats[firstSeat + 1].confirmed;
 }
 
@@ -2285,6 +2326,409 @@ void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
     Serial.println();
 }
 
+// The all-seat check intentionally includes even seats previously declared
+// CLEAR: a corner peek must not depend on the user's particular empty layout.
+bool cornerViewSweepSafe(const PositionEstimate &start, float signedTravel)
+{
+    if (!isfinite(signedTravel) || fabsf(signedTravel) > 260.0f)
+        return false;
+    const float heading = start.heading_deg * PI / 180.0f;
+    const unsigned steps = static_cast<unsigned>(ceilf(fabsf(signedTravel) / 5.0f));
+    for (unsigned step = 0; step <= steps; ++step)
+    {
+        const float travel = steps ? signedTravel * step / steps : 0.0f;
+        for (uint8_t rear = 0; rear < 2; ++rear)
+        {
+            const float offset = rear ? OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM : 0.0f;
+            const float x = start.x_mm + (travel - offset) * cosf(heading);
+            const float y = start.y_mm + (travel - offset) * sinf(heading);
+            for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+            {
+                ObstacleClearanceSample sample{};
+                if (!calculateClearanceAtPose(seats[seat], x, y,
+                        start.heading_deg, sample) ||
+                    sample.wallMm <= 40.0f || sample.pillarMm <= 40.0f)
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
+void holdCornerViewSteering(int steering)
+{
+    // stop() disables servo writes. Re-enable AFTER braking and physically
+    // command the requested steering before settling or changing direction.
+    stop(true);
+    servo_disabled = false;
+    set_steering(steering);
+    steer(steering);
+}
+
+void holdCornerViewCentered()
+{
+    holdCornerViewSteering(0);
+}
+
+void lockCornerView(const char *reason)
+{
+    holdCornerViewCentered();
+    cornerViewPhase = CORNER_VIEW_LOCKED;
+    discoveryBlocked = true;
+    discoveryBlockedStation = cornerViewStation;
+    Serial.print("[CORNER VIEW] Locked: "); Serial.println(reason);
+    const PositionEstimate pose = get_position_struct();
+    const float h = cornerViewOrigin.heading_deg * PI / 180.0f;
+    Serial.print("[CORNER VIEW ABORT] t="); Serial.print(millis());
+    Serial.print(" heading_error=");
+    Serial.print(wrap180(pose.heading_deg - cornerViewOrigin.heading_deg), 2);
+    Serial.print(" cross_track=");
+    Serial.print(-(pose.x_mm - cornerViewOrigin.x_mm) * sinf(h) +
+        (pose.y_mm - cornerViewOrigin.y_mm) * cosf(h), 1);
+    Serial.print(" origin_encoder_delta=");
+    Serial.println(get_distance() - cornerViewOriginEncoder, 1);
+}
+
+void logCornerViewPose(const char *phase, const PositionEstimate &pose, float encoder)
+{
+    Serial.print("[CORNER VIEW POSE] t="); Serial.print(millis());
+    Serial.print(" phase="); Serial.print(phase);
+    Serial.print(" station="); Serial.print(cornerViewStation);
+    Serial.print(" pose="); Serial.print(pose.x_mm, 1); Serial.print(",");
+    Serial.print(pose.y_mm, 1); Serial.print(","); Serial.print(pose.heading_deg, 2);
+    Serial.print(" encoder="); Serial.println(encoder, 1);
+}
+
+PositionEstimate cornerViewArcPose(const PositionEstimate &start, int steering, float travel)
+{
+    PositionEstimate result = start;
+    const float curvature = -tanf(steering * PI / 180.0f) / OBSTACLE_WHEELBASE_MM;
+    const float angle = start.heading_deg * PI / 180.0f;
+    const float end = angle + curvature * travel;
+    result.x_mm += (sinf(end) - sinf(angle)) / curvature;
+    result.y_mm += (cosf(angle) - cosf(end)) / curvature;
+    result.heading_deg = wrap180(end * 180.0f / PI);
+    return result;
+}
+
+bool cornerViewArcSafe(const PositionEstimate &start, int steering, float travel)
+{
+    if (abs(steering) != 20 || !isfinite(travel) || fabsf(travel) > 160) return false;
+    const unsigned steps = static_cast<unsigned>(ceilf(fabsf(travel) / 3));
+    for (unsigned step = 0; step <= steps; ++step)
+    {
+        const PositionEstimate pose = cornerViewArcPose(start, steering,
+            steps ? travel * step / steps : 0);
+        const float h = pose.heading_deg * PI / 180.0f;
+        for (uint8_t rear = 0; rear < 2; ++rear)
+            for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+            {
+                const float offset = rear ? OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM : 0;
+                ObstacleClearanceSample sample{};
+                if (!calculateClearanceAtPose(seats[seat], pose.x_mm-offset*cosf(h),
+                    pose.y_mm-offset*sinf(h), pose.heading_deg, sample) ||
+                    sample.wallMm <= 40 || sample.pillarMm <= 40) return false;
+            }
+    }
+    return true;
+}
+
+void collectCornerViewFrame(const PositionEstimate &pose, bool newFrame)
+{
+    if (!newFrame) return;
+    lastDiscoveryObservation = obstacle_path_observe(getLargestValidObstacle());
+    updateDiscoveryCoverage(lastDiscoveryObservation, pose, getLargestObstacle());
+    lastDiscoveryCoveragePose = pose;
+    lastDiscoveryCoverageMs = millis();
+    if (cornerViewStoppedFrames < 255) ++cornerViewStoppedFrames;
+    logDiscoveryTrace(cornerViewStation, "reverse_observe", false);
+}
+
+bool beginCornerViewExtra(const PositionEstimate &pose)
+{
+    if (cornerViewExtraUsed) return false;
+    cornerViewExtraUsed = true;
+    const DiscoveryStation &coverage = discoveryStations[cornerViewStation];
+    // Only one remaining seat: preserve independently obtained clear evidence
+    // for the other seat rather than require both in the new view simultaneously.
+    if (coverage.seatObservedClear[0] == coverage.seatObservedClear[1]) return false;
+    const uint8_t side = coverage.seatObservedClear[0] ? 1 : 0;
+    const uint8_t seat = cornerViewStation * COURSE_SEATS_PER_STATION + side;
+    float bearing = 0, range = 0;
+    seatCameraGeometry(seat, pose, bearing, range);
+    if (!seatComfortablyVisible(seat, pose) ||
+        !rejectedBlobBlocksSeatClear(getLargestObstacle(), bearing)) return false;
+    cornerViewExtraSteering = bearing < 0 ? -20 : 20;
+    const PositionEstimate view = cornerViewArcPose(pose, cornerViewExtraSteering, -90);
+    if (!seatComfortablyVisible(seat, view) ||
+        !cornerViewArcSafe(pose, cornerViewExtraSteering, -110)) return false;
+    holdCornerViewSteering(cornerViewExtraSteering);
+    cornerViewPhase = CORNER_VIEW_EXTRA_SETTLE;
+    cornerViewPhaseMs = millis();
+    Serial.print("[CORNER VIEW] Extra parallax scan steering/mm=");
+    Serial.print(cornerViewExtraSteering); Serial.println("/90");
+    return true;
+}
+
+void updateCornerViewExtra(bool newFrame)
+{
+    const PositionEstimate pose = get_position_struct();
+    const float encoder = get_distance();
+    const uint32_t age = millis() - cornerViewPhaseMs;
+    if (!isfinite(encoder) || !isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
+        !isfinite(pose.heading_deg)) { lockCornerView("extra invalid pose"); return; }
+    if (cornerViewPhase != CORNER_VIEW_EXTRA_SETTLE)
+    {
+        const bool returning = cornerViewPhase == CORNER_VIEW_EXTRA_FORWARD ||
+            cornerViewPhase == CORNER_VIEW_EXTRA_BRAKE;
+        const PositionEstimate expected = cornerViewArcPose(
+            returning ? cornerViewExtraReturnPose : cornerViewExtraOrigin,
+            cornerViewExtraSteering,
+            encoder - (returning ? cornerViewExtraReturnEncoder : cornerViewExtraStartEncoder));
+        if (hypotf(pose.x_mm-expected.x_mm, pose.y_mm-expected.y_mm) > 15 ||
+            fabsf(wrap180(pose.heading_deg-expected.heading_deg)) > 5 ||
+            fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg)) > 35)
+        { lockCornerView("extra arc tracking limit"); return; }
+    }
+    switch (cornerViewPhase)
+    {
+    case CORNER_VIEW_EXTRA_SETTLE:
+        holdCornerViewSteering(cornerViewExtraSteering);
+        if (age < 300) return;
+        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, -110))
+        { lockCornerView("extra settled preflight"); return; }
+        cornerViewExtraOrigin = pose;
+        cornerViewExtraStartEncoder = encoder;
+        cornerViewPhase = CORNER_VIEW_EXTRA_REVERSE;
+        cornerViewPhaseMs = millis();
+        logCornerViewPose("extra_origin", pose, encoder);
+        return;
+    case CORNER_VIEW_EXTRA_REVERSE:
+        if (encoder-cornerViewExtraStartEncoder > 5 ||
+            cornerViewExtraStartEncoder-encoder > 110 || age > 4500)
+        { lockCornerView("extra reverse travel/time/direction"); return; }
+        if (cornerViewExtraStartEncoder-encoder >= 90)
+        {
+            holdCornerViewSteering(cornerViewExtraSteering);
+            cornerViewPhase = CORNER_VIEW_EXTRA_OBSERVE;
+            cornerViewPhaseMs = millis();
+            cornerViewStoppedFrames = 0;
+            discoveryStations[cornerViewStation].clearFrames[0] = 0;
+            discoveryStations[cornerViewStation].clearFrames[1] = 0;
+            return;
+        }
+        set_steering(cornerViewExtraSteering); set_speed(-60); return;
+    case CORNER_VIEW_EXTRA_OBSERVE:
+        holdCornerViewSteering(cornerViewExtraSteering);
+        cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
+        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110)
+        { lockCornerView("extra reverse braking travel"); return; }
+        if (age < 200) return;
+        collectCornerViewFrame(pose, newFrame);
+        if (age < 600 || (age < 1800 &&
+            (!stationResolved(cornerViewStation) || cornerViewStoppedFrames < 2))) return;
+        // Always retrace the arc, even when the new viewpoint remains unresolved.
+        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
+        { lockCornerView("extra return preflight"); return; }
+        cornerViewPhase = CORNER_VIEW_EXTRA_RETURN_SETTLE;
+        cornerViewPhaseMs = millis();
+        logCornerViewPose("extra_scan", pose, encoder);
+        return;
+    case CORNER_VIEW_EXTRA_RETURN_SETTLE:
+        holdCornerViewSteering(cornerViewExtraSteering);
+        if (age < 300) return;
+        cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
+        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110 ||
+            !cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
+        { lockCornerView("extra settled return preflight"); return; }
+        cornerViewExtraReturnPose = pose;
+        cornerViewExtraReturnEncoder = encoder;
+        cornerViewPhase = CORNER_VIEW_EXTRA_FORWARD;
+        cornerViewPhaseMs = millis(); return;
+    case CORNER_VIEW_EXTRA_FORWARD:
+        if (encoder-cornerViewExtraReturnEncoder < -5 ||
+            encoder-cornerViewExtraReturnEncoder > cornerViewExtraMeasuredMm+20 || age > 4500)
+        { lockCornerView("extra return travel/time/direction"); return; }
+        if (encoder-cornerViewExtraReturnEncoder >= cornerViewExtraMeasuredMm)
+        {
+            holdCornerViewCentered();
+            cornerViewPhase = CORNER_VIEW_EXTRA_BRAKE;
+            cornerViewPhaseMs = millis(); return;
+        }
+        set_steering(cornerViewExtraSteering); set_speed(60); return;
+    case CORNER_VIEW_EXTRA_BRAKE:
+        holdCornerViewCentered();
+        if (encoder-cornerViewExtraReturnEncoder > cornerViewExtraMeasuredMm+20)
+        { lockCornerView("extra return braking travel"); return; }
+        if (age < 200) return;
+        logCornerViewPose("extra_returned", pose, encoder);
+        if (hypotf(pose.x_mm-cornerViewExtraOrigin.x_mm, pose.y_mm-cornerViewExtraOrigin.y_mm) > 20 ||
+            fabsf(wrap180(pose.heading_deg-cornerViewExtraOrigin.heading_deg)) > 3)
+        { lockCornerView("extra return pose limit"); return; }
+        cornerViewPhase = CORNER_VIEW_OBSERVE;
+        cornerViewPhaseMs = millis()-200;
+        cornerViewStoppedFrames = 0;
+        return;
+    default: lockCornerView("invalid extra phase"); return;
+    }
+}
+
+void updateCornerView(bool newCameraFrame)
+{
+    if (cornerViewPhase >= CORNER_VIEW_EXTRA_SETTLE && cornerViewPhase <= CORNER_VIEW_EXTRA_BRAKE)
+    {
+        updateCornerViewExtra(newCameraFrame);
+        return;
+    }
+    set_steering(0);
+    if (cornerViewPhase == CORNER_VIEW_LOCKED)
+    {
+        holdCornerViewCentered();
+        return;
+    }
+    const PositionEstimate pose = get_position_struct();
+    const float encoder = get_distance();
+    const uint32_t age = millis() - cornerViewPhaseMs;
+    if (!isfinite(encoder) || !isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
+        !isfinite(pose.heading_deg))
+    {
+        lockCornerView("invalid pose/encoder"); return;
+    }
+    if (cornerViewPhase != CORNER_VIEW_SETTLE)
+    {
+        const float h = cornerViewOrigin.heading_deg * PI / 180.0f;
+        const float cross = fabsf(-(pose.x_mm - cornerViewOrigin.x_mm) * sinf(h) +
+            (pose.y_mm - cornerViewOrigin.y_mm) * cosf(h));
+        if (fabsf(wrap180(pose.heading_deg - cornerViewOrigin.heading_deg)) > 3.0f ||
+            cross > 15.0f)
+        {
+            lockCornerView("heading/cross-track limit"); return;
+        }
+    }
+    switch (cornerViewPhase)
+    {
+    case CORNER_VIEW_SETTLE:
+        holdCornerViewCentered();
+        if (age < 300) return;
+        cornerViewOrigin = pose;
+        cornerViewOriginEncoder = encoder;
+        cornerViewDistanceMm = 0;
+        for (float distance = 170; distance <= 220; distance += 10)
+        {
+            PositionEstimate view = pose;
+            const float h = pose.heading_deg * PI / 180.0f;
+            view.x_mm -= distance * cosf(h);
+            view.y_mm -= distance * sinf(h);
+            const uint8_t first = cornerViewStation * COURSE_SEATS_PER_STATION;
+            if (seatComfortablyVisible(first, view) &&
+                seatComfortablyVisible(first + 1, view) &&
+                cornerViewSweepSafe(pose, -distance - 20))
+            {
+                cornerViewDistanceMm = distance; break;
+            }
+        }
+        if (cornerViewDistanceMm == 0)
+        {
+            lockCornerView("no safe view preflight"); return;
+        }
+        cornerViewPhase = CORNER_VIEW_REVERSE;
+        cornerViewPhaseMs = millis();
+        Serial.print("[CORNER VIEW] Reverse station/distance=");
+        Serial.print(cornerViewStation); Serial.print("/");
+        Serial.println(cornerViewDistanceMm, 0);
+        logCornerViewPose("origin", pose, encoder);
+        return;
+    case CORNER_VIEW_REVERSE:
+        if (encoder - cornerViewOriginEncoder > 5 ||
+            cornerViewOriginEncoder - encoder > cornerViewDistanceMm + 20 || age > 6000)
+        {
+            lockCornerView("reverse travel/direction/time limit"); return;
+        }
+        if (cornerViewOriginEncoder - encoder >= cornerViewDistanceMm)
+        {
+            holdCornerViewCentered();
+            cornerViewPhase = CORNER_VIEW_OBSERVE;
+            cornerViewPhaseMs = millis();
+            cornerViewStoppedFrames = 0;
+            discoveryStations[cornerViewStation].clearFrames[0] = 0;
+            discoveryStations[cornerViewStation].clearFrames[1] = 0;
+            Serial.println("[CORNER VIEW] Brake then observe");
+            return;
+        }
+        set_speed(-60);
+        return;
+    case CORNER_VIEW_OBSERVE:
+        holdCornerViewCentered();
+        cornerViewMeasuredReverseMm = cornerViewOriginEncoder - encoder;
+        if (cornerViewMeasuredReverseMm < cornerViewDistanceMm - 5 ||
+            cornerViewMeasuredReverseMm > cornerViewDistanceMm + 20)
+        {
+            lockCornerView("reverse braking travel limit"); return;
+        }
+        if (age < 200) return;
+        collectCornerViewFrame(pose, newCameraFrame);
+        if (age < 600 || (age < 1800 &&
+            (!stationResolved(cornerViewStation) || cornerViewStoppedFrames < 2))) return;
+        cornerViewCanResume = stationResolved(cornerViewStation) && cornerViewStoppedFrames >= 2;
+        if (!cornerViewCanResume && beginCornerViewExtra(pose)) return;
+        if (!cornerViewSweepSafe(pose, cornerViewMeasuredReverseMm + 20))
+        {
+            lockCornerView("return preflight"); return;
+        }
+        cornerViewReturnEncoder = encoder;
+        logCornerViewPose("scan_return_start", pose, encoder);
+        cornerViewPhase = CORNER_VIEW_RETURN;
+        cornerViewPhaseMs = millis();
+        Serial.print("[CORNER VIEW] Return measured_mm/resolved=");
+        Serial.print(cornerViewMeasuredReverseMm, 1); Serial.print("/");
+        Serial.println(cornerViewCanResume ? 1 : 0);
+        return;
+    case CORNER_VIEW_RETURN:
+        if (encoder - cornerViewReturnEncoder < -5 ||
+            encoder - cornerViewReturnEncoder > cornerViewMeasuredReverseMm + 20 || age > 6000)
+        {
+            lockCornerView("return travel/direction/time limit"); return;
+        }
+        if (encoder - cornerViewReturnEncoder >= cornerViewMeasuredReverseMm)
+        {
+            holdCornerViewCentered();
+            cornerViewPhase = CORNER_VIEW_RETURN_BRAKE;
+            cornerViewPhaseMs = millis();
+            return;
+        }
+        set_speed(60);
+        return;
+    case CORNER_VIEW_RETURN_BRAKE:
+        holdCornerViewCentered();
+        if (encoder - cornerViewReturnEncoder > cornerViewMeasuredReverseMm + 20)
+        {
+            lockCornerView("return braking travel limit"); return;
+        }
+        if (age < 200) return;
+        logCornerViewPose("returned", pose, encoder);
+        if (hypotf(pose.x_mm - cornerViewOrigin.x_mm,
+                   pose.y_mm - cornerViewOrigin.y_mm) > 20)
+        {
+            lockCornerView("return pose limit"); return;
+        }
+        if (!cornerViewCanResume)
+        {
+            lockCornerView("returned but station unresolved"); return;
+        }
+        cornerViewPhase = CORNER_VIEW_IDLE;
+        discoveryHolding = false;
+        discoveryHoldStation = -1;
+        discoveryHoldStartMs = 0;
+        discoveryBlocked = false;
+        discoveryBlockedStation = -1;
+        lastDiscoveryTargetNudgeDeg = 0;
+        lastDiscoveryNudgeUpdateMs = millis();
+        Serial.println("[CORNER VIEW] Returned and resolved; resume route");
+        return;
+    default: return;
+    }
+}
+
 void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
 {
     const bool primaryResolved =
@@ -3199,6 +3643,11 @@ void obstacle_path_reset()
     lastTofCorrectionResult = ObstacleTofCorrectionResult{};
     memset(seats, 0, sizeof(seats));
     memset(discoveryStations, 0, sizeof(discoveryStations));
+    cornerViewPhase = CORNER_VIEW_IDLE;
+    memset(cornerViewAttempted, 0, sizeof(cornerViewAttempted));
+    cornerViewCanResume = false;
+    cornerViewExtraUsed = false;
+    cornerViewStoppedFrames = 0;
     memset(
         plannedClearanceSnapshotValid,
         0,
@@ -3361,6 +3810,12 @@ void obstacle_path_update(bool new_camera_frame)
     if (parkingEntryScouting)
     {
         updateParkingEntryScout(new_camera_frame);
+        return;
+    }
+
+    if (cornerViewPhase != CORNER_VIEW_IDLE)
+    {
+        updateCornerView(new_camera_frame);
         return;
     }
 
@@ -3701,6 +4156,27 @@ void obstacle_path_update(bool new_camera_frame)
         }
     }
     set_speed(static_cast<int>(safeSpeed));
+    // Recovery is only for unresolved section entry after the stationary
+    // observation grace. Holds at middle/end stations never request reverse.
+    if (discoveryTraceReason != nullptr &&
+        strcmp(discoveryTraceReason, "hold_expired") == 0 &&
+        discoveryHoldStation >= 0 &&
+        discoveryHoldStation % COURSE_STATIONS_PER_SECTION == 0 &&
+        !cornerViewAttempted[discoveryHoldStation])
+    {
+        holdCornerViewCentered();
+        cornerViewStation = static_cast<uint8_t>(discoveryHoldStation);
+        cornerViewAttempted[cornerViewStation] = true;
+        cornerViewExtraUsed = false;
+        // Recovery is in progress; expose a terminal block only on failure.
+        discoveryBlocked = false;
+        discoveryBlockedStation = -1;
+        cornerViewPhase = CORNER_VIEW_SETTLE;
+        cornerViewPhaseMs = millis();
+        Serial.println("[CORNER VIEW] Stopped; settle steering before preflight");
+        Serial.print("[CORNER VIEW] build=");
+        Serial.print(__DATE__); Serial.print("_"); Serial.println(__TIME__);
+    }
     // Format diagnostics after the motor command, especially at a hold. Use
     // the last coverage-frame pose, not a later corrected pose; t/frame_t
     // makes stale observations explicit. No additional camera/sensor reads.
@@ -4002,6 +4478,11 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
             seat.red ? ColorType::RED : ColorType::GREEN,
             seat.x,
             seat.y);
+        // Recomputed from confirmed seats, not persisted as observed clear.
+        // A later contradicting detection automatically revokes the inference.
+        Serial.print("[PATH LAYOUT] section="); Serial.print(seatIndex / 6);
+        Serial.print(" inferred_empty_station_mask=");
+        Serial.println(sectionInferredEmpty(seatIndex / 6));
     }
     else
     {

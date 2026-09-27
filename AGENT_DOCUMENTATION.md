@@ -1,5 +1,565 @@
 # Agent documentation and engineering handoffs
 
+## 2026-09-27: green reported600 mm passes offline shape; range inconsistency
+
+Owner returns and confirms green ready; after capture clarification explicitly
+confirms about600 mm measured from camera. Image looks similarly sized to prior
+near setup, but do not override physical report from pose-derived appearance.
+Fresh stationary camshot passes CRC/footer,frame46536,exposure155,current prepared
+M7 remains73124b... (full prior entry), no new firmware/drive commands.
+Exact original `simulation/evidence/camera_diagnostics/20260927_green_distance_check_01.serial.bin`,
+154555 bytes SHA256
+`2fe34a9decc873a44ac2dff8859c5f98c579fcfe4d3a4cb173b1d71386850458`;
+derived PNG66030 bytes SHA256
+`a89d073a86ac67ca17cdfabbf732d51f96ab91f21bd5b9232ff714fccc07fc16`.
+Label records distance check, not independently surveyed reference. Exact foot/
+front-face ruler convention, mounting pose and lighting not independently recorded.
+
+Raw largest green173x57,area1800,bbox146..318,y80..136 invalid broad/edge;
+component-local column thresholds5/7/9/11 all yield one27x57,area1424,bbox162..188,
+centre174,y80..136 candidate passing unchanged acquisition geometry. Report in
+`local_workspace/camera-green-analysis/green_600_report.json`. Filtered candidate
+NOT installed in robot. Its unclipped foot136 with existing scale24000/horizon78
+would imply~414 mm, disagreeing with owner-reported600 mm. Raw clipped region
+would use edge fallback180 mm, but is acquisition-invalid; don't label that as
+an accepted range. Config calibration comments expect red maxY118 at600 mm.
+No range/HSV adjustment from one approximate placement. Next pending user swaps
+red at exactly same physical600 mm position, chassis fixed, enable off; capture
+and compare foot/image to discriminate colour-foot segmentation versus distance/
+mounting/model issue. Then same background without pillar. Preserve raw veto.
+
+## 2026-09-27: owner away; offline column-support experiment only
+
+Owner authorizes continuing image evaluation while briefly away. Worked only
+on saved images; no robot commands, firmware edits/build/upload. Installed M7
+remains73124b... from previous entry, stationary runtime last observed.
+New `simulation/camera_pillar_support.py` reads existing production geometry
+limits from config, replays current integer HSV/2px sampling/8-connectivity.
+Experiment only on broad invalid largest raw component: count original green
+samples per column within that component, discard low-support columns, recheck
+components against unchanged production gates. Valid raw detections unchanged;
+raw set retained by identity, filtered candidates contain only original pixels.
+
+Three images, threshold9: raw width201/169/191 -> candidate25/25/25 px,
+height65/55/55 unchanged,area1168/1004/968,centre x174,selected component bottom
+144/134/134 unchanged. Threshold7..11 also yields one valid candidate each.
+Six offline checks pass: three actual images; valid far-sized/fragmented raw
+unchanged; thin/thick horizontal background rejected; two attached pillars split;
+disconnected fragments not pooled; explicit vertical-wall-patch counterexample
+still gives a candidate. Thus success is not universal semantic verification.
+Contiguous vertical-run filters reduce bottom to126 in final02 versus134,
+potential range bias; rejected. GlobalROI100 crop likewise not proposed.
+Foot retention is within selected component, not proof of physical ground contact:
+lower isolated green fragment remains outside it. No range calibration done.
+
+Durable report `simulation/CAMERA_PILLAR_SUPPORT_ANALYSIS.md`; new bounded tool
+and checks tracked, outputs in ignored `local_workspace/camera-green-analysis/`:
+pillar-support-report.json and support_comparison.png. Reproducible from earlier
+byte-verified camera evidence, no new test batch/source logs this turn.
+Exact next after owner returns: first stationary green~600 mm,red~600 mm,
+same background without pillar, record placements/lighting; then partial/edge
+and other-light views before firmware perception change. Proposed future fallback
+may supply positive candidates only; preserve raw rejected-blob veto for CLEAR.
+No extra motion layers. Far-red log398 cause not resolved by this green probe.
+
+## 2026-09-27: image export uploaded/verified; green background connection imaged
+
+Both M7 uploads explicitly authorized by latest owner instruction. Initial DFU
+download457392 bytes successful, prepared hash268c4a... (full below). First CRC-
+valid image received, second request fresh-frame timeout; normal c0 then had no
+fresh diagnostics. Exact cause not independently instrumented. Replaced live
+copy/third-SDRAM-frame prototype with stopped diagnostic pause of camera DMA,
+direct published-frame transfer, resume on success/failure/disconnect. Motor
+uses stop(false), not DC-hold. Added SDK stopContinuous and CameraSystem
+pause/resume wrappers; only M7 consumes them. Stream sequence/error counters
+restart intentionally, sensor exposure configuration remains running. No motion,
+threshold, ROI, route or M4 changes. No further frame allocation.
+
+Corrected M7 build/upload successful, DFU download458536 bytes at M7 offset;
+binary SHA256 `73124b456ebac8e9f911256ad7f0a3a426a2c9c9c3d2c6af0e80d6d606f759e8`,
+no independent firmware readback. Two consecutive camshot exports pass header/
+153600-byte payload CRC/footer validation. Afterwards fresh c0 frame169->197,
+76.49..76.50 ms,error0 since restart proves normal camera service resumed.
+Four host checks pass, including exact decode equivalence of all three real
+USB archives with derived PNGs, besides corruption/truncation/dimension checks.
+
+Committed-evidence directory `simulation/evidence/camera_diagnostics/`, metadata
+README has complete hashes: prototype serial155055 bytes SHA256
+`cb6b0aecea8ffdb5771be1dff1c1f979593eae07ae28e0a31f12554d3ff2bc30`;
+final01 serial155109 bytes SHA256
+`b38bd68ea468966baeea7fedeb184c473e8075c5bad155c4ea41b738b9fd198c`;
+final02 serial155827 bytes SHA256
+`cc3021a637bc53d6d72de2d9f1a9dae9cfda33f92667f9b6c508496eef1a5754`.
+Portable filenames20260927_green_camshot_{prototype,01,02}.serial.bin and PNGs;
+post-export original `20260927_post_camshot_stationary.txt`1949 bytes SHA256
+`32d5e248ad5268c5251f6c80c54c6641f7104359c40ac309127f1d5a602f7400`.
+Archives include unchanged initial buffered telemetry; PNGs are derived, replay
+with `scripts/capture-camera-image.py <label> --replay <serial.bin>`.
+
+Actual onboard image shows central green pillar, green wall/background above
+mat. Exact integer-HSV/2px/8-connectivity replay (new reusable analyzer) confirms
+background pixels at y80 connect to pillar: final02 largest191x55,area1832,
+bbox126..316,y80..134, shape rejected. At hypotheticalROI100, largest25x35,
+area612; this demonstrates connection, NOT safe universal crop. Pillar foot also
+has a separate21x15/area124 fragment. Initial prototype image201x65/area2668.
+Exposure1080 lines in all these post-upload images, differing from earlier
+135/136-line A/B/A; do not treat them as exposure-matched thresholds calibration.
+Current fresh central HSV pixel falls beside pillar; do not label it pillar HSV.
+
+Immediate image-export task complete. Exact next engineering work: small image
+segmentation correction, preserving raw rejected evidence for CLEAR decisions;
+collect/replay near/far red/green, partial/edge views and empty-background frames
+before uploading altered perception. Do not globally raise ROI to100, loosen
+shape or discard small raw overlapping fragments from just this green sample.
+Keep extra reverse arc deferred; original far-red CLEAR issue not resolved by
+this green image. Current runtime stationary camera selected, drive enable off.
+
+## 2026-09-27: stationary image export prepared; authorized USB upload
+
+User explicitly authorizes doing the previously proposed image-export/upload
+step with cable connected. Added M7-only `camshot` exact serial command, accepted
+only in CAMERA_CALIBRATION and system_enabled=false; explicitly stops motor.
+Fresh320x240 RGB565 copied into third fixed SDRAM region after the two DMA
+frames, not internal RAM/heap. Rejects changed frame boundary during copy,
+1-second fresh acquisition/three attempts,10-second nonblocking-USB transfer
+deadline/disconnect abort. Header carries CRC32,size,frame,exposure,byte order,
+mount rotation; binary bypasses finite telemetry log, command pauses other
+main-loop diagnostics while stationary. SDK transmit buffer is copied internally.
+No perception thresholds, driving route, M4 protocol or recovery change here.
+
+`scripts/capture-camera-image.py` receives c0/camshot, validates header/payload
+CRC/footer and writes full original serial bytes plus derived RGB565/JSON/PNG
+under local_workspace. Three host checks pass: rotated RGB565 colour decode,
+CRC/truncation rejection, incorrect dimension/length rejection. M7 build passes
+RAM432528/523624,flash453936/786432,prepared binary SHA256
+`268c4a3936ce7422375b75401d71dc6a34528acf3058396d0ed40aea0a5a9a89`.
+M4 unchanged/not rebuilt. Authorized M7-only upload and actual image verification
+in progress; do not claim success until DFU result and validated capture recorded.
+
+## 2026-09-27: green failure recurs without neutral background
+
+User removes Pappe, robot/green requested fixed. All five fresh c0 rows again
+width179,height63..65,maxX318,minY80,production_valid=no; area2124..2256,
+centre HSV H120..144,S36..141,V28..36. Exposure136 lines, green-valid count403
+unchanged across112 fresh frames, camera errors0. A/B/A setup repeats green
+failure without Pappe and improvement with it. Background/autoexposure
+sensitivity is reproducible, exact joining of pixels remains unverified.
+Raw `simulation/evidence/camera_diagnostics/20260927_green_return_01.txt`,3113
+bytes, SHA256 `19dc3852542c1010a79e30e2d7dff797926cc62219d5e947a8fcd14bd7c9c0d3`.
+Neutral capture3302 bytes SHA256
+`711d0dce2214ee5c399a75ebaac8639cfdca54e8b00a50e3ef18c16f1cd3b16f`.
+
+Code review: `Vision::processComponent` picks largest8-connected component of
+each colour, obstacle ROI starts y80; green failure bbox consistently touches
+that ROI boundary. A thin background strip connecting at its top is plausible.
+Do not simply raise min saturation (valid pillar sampleS36..63), narrow hue
+(valid sampled H120..165), increase V ceiling (all sampled V<100), or loosen
+shape. Red near-centre acquisition is good, but far-red near-seat CLEAR veto
+from log398 is a separate still-unresolved failure; green test is not its proof.
+No firmware changes in live session. Exact next software work: obtain raw onboard
+image/colour mask in stationary mode at the failing green/background view,
+verify component connection and autoexposure effect, then choose smallest
+segmentation/viewpoint correction and replay images offline before powered
+driving. Existing firmware has no verified host image-export command; inspect
+camera buffering/logger interfaces before adding a bounded stationary-only
+export if needed. Keep extra arc deferred, no further motion layers. User may
+end physical testing now; leave physical enable off, stationary camera selected.
+
+## 2026-09-27: neutral background improves green, exposure confound
+
+User confirms neutral Pappe behind green, robot/pillar requested unchanged.
+Ten-second fresh c0 data: first GREEN width87,height63 invalid; next four width
+57/55/53/51,height63..65 valid; no edge clipping. Centre HSV H120..135,S137..176,
+V48..56. Camera exposure338 lines versus135 without neutral background, so this
+comparison changes illumination response too and does not uniquely prove
+connected-background cause. Green-valid count increases96 of112 fresh frames
+between first/last fresh PERF records (85.7%); not100% acquisition acceptance.
+No colour/shape firmware edit. Next short countercheck: user removes only Pappe,
+keeps robot/green fixed, confirms ready; read fresh c0~10 seconds. Seek recurrence
+before deciding background/segmentation versus colour/autoexposure adjustment.
+Exact raw capture copied to
+`simulation/evidence/camera_diagnostics/20260927_green_neutral_01.txt`,3302 bytes;
+hash recorded in evidence README. Preserve buffered prefix and use fresh ack.
+
+## 2026-09-27: green stationary check fails shape; neutral background next
+
+User confirms green at~400 mm ready. Ten-second c0 capture, buffered old-view
+prefix excluded by command acknowledgement. Five fresh GREEN rows all invalid,
+width179,height63..65,area2184..2272,bbox minX140/maxX318,minY80/maxY142..144;
+centre HSV H120..165,S63..141,V32..36 fits existing green thresholds including
+V<=100. No evidence to increase that ceiling from this sample. Fresh frame
+counts+28 per2-second interval,green-valid count stays39, no capture errors.
+Largest connected component could join pillar to background/horizon green:
+prior red check already has thin green region at y80..84 extending to right.
+Vision currently chooses largest 8-connected colour component; connection to
+background is a hypothesis, not established image truth. Do not loosen shape
+limits to accept this179-pixel-wide region or tune range from its170 mm estimate.
+
+Red/green exact captures now durable at
+`simulation/evidence/camera_diagnostics/20260927_red_stationary_01.txt`,4496 bytes,
+SHA256 `de553e7249c4432a932d328bbd1f23334e2326c91b548227f0efe7d88730168a`;
+`20260927_green_stationary_01.txt`,3428 bytes,
+SHA256 `2e2946f68243a65827f4b765425b9655ccdd9026e30bd59b0671e8a43e34c33e`.
+Original working copies retained. Directory README records scope, fresh boundary
+and lack of measured distance/images; .gitattributes preserves raw bytes.
+No firmware edit/build/upload. Next user holds neutral white/grey background
+behind green without moving robot/pillar; pending ready response, capture10 s.
+Compare component width/validity before any calibration or additional movement.
+
+## 2026-09-27: live stationary red check completed, green pending
+
+User connects USB and confirms red placement ready. Stationary `c0` works via
+115200-baud CDC, DTR required; initial DTR-off read produced no output. Current
+camera mode explicitly reports motors disabled; do not send motion commands.
+Capture `local_workspace/camera-check-20260927/red_400_01.txt` retains4496 raw
+bytes including a buffered previous-view prefix before c0 acknowledgement.
+Only after `Already in mode: CAMERA_CALIBRATION`: five RED diagnostic rows all
+production_valid=yes, area1148..1992,height49..65,width23..31,bearing+0.3..-2.0 deg.
+Three centre-pixel samples fall on red, H349..357,S192..198,V82..90, within current
+red thresholds; two centre-pixel samples are background and must be excluded.
+Chassis/object relative geometry changes during capture; nominal400 mm placement
+is not measured distance, so estimated364..480 mm is not range-calibration error.
+Fresh frames advance28 per2-second interval, red-valid counts also+28; no
+increase in camera-error count. Huge historical max frame interval and discarded
+count predate this check, not a new failure. No colour or motion firmware edits.
+Working capture is not yet committed evidence. Next user swaps green at~400 mm,
+holds still and confirms ready; then fresh10-second c0 capture. Red tuning not
+indicated by this near central sample; far/edge fragment cause still unresolved.
+
+## 2026-09-27: owner prioritizes simple, fast discovery; stationary camera next
+
+Owner warns against increasingly complex/time-consuming manoeuvres and asks
+whether colour calibration needs rechecking. This supersedes the immediate
+powered extra-arc trial below: first perform a short stationary camera check.
+Firmware remains prepared, no new motion or colour-threshold edits this turn.
+Extra arc is an unaccepted fallback, not the intended routine for every corner;
+90 mm reverse+forward alone costs3 seconds at60 mm/s plus settling/observation.
+Goal remains two near candidate seats camera-CLEAR then proceed to middle.
+Current log398 red is classified but rejected for shape/area, so it does not
+establish bad HSV limits or justify ignoring overlapping fragments.
+Red config includes earlier measured H346..354,S130..183,V41..57; current log
+has no HSV samples of the pillar. Green classifier V20..100 is a plausible
+lighting sensitivity worth checking, not a demonstrated cause of this red veto.
+
+Exact next: disable physical drive enable, use lowercase `c0` (stationary
+camera auto-start enabled, mode commands motor stop), same field lighting.
+Record about10 seconds each with red then green at about400 mm from camera,
+fully in view, aiming pillar at image centre; centre_hsv is one pixel and only
+describes the pillar if that pixel actually lands on it. Capture CAM CAL colour,
+area/height,production_valid and CAM PERF exposure/errors. Then place chassis
+at prior blocked scan viewpoint and collect10 seconds with unchanged field,
+followed by10 seconds after temporarily removing only the far red, chassis
+unchanged; restore layout afterwards. Compare overlapping red fragment/veto
+explanation using images if available. No forward driving on assumed emptiness.
+Use evidence to choose colour adjustment vs image geometry/depth assignment or
+one simpler entry viewpoint; do not stack further recovery manoeuvres.
+
+## 2026-09-27: log398 two CW sessions; tiny red veto; additional reverse arc
+
+Read existing handoff and parking plan before continuing. User reports good exit,
+first curve reverse then forward then stop; confirms unchanged S1 setup, first
+two stations empty and red only third. No new explicit contact report. Complete
+original evidence `simulation/evidence/parking_exit_diagnostics/20260927_log_398_cw.txt`
+is140882 bytes, SHA256
+`5ed231efb66a9996999717cecd6d3234b7b8f47624b2f2cac71e918c2f855628`,
+source/archive/evidence identical. Header corner/connector Sep26_2026_18:33:21
+matches prepared M7 `c711bf8d70ba209b9c246d5b17a112e3cba5b5fb8b13f4f1bbd4a700d8cb6f87`;
+installed binary not read back. Date is session date, USB timestamps unreliable.
+
+One full raw file contains two runs, diagnostic headers lines10/2218; derived
+working slices/reports in `local_workspace/parking-exit-analysis-batch7/`, with
+source-line mapping. Whole-file analyzer correctly rejects151 samples against
+per-run150 cap; slices74/77 show no overflow/truncation/ordering/duplicate-ToF
+errors. Do not describe the aggregate as one run or the derived slices as originals.
+Both connector joins pass34.2/45.3 mm and15.0/14.9 deg. Straight reverse175.0/
+170.5 mm, return estimated XY1.28/1.21 mm, heading0.62/0.61 deg. Both lock
+`returned but station unresolved`. Outer seat camera-CLEAR; inner seat modeled
+visible at340.4/335.6 mm but raw red area164..180, width9..11,height17..19,
+bottom102..104 overlaps its ray and prevents CLEAR. Camera ground-plane estimate
+923..1000 mm suggests later red, but rejected fragment range is not safe evidence
+to certify near position empty. Pose-derived visibility is not independent image
+truth. No later middle-green or full-lap acceptance in this batch.
+
+Added one optional90 mm reverse arc, steering sign toward unresolved-seat side
+(CW log398:-20 deg),60 mm/s, after original entry-only straight observation fails.
+Trigger requires exactly one independent camera-CLEAR side and rejected-blob veto
+on the other. No perception threshold/range veto relaxation or hardcoded later
+pillar in firmware.300 ms steering settles,40 mm full24-seat/wall/front+rear
+capsule preflight including20 mm coast. Separate arc tracking15 mm/5 deg and
+absolute heading35 deg, timeout4500 ms, sign/overshoot checks; stopped existing
+evidence collection then reciprocal measured arc, return20 mm/3 deg, followed by
+original straight observation/retrace gates. One extra attempt per entry fallback.
+Unsafe motion holds at current pose; unresolved evidence returns then holds.
+
+Reusable `simulation/corner_extra_view_check.py`, three geometry checks in
+`scripts/test-corner-extra-view.py`:486 cases from both measured scans, XY+/-10 mm,
+heading+/-2 deg,yaw gain.85/1/1.15,coast0/10/20 mm,1 mm swept spacing. Minimum
+modeled wall296.07 mm,pillar111.96 mm,no target-visibility failures; near/far rays
+separate>=3.253 deg.110 mm candidate had48 visibility failures with coast and
+was reduced to90 mm. Checks pass. Ideal reciprocal geometry only: no segmentation,
+steering transient, slip, asymmetric yaw gain, firmware-state-machine or CCW proof.
+Final IDE-managed M7 build successful, RAM432528/523624,flash452960/786432;
+prepared binary SHA256
+`d686a08c3d9d26fc09e3613bc5da69f911aa78656c178a403ae4fb9b022838cf`.
+M4 unchanged, not rebuilt. No upload performed.
+Exact next: user uploads M7 only;
+one same-layout CW run, check new extra_* poses/return and red bypass, then middle
+green inference and first-lap stop. Record contact/stop location and complete log.
+Do not change thresholds or claim full-lap/CCW acceptance before returned evidence.
+
+## 2026-09-26: corner peeks pass; unnecessary post-middle hold, logs396/397
+
+User reports good reverse/transition, red bypass, second corner reverse,
+left bypass of middle green then a stop. Two newest complete CW logs agree;
+the physical report is batch-level, not individually assigned, and does not
+explicitly state contact absence. Complete source/archive/evidence hashes match:
+`simulation/evidence/parking_exit_diagnostics/20260926_log_396_cw.txt`,89874 bytes,
+SHA256 `8f8b731af089e290d10e18c67782c0994b0ae4a7046f1a33fd7ae3039eda6eaa`;
+`20260926_log_397_cw.txt`,93794 bytes,
+SHA256 `366515c1fc55ea56e0bf7278ace7319751b252251dc258e893d27d895008ae0c`.
+Corner/connector Sep26_2026_18:15:21 matches prepared servo-fix build
+`b24c1fba47d5f88e903d56973ad59c75f00c336fdc59f5edad383d9c72256e91`,
+installed binary not read back. Date uses session date; USB timestamps invalid.
+
+Both logs resolve/retrace corner stations3/6. Measured encoder reverse lengths
+172.4/170.8 mm and170.1/170.3 mm; estimated return XY0.98/1.22 and1.26/1.17 mm,
+heading0.64/0.82 and0.56/0.61 degrees. This is repeated CW motion evidence,
+not external pose truth, full-lap or CCW acceptance. Both confirm redS1/2
+seat11, greenS2/1 seat14, then hold at S2/2 (global8), forward300 mm.
+At hold inner seat bearing-48.73/-49.85 deg, range297.7/290.2 mm, not stored
+clear; outer seat already stored clear. Reverse is intentionally entry-only,
+so no end-station retry. Exit analyzer78/87 samples; no overflow/truncation/
+duplicate ToF; log397 has one ordering inversion. Ignored report:
+`local_workspace/parking-exit-analysis-batch6/`.
+
+Official canonical PDF re-downloaded/version checked,55 pages January15_2026;
+Figure8c printed p15 rendered/visually inspected. All middle-station cards
+are solitary; two-pillar cards use opposite longitudinal ends. Official Q&A
+checked2026-09-26, no relevant card-layout amendment. Thus the user's inference
+is supported under official layouts. Implemented M7
+`OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT=true`: dynamically inferred empty end
+stations after one confirmed middle; empty middle after both confirmed ends.
+Pure helper has nine compile-time checks for valid/unknown/contradictory masks.
+Rule inference is separate from camera-observed CLEAR and automatically revoked
+by conflicting confirmed seats; one end alone proves nothing. Disabled during
+parking/scout/join/connector so diagnostic start layouts retain their explicit
+checks. No additional end-station movement or loosened camera/motion limits.
+`[PATH LAYOUT]` logs section and three-bit inferred-empty mask. A locally adapted
+or arbitrary layout requires disabling the option. Current S0 confirms front
+green plus middle red, contradicting official cards: inferred mask0 there.
+
+Next: latest M7 same-layout CW regression should bypass the obsolete S2/2 hold
+after confirmed middle green (inferred mask5). Return complete log and physical
+outcome. For full-lap acceptance, replace the contradictory S0 arrangement with
+a wholly rule-valid layout and revalidate its changed parked exit. No firmware
+upload or new physical acceptance is claimed. Build identity follows below.
+
+Final IDE-managed M7 compile succeeds with all nine layout compile-time checks,
+RAM432472/523624 and flash450472/786432. Final binary SHA256
+`c711bf8d70ba209b9c246d5b17a112e3cba5b5fb8b13f4f1bbd4a700d8cb6f87`.
+The final incremental compile includes the parking-phase protection added during
+the preceding dependency rebuild. M4 unchanged/unbuilt. Evidence originals396/397
+were verified byte-exact in the Git index; evidence README/history are tracked.
+
+## 2026-09-26: reverse starts then aborts, logs394/395; servo settling fix
+
+User reports both runs began reverse but stopped after about2 cm. Direction CW
+is supported by turn=-1 and corner entry in both logs; ordering of physical
+test1/2 to ascending numbers is inferred. No new contact statement. Complete
+originals copied unchanged into tracked evidence, source/archive/copy hashes
+match: `simulation/evidence/parking_exit_diagnostics/20260926_log_394_cw.txt`,
+72194 bytes, SHA256
+`ef104e7fb872490a34f0b791352e2ea91b8c674e7efad13ceaf42d29fe358ae1`;
+`20260926_log_395_cw.txt`,82219 bytes, SHA256
+`b8df76c179dbe85f9445b932398536f32c4e11bbfbef0b0e3c04f2bd4a249240`.
+Corner/connector build Sep26_2026_18:03:25 is consistent with prepared M7
+`ea01a855cdc566f2efd2dd8bc9ccb505ff2fc2298a6594fc57d802eba3cb3fcc`;
+installed binary not read back. USB timestamps invalid2097/2098, portable date
+is session date. Originals end later with manual disable.
+
+Connector completes60.0/59.9 mm and0.3/0.5 degrees. Corner station3 expires
+800 ms grace,170 mm reverse preflight passes. Origin poses
+(-846.8,-780.3,112.13), encoder1670.1, t54262 and
+(-844.3,-786.0,113.19), encoder1693.5, t40491. Both lock
+`heading/cross-track limit`; no stopped observation/return or complete lap.
+Actual abort heading/cross-track/displacement are not logged in this firmware,
+so do not claim measured3-degree violation or exact20 mm encoder motion.
+Exit analyzer77/84 samples, no overflow/truncation/duplicate ToF/ordering errors;
+ignored report `local_workspace/parking-exit-analysis-batch5/`.
+
+Confirmed code defect: `motor_control::stop(true)` sets servo_disabled=true.
+Corner settling repeatedly stopped then only set logical steering0, so physical
+centering writes were suppressed until set_speed re-enabled steering. Residual
+curve steering plausibly explains early heading guard, but wheel orientation
+was not independently measured. Fixed with narrow `holdCornerViewCentered()`:
+stop, re-enable servo, set logical0, directly steer0. Applied at arming and all
+stopped/braking/locked phases. Existing300 ms settle and all motion/preflight
+limits unchanged. New bounded per-abort record logs heading error/cross-track/
+encoder delta so repeated failures can be distinguished. No global motor API,
+servo centre, camera gates, parking exit or M4 changes.
+
+IDE-managed M7 build passes, RAM432472/523624, flash450192/786432; binary SHA256
+`b24c1fba47d5f88e903d56973ad59c75f00c336fdc59f5edad383d9c72256e91`.
+No firmware uploaded. Next: user uploads this M7 and makes one same-layout CW
+run, watching actual wheel centring before reverse; return complete log plus
+contact/intervention and reverse/observe/return report. Existing test procedure
+in `CONNECTOR_NEXT_TEST.md`; physical recovery/full-lap/CCW acceptance pending.
+
+## 2026-09-26: reverse fallback only after unresolved section-entry grace
+
+User requested reverse only when entering a new section and observation remains
+unresolved. The existing section-first-station filter is retained; the trigger
+now requires `hold_expired`, after800 ms stopped observation, rather than
+`hold_start`. Middle/end stations and already resolved section entries do not
+request reverse. One attempt per section-first station on discovery lap1 remains.
+While recovery is active the terminal blocked flag is cleared; any recovery
+failure sets it again. All swept checks, motion bounds, observation, retrace
+and unresolved-return hold remain. No new physical logs or firmware upload.
+Code diff inspected and IDE-managed M7 build passes, RAM432472/523624,
+flash449848/786432. Binary SHA256
+`ea01a855cdc566f2efd2dd8bc9ccb505ff2fc2298a6594fc57d802eba3cb3fcc`.
+No M4 change/build. Next: upload this latest M7, same parked CW layout; expect
+800 ms first-corner observation before any safe-preflight reverse request, then
+the current test procedure in `CONNECTOR_NEXT_TEST.md`. Return complete log and
+physical result; full-lap/CCW and embedded recovery acceptance remain pending.
+
+## 2026-09-26: bounded straight reverse corner peek implemented
+
+User explicitly chose reverse motion in the corner hold. M7 now makes one attempt
+per section-first unresolved station on discovery lap1:300 ms stopped steering
+settle, runtime view selection170..220 mm, swept preflight plus20 mm braking
+reserve, all24 legal seats even previously CLEAR, front/rear capsules and40 mm
+model margin. Reverse/return speed60 mm/s; heading drift3 deg, cross-track15 mm,
+wrong-sign encoder5 mm, travel overshoot20 mm, each motion timeout6 s. Stop/brake
+200 ms, observe400..1600 ms with existing evidence gates and fresh frame events,
+recheck return sweep, retrace actual encoder travel, brake and require XY error
+<=20 mm / heading<=3 deg. Resume only if station resolved and>=2 stopped frames.
+Unresolved evidence returns then holds; unsafe motion/preflight abort holds at
+the current position. No repeated attempts or forced CLEAR. Normal path progress
+and path ToF correction are bypassed during the peek. Pose/state/build logs added.
+
+Expanded `corner_reverse_view_search.py`: all24 seats, capsule union,40 mm margin,
+20 mm extra reverse travel. At170 mm, all54 assumed +/-10 mm XY / +/-2 deg heading
+cases from original hold poses392/393 pass, modeled minimum wall368.9 mm and
+pillar81.3 mm. Actual settled starts can differ; runtime rechecks them. Dynamic
+yaw/braking/retrace/images and camera-model accuracy are not proven by this
+offline result. Three reverse geometry checks and six forward-tool checks pass;
+these do not test the complete embedded phase machine or establish acceptance.
+
+IDE-managed M7 build succeeds, RAM432472/523624, flash449816/786432. Binary SHA256
+`0d93b954b8bba381c072e3b462fcb7780cbddd0674ce0c1fe5303e1a7005ce7d`.
+M4 untouched/unbuilt; no firmware uploaded and no new physical evidence received.
+Next: user uploads M7, same-layout parked CW run, wait BLUE/start switch; watch
+reverse, stopped observation and return; disable on unsafe behavior or after
+about2 s locked hold, wait USB save. Return full log and physical outcome using
+existing evidence policy. First-lap and CCW acceptance remain pending. Current
+test procedure is the first section of `CONNECTOR_NEXT_TEST.md`.
+
+## 2026-09-26: user disputes actual camera visibility at first corner
+
+User reports the first positions are well inside the image and should have
+been visible at the approach angle. Correct the earlier verbal claim that
+the camera could not see them: DISCOVERY_TRACE bearing/range/visible are
+computed from estimated chassis pose, canonical seats and camera mounting
+constants, not measured seat pixels or recorded images. The logs establish
+rejection by the software visibility gate, not actual absence from the image.
+The current gate additionally requires range230..600 mm and bearing+/-26.426
+degrees; inclusion in the full image alone does not satisfy it. Outer-seat
+CLEAR in392 confirms some usable coverage. The model assumes camera optical
+heading equals chassis heading, forward mounting125 mm and lateral0.
+Pose, seat coordinates, mounting alignment and calibrated clear-window validity
+need independent checking before attributing the failure to trajectory geometry.
+All forward/reverse searches use this same model, so they cannot independently
+validate its accuracy. No firmware/gate change made. Next: obtain actual onboard
+camera frames at the questioned approach/hold, synchronized with pose/trace,
+and compare projected seat pixels to marked real seat locations. A field photo
+from outside the robot is insufficient to validate the onboard camera view.
+
+## 2026-09-26: earlier forward corner viewpoint alternatives
+
+User steered the pending reverse-view implementation toward earlier forward
+approach or deferred coverage. No reverse manoeuvre or new firmware was added.
+`simulation/corner_forward_view_search.py` uses unchanged CW logs 392/393 above
+and searches recorded S1/0 approach starts, positive servo angles 4..42 degrees,
+travel 40..300 mm. Collision checks conservatively occupy all 24 legal seats,
+capsule radius70/front60/rear140 and margin25 mm. Assumed start XY +/-10 mm,
+heading +/-2 deg, yaw gain .85/1/1.15, coast0/10/20 mm: zero robust simultaneous
+view candidates. Best nominal arcs (40 degrees, 60/50 mm) fail 72/243 and 61/243
+visibility cases, with modeled wall minima339.1/340.2 and pillar58.7/66.0 mm.
+Two fixed stops on the same arc with cumulative coast up to40 mm also yield
+zero robust candidates. Ideal heading-stop search (20..42 degree servo,
+90..140 degree CW heading, extra +/-2 degree stop error, immediate centring,
+straight coast0..20 mm) likewise yields zero. These are sampled simple arcs,
+not a proof that other forward trajectories are impossible. Segmentation,
+servo transients, controller tracking and subsequent route merge are unmodeled.
+
+Six geometry/parser/gyro-stop tests pass. Reproducible ignored outputs:
+`local_workspace/corner-forward-view/report.json` and `heading.json`.
+No new physical evidence, no firmware changes, no PlatformIO build/upload.
+Next: plan position and heading observation poses with a verified subsequent
+live-path merge; compare a fully checked reverse fallback. Deferred seats must
+retain UNKNOWN and the intervening swept route must clear both possible pillar
+locations. Do not remove the discovery hold or encode the user's empty layout.
+No unchanged physical repeat is useful. Full first lap and CCW remain pending.
+
+## 2026-09-26: discovery trace identifies corner view deadlock, logs 392/393
+
+User reports two further stops after the requested diagnostic runs. Both are CW
+by header turn -1; no new contact statement, so do not inherit previous no-contact
+reports. User also clarified the next section's first two positions are empty,
+with one red pillar at the third position (code stations 0/1 empty, 2 occupied).
+Do not encode this layout as known empty in the controller.
+
+Complete originals copied unchanged and source/copy/evidence hashes match:
+`simulation/evidence/parking_exit_diagnostics/20260926_log_392_cw.txt`,
+82,608 bytes, SHA-256
+`b2ced7074114324a068a7085abf9437a803ab7d2b24afcaf6b123a9ff4801c6e`;
+`20260926_log_393_cw.txt`, 80,455 bytes, SHA-256
+`48571b315690476a4676352ab00b2d5183183590f9f03abc568c568aebcd73ac`.
+Connector source header Sep 26 2026_17:09:24 matches the prepared trace build
+with SHA-256 `b05077b40fd6c5f7ad643a4b4c55b15e4fbdac699f74e88011c06d6d8823551f`;
+installed binary not read back. Connector completes at 60.0 mm / 1.4 and 2.3 deg,
+scout retrace 4.5/3.9 mm, 0.1/0.3 degrees. No complete lap. No overflow or
+truncation; exit samples 78/82, log 393 has one diagnostic ordering inversion.
+Later manual disable terminates both complete raw files.
+
+Both holds are S1/0 (global station 3), forward 335 mm. At hold start, inner
+seat s0 bearing/range -31.61 deg / 198.1 mm and -41.18 deg / 207.2 mm; it is
+outside the 26.426-degree clear window and below minimum range 230 mm.
+There are zero recorded comfortably-visible s0 approach frames in either run.
+At expiration s0 is still too near (175.5/192.8 mm); stationary waiting cannot
+create the needed viewpoint. Outer s1 is already stored clear in 392; in 393
+rejected wide green overlap blocks it throughout the hold. Observation processing
+ages at start are 14/27 ms, not evidence of a stale processed frame; acquisition
+age remains unknown. This establishes a geometry/coverage deadlock plus a second
+colour-overlap blocker, not a connector regression or missing known red pillar.
+
+`simulation/analyze_discovery_trace.py` produces per-seat block explanations;
+three real-log regressions pass, including distinguishing stored clear from raw
+overlap and refusing to infer coverage from older logs. Report is reproducible
+in `local_workspace/discovery-trace/report.json`; parking report in
+`local_workspace/parking-exit-analysis-batch4/`. No firmware change/build/upload
+in this batch. Preserve range/FOV/colour/empty-evidence gates.
+
+Offline `simulation/corner_reverse_view_search.py` checks straight reverse view
+poses at the two recorded hold starts. With assumed +/-10 mm XY and +/-2 degrees
+heading, 170 mm is the shortest common tested reverse distance giving both
+seats usable geometric view in all 54 cases. Modeled wall/pillar minima are
+368.9/131.7 mm. Only field walls and the two corner-seat circles are checked,
+not every obstacle, dynamic yaw/braking, sensor timing, image segmentation or
+retrace. These are assumed ideal candidates, not a deployable motion or proof
+of camera CLEAR; output is ignored `local_workspace/corner-view-search/report.json`.
+
+Next: no more unchanged diagnostic repeats. Design a bounded first-corner
+view manoeuvre (reverse/observe/retrace is a candidate) with runtime swept
+preflight against all known/possible obstacles, steering settling, heading/
+travel/time aborts, cached fresh observation and measured return gate. If no
+station resolution is obtained, return safely and retain hold; never force CLEAR
+or continue blindly. Evaluate additional start/heading/braking uncertainty and
+colour-overlap implications before changing firmware. Full first-lap and CCW
+acceptance remain pending; exact next software task is in the current section
+of `CONNECTOR_NEXT_TEST.md`.
+
 ## 2026-09-26: CW connector physically passes; first-curve perception hold
 
 User reports two CW runs with successful exit/first straight, no contact, then

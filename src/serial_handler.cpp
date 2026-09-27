@@ -54,6 +54,7 @@
 #include "tof_pose_diagnostic.h"
 #include "camera_distance_calibration.h"
 #include "reverse_gyro_test.h"
+#include "camera_snapshot.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -323,6 +324,7 @@ static void print_serial_command_info()
   Serial.println("seat clear / seat show : Reset or inspect seat-test state");
   Serial.println("b1 / b0    : Start / stop OBSTACLE BENCH mode");
   Serial.println("c<mm>      : CAMERA CALIBRATION at measured pillar distance");
+  Serial.println("camshot    : Export one RGB565 image, c0 mode / drive OFF only");
   Serial.println("camdrive [reverse-mm] : Pillar-touch reverse camera calibration");
   Serial.println("C          : Start TURN RADIUS CALIBRATION mode");
   Serial.println("B          : Start SERVO CENTER CALIBRATION mode");
@@ -424,6 +426,10 @@ void processMessage()
 
 void parseMessage(char *msg)
 {
+  if (strcmp(msg, "camshot") == 0) {
+    camera_snapshot_export();
+    return;
+  }
   if (strcmp(msg, "reversegyro") == 0) {
     select_temporary_mode(MODE_REVERSE_GYRO_TEST);
     return;

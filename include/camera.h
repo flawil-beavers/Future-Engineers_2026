@@ -33,6 +33,8 @@ public:
 
     bool begin();
     bool capture();
+    bool pauseForDiagnostic();
+    bool resumeAfterDiagnostic();
 
     uint8_t* getBuffer();
     uint32_t getBufferSize();
