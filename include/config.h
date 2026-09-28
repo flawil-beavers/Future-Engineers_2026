@@ -5,6 +5,80 @@
  * @brief Centralized configuration for all pin definitions, constants, and tuning parameters
  */
 
+// ==============================================================
+// MODE SELECTION -- edit this panel, then build/upload M7
+// ==============================================================
+// Startup mode after power-on/reset. The physical enable switch (A2) starts
+// the pending mode only when it is HIGH; keep it LOW while preparing a run.
+// MODE_OBSTACLE_CHALLENGE: Obstacle Challenge (current selection).
+// MODE_OPEN_CHALLENGE: Open Challenge. Obstacle switches below do not apply.
+// Diagnostic startup choices include MODE_TURN_RADIUS_CAL,
+// MODE_SERVO_CENTER_CAL, MODE_PID_AUTOTUNE and MODE_MOTOR_MIN_CAL.
+// Serial O / O3 can temporarily choose Obstacle; l chooses Open. Serial mode
+// selection lasts only until reset. No laptop is needed when the desired
+// STARTUP_ROBOT_MODE is compiled into the firmware.
+// To start Obstacle now: leave the selection below as it is, set the enable
+// switch LOW, power on, wait for the BLUE ready light, then switch HIGH.
+// Current Obstacle gates drive the parking exit and stop after the first lap.
+#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
+
+// --- OBSTACLE CHALLENGE: section layout ---
+// false: official 2026 layout; true: inspect each of the three stations in
+// every section (surprise/practice layout). Serial O / O3 override this for
+// the current power cycle. This choice changes only empty-station inference.
+constexpr bool OBSTACLE_STARTUP_CHECK_ALL_STATIONS = false;
+
+// --- OBSTACLE CHALLENGE: parked start and exit ---
+// true: begin in the parking bay and perform the exit. false: start from the
+// middle zone; OBSTACLE_DEFAULT_TURN_SIGN then sets the travel direction.
+constexpr bool OBSTACLE_PARKING_EXIT_ENABLED = true;
+constexpr int8_t OBSTACLE_DEFAULT_TURN_SIGN = 1; // +1 CCW, -1 CW; only without exit
+// Rear ToF positioning before the five exit segments. The TEST_ONLY variant
+// stops after positioning; the combined variant stops after positioning+exit.
+constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_ENABLED = true;
+constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY = false;
+constexpr bool OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY = false;
+// Maximum exit segment for a staged test (1..5). With 5, all five run.
+constexpr auto OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT = 5;
+// The exit-only hold applies when entry discovery below is disabled. With
+// entry discovery enabled, this flag still clears verbose startup logs but
+// the run CONTINUES after the exit. See completeParkingExit() in obstacle.cpp.
+constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = true;
+// Localize on the parking boundary after the exit. Its TEST_ONLY variant
+// stops after this reverse straight before camera entry discovery.
+constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
+constexpr bool OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY = false;
+// Camera scan and connector from the parking bay to the first lap.
+// Its TEST_ONLY variant stops after discovery, before joining the lap.
+constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
+constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = false;
+
+// --- OBSTACLE CHALLENGE: laps and final parking ---
+// true: stop and save after lap 1 (current validation target).
+// false: run the configured three laps and continue to final parking.
+constexpr bool OBSTACLE_FIRST_LAP_TEST_ENABLED = true;
+// Final parking is reached only after the laps when first-lap test is false.
+// ENTRY_ARMED=false keeps physical bay entry locked; TEST_ONLY=true stages
+// the manoeuvre and applies TEST_SEGMENT_LIMIT after entry is armed.
+constexpr bool OBSTACLE_FINAL_PARKING_ENABLED = true;
+constexpr bool OBSTACLE_FINAL_PARKING_TEST_ONLY = true;
+constexpr bool OBSTACLE_FINAL_PARKING_ENTRY_ARMED = false;
+constexpr auto OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT = 7;
+// Isolated parking practice bypasses exit and laps. Use an empty field.
+constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = false;
+constexpr int8_t OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN = 1; // +1 CCW, -1 CW
+
+// --- CAMERA DEVELOPMENT (all modes use the same camera implementation) ---
+// Stationary camera calibration auto-starts while the drive remains disabled.
+// The two capture flags select the current async/continuous image pipeline;
+// they are not challenge-mode selectors. Leave them at validated values for
+// an ordinary Open or Obstacle run.
+#define CAMERA_ASYNC_STATIONARY_AUTOSTART true
+#define CAMERA_ASYNC_CAPTURE_ENABLED true
+#define CAMERA_CONTINUOUS_CAPTURE_ENABLED true
+// USB parking-exit logging has its own compile-time switch in
+// parking_exit_diagnostics_config.h: PARKING_EXIT_DIAGNOSTICS_ENABLED.
+
 // ==========================================
 // SERIAL CONFIGURATION
 // ==========================================
@@ -315,15 +389,6 @@ constexpr auto EN_STATE_FALSE_MSG = "enable stop";
 // OBSTACLE AVOIDANCE
 // ==========================================
 
-// Optional start manoeuvre for an Obstacle Challenge run that begins inside
-// the parking lot. Set to false when starting in the middle zone above it.
-// This flag has no effect on the Open Challenge.
-constexpr bool OBSTACLE_PARKING_EXIT_ENABLED = true;
-
-// Development mode: execute only the parking exit and stop afterwards.
-// Set to false once the isolated manoeuvre has been tuned successfully.
-constexpr bool OBSTACLE_PARKING_EXIT_TEST_ONLY = true;
-
 // Confirmed competition projection. The chassis remains unchanged: 125 mm in
 // front of the rear axle and 40 mm behind it, for 165 mm overall.
 constexpr auto OBSTACLE_FINAL_ROBOT_LENGTH_MM = 165.0f;
@@ -351,10 +416,7 @@ constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 200;
 constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 150;
 constexpr auto OBSTACLE_PARKING_EXIT_SEGMENT_COUNT = 5;
 
-// Safety gate for powered development. A value below SEGMENT_COUNT stops and
-// saves the log after that many segments. Increase it only after reviewing the
-// preceding stage's actual travel and physical clearance.
-constexpr auto OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT = 5;
+// The staged-exit limit is selected in the mode panel above.
 static_assert(
     OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT >= 1 &&
         OBSTACLE_PARKING_EXIT_TEST_SEGMENT_LIMIT <=
@@ -373,17 +435,8 @@ constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_WIDTH_MM = 135.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM = 247.5f;
 constexpr auto OBSTACLE_PARKING_EXIT_START_REAR_CLEARANCE_MM = 50.0f;
 
-// Before the five-segment exit, use the rear-facing ToF to move the robot to
-// the longitudinal placement for which that path was validated. The sensor
-// position is measured from the rear-axle midpoint; increase
-// REAR_TOF_BEHIND_AXLE_MM if the sensor is moved farther toward the back.
-constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_ENABLED = true;
-// First powered validation stops after measuring/correcting the parked pose.
-// Set false only after offset starts have been physically accepted.
-constexpr bool OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY = false;
-// First combined validation executes rear positioning plus all five exit
-// segments, then stops before edge localization or entry discovery.
-constexpr bool OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY = false;
+// Rear-ToF geometry for the parked pose. The enable/test switches are in the
+// mode-selection panel above; sensor position is measured from the rear axle.
 constexpr auto OBSTACLE_REAR_TOF_BEHIND_AXLE_MM = 25.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM = 50.0f;
 constexpr auto OBSTACLE_PARKING_REAR_TOF_TOLERANCE_MM = 2.0f;
@@ -473,11 +526,6 @@ static_assert(
 // if the side ToF initially sees only the distant outer wall. Pass the first
 // magenta limit, cross the parking gap quickly, then slow while passing the
 // second limit. Its far edge is the stable longitudinal field reference.
-constexpr bool OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED = true;
-// Isolate the reverse gyro-straight drive immediately after the parking exit.
-// The robot stops after the bounded edge search instead of continuing into
-// parking-entry camera discovery and the lap join.
-constexpr bool OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY = false;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_APPROACH_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SPEED = 60;
 constexpr unsigned long OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_SETTLE_MS = 100UL;
@@ -529,8 +577,6 @@ static_assert(
 // rotates the forward camera toward the first upcoming inner-row seat. The
 // fixed parking position is asymmetric along the straight, so the two travel
 // directions use different field-x positions before the mirrored scan arc.
-constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
-constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = false;
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
 // Continue the existing CCW gyro-held localization reverse to the scan-arc
@@ -597,9 +643,6 @@ constexpr auto OBSTACLE_PARKING_ENTRY_JOIN_MAX_TRAVEL_MM = 450.0f;
 // the red pillar in log 311.
 constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S = 80.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM = 500.0f;
-// Current validation target: normal parked-start discovery through one complete
-// lap, then stop/save before final parking. Set false for the three-lap mission.
-constexpr bool OBSTACLE_FIRST_LAP_TEST_ENABLED = true;
 constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS = 64;
 constexpr auto OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM = 25.0f;
 // Select a route point by its spatial relationship to the measured parking
@@ -710,23 +753,7 @@ constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM = 500.0f;
 constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM = 500.0f;
 
-// Final parking after the conservative three-lap path wrap. The full logic is
-// enabled, but its powered entry segments remain staged until the approach,
-// dual-marker scan and capture pose have been physically accepted. A segment
-// ENTRY_ARMED=false stops at the calculated capture pose without entering the
-// bay. Once that gate passes physically, arm entry and raise the segment limit
-// one reviewed segment at a time.
-constexpr bool OBSTACLE_FINAL_PARKING_ENABLED = true;
-constexpr bool OBSTACLE_FINAL_PARKING_TEST_ONLY = true;
-constexpr bool OBSTACLE_FINAL_PARKING_ENTRY_ARMED = false;
-// Isolated parking practice: bypass unparking and all laps, start on the
-// centreline exactly at the boundary from the last corner to the parking
-// straight, then approach, scan and park. Run without obstacle pillars.
-// +1 selects CCW/east; -1 selects CW/west.
-constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = false;
-constexpr int8_t OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN = 1;
 constexpr auto OBSTACLE_FINAL_PARKING_SEGMENT_COUNT = 7;
-constexpr auto OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT = 7;
 static_assert(
     OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN == 1 ||
         OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN == -1,
@@ -953,7 +980,6 @@ constexpr auto OBSTACLE_SOUTH_OUTER_WALL_Y_MM =
 // the field the car was placed. Set +1 for left/CCW corners or -1 for
 // right/CW corners before that test. A parking-lot start infers this from the
 // measured outer-wall side and does not use the fallback.
-constexpr int8_t OBSTACLE_DEFAULT_TURN_SIGN = 1;
 
 constexpr auto OBSTACLE_LOOKAHEAD_MIN_MM = 150.0f;
 constexpr auto OBSTACLE_LOOKAHEAD_MAX_MM = 330.0f;
@@ -1055,10 +1081,6 @@ constexpr auto OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG = 1.0f;
 // a single-frame dropout. Pillars use their separate two-vote geometry and
 // colour confirmation and can override an earlier clear observation.
 constexpr auto OBSTACLE_DISCOVERY_CLEAR_FRAMES = 2;
-// Official2026 Figure8c excludes end pillars when the middle is occupied,
-// and excludes the middle when both ends are occupied. Disable for arbitrary
-// practice layouts or a locally adapted competition rule. M7 navigation only.
-constexpr bool OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT = true;
 // Parking-entry observation is already stationary and has a 1200 ms timeout.
 // Log 190 saw only floor-shaped green fragments, then declared the occupied
 // target clear after two pillar-dropout frames. Give the official pillar more
@@ -1242,27 +1264,9 @@ constexpr auto OBSTACLE_LIVE_TEST_TELEMETRY_MS = 200UL;
 // Three-lap diagnostics must fit in the 128 KiB USB log buffer. Clearance
 // events remain unthrottled; only the repetitive live status line is slower.
 constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
-
-
-
 // ==========================================
-// CHALLENGE MODE
+// CAMERA TIMING (capture switches are in the mode panel above)
 // ==========================================
-
-// Default after power-on/reset. Serial mode letters override this only in
-// RAM for the current power cycle. If the physical enable switch is LOW,
-// the selected mode remains pending until the switch is enabled.
-// Common choices:
-//   MODE_OPEN_CHALLENGE, MODE_OBSTACLE_CHALLENGE,
-//   MODE_TURN_RADIUS_CAL, MODE_SERVO_CENTER_CAL,
-//   MODE_PID_AUTOTUNE, MODE_MOTOR_MIN_CAL
-// Stationary safety boot for full-FOV asynchronous camera validation. This
-// auto-start exception never enables a mode that can request motor movement.
-#define CAMERA_ASYNC_STATIONARY_AUTOSTART true
-#define CAMERA_ASYNC_CAPTURE_ENABLED true
-// Keep snapshot async capture as a compile-time fallback while uninterrupted
-// DCMI/DMA double-buffering is validated on the robot.
-#define CAMERA_CONTINUOUS_CAPTURE_ENABLED true
 // GC2145 timing profile. At 24 MHz XCLK the sensor's input divide-by-two bit
 // preserves the proven 12 MHz internal timing. CAMERA_GC2145_PLL_DIVX4 can
 // then be raised independently in controlled tests to increase frame rate.
@@ -1274,7 +1278,3 @@ constexpr auto OBSTACLE_LIVE_TEST_THREE_LAP_TELEMETRY_MS = 600UL;
 // line exposure fits inside the active window; remove only those idle lines.
 #define CAMERA_GC2145_HBLANK 0x011C
 #define CAMERA_GC2145_VBLANK 0x0000
-#define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
-// Obstacle is selected automatically on every boot. Start with the physical
-// enable switch after BLUE ready; serial O only selects the mode. A controller
-// safety hold is not resumed by sending O again (disable/reposition/start).

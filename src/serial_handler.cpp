@@ -20,7 +20,8 @@
  *   x      : Debug steering timing
  *   m      : MANUAL mode
  *   l      : OPEN CHALLENGE mode
- *   O      : OBSTACLE CHALLENGE mode
+ *   O      : OBSTACLE CHALLENGE, official 2026 section layout
+ *   O3     : OBSTACLE CHALLENGE, inspect all three stations per section
  *   X1/-1  : EMPTY-TRACK PATH TEST left/right
  *   b1/b0  : OBSTACLE BENCH mode on/off
  *   c      : CAMERA CALIBRATION mode
@@ -41,6 +42,7 @@
 #include "sensors.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path.h"
 #include "obstacle_path_test.h"
 #include "obstacle_live_test.h"
 #include "obstacle_seat_test.h"
@@ -312,7 +314,8 @@ static void print_serial_command_info()
   Serial.println("i          : Show this command list");
   Serial.println("m          : Select MANUAL mode");
   Serial.println("l          : Start OPEN CHALLENGE mode");
-  Serial.println("O          : Start OBSTACLE CHALLENGE mode");
+  Serial.println("O          : OBSTACLE CHALLENGE, official 2026 layout");
+  Serial.println("O3         : OBSTACLE CHALLENGE, check every station");
   Serial.println("X1 / X-1   : One-lap EMPTY-TRACK path test (left/right)");
   Serial.println("X0         : Stop EMPTY-TRACK path test");
   Serial.println("Y1 / Y-1   : LIVE path test; PARKING EXIT IS BYPASSED");
@@ -616,7 +619,25 @@ void parseMessage(char *msg)
     break;
 
   case 'O':
-    // Start Obstacle Challenge.
+    // The same challenge implementation serves both layouts. Select before
+    // enabling motion, so a running or paused drive cannot change its rule.
+    if (*beg != '\0' && strcmp(beg, "3") != 0)
+    {
+      Serial.println("Usage: O (official layout) or O3 (check every station)");
+      break;
+    }
+    if (system_enabled || current_mode == MODE_OBSTACLE_CHALLENGE)
+    {
+      Serial.println("Disable the robot and stop the active run with z before changing obstacle layout.");
+      break;
+    }
+    obstacle_path_set_section_layout_mode(
+        *beg == '3' ? OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+                    : OBSTACLE_SECTION_LAYOUT_OFFICIAL);
+    Serial.print("Obstacle section layout: ");
+    Serial.println(obstacle_path_section_layout_mode() ==
+                       OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+        ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
     select_temporary_mode(MODE_OBSTACLE_CHALLENGE);
     break;
 

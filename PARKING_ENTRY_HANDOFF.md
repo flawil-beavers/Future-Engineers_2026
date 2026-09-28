@@ -20,6 +20,15 @@ IDE-managed PlatformIO executable.
 Current branch is `pure-pursuit`. The current documentation and repository
 organization changes are:
 
+2026-09-26 update: read the newest entry in `AGENT_DOCUMENTATION.md` before
+using the historical verification figures below. Isolated final-parking practice
+is now disabled, so normal O follows the parked-start pipeline. Final bay entry
+remains locked. Diagnostic limits/record validation were corrected and the M7
+build passes with diagnostics enabled at 432448 bytes RAM / 448976 flash and
+disabled at 366816 / 443968. No upload occurred. The sensitivity grid retains
+all CW cases but exposes CCW bearing-window failures under assumed errors;
+the first CW test must also establish diagnostic coverage, timing and headroom.
+
 - `AGENT_DOCUMENTATION.md`
 - `OBSTACLE_CHALLENGE_TEST_PLAN.md`
 - `PARKING_ENTRY_HANDOFF.md`

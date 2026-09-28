@@ -620,6 +620,8 @@ $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
 
 The serial monitor runs at 115200 baud. `STARTUP_ROBOT_MODE` in `include/config.h` selects the competition mode; the current configuration starts the Obstacle Challenge. Set it to `MODE_OPEN_CHALLENGE` for the Open Challenge and rebuild M7. The power switch supplies the robot, while the separate enable/start switch begins or pauses the selected program without requiring a computer or phone on the competition field.
 
+All build-time mode and test switches are grouped at the top of `include/config.h`. For the current Obstacle setup, leave `STARTUP_ROBOT_MODE=MODE_OBSTACLE_CHALLENGE`, set the enable switch LOW, power on, wait for the blue ready light, then enable the robot. The current test gates continue after parking exit and stop after the first lap. `OBSTACLE_STARTUP_CHECK_ALL_STATIONS=true` selects the surprise layout after a new M7 build; alternatively, send `O3` while disabled for the current power cycle (`O` selects the official layout). The separate `include/parking_exit_diagnostics_config.h` controls only parking-exit logging. Changing the mode or a gate in the header requires rebuilding and uploading M7 before it affects the robot.
+
 Dedicated modes are provided for servo centre, turn radius, motor minimum drive, speed PI, ToF diagnostics, camera colour/distance calibration and isolated obstacle-path tests. Their results are applied through `include/config.h`, and the same production code paths are then used by the challenge modes.
 
 # Video

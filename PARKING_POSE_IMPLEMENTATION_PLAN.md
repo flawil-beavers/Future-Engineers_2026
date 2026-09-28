@@ -52,9 +52,11 @@ backlash, but slip, compliance and sensor geometry must remain alternative cause
 - [x] Add diagnostic-complete, abort and truncation records, and recognize the
       logger's existing overflow marker. State transitions take priority over
       periodic samples.
-- [x] Consolidate each periodic sample into a compact bounded record and enforce
-      a 64 KiB maximum diagnostic contribution: at most 150 periodic records of
-      at most 380 bytes (57,000 bytes), plus at most 8 KiB of headers/events.
+- [x] Consolidate periodic samples and enforce a 64 KiB maximum diagnostic
+      contribution: at most 150 records within a 57,000-byte sample sub-budget,
+      plus at most 8 KiB of headers/events, counting CRLF. The formatting buffer
+      is 512 bytes; incomplete records are rejected explicitly. State changes
+      cannot bypass the sample count, and events reserve truncation/finish space.
 - [x] When diagnostics are enabled, increase the RAM log buffer from 128 KiB to
       **192 KiB**; keep 128 KiB when disabled. Historical logs have a 74,048-byte
       maximum among the reviewed complete parking runs and a 107,628-byte maximum
@@ -62,10 +64,13 @@ backlash, but slip, compliance and sensor geometry must remain alternative cause
       about 170 KiB, so 192 KiB provides roughly 23 KiB margin in the worst
       observed non-overflow case. Existing 128 KiB logs have overflowed twice.
       Do not use 256 KiB: it would leave only about 25.9 KiB RAM. Verified M7
-      builds use 432,216 of 523,624 bytes (82.5%) with diagnostics and 366,640
-      bytes (70.0%) with them disabled. The enabled build leaves 91,408 bytes.
+      builds after the 2026-09-26 budget correction use 432,448 of 523,624
+      bytes (82.6%) with diagnostics and 366,816 bytes (70.1%) with them
+      disabled. The enabled build leaves 91,176 bytes.
 - [ ] Verify by code inspection and timing telemetry that diagnostics do not change
       exit state timing, motor/steering commands, sensor scheduling or normal saving.
+      Cached-only source inspection is complete (2026-09-26); physical timing
+      telemetry and returned-log coverage remain required.
 
 ## Offline analysis
 

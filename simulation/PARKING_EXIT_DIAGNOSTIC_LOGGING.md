@@ -13,7 +13,11 @@ Save the run through the normal robot procedure.
 default value is `1`. Setting it to `0` compiles out the diagnostic calls and
 restores the original 128 KiB log buffer. Enabled builds use 192 KiB. Each run
 is limited to 150 periodic records and a 64 KiB diagnostic contribution;
-state, correction and finish records remain higher priority.
+state, correction and finish records remain higher priority. Periodic records
+have a 57,000-byte sub-budget; events have an 8 KiB sub-budget, including
+reserved space for a truncation marker and the final event. Both budgets count
+CRLF. The formatting buffer holds 512 bytes, and an incomplete formatted sample
+is discarded with an explicit truncation marker rather than emitted as data.
 
 ## Schema 2
 
@@ -28,7 +32,8 @@ size and relevant manoeuvre constants.
   millimetres, measured speed in mm/s, gyro heading and two poses;
 - `correction` records the pose before and after an existing localization
   correction;
-- `truncated` means the 64 KiB diagnostic budget was reached;
+- `truncated` identifies a sample-count, sample-byte, event-byte or formatting
+  limit; state events and the reserved final event can continue;
 - `finish` identifies normal completion or the abort/hold reason.
 
 The `pose=x,y,heading` value is the firmware estimator. `nominal=x,y,heading`
@@ -41,6 +46,13 @@ state identifies one.
 
 The existing logger's `LOG BUFFER OVERFLOW` marker still indicates whole-log
 overflow. It is separate from diagnostic truncation.
+
+The analyzer rejects samples with missing/partial ToF fields or exceeded
+declared sample/byte limits. A new invalid ToF observation invalidates older
+evidence; only `same` may reuse a previous valid observation within its age
+limit. Rear-ToF age is measured from receipt on M7, not from acquisition on M4:
+the current protocol contains no acquisition timestamp. This limits conclusions
+about short reversal transients; changing the protocol is outside this test.
 
 ## Analysis
 

@@ -1,10 +1,36 @@
 # Agent documentation and engineering handoffs
 
-## 2026-09-27: green reported600 mm passes offline shape; range inconsistency
+## 2026-09-28: owner corrects green placement; pause colour tests
 
-Owner returns and confirms green ready; after capture clarification explicitly
-confirms about600 mm measured from camera. Image looks similarly sized to prior
-near setup, but do not override physical report from pose-derived appearance.
+Latest owner correction: green had been moved, so the 20260927 green distance
+capture cannot be treated as a600 mm reference or paired with the red image.
+The prior section's~414-versus-600 discrepancy is **withdrawn** as calibration
+evidence; the image and mask-shape result remain valid. User explicitly asks to
+repeat green later, close all colour testing for now, and await next command.
+No repeat capture, firmware edit, upload or additional robot command after this
+request. Installed M7 remains the prior camshot build73124b... .
+
+Red original captured before pause on2026-09-27 (file creation time), copied
+unchanged as `simulation/evidence/camera_diagnostics/20260927_red_distance_check_01.serial.bin`,
+155612 bytes SHA256 `6652eab13850f075b0438f51eb41e20328aede075522a020cbf523dc2a7b51f7`;
+derived PNG65560 bytes SHA256
+`ec09e048b2fb51966a2325e9a50bd8cc8ef3b304e9adc3e14144c3813e25db02`.
+User reported red ready at requested nominal place but no independent ruler
+reference. Fresh stationary diagnostic original
+`20260927_red_distance_check_stationary.txt`,2490 bytes SHA256
+`ba76775d672a43b97b175ae786acdf34466527bdfcf3e3e824954a4dc544c109`:
+three RED rows valid,width19,height41,area796..820,bottom120,estimated571.4 mm;
+exposure149,camera error0. These are colour/shape observations, not corrected
+green/red distance calibration. Green was displaced at an unknown time and
+position; do not infer paired colour bias or change ground-plane constants.
+Next: wait for owner's command. If colour test resumes, repeat green with a
+measured camera-to-foot distance and record exact placement before capture.
+
+## 2026-09-27: green image passes offline shape; distance later invalidated
+
+Owner returned and confirmed green ready; initially reported about600 mm from
+camera, then corrected that it had been moved. Actual placement at capture is
+unknown, so the image cannot be used for distance calibration.
 Fresh stationary camshot passes CRC/footer,frame46536,exposure155,current prepared
 M7 remains73124b... (full prior entry), no new firmware/drive commands.
 Exact original `simulation/evidence/camera_diagnostics/20260927_green_distance_check_01.serial.bin`,
@@ -12,7 +38,7 @@ Exact original `simulation/evidence/camera_diagnostics/20260927_green_distance_c
 `2fe34a9decc873a44ac2dff8859c5f98c579fcfe4d3a4cb173b1d71386850458`;
 derived PNG66030 bytes SHA256
 `a89d073a86ac67ca17cdfabbf732d51f96ab91f21bd5b9232ff714fccc07fc16`.
-Label records distance check, not independently surveyed reference. Exact foot/
+Label records intended distance check, not verified reference. Exact foot/
 front-face ruler convention, mounting pose and lighting not independently recorded.
 
 Raw largest green173x57,area1800,bbox146..318,y80..136 invalid broad/edge;
@@ -20,13 +46,11 @@ component-local column thresholds5/7/9/11 all yield one27x57,area1424,bbox162..1
 centre174,y80..136 candidate passing unchanged acquisition geometry. Report in
 `local_workspace/camera-green-analysis/green_600_report.json`. Filtered candidate
 NOT installed in robot. Its unclipped foot136 with existing scale24000/horizon78
-would imply~414 mm, disagreeing with owner-reported600 mm. Raw clipped region
+would imply~414 mm, but no valid physical reference exists. Raw clipped region
 would use edge fallback180 mm, but is acquisition-invalid; don't label that as
 an accepted range. Config calibration comments expect red maxY118 at600 mm.
-No range/HSV adjustment from one approximate placement. Next pending user swaps
-red at exactly same physical600 mm position, chassis fixed, enable off; capture
-and compare foot/image to discriminate colour-foot segmentation versus distance/
-mounting/model issue. Then same background without pillar. Preserve raw veto.
+No range/HSV adjustment or paired green/red inference from this placement.
+Latest owner request pauses all colour tests. Preserve raw veto.
 
 ## 2026-09-27: owner away; offline column-support experiment only
 
@@ -7490,3 +7514,110 @@ batch from an unchanged copy committed under
 metadata table and record concise hashes/findings here. Keep generated reports
 in `local_workspace/`. Change no steering or backlash compensation until
 repeatable evidence supports it.
+
+## 2026-09-28: selectable section layout for surprise practice
+
+`O` now explicitly selects the official 2026 section layout; `O3` selects
+`CHECK_ALL_STATIONS` for a proposed surprise/practice arrangement with one
+pillar at each of the three longitudinal stations. Both commands run the same
+Obstacle Challenge. Only the inference of empty stations changes: with `O3`,
+each station needs its own camera CLEAR evidence or a confirmed pillar.
+Selection persists through `obstacle_path_reset()` and parking exit, and
+defaults to official after restart with
+`OBSTACLE_STARTUP_CHECK_ALL_STATIONS=false` in `include/config.h`; setting it
+true before an M7 build enables cable-free surprise-mode startup. The former
+`OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT` compile-time flag was replaced by this
+startup selection. Serial selection is allowed only while
+motors are disabled and no obstacle run is active; stop a run with `z` first.
+The startup and confirmation logs identify the selected layout. The official
+option still suppresses rule inference during parking exit/scout/join/connector.
+`OBSTACLE_CHALLENGE_TEST_PLAN.md` documents the commands and scope.
+
+The official PDF Figure 8c remains the basis for the normal two-pillar rule;
+the official Questions & Answers were checked again on 2026-09-28 with no
+relevant layout clarification. Three pillars per section are a hypothetical
+surprise format, not an asserted official rule. New compile-time cases cover
+middle-only, opposite-ends and three-occupied masks in check-all mode. The
+IDE-managed PlatformIO M7 build passes (RAM 432528/523624, flash
+455608/786432); final binary SHA256
+`42a4d12acc8de02c7a1c72c955543a5f1e63c2293075179790558894c9c5a938`.
+M4 was unaffected and not built. No upload or physical test occurred. Layout
+selection does not validate that the planner can safely pass every
+three-pillar geometry, nor does it correct existing camera CLEAR uncertainty.
+
+Next: retain `O` for the standard one-lap regression on a rule-valid field.
+Upload only with the user's explicit authorization per the test plan. Validate
+`O3` separately on a controlled three-station arrangement; record the mode
+marker, complete USB log and physical clearance before claiming surprise-mode
+driving capability.
+
+## 2026-09-28: grouped mode and test switches
+
+`include/config.h` now begins with a single mode-selection panel. Existing
+names and values are preserved: power-on mode, official/surprise section
+layout, parking exit and rear-ToF gates, edge localization, entry discovery,
+first-lap limit, final parking/practice, and camera development switches are
+grouped in the order a normal Obstacle run uses them. The separate parking-exit
+logging switch remains in `include/parking_exit_diagnostics_config.h` and is
+cross-referenced from the panel. README states the cable-free start sequence.
+No drive, sensor, camera or route implementation was changed in this session.
+
+The misleading `OBSTACLE_PARKING_EXIT_TEST_ONLY=true` setting is explicitly
+documented: with `OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED=true`, the robot
+continues after exit; the former flag still clears verbose startup logging.
+At the present values, a power-on Obstacle run leaves the parking bay, joins
+the path and stops after lap 1. The panel's 23 listed selectors each have one
+definition. IDE-managed PlatformIO M7 build passes: RAM 432528/523624 and
+flash 455608/786432; binary SHA256
+`3d0a5b119f56c841a8f980710af8dc226b5b062165f718363d7a70c9340b5e7d`.
+The M4 did not consume the moved selectors and was not built. No firmware was
+uploaded or physically tested.
+
+Next: for the planned standard regression, retain the present selector values
+and follow `OBSTACLE_CHALLENGE_TEST_PLAN.md`. If a different mission is chosen,
+edit the top panel, rebuild/upload M7 with authorization, and verify the
+selected start mode and hold gates on the robot before a powered run.
+
+## 2026-09-28: second-straight end-station visibility audit
+
+Rechecked complete CW logs 396/397 in
+`simulation/evidence/parking_exit_diagnostics/`. Both confirmed a GREEN middle
+pillar at S2 station1, seat14, then held after its bypass at S2 station2
+(global station8). The RED confirmed pillar was S1 station2, seat11; the user
+may be recalling that colour when describing the second-straight stop.
+At the S2 hold, the inner/right seat16 was predicted at -48.73/-49.85 deg
+and 297.7/290.2 mm. The clear-evidence angle limit is
+65.3*0.42-1=26.426 deg, so that seat was not comfortably visible even though
+its range was usable. Its clear-frame count remained zero. The outer/left
+seat17 had already accumulated the required two CLEAR frames; at the hold its
+range was only 199.8/197.6 mm, below the 230 mm minimum. Waiting 800 ms at
+the same pose did not resolve seat16. Repeated odometry is evidence of a
+systematic viewpoint limitation, not an externally surveyed physical pose.
+
+`O3` removes official empty-station inference but retains this camera/route
+geometry. It therefore cannot be claimed to complete a three-pillar section
+from these logs. Next, before a powered three-pillar trial, use recorded pose
+and seat geometry to find an earlier or differently oriented view of both end
+seats within the conservative camera window, then preflight any proposed
+motion against known/unknown pillar and wall envelopes. Validate with real
+images and measured clearance; do not widen CLEAR angle/range limits merely
+to avoid the hold. No firmware or threshold change was made in this audit.
+
+Follow-up geometry calculation from the same field model: the final S2 seats
+are at (500,900) inner/right and (500,1100) outer/left, camera 125 mm ahead
+of the rear axle. At log396 hold pose (176.4,1120.5,0.58 deg), predicted
+bearings/ranges reproduce the logged -48.7 deg/297.7 mm and -6.8 deg/199.8
+mm. A candidate **earlier observation pose**, rear axle (-100,1160,-10 deg),
+puts the seats at -16.6 deg/533 mm and +5.4 deg/478 mm. Both satisfy the
+current 26.426 deg clear-angle and 230..600 mm range windows. Across 27
+static perturbations x+/-10 mm, y+/-10 mm, heading+/-2 deg, minimum angle
+margin is 5.98 deg and minimum range margin is 52.1 mm. At the nominal pose,
+the complete-robot capsule estimate to the confirmed middle green pillar
+(0,900), including its 42.5 mm movement radius, is about 140 mm; the worst
+perturbed static pose retains about 127 mm. These are model outputs, not swept
+path clearance, actual robot pose or image evidence. The current planner
+suppresses discovery steering while passing an injected pillar, so simply
+waiting at the later hold cannot achieve this earlier viewpoint. Next: model
+a feasible swept approach to the earlier pose without weakening pillar or
+wall margins, then verify camera frames and physical clearance in a bounded
+test before adopting it for O3.

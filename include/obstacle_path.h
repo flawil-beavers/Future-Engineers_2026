@@ -131,6 +131,21 @@ struct ObstacleClearanceSample {
     float innerCornerMm[4] = {};
 };
 
+/** Section layout assumption for the complete Obstacle Challenge.
+ * OFFICIAL uses the 2026 card rule to infer empty stations after confirmed
+ * pillars. CHECK_ALL requires direct evidence at every station and supports
+ * practice layouts with up to three occupied stations per section. Both use
+ * the same parking exit, perception, route planner and safety checks. */
+enum ObstacleSectionLayoutMode : uint8_t {
+    OBSTACLE_SECTION_LAYOUT_OFFICIAL,
+    OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+};
+
+/** Select before starting a run. The choice survives obstacle_path_reset()
+ * and lasts until restart, which restores the config.h startup selection. */
+void obstacle_path_set_section_layout_mode(ObstacleSectionLayoutMode mode);
+ObstacleSectionLayoutMode obstacle_path_section_layout_mode();
+
 /** Known-field waypoint planner and Pure Pursuit controller for the
  * WRO Future Engineers Obstacle Challenge.
  *

@@ -31,6 +31,23 @@ Command `O` selects the complete Obstacle Challenge, including parking exit;
 its direction is inferred from the nearer parking-wall ToF. Arm with the
 physical enable switch LOW, send `O`, verify that the terminal says
 `Pending mode: OBSTACLE_CHALLENGE`, and only then toggle the switch HIGH.
+`O` uses the official 2026 section layout: a confirmed middle pillar resolves
+both end stations as empty; two confirmed end pillars resolve the middle as
+empty. `O3` selects the surprise/practice layout. It runs the same complete
+challenge, but requires camera evidence or a confirmed pillar at **each** of
+the three stations in every section. It never infers an empty station from the
+other occupied stations, so three occupied stations can be discovered. Choose
+`O` or `O3` while disabled, before enabling motion. If a run is active, stop
+it with `z` first. The serial selection lasts until restart; startup defaults
+to the official layout because `OBSTACLE_STARTUP_CHECK_ALL_STATIONS=false` in
+`include/config.h`. For a cable-free surprise start after power cycling, set
+that option to `true` and build/upload M7 before the event.
+Verify `Obstacle section layout: OFFICIAL_2026` or `CHECK_ALL_STATIONS` in the
+terminal, followed by `Pending mode: OBSTACLE_CHALLENGE`; the run itself logs
+`[PATH LAYOUT] mode=...`. The added mode changes no camera thresholds,
+unparking, steering, route planning or safety clearance. Three-pillar route
+feasibility has not been demonstrated on the real robot; first validate a
+new arrangement at low risk and keep the disable switch reachable.
 `Y1`/`Y-1` are live-path tests that bypass parking and must never be started
 with the robot inside the parking lot. `Y0` stops an active live-path test.
 

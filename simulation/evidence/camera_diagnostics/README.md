@@ -30,7 +30,9 @@ of the setup were obtained. Drive flag was off as enforced by the export gate.
 | `20260927_green_camshot_01.serial.bin` | 155109 | `b38bd68ea468966baeea7fedeb184c473e8075c5bad155c4ea41b738b9fd198c` | Corrected uploaded M7 `73124b456ebac8e9f911256ad7f0a3a426a2c9c9c3d2c6af0e80d6d606f759e8`; CRC147553963,frame297,exposure1080; valid repeated export. |
 | `20260927_green_camshot_02.serial.bin` | 155827 | `cc3021a637bc53d6d72de2d9f1a9dae9cfda33f92667f9b6c508496eef1a5754` | Same corrected M7; CRC3011930585,frame130 after stream restart,exposure1080; second valid export. |
 | `20260927_post_camshot_stationary.txt` | 1949 | `32d5e248ad5268c5251f6c80c54c6641f7104359c40ac309127f1d5a602f7400` | Fresh normal c0 diagnostics after second corrected export: frame169->197,76.49..76.50 ms,error0 since restart; green still shape-invalid. |
-| `20260927_green_distance_check_01.serial.bin` | 154555 | `2fe34a9decc873a44ac2dff8859c5f98c579fcfe4d3a4cb173b1d71386850458` | Same prepared M7; CRC4171968638,frame46536,exposure155. User explicitly confirms green about600 mm measured from camera. Raw173x57/area1800 invalid; column9 candidate27x57/area1424,foot136, valid geometry. Candidate range model~414 mm disagrees with reported600 mm; red same-position comparison pending. |
+| `20260927_green_distance_check_01.serial.bin` | 154555 | `2fe34a9decc873a44ac2dff8859c5f98c579fcfe4d3a4cb173b1d71386850458` | Same prepared M7; CRC4171968638,frame46536,exposure155. User initially reported about600 mm from camera, then corrected that the green pillar had been moved; actual placement during capture is unknown. Raw173x57/area1800 invalid; column9 candidate27x57/area1424,foot136, valid geometry. Model output~414 mm is not a calibration error without a valid reference distance. Green/red paired comparison invalid; repeat later. |
+| `20260927_red_distance_check_01.serial.bin` | 155612 | `6652eab13850f075b0438f51eb41e20328aede075522a020cbf523dc2a7b51f7` | User reported red ready at requested nominal position after moving green. CRC2677930304,frame1527,exposure149. Do not pair with displaced green or infer calibrated distance without measured reference. Follow-on stationary diagnostics below. |
+| `20260927_red_distance_check_stationary.txt` | 2490 | `ba76775d672a43b97b175ae786acdf34466527bdfcf3e3e824954a4dc544c109` | After fresh c0, three RED rows valid: x163,width19,height41,area796..820,foot120,estimated571.4 mm,exposure149. Background GREEN thin y80..84 invalid. Buffered prefix before c0 acknowledgement excluded. |
 
 Derived PNG SHA256: prototype
 `b99708051071adda63e5540c5336bd9bc548b14a4e4aa7d8b342a5210ff8fd2e`,
@@ -38,6 +40,8 @@ Derived PNG SHA256: prototype
 02 `7fc150e9849d95d9d13fb56348309d67bc1b42d7585b818a5bb5ae12a726f374`.
 Distance-check derived PNG SHA256
 `a89d073a86ac67ca17cdfabbf732d51f96ab91f21bd5b9232ff714fccc07fc16`.
+Red distance-check PNG65560 bytes SHA256
+`ec09e048b2fb51966a2325e9a50bd8cc8ef3b304e9adc3e14144c3813e25db02`.
 DFU reports successful downloads, not independent firmware readback.
 Green mask replay uses `simulation/analyze_camera_green.py`; generated reports
 remain under local_workspace. Largest component in final02 is191x55 pixels,

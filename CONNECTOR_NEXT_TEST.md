@@ -1,5 +1,14 @@
 # Connector diagnostic run and acceptance sequence
 
+## Paused at owner's request (2026-09-28)
+
+Owner corrected that green had been moved: the 20260927 green distance check
+cannot serve as a600 mm reference or be paired with red. Red stationary capture
+and diagnostics are archived in `simulation/evidence/camera_diagnostics/`.
+All colour measurements are paused pending the owner's next command. No
+distance/HSV/route changes from the invalid pairing; if resumed, repeat green
+with measured camera-to-foot placement before comparison.
+
 ## Immediate next step: stationary camera check before more motion
 
 Completed red and green A/B/A checks: red five fresh diagnostics valid; green

@@ -96,6 +96,9 @@ bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
 bool runtimeTestMode = false;
+ObstacleSectionLayoutMode sectionLayoutMode = OBSTACLE_STARTUP_CHECK_ALL_STATIONS
+    ? OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+    : OBSTACLE_SECTION_LAYOUT_OFFICIAL;
 uint8_t runtimeLapTarget = 3;
 float runtimeSpeedCapMmS = 0.0f;
 float loopLengthMm = 0.0f;
@@ -427,7 +430,7 @@ uint8_t stationIndexForSeat(uint8_t seatIndex)
 
 uint8_t sectionInferredEmpty(uint8_t section)
 {
-    if (!OBSTACLE_USE_OFFICIAL_SECTION_LAYOUT || section >= COURSE_SECTION_COUNT)
+    if (section >= COURSE_SECTION_COUNT)
         return 0;
     // Preserve the explicit parking-exit/scout/connector checks, including
     // arbitrary diagnostic layouts in the starting section. Layout inference
@@ -440,7 +443,8 @@ uint8_t sectionInferredEmpty(uint8_t section)
     for (uint8_t local = 0; local < 6; ++local)
         if (seats[section * 6 + local].confirmed)
             mask |= static_cast<uint8_t>(1U << local);
-    return obstacle_section_inferred_empty(mask);
+    return obstacle_section_empty_for_mode(
+        mask, sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL);
 }
 
 bool stationResolved(uint8_t stationIndex)
@@ -1684,7 +1688,8 @@ void displaceForSeat(
     PathPoint *path,
     uint8_t seatIndex,
     float clearanceMm,
-    bool useOuterPlateau)
+    bool useOuterPlateau,
+    bool earlyMiddleView = false)
 {
     CandidateSeat &seat = seats[seatIndex];
     const uint16_t center = nearestPathIndex(
@@ -1697,6 +1702,31 @@ void displaceForSeat(
     const float heading = baselinePath[center].headingDeg * PI / 180.0f;
     const float normalX = -sinf(heading);
     const float normalY = cosf(heading);
+    if (earlyMiddleView)
+    {
+        // Check-all practice: the camera needs to inspect the station after a
+        // middle green/right pillar. Start the left-side bypass earlier, then
+        // flatten it before the pillar so Pure Pursuit points toward the next
+        // station while the camera is still 230..600 mm away. Values are
+        // lateral millimetres at 50 mm path samples, -500..+400 mm from the
+        // pillar. The 160 mm offset at the pillar retains the usual 260 mm
+        // centre-to-pillar clearance (right seat is at -100 mm).
+        static constexpr float kEarlyViewOffsetMm[] = {
+            0, 0, 20, 80, 130, 185, 205, 215, 200, 170,
+            160, 160, 150, 130, 100, 70, 40, 20, 0};
+        for (int offset = -10; offset <= 8; ++offset)
+        {
+            int index = static_cast<int>(center) + offset;
+            while (index < 0) index += pathLength;
+            while (index >= pathLength) index -= pathLength;
+            const float lateral = kEarlyViewOffsetMm[offset + 10];
+            path[index].x += normalX * lateral;
+            path[index].y += normalY * lateral;
+        }
+        smoothRange(path, center, 10, 8);
+        recomputeSpeedProfile(path);
+        return;
+    }
     const bool safeOuterPlateau =
         useOuterPlateau && targetsOuterExtreme(seat);
     const int approachLeadWaypoints = safeOuterPlateau
@@ -1741,9 +1771,92 @@ void displaceForSeat(
     recomputeSpeedProfile(path);
 }
 
+bool earlyMiddleViewEligible(uint8_t seatIndex)
+{
+    if (sectionLayoutMode != OBSTACLE_SECTION_LAYOUT_CHECK_ALL ||
+        runtimeTestMode || seatIndex >= OBSTACLE_SEAT_COUNT ||
+        seatIndex % 6 != 2 || seats[seatIndex].red ||
+        seats[seatIndex].lateralMm >= 0.0f)
+        return false;
+
+    const uint8_t station = seatIndex / COURSE_SEATS_PER_STATION;
+    // This approach starts near the preceding station. It must be physically
+    // empty, and the following station must still need an individual check.
+    if (!discoveryStations[station - 1].observedClear ||
+        stationResolved(station + 1))
+        return false;
+    const float forward = cyclicDistanceForward(
+        baselinePath[progressIndex].distanceMm,
+        seats[seatIndex].pathDistanceMm);
+    return forward >= 400.0f && forward < loopLengthMm * 0.5f;
+}
+
+bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
+{
+    const int center = nearestPathIndex(
+        baselinePath, seats[seatIndex].x, seats[seatIndex].y,
+        0, pathLength);
+    const uint8_t middleStation = seatIndex / COURSE_SEATS_PER_STATION;
+    const uint8_t previousStation = middleStation - 1;
+    for (int offset = -10; offset <= 3; ++offset)
+    {
+        int index = center + offset;
+        while (index < 0) index += pathLength;
+        while (index >= pathLength) index -= pathLength;
+        const uint16_t previous = (index + pathLength - 1) % pathLength;
+        const uint16_t next = (index + 1) % pathLength;
+        const float dx = path[next].x - path[previous].x;
+        const float dy = path[next].y - path[previous].y;
+        const float heading = atan2f(dy, dx) * 180.0f / PI;
+        if (!isfinite(heading))
+            return false;
+        if (offset > -10)
+        {
+            const float beforeHeading = atan2f(
+                path[index].y - path[previous].y,
+                path[index].x - path[previous].x);
+            const float afterHeading = atan2f(
+                path[next].y - path[index].y,
+                path[next].x - path[index].x);
+            const float segment = fmaxf(1.0f, hypotf(
+                path[next].x - path[index].x,
+                path[next].y - path[index].y));
+            const float curvature = fabsf(
+                wrap180((afterHeading - beforeHeading) * 180.0f / PI) *
+                PI / 180.0f) / segment;
+            if (atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI >
+                OBSTACLE_MAX_PURSUIT_STEERING_DEG)
+                return false;
+        }
+        for (uint8_t half = 0; half < 2; ++half)
+        {
+            const float x = half == 0 ? path[index].x
+                : 0.5f * (path[index].x + path[next].x);
+            const float y = half == 0 ? path[index].y
+                : 0.5f * (path[index].y + path[next].y);
+            for (uint8_t other = 0; other < OBSTACLE_SEAT_COUNT; ++other)
+            {
+                // The preceding station has two direct camera CLEAR records;
+                // one confirmed middle pillar excludes its paired seat.
+                if (other / COURSE_SEATS_PER_STATION == previousStation ||
+                    (other / COURSE_SEATS_PER_STATION == middleStation &&
+                     other != seatIndex))
+                    continue;
+                ObstacleClearanceSample sample{};
+                if (!calculateClearanceAtPose(
+                        seats[other], x, y, heading, sample) ||
+                    sample.wallMm < 40.0f || sample.pillarMm < 40.0f)
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
 void rebuildLivePath()
 {
     memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
+    int8_t earlyViewSeat = -1;
     for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
     {
         if (seats[i].confirmed && seats[i].injected)
@@ -1751,13 +1864,47 @@ void rebuildLivePath()
             const float clearance = validatedClearanceForSeat(i);
             const bool parkingEntryGreenPlateau =
                 routeTurnSign > 0 && i == 5 && !seats[i].red;
+            const bool earlyView = earlyMiddleViewEligible(i);
             displaceForSeat(
                 livePath,
                 i,
                 clearance,
                 parkingEntryGreenPlateau ||
                     fabsf(
-                        clearance - OBSTACLE_OUTER_SAFE_CLEARANCE_MM) < 0.1f);
+                        clearance - OBSTACLE_OUTER_SAFE_CLEARANCE_MM) < 0.1f,
+                earlyView);
+            if (earlyView)
+                earlyViewSeat = static_cast<int8_t>(i);
+        }
+    }
+    if (earlyViewSeat >= 0)
+    {
+        if (earlyMiddleViewPathSafe(
+                livePath, static_cast<uint8_t>(earlyViewSeat)))
+        {
+            Serial.print("[PATH EARLY VIEW] preflight PASS seat=");
+            Serial.println(earlyViewSeat);
+        }
+        else
+        {
+            // Retain the established bypass and its unresolved-station hold
+            // if a different layout, wall, or curvature invalidates the view.
+            Serial.print("[PATH EARLY VIEW] preflight FAIL seat=");
+            Serial.println(earlyViewSeat);
+            memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
+            for (uint8_t i = 0; i < OBSTACLE_SEAT_COUNT; ++i)
+            {
+                if (!seats[i].confirmed || !seats[i].injected)
+                    continue;
+                const float clearance = validatedClearanceForSeat(i);
+                const bool parkingEntryGreenPlateau =
+                    routeTurnSign > 0 && i == 5 && !seats[i].red;
+                displaceForSeat(
+                    livePath, i, clearance,
+                    parkingEntryGreenPlateau ||
+                        fabsf(clearance -
+                              OBSTACLE_OUTER_SAFE_CLEARANCE_MM) < 0.1f);
+            }
         }
     }
     recomputeSpeedProfile(livePath);
@@ -3571,6 +3718,18 @@ PathPoint findConnectorLookahead(float lookaheadMm)
 }
 } // namespace
 
+void obstacle_path_set_section_layout_mode(ObstacleSectionLayoutMode mode)
+{
+    sectionLayoutMode = mode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+        ? OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+        : OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+}
+
+ObstacleSectionLayoutMode obstacle_path_section_layout_mode()
+{
+    return sectionLayoutMode;
+}
+
 void obstacle_path_reset()
 {
     pathLength = 0;
@@ -3663,6 +3822,9 @@ void obstacle_path_start(
     bool parking_entry_discovery)
 {
     obstacle_path_reset();
+    Serial.print("[PATH LAYOUT] mode=");
+    Serial.println(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+        ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
     runtimeTestMode = test_mode;
     runtimeLapTarget = lap_target > 0
         ? lap_target
@@ -4481,6 +4643,9 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         // Recomputed from confirmed seats, not persisted as observed clear.
         // A later contradicting detection automatically revokes the inference.
         Serial.print("[PATH LAYOUT] section="); Serial.print(seatIndex / 6);
+        Serial.print(" mode=");
+        Serial.print(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+            ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
         Serial.print(" inferred_empty_station_mask=");
         Serial.println(sectionInferredEmpty(seatIndex / 6));
     }

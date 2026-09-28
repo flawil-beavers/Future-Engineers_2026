@@ -11,6 +11,8 @@ import math
 import argparse
 import pathlib
 import re
+import csv
+import itertools
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -71,14 +73,22 @@ def orientation(ax: float, ay: float, bx: float, by: float, cx: float, cy: float
 def segments_intersect(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
     ax, ay, bx, by = a
     cx, cy, dx, dy = b
-    return (
-        orientation(ax, ay, bx, by, cx, cy)
-        * orientation(ax, ay, bx, by, dx, dy)
-        <= 0.0
-        and orientation(cx, cy, dx, dy, ax, ay)
-        * orientation(cx, cy, dx, dy, bx, by)
-        <= 0.0
-    )
+    o1 = orientation(ax, ay, bx, by, cx, cy)
+    o2 = orientation(ax, ay, bx, by, dx, dy)
+    o3 = orientation(cx, cy, dx, dy, ax, ay)
+    o4 = orientation(cx, cy, dx, dy, bx, by)
+    if o1 * o2 < 0.0 and o3 * o4 < 0.0:
+        return True
+    # Collinearity alone does not imply overlap: disjoint collinear segments
+    # must retain their real distance rather than being reported as touching.
+    def on_segment(px: float, py: float, segment: tuple[float, ...]) -> bool:
+        x1, y1, x2, y2 = segment
+        return (min(x1, x2) - 1e-9 <= px <= max(x1, x2) + 1e-9
+                and min(y1, y2) - 1e-9 <= py <= max(y1, y2) + 1e-9)
+    return ((abs(o1) < 1e-9 and on_segment(cx, cy, a))
+            or (abs(o2) < 1e-9 and on_segment(dx, dy, a))
+            or (abs(o3) < 1e-9 and on_segment(ax, ay, b))
+            or (abs(o4) < 1e-9 and on_segment(bx, by, b)))
 
 
 def segment_distance(a: tuple[float, ...], b: tuple[float, ...]) -> float:
@@ -95,10 +105,11 @@ def segment_distance(a: tuple[float, ...], b: tuple[float, ...]) -> float:
 
 
 def scout_pose(
-    x: float, y: float, heading_deg: float, turn: str, travel_mm: float
+    x: float, y: float, heading_deg: float, turn: str, travel_mm: float,
+    radius_mm: float = RADIUS_MM,
 ) -> tuple[float, float, float]:
     route_turn_sign = -1.0 if turn == "CW" else 1.0
-    curvature = -route_turn_sign / RADIUS_MM
+    curvature = -route_turn_sign / radius_mm
     heading = math.radians(heading_deg)
     remaining = travel_mm
     while remaining > 0.1:
@@ -205,6 +216,44 @@ def check_state_transitions() -> None:
         assert actual == expected, (name, actual, expected)
 
 
+def sensitivity_log(path: pathlib.Path) -> list[dict[str, object]]:
+    """Explore assumed errors; these bounds are not physical validation."""
+    text = path.read_text(errors="replace")
+    turn_match = TURN_RE.search(text)
+    result_match = RESULT_RE.search(text)
+    if not turn_match or not result_match:
+        raise ValueError(f"missing scout pose in {path.name}")
+    turn = turn_match.group(1)
+    station = int(result_match.group("station"))
+    start = tuple(float(result_match.group(key)) for key in ("x", "y", "h"))
+    seat = preceding_inner_seat(turn, station)
+    rows = []
+    for dx, dy, dh, radius_factor, ds in itertools.product(
+            (-10.0, 0.0, 10.0), (-10.0, 0.0, 10.0), (-2.0, 0.0, 2.0),
+            (0.95, 1.0, 1.05), (-5.0, 0.0, 5.0)):
+        radius = RADIUS_MM * radius_factor
+        travel = SCOUT_MM + ds
+        perturbed = (start[0] + dx, start[1] + dy, start[2] + dh)
+        points = [float(value) for value in range(0, int(travel), 5)] + [travel]
+        clearances = [clearance(scout_pose(*perturbed, turn, distance, radius), seat)
+                      for distance in points]
+        wall = min(value[0] for value in clearances)
+        pillar = min(value[1] for value in clearances)
+        bearing, distance = camera_geometry(
+            scout_pose(*perturbed, turn, travel, radius), seat)
+        bearing_margin = BEARING_LIMIT_DEG - abs(bearing)
+        range_margin = min(distance - VIEW_MIN_MM, VIEW_MAX_MM - distance)
+        rows.append(dict(log=path.stem, turn=turn, dx_mm=dx, dy_mm=dy,
+                         dh_deg=dh, radius_mm=radius, travel_mm=travel,
+                         bearing_deg=bearing, range_mm=distance,
+                         bearing_margin_deg=bearing_margin,
+                         range_margin_mm=range_margin,
+                         wall_mm=wall, pillar_mm=pillar,
+                         passed=wall > 0 and pillar > 0
+                         and bearing_margin >= 0 and range_margin >= 0))
+    return rows
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Replay parking-entry scout geometry from robot logs."
@@ -217,6 +266,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--first-log", type=int, default=362)
     parser.add_argument("--last-log", type=int, default=369)
+    parser.add_argument("--sensitivity", action="store_true",
+                        help="explore assumed +/-10 mm XY, +/-2 deg, +/-5%% radius, +/-5 mm travel")
     return parser.parse_args()
 
 
@@ -241,6 +292,26 @@ def main() -> None:
     assert count == expected, (count, expected)
     assert failures == 0, failures
     print(f"geometry_cases: {count}/{expected} PASS")
+    if args.sensitivity:
+        rows = []
+        print("Sensitivity assumptions, NOT measured robot tolerances: "
+              "XY +/-10 mm; heading +/-2 deg; radius +/-5%; travel +/-5 mm")
+        for number in range(args.first_log, args.last_log + 1):
+            cases = sensitivity_log(args.log_dir / f"log_{number}.txt")
+            rows.extend(cases)
+            print(f"log_{number}: {sum(bool(row['passed']) for row in cases)}/{len(cases)} "
+                  f"assumed cases within view/clearance; "
+                  f"min bearing/range margin={min(float(r['bearing_margin_deg']) for r in cases):.2f}deg/"
+                  f"{min(float(r['range_margin_mm']) for r in cases):.1f}mm; "
+                  f"wall/pillar={min(float(r['wall_mm']) for r in cases):.1f}/"
+                  f"{min(float(r['pillar_mm']) for r in cases):.1f}mm")
+        output = ROOT / "local_workspace" / "parking-entry-sensitivity.csv"
+        output.parent.mkdir(exist_ok=True)
+        with output.open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f"Sensitivity results: {output.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

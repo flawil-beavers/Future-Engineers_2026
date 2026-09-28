@@ -73,6 +73,28 @@ placement within its movement circle, localization error, battery effects, or
 the user's physical contact observation. The firmware preflight and physical
 test sequence therefore remain mandatory.
 
+### Assumed-error sensitivity (2026-09-26)
+
+Run `python simulation/parking_entry_scout_sim.py --sensitivity`. The deterministic
+grid uses +/-10 mm X/Y, +/-2 degrees heading, +/-5% radius and +/-5 mm travel,
+each at its negative, zero and positive level: 243 combinations per log. These
+are exploratory assumptions, not measured robot error bounds or probabilities.
+Detailed output is regenerated in `local_workspace/parking-entry-sensitivity.csv`.
+
+All 1,215 CW combinations pass the modeled view/clearance checks. For CCW,
+logs 364/365/369 pass 215/228/210 of 243 respectively. The 84 failures concern
+the bearing window, with worst bearing margin -6.42 degrees. Across all 1,944
+combinations, minimum modeled wall/pillar clearances are 121.9/153.4 mm;
+minimum range margin is only 0.3 mm. This is a discrete grid over the modeled
+field walls and guarded pillar, not a continuous proof or camera/contact test.
+Retain CW-first validation and the unresolved-seat stop. Do not lengthen the
+scout or widen the camera window based on these assumptions alone.
+
+`python scripts/test-parking-entry-geometry.py` checks the model's segment
+intersection/distance primitives and mirrored analytical arc endpoints. The
+intersection routine distinguishes disjoint collinear segments from overlap;
+the eight nominal fixture results are unchanged by that correction.
+
 ## Historical scan-pose search
 
 `parking_scan_search.py` is the earlier bounded search that explored two extra

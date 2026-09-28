@@ -18,13 +18,19 @@ constexpr uint32_t SCHEMA_VERSION = 2;
 constexpr uint32_t SAMPLE_PERIOD_MS = 200;
 constexpr uint16_t SAMPLE_LIMIT = 150;
 constexpr size_t DIAGNOSTIC_BYTE_LIMIT = 64 * 1024;
-constexpr size_t LINE_CAPACITY = 380;
+constexpr size_t SAMPLE_BYTE_LIMIT = 57000;
+constexpr size_t EVENT_BYTE_LIMIT = 8 * 1024;
+constexpr size_t LINE_CAPACITY = 512;
+static_assert(SAMPLE_BYTE_LIMIT + EVENT_BYTE_LIMIT <= DIAGNOSTIC_BYTE_LIMIT,
+              "Diagnostic sub-budgets must fit the hard byte limit");
 
 bool active = false;
 bool truncated = false;
 uint32_t lastSampleMs = 0;
 uint16_t sampleCount = 0;
 size_t emittedBytes = 0;
+size_t sampleBytes = 0;
+size_t eventBytes = 0;
 char lastState[28] = "";
 int8_t lastDirection = 0;
 uint32_t lastTofSequence[TOF_COUNT] = {};
@@ -69,23 +75,37 @@ void integrateNominal()
     }
 }
 
-void emitLine(const char *line, bool priority)
+bool emitLine(const char *line, bool priority, bool terminal = false)
 {
-    const size_t length = strlen(line);
-    if (!priority && emittedBytes + length + 1 > DIAGNOSTIC_BYTE_LIMIT)
-    {
-        if (!truncated)
-        {
-            truncated = true;
-            Serial.println("[PARK_DIAG] v=2 type=truncated reason=byte_budget");
-        }
-        return;
-    }
+    // println emits CRLF; include both bytes in the hard budget. Reserve room
+    // for one truncation marker and the final completion/abort event.
+    const size_t length = strlen(line) + 2;
+    const size_t eventLimit = terminal ? EVENT_BYTE_LIMIT
+                                     : EVENT_BYTE_LIMIT - 2 * (LINE_CAPACITY + 1);
+    if (emittedBytes + length > DIAGNOSTIC_BYTE_LIMIT ||
+        (priority ? eventBytes + length > eventLimit
+                  : sampleBytes + length > SAMPLE_BYTE_LIMIT))
+        return false;
     Serial.println(line);
-    emittedBytes += length + 1;
+    emittedBytes += length;
+    if (priority) eventBytes += length;
+    else sampleBytes += length;
+    return true;
 }
 
-void emitEvent(const char *type, const char *detail, bool priority = true)
+void markTruncated(const char *reason)
+{
+    if (truncated)
+        return;
+    truncated = true;
+    char line[LINE_CAPACITY];
+    snprintf(line, sizeof(line),
+             "[PARK_DIAG] v=2 type=truncated t=%lu reason=%s",
+             static_cast<unsigned long>(millis()), reason);
+    emitLine(line, true, true);
+}
+
+void emitEvent(const char *type, const char *detail, bool terminal = false)
 {
     char line[LINE_CAPACITY];
     snprintf(line, sizeof(line),
@@ -93,7 +113,8 @@ void emitEvent(const char *type, const char *detail, bool priority = true)
              static_cast<unsigned long>(SCHEMA_VERSION), type,
              static_cast<unsigned long>(millis()), detail,
              encoder_pos, get_distance(), get_angle(), set_degree, target_speed);
-    emitLine(line, priority);
+    if (!emitLine(line, true, terminal))
+        markTruncated("event_budget");
 }
 
 void beginDiagnostics(int8_t turnSign)
@@ -103,6 +124,8 @@ void beginDiagnostics(int8_t turnSign)
     lastSampleMs = 0;
     sampleCount = 0;
     emittedBytes = 0;
+    sampleBytes = 0;
+    eventBytes = 0;
     lastState[0] = '\0';
     lastDirection = commandDirection();
     memset(lastTofSequence, 0, sizeof(lastTofSequence));
@@ -116,12 +139,15 @@ void beginDiagnostics(int8_t turnSign)
             *character = '_';
     char line[LINE_CAPACITY];
     snprintf(line, sizeof(line),
-             "[PARK_DIAG_CONFIG] v=%lu build=%s turn=%d center=%d mm_per_count=%.7f period_ms=%lu sample_limit=%u byte_limit=%lu buffer=%lu segments=%d exit_speed=%d brake_ms=%lu rear_target=%.1f localize_max=%.1f",
+             "[PARK_DIAG_CONFIG] v=%lu build=%s turn=%d center=%d mm_per_count=%.7f period_ms=%lu sample_limit=%u byte_limit=%lu buffer=%lu sample_bytes=%lu event_bytes=%lu line_capacity=%lu segments=%d exit_speed=%d brake_ms=%lu rear_target=%.1f localize_max=%.1f",
              static_cast<unsigned long>(SCHEMA_VERSION), buildIdentity,
              turnSign, SERVO_CENTER, COUNTER_TO_MM,
              static_cast<unsigned long>(SAMPLE_PERIOD_MS), SAMPLE_LIMIT,
              static_cast<unsigned long>(DIAGNOSTIC_BYTE_LIMIT),
              static_cast<unsigned long>(LOG_BUFFER_SIZE),
+             static_cast<unsigned long>(SAMPLE_BYTE_LIMIT),
+             static_cast<unsigned long>(EVENT_BYTE_LIMIT),
+             static_cast<unsigned long>(LINE_CAPACITY),
              OBSTACLE_PARKING_EXIT_SEGMENT_COUNT, OBSTACLE_PARKING_EXIT_SPEED,
              static_cast<unsigned long>(OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS),
              OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM,
@@ -129,19 +155,25 @@ void beginDiagnostics(int8_t turnSign)
     emitLine(line, true);
 }
 
-void appendTof(char *line, size_t capacity, size_t &used, TofSensor sensor,
+bool appendTof(char *line, size_t capacity, size_t &used, TofSensor sensor,
                uint32_t now)
 {
     TofDiagnosticSnapshot snapshot;
     if (!get_tof_diagnostic_snapshot(sensor, snapshot))
     {
-        used += snprintf(line + used, capacity - used, " s%d=none", sensor);
-        return;
+        const int added = snprintf(line + used, capacity - used, " s%d=none", sensor);
+        if (added < 0 || static_cast<size_t>(added) >= capacity - used)
+            return false;
+        used += static_cast<size_t>(added);
+        return true;
     }
     if (lastTofSequence[sensor] == snapshot.sequence)
     {
-        used += snprintf(line + used, capacity - used, " s%d=same", sensor);
-        return;
+        const int added = snprintf(line + used, capacity - used, " s%d=same", sensor);
+        if (added < 0 || static_cast<size_t>(added) >= capacity - used)
+            return false;
+        used += static_cast<size_t>(added);
+        return true;
     }
     lastTofSequence[sensor] = snapshot.sequence;
     const int index = snapshot.selected_object_index;
@@ -153,7 +185,7 @@ void appendTof(char *line, size_t capacity, size_t &used, TofSensor sensor,
         ? snapshot.filtered_distance_mm >= 0.0f
         : selected && snapshot.objects[index].filter_accepted;
     const uint32_t age = now - snapshot.sampled_ms;
-    used += snprintf(line + used, capacity - used,
+    const int added = snprintf(line + used, capacity - used,
                      " s%d=%lu,%lu,%.1f,%.1f,%.3f,%.1f,%d,%d",
                      sensor, static_cast<unsigned long>(snapshot.sequence),
                      static_cast<unsigned long>(age),
@@ -161,6 +193,10 @@ void appendTof(char *line, size_t capacity, size_t &used, TofSensor sensor,
                      snapshot.filtered_distance_mm,
                      snapshot.selected_signal_mcps, snapshot.selected_sigma_mm,
                      valid ? 1 : 0, accepted ? 1 : 0);
+    if (added < 0 || static_cast<size_t>(added) >= capacity - used)
+        return false;
+    used += static_cast<size_t>(added);
+    return true;
 }
 } // namespace
 
@@ -170,6 +206,8 @@ void parking_exit_diagnostics_reset()
     truncated = false;
     lastState[0] = '\0';
     emittedBytes = 0;
+    sampleBytes = 0;
+    eventBytes = 0;
     sampleCount = 0;
 }
 
@@ -197,15 +235,18 @@ void parking_exit_diagnostics_update(const char *state, uint8_t segment,
         emitEvent("direction", detail);
         lastDirection = direction;
     }
-    if (!stateChanged && (now - lastSampleMs < SAMPLE_PERIOD_MS ||
-                          sampleCount >= SAMPLE_LIMIT || truncated))
+    if (truncated || (!stateChanged && now - lastSampleMs < SAMPLE_PERIOD_MS))
         return;
+    if (sampleCount >= SAMPLE_LIMIT)
+    {
+        markTruncated("sample_limit");
+        return;
+    }
 
     lastSampleMs = now;
-    ++sampleCount;
     const PositionEstimate pose = get_position_struct();
     char line[LINE_CAPACITY];
-    size_t used = snprintf(
+    const int formatted = snprintf(
         line, sizeof(line),
         "[PARK_DIAG] v=2 type=sample t=%lu state=%s seg=%u turn=%d target=%.1f enc=%ld emm=%.2f cmd=%d speed=%.2f steer=%d dc=%d gyro=%.2f pose=%.1f,%.1f,%.2f nominal=%.1f,%.1f,%.2f ref=%s",
         static_cast<unsigned long>(now), state, segment, turnSign,
@@ -213,9 +254,22 @@ void parking_exit_diagnostics_update(const char *state, uint8_t segment,
         measured_speed, set_degree, static_cast<int>(dc_state), get_angle(),
         pose.x_mm, pose.y_mm, pose.heading_deg,
         nominal.x_mm, nominal.y_mm, nominal.heading_deg, expectedReference);
-    for (uint8_t sensor = 0; sensor < TOF_COUNT && used < sizeof(line); ++sensor)
-        appendTof(line, sizeof(line), used, static_cast<TofSensor>(sensor), now);
-    emitLine(line, false);
+    if (formatted < 0 || static_cast<size_t>(formatted) >= sizeof(line))
+    {
+        markTruncated("line_capacity");
+        return;
+    }
+    size_t used = static_cast<size_t>(formatted);
+    for (uint8_t sensor = 0; sensor < TOF_COUNT; ++sensor)
+        if (!appendTof(line, sizeof(line), used, static_cast<TofSensor>(sensor), now))
+        {
+            markTruncated("line_capacity");
+            return;
+        }
+    if (emitLine(line, false))
+        ++sampleCount;
+    else
+        markTruncated("sample_budget");
 }
 
 void parking_exit_diagnostics_rebase(const char *reason)
@@ -240,7 +294,8 @@ void parking_exit_diagnostics_correction(const char *source,
              after.x_mm, after.y_mm, after.heading_deg,
              after.x_mm - before.x_mm, after.y_mm - before.y_mm,
              wrap180(after.heading_deg - before.heading_deg));
-    emitLine(line, true);
+    if (!emitLine(line, true))
+        markTruncated("event_budget");
 }
 
 void parking_exit_diagnostics_finish(const char *result)
@@ -251,7 +306,7 @@ void parking_exit_diagnostics_finish(const char *result)
     snprintf(detail, sizeof(detail), "%s_bytes_%lu_samples_%u%s", result,
              static_cast<unsigned long>(emittedBytes), sampleCount,
              truncated ? "_truncated" : "");
-    emitEvent("finish", detail);
+    emitEvent("finish", detail, true);
     active = false;
 }
 
