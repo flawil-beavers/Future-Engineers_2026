@@ -16,6 +16,10 @@
 #undef Serial
 #define Serial robot_logger
 
+void processGreenSeatCandidates(
+    const PositionEstimate &pose,
+    const ObstacleObservationResult &normalObservation);
+
 namespace
 {
 struct PathPoint
@@ -36,7 +40,9 @@ struct CandidateSeat
     float headingDeg = 0.0f;
     uint8_t redVotes = 0;
     uint8_t greenVotes = 0;
+    uint8_t greenSeatCandidateFrames = 0;
     unsigned long lastVoteMs = 0;
+    unsigned long lastGreenSeatCandidateMs = 0;
     bool confirmed = false;
     bool red = false;
     bool injected = false;
@@ -85,6 +91,9 @@ PathPoint parkingEntryConnector[
     OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
 DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
+bool greenSeatCandidateThisFrame[OBSTACLE_SEAT_COUNT] = {};
+bool oppositeSeatConflictReported[OBSTACLE_SEAT_COUNT] = {};
+uint32_t lastGreenSeatProcessingUs = 0;
 ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
 bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT] = {};
 
@@ -96,6 +105,7 @@ bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
 bool runtimeTestMode = false;
+bool earlyMiddleViewActive[OBSTACLE_SEAT_COUNT] = {};
 ObstacleSectionLayoutMode sectionLayoutMode = OBSTACLE_STARTUP_CHECK_ALL_STATIONS
     ? OBSTACLE_SECTION_LAYOUT_CHECK_ALL
     : OBSTACLE_SECTION_LAYOUT_OFFICIAL;
@@ -1788,7 +1798,14 @@ bool earlyMiddleViewEligible(uint8_t seatIndex)
     const float forward = cyclicDistanceForward(
         baselinePath[progressIndex].distanceMm,
         seats[seatIndex].pathDistanceMm);
-    return forward >= 400.0f && forward < loopLengthMm * 0.5f;
+    if (earlyMiddleViewActive[seatIndex])
+        return true;
+    if (forward >= 400.0f && forward < loopLengthMm * 0.5f)
+    {
+        earlyMiddleViewActive[seatIndex] = true;
+        return true;
+    }
+    return false;
 }
 
 bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
@@ -2380,6 +2397,7 @@ void updateDiscoveryCoverage(
                 seatRangeMm);
             const bool clearEvidence =
                 !deferParkingTargetClear && comfortablyVisible &&
+                !greenSeatCandidateThisFrame[seatIndex] &&
                 !rejectedBlobBlocksSeatClear(rawBlob, seatBearingDeg) &&
                 observationAllowsClearAtGeometry(
                     observation,
@@ -2447,6 +2465,7 @@ void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
     Serial.print(" valid="); Serial.print(lastDiscoveryObservation.productionValid ? 1 : 0);
     Serial.print(" obs_seat="); Serial.print(lastDiscoveryObservation.seatId);
     Serial.print(" obs_range="); Serial.print(lastDiscoveryObservation.rangeMm, 1);
+    Serial.print(" green_roi_us="); Serial.print(lastGreenSeatProcessingUs);
     Serial.print(" evidence="); Serial.print(coverage.lastClearEvidenceMask);
     for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
     {
@@ -2584,6 +2603,7 @@ void collectCornerViewFrame(const PositionEstimate &pose, bool newFrame)
 {
     if (!newFrame) return;
     lastDiscoveryObservation = obstacle_path_observe(getLargestValidObstacle());
+    processGreenSeatCandidates(pose, lastDiscoveryObservation);
     updateDiscoveryCoverage(lastDiscoveryObservation, pose, getLargestObstacle());
     lastDiscoveryCoveragePose = pose;
     lastDiscoveryCoverageMs = millis();
@@ -3087,7 +3107,9 @@ void updateParkingEntryScout(bool newCameraFrame)
         const ObstacleObservationResult observation =
             obstacle_path_observe(getLargestValidObstacle());
         lastDiscoveryObservation = observation;
-        updateDiscoveryCoverage(observation, pose, getLargestObstacle());
+        processGreenSeatCandidates(pose, observation);
+        updateDiscoveryCoverage(lastDiscoveryObservation, pose,
+                                getLargestObstacle());
     }
 
     const bool resolved = parkingEntryScoutStation >= 0 &&
@@ -3238,7 +3260,8 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         const ObstacleObservationResult observation =
             obstacle_path_observe(getLargestValidObstacle());
         lastDiscoveryObservation = observation;
-        updateDiscoveryCoverage(observation, pose, rawBlob);
+        processGreenSeatCandidates(pose, observation);
+        updateDiscoveryCoverage(lastDiscoveryObservation, pose, rawBlob);
     }
 
     if (parkingEntryObserving)
@@ -3740,6 +3763,12 @@ void obstacle_path_reset()
     finished = false;
     optimizedBuilt = false;
     runtimeTestMode = false;
+    memset(earlyMiddleViewActive, 0, sizeof(earlyMiddleViewActive));
+    memset(greenSeatCandidateThisFrame, 0,
+           sizeof(greenSeatCandidateThisFrame));
+    memset(oppositeSeatConflictReported, 0,
+           sizeof(oppositeSeatConflictReported));
+    lastGreenSeatProcessingUs = 0;
     runtimeLapTarget = 3;
     runtimeSpeedCapMmS = 0.0f;
     loopLengthMm = 0.0f;
@@ -3996,8 +4025,9 @@ void obstacle_path_update(bool new_camera_frame)
             const ObstacleObservationResult observation =
                 obstacle_path_observe(getLargestValidObstacle());
             lastDiscoveryObservation = observation;
+            processGreenSeatCandidates(pose, observation);
             updateDiscoveryCoverage(
-                observation,
+                lastDiscoveryObservation,
                 pose,
                 getLargestObstacle());
             lastDiscoveryCoveragePose = pose;
@@ -4496,6 +4526,70 @@ bool obstacle_path_geometry_valid()
                OBSTACLE_PATH_MAX_SPEED) <= 0.1f;
 }
 
+void finalizeConfirmedSeat(ObstacleObservationResult &result)
+{
+    const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
+    CandidateSeat &seat = seats[seatIndex];
+    result.status = OBSTACLE_OBSERVATION_CONFIRMED;
+    lastConfirmedSeatIndex = result.seatId;
+    extremeAdjacentReleasePending =
+        hasConfirmedExtremeAdjacentPair(seatIndex);
+    const int8_t earlier = earlierExtremeAdjacentSeat(seatIndex);
+    if (earlier >= 0)
+    {
+        deferredInjectionSeatIndex = result.seatId;
+        // Rebuild without the deferred seat. This also applies the
+        // established extreme-pair clearance to the first member.
+        rebuildLivePath();
+        Serial.print("[PATH] Avoidance confirmed seat=");
+        Serial.print(result.seatId);
+        Serial.print(" injection=DEFERRED until_mm_past_seat_");
+        Serial.print(earlier);
+        Serial.print("=");
+        Serial.println(OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM, 0);
+    }
+    else
+    {
+        injectSeat(seatIndex, false);
+    }
+
+    if (seat.injected)
+    {
+        const uint16_t center = nearestPathIndex(
+            baselinePath, seat.x, seat.y, 0, pathLength);
+        result.peakDisplacementMm = hypotf(
+            livePath[center].x - baselinePath[center].x,
+            livePath[center].y - baselinePath[center].y);
+        result.movementCircleClearanceMm =
+            hypotf(livePath[center].x - seat.x,
+                   livePath[center].y - seat.y) -
+            OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+    }
+
+    course_map_record_seat_obstacle(
+        seatIndex / 6,
+        (seatIndex % 6) / 2,
+        seatIndex % 2,
+        seat.red ? ColorType::RED : ColorType::GREEN,
+        seat.x,
+        seat.y);
+    // Recomputed from confirmed seats, not persisted as observed clear.
+    // A later contradicting detection automatically revokes the inference.
+    Serial.print("[PATH LAYOUT] section="); Serial.print(seatIndex / 6);
+    Serial.print(" mode=");
+    Serial.print(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
+        ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
+    Serial.print(" inferred_empty_station_mask=");
+    Serial.println(sectionInferredEmpty(seatIndex / 6));
+
+    result.redVotes = seat.redVotes;
+    result.greenVotes = seat.greenVotes;
+    result.confirmed = true;
+    result.injected = seat.injected;
+    result.injectionCount = injectionCount;
+    result.passSide = seat.red ? 'R' : 'L';
+}
+
 ObstacleObservationResult obstacle_path_observe(const Blob *blob)
 {
     ObstacleObservationResult result;
@@ -4586,6 +4680,26 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         }
     }
 
+    // A station has only one legal pillar seat, including in CHECK_ALL mode.
+    // A late projection of the same pillar onto the opposite seat must not
+    // reshape the path to pass a second, physically impossible pillar.
+    const uint8_t oppositeSeat = static_cast<uint8_t>(result.seatId) ^ 1U;
+    if (seats[oppositeSeat].confirmed)
+    {
+        if (!oppositeSeatConflictReported[result.seatId])
+        {
+            oppositeSeatConflictReported[result.seatId] = true;
+            Serial.print("[PATH] Ignored contradictory opposite seat=");
+            Serial.print(result.seatId);
+            Serial.print(" confirmed_seat=");
+            Serial.println(oppositeSeat);
+        }
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+        result.seatId = -1;
+        return result;
+    }
+
     prepareConsecutiveVote(result.seatId, blob->color);
     CandidateSeat &seat = seats[result.seatId];
     if (seat.confirmed)
@@ -4594,60 +4708,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     }
     else if (recordSeatVote(seat, blob->color))
     {
-        result.status = OBSTACLE_OBSERVATION_CONFIRMED;
-        const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
-        lastConfirmedSeatIndex = result.seatId;
-        extremeAdjacentReleasePending =
-            hasConfirmedExtremeAdjacentPair(seatIndex);
-        const int8_t earlier = earlierExtremeAdjacentSeat(seatIndex);
-        if (earlier >= 0)
-        {
-            deferredInjectionSeatIndex = result.seatId;
-            // Rebuild without the deferred seat. This also applies the
-            // established extreme-pair clearance to the first member.
-            rebuildLivePath();
-            Serial.print("[PATH] Avoidance confirmed seat=");
-            Serial.print(result.seatId);
-            Serial.print(" injection=DEFERRED until_mm_past_seat_");
-            Serial.print(earlier);
-            Serial.print("=");
-            Serial.println(
-                OBSTACLE_EXTREME_ADJACENT_INJECTION_DELAY_MM, 0);
-        }
-        else
-        {
-            injectSeat(seatIndex, false);
-        }
-
-        if (seat.injected)
-        {
-            const uint16_t center = nearestPathIndex(
-                baselinePath, seat.x, seat.y, 0, pathLength);
-            result.peakDisplacementMm = hypotf(
-                livePath[center].x - baselinePath[center].x,
-                livePath[center].y - baselinePath[center].y);
-            result.movementCircleClearanceMm =
-                hypotf(
-                    livePath[center].x - seat.x,
-                    livePath[center].y - seat.y) -
-                OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
-        }
-
-        course_map_record_seat_obstacle(
-            seatIndex / 6,
-            (seatIndex % 6) / 2,
-            seatIndex % 2,
-            seat.red ? ColorType::RED : ColorType::GREEN,
-            seat.x,
-            seat.y);
-        // Recomputed from confirmed seats, not persisted as observed clear.
-        // A later contradicting detection automatically revokes the inference.
-        Serial.print("[PATH LAYOUT] section="); Serial.print(seatIndex / 6);
-        Serial.print(" mode=");
-        Serial.print(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
-            ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
-        Serial.print(" inferred_empty_station_mask=");
-        Serial.println(sectionInferredEmpty(seatIndex / 6));
+        finalizeConfirmedSeat(result);
     }
     else
     {
@@ -4662,6 +4723,149 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     if (seat.confirmed)
         result.passSide = seat.red ? 'R' : 'L';
     return result;
+}
+
+void processGreenSeatCandidates(
+    const PositionEstimate &pose,
+    const ObstacleObservationResult &normalObservation)
+{
+    const uint32_t startedUs = micros();
+    lastGreenSeatProcessingUs = 0;
+    memset(greenSeatCandidateThisFrame, 0,
+           sizeof(greenSeatCandidateThisFrame));
+    if (runtimeTestMode || completedLaps != 0 ||
+        camera.getBuffer() == nullptr ||
+        camera.getWidth() != 320 || camera.getHeight() != 240)
+        return;
+
+    const uint32_t now = millis();
+    const float heading = pose.heading_deg * PI / 180.0f;
+    const float cameraX =
+        pose.x_mm + OBSTACLE_CAMERA_LOCAL_X_MM * cosf(heading) -
+        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(heading);
+    const float cameraY =
+        pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
+        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
+
+    for (uint8_t seatIndex = 0; seatIndex < OBSTACLE_SEAT_COUNT; ++seatIndex)
+    {
+        CandidateSeat &seat = seats[seatIndex];
+        if (seat.confirmed || seats[seatIndex ^ 1U].confirmed ||
+            !seatComfortablyVisible(seatIndex, pose))
+        {
+            seat.greenSeatCandidateFrames = 0;
+            continue;
+        }
+
+        float bearingDeg = 0.0f;
+        float expectedRangeMm = -1.0f;
+        seatCameraGeometry(seatIndex, pose, bearingDeg, expectedRangeMm);
+        const float bearingRad = bearingDeg * PI / 180.0f;
+        const float expectedForwardMm =
+            expectedRangeMm * cosf(bearingRad);
+        if (expectedForwardMm <= 0.0f)
+        {
+            seat.greenSeatCandidateFrames = 0;
+            continue;
+        }
+        const int16_t expectedX = static_cast<int16_t>(lroundf(
+            OBSTACLE_CAMERA_PRINCIPAL_X_PX -
+            OBSTACLE_CAMERA_FOCAL_X_PX * tanf(bearingRad)));
+        const int16_t expectedFootY = static_cast<int16_t>(lroundf(
+            OBSTACLE_CAMERA_GROUND_HORIZON_Y +
+            OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX /
+                expectedForwardMm));
+
+        GreenSeatCandidate candidate;
+        if (!vision.findGreenSeatCandidate(
+                camera.getBuffer(), camera.getWidth(), camera.getHeight(),
+                expectedX, expectedFootY, candidate))
+        {
+            seat.greenSeatCandidateFrames = 0;
+            continue;
+        }
+
+        // The silhouette's measured foot supplies independent distance;
+        // angular overlap alone would confuse two aligned station seats.
+        const float measuredRangeMm =
+            obstacle_estimate_camera_range_mm(&candidate.blob);
+        const float candidateBearingDeg =
+            obstacle_camera_bearing_deg(&candidate.blob);
+        const float globalBearing =
+            (pose.heading_deg + candidateBearingDeg) * PI / 180.0f;
+        const float sightingX =
+            cameraX + measuredRangeMm * cosf(globalBearing);
+        const float sightingY =
+            cameraY + measuredRangeMm * sinf(globalBearing);
+        float snapErrorMm = -1.0f;
+        if (!isfinite(measuredRangeMm) || measuredRangeMm <= 0.0f ||
+            fabsf(measuredRangeMm - expectedRangeMm) >
+                OBSTACLE_GREEN_SEAT_RANGE_TOLERANCE_MM ||
+            nearestSeatIndex(sightingX, sightingY, &snapErrorMm) != seatIndex ||
+            (normalObservation.productionValid &&
+             normalObservation.seatId == seatIndex &&
+             normalObservation.color == ColorType::RED))
+        {
+            seat.greenSeatCandidateFrames = 0;
+            continue;
+        }
+
+        greenSeatCandidateThisFrame[seatIndex] = true;
+        if (seat.lastGreenSeatCandidateMs == 0 ||
+            now - seat.lastGreenSeatCandidateMs >
+                OBSTACLE_GREEN_SEAT_VOTE_WINDOW_MS)
+            seat.greenSeatCandidateFrames = 0;
+        seat.lastGreenSeatCandidateMs = now;
+        if (seat.greenSeatCandidateFrames < 255)
+            ++seat.greenSeatCandidateFrames;
+        if (seat.greenSeatCandidateFrames <
+            OBSTACLE_GREEN_SEAT_CONFIRM_FRAMES || seat.redVotes != 0)
+            continue;
+
+        // This path uses three fresh, geometrically matched frames. The
+        // ordinary blob votes and red recognition remain independent.
+        seat.confirmed = true;
+        seat.red = false;
+        seat.greenVotes = seat.greenSeatCandidateFrames;
+        ObstacleObservationResult result;
+        result.productionValid = true;
+        result.color = ColorType::GREEN;
+        result.left = candidate.blob.minX;
+        result.top = candidate.blob.minY;
+        result.right = candidate.blob.maxX;
+        result.bottom = candidate.blob.maxY;
+        result.bearingDeg = candidateBearingDeg;
+        result.rangeMm = measuredRangeMm;
+        result.robotXmm = pose.x_mm;
+        result.robotYmm = pose.y_mm;
+        result.robotHeadingDeg = pose.heading_deg;
+        result.cameraXmm = cameraX;
+        result.cameraYmm = cameraY;
+        result.sightingXmm = sightingX;
+        result.sightingYmm = sightingY;
+        result.seatId = seatIndex;
+        result.snapErrorMm = snapErrorMm;
+        finalizeConfirmedSeat(result);
+        Serial.print("[GREEN SEAT] confirmed seat=");
+        Serial.print(seatIndex);
+        Serial.print(" frames=");
+        Serial.print(seat.greenSeatCandidateFrames);
+        Serial.print(" x/foot=");
+        Serial.print(candidate.blob.centerX);
+        Serial.print("/");
+        Serial.print(candidate.blob.maxY);
+        Serial.print(" green_samples/contrast=");
+        Serial.print(candidate.greenSamples);
+        Serial.print("/");
+        Serial.print(candidate.brightnessContrast);
+        Serial.print(" range/snap_mm=");
+        Serial.print(measuredRangeMm, 0);
+        Serial.print("/");
+        Serial.println(snapErrorMm, 0);
+        if (!normalObservation.productionValid)
+            lastDiscoveryObservation = result;
+    }
+    lastGreenSeatProcessingUs = micros() - startedUs;
 }
 
 uint8_t obstacle_path_seat_count()

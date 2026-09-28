@@ -11,6 +11,63 @@ new safety limit, or reusable engineering finding.
 
 ## Safety for every powered run
 
+### Current first-lap gate (2026-09-28)
+
+The photographed CW layout is unsuitable for `O`: the starting section had
+green at station 0 and red at station 1. Under the official 2026 layout, a
+middle-station pillar is solitary, so `O` infers station 0 empty after seeing
+red. Logs 400/404/405 therefore do not validate a reliable first lap: 400
+reached the lap counter without confirming green; 404 hit a wall; 405 stuck
+against green. Logs 404/405 also projected red onto both sides of S0 station 1.
+The M7 source now rejects an opposite-seat confirmation after one side is
+confirmed; the rebuilt binary is not yet uploaded or physically validated.
+
+Next official-layout trial: remove only the green pillar at S0 station 0 and
+keep the red middle pillar and the remaining photographed placements. With the
+updated binary, run one CW first lap (`O`) and inspect that S0 station 0 is
+inferred empty, the contradictory red seat 3 is ignored, no contact occurs,
+and lap 1 stops normally. For the photographed two-pillar starting section,
+select `O3` instead; its route and start scout still need separate physical
+validation. Keep the disable switch reachable and abort on wall approach or
+contact. Do not speed up the corner reverse until the end-of-lap path is safe.
+
+### Changed-room colour gate before the next official `O` drive
+
+The 2026-09-28 stationary CCW samples facing the green wall found red valid
+28/28 at about 60 cm, but green valid only 4/112 at 60 cm, 46/112 at 40 cm
+centred, 0/112 at 40 cm toward the right image edge and 5/112 near the left
+edge. A diffuse hand-held light at the right edge produced 1/84. Do not use
+the proposed fixed top crop or loosen
+HSV/minimum-area thresholds on this evidence; the side-view pillar is mostly
+below the current green brightness threshold, while lowering it admits dark
+background fragments. Raw images and counter intervals are in
+`simulation/evidence/camera_diagnostics/README.md`.
+
+The user prioritizes colour-value analysis. The diagnostic AEC command was
+removed before upload. An offline sweep of 320 HSV settings (hue, saturation,
+value bounds) with the existing largest-blob and geometry rules recovered at
+most two of five green-pillar images while keeping the empty background and
+red image negative. In the side view, many pillar pixels are nearly achromatic
+and dark; simply lowering the value floor introduces dark boundary fragments.
+The side-red follow-up was 112/112 valid, though the physical replacement
+shifted the image centre about20 px. Compare the raw RGB/HSV samples and
+current blob geometry before any production change. Do not claim a crop or
+colour threshold is reliable until centred, side, empty-background and both
+colours pass the same offline and stationary checks.
+
+The bounded mapped-seat green fallback is implemented and uploaded on M7. It
+keeps the full camera field and existing HSV/red classifier. Offline replay
+accepted centre/side green including all ten far-right images, and rejected
+the empty green-wall view and red controls. The subsequent stopped live check
+also passed: ten consecutive green frames were positive (x267..271, foot138,
+ROI 5.7 ms), while empty and red were each 0/10; camera interval was ~76.5 ms.
+Exact captures and hashes are in
+`simulation/evidence/camera_diagnostics/README.md`. The next gate is one
+low-speed first-lap run: inspect `[GREEN SEAT]` confirmation, mapped
+seat/colour, clear evidence and `green_roi_us`, then expand layouts and
+directions. A moving false clear, wrong seat, stall or contact invalidates the
+run even though the stationary checks passed.
+
 Current pending firmware test (2026-09-27): log398 has two successful straight
 corner retraces followed by a tiny-red-fragment CLEAR veto, not a motion failure.
 M7 now adds one optional90 mm reverse arc at section entry, with its own swept
@@ -44,10 +101,19 @@ to the official layout because `OBSTACLE_STARTUP_CHECK_ALL_STATIONS=false` in
 that option to `true` and build/upload M7 before the event.
 Verify `Obstacle section layout: OFFICIAL_2026` or `CHECK_ALL_STATIONS` in the
 terminal, followed by `Pending mode: OBSTACLE_CHALLENGE`; the run itself logs
-`[PATH LAYOUT] mode=...`. The added mode changes no camera thresholds,
-unparking, steering, route planning or safety clearance. Three-pillar route
-feasibility has not been demonstrated on the real robot; first validate a
-new arrangement at low risk and keep the disable switch reachable.
+`[PATH LAYOUT] mode=...`. `O3` now has an early-view bypass for a confirmed
+green/right pillar at the middle station when the preceding station was
+directly observed empty and the last station is unresolved. It begins the
+left bypass earlier, then aims the camera toward both last-station seats before
+passing the middle pillar. The firmware logs `[PATH EARLY VIEW] preflight PASS`
+when its static wall, candidate-pillar and curvature check accepts the route;
+`FAIL` retains the established bypass and unresolved-station hold. `O` keeps
+its existing route. This change does not alter camera thresholds or parking
+exit. It does not cover a three-pillar section whose first station is occupied.
+No O3 route has been physically validated; first try the same known layout at
+low speed with the disable switch reachable, record the marker, actual camera
+resolution, contact/clearance and complete USB log. Do not infer success from
+the static preflight marker alone.
 `Y1`/`Y-1` are live-path tests that bypass parking and must never be started
 with the robot inside the parking lot. `Y0` stops an active live-path test.
 

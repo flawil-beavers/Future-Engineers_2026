@@ -7621,3 +7621,354 @@ waiting at the later hold cannot achieve this earlier viewpoint. Next: model
 a feasible swept approach to the earlier pose without weakening pillar or
 wall margins, then verify camera frames and physical clearance in a bounded
 test before adopting it for O3.
+
+## 2026-09-28: early view route after middle green in O3
+
+An O3-only path profile in `src/obstacle_path.cpp` starts the left bypass of a
+confirmed middle green/right pillar 500 mm before its station, reaches a broad
+offset before the pillar, and tapers after it. It applies only when the prior
+station was directly observed empty and the final station remains unresolved.
+Activation stays latched for the run so a later path rebuild does not remove
+the curve during traversal. A static waypoint/midpoint preflight checks the
+42-degree curvature limit and at least 40 mm clearance to field walls and
+all candidate pillars except the directly cleared prior station and the
+middle pillar's impossible paired seat. On preflight failure the established
+bypass and hold remain. The normal `O` path is unchanged.
+
+Representative S2 geometry from logs396/397, with the source profile smoothed
+at radius one: maximum waypoint steering demand 39.61 degrees, minimum
+capsule-to-middle-green clearance 145.7 mm, minimum outer-wall margin
+209.4 mm. Both final-station seat centres satisfy the existing 230..600 mm
+range and +/-26.426-degree clear window at 50 mm samples from rear x=-100
+through x=+100 mm. This is a nominal geometric check; it does not prove
+camera evidence, dynamic tracking, localization accuracy or clearance for a
+different three-pillar layout. The earlier idealized tracking calculation
+also showed a roughly 168 mm shared-view interval, but that was not a robot
+measurement. The mode is intentionally limited to the known middle-green
+case; an occupied first station retains the existing route.
+
+IDE-managed M7 build passes (RAM 432552/523624, flash 457168/786432);
+firmware SHA256 `c3f47b964d19a41eadce3c134d1f319d19b134221c8238848a00f0182b1355da`.
+M4 was unaffected and not built. No upload or powered test occurred.
+
+Next: with explicit upload authorization, run one controlled O3 CW trial in
+the same layout at a safe speed. Require `[PATH EARLY VIEW] preflight PASS`,
+two genuine CLEAR frames or a confirmed pillar at both final seats before
+the former S2 hold, no contact and adequate physical clearance. Preserve the
+complete USB log. A FAIL marker or unresolved station is a route-test failure
+to analyze before widening this feature to other layouts.
+
+## 2026-09-28: return to official task and new camera environment
+
+User deferred O3 route validation and prioritizes reliable official `O`
+operation. The room, lighting and background changed since the previous colour
+checks; there is a green wall behind the field. Historical red/green pixel
+measurements must not be treated as calibration for this setup. The existing
+green evidence already showed the pillar and green background merging at the
+ROI upper edge, while the earlier alleged 600 mm green placement was moved
+during capture and cannot be paired with the red shot. No colour, ROI or route
+thresholds were changed here.
+
+Next: with drive disabled, acquire background-only and red/green raw camera
+images at measured, unchanged camera-to-pillar positions in the new room.
+Compare production-valid blob geometry and HSV distributions for both colours
+and for the green wall. Test any proposed top crop offline against near and far
+pillars before changing firmware: a crop that suppresses the wall can also
+erase the top of a distant real pillar. Then choose the smallest justified
+classifier/segmentation change and revalidate both colours before driving.
+
+## 2026-09-28: new-room stationary colour batch and AEC probe prepared
+
+User held the robot at the CCW corner/straight boundary, looking across the
+field toward the green wall with drive disabled. COM7 was the Arduino USB
+port; only `c0` and `camshot` were sent. Original USB transfers, decoded PNGs,
+four bounded stationary intervals, hashes, placement and limitations are
+saved under `simulation/evidence/camera_diagnostics/` with metadata in its
+`README.md`. These are stationary captures, not drive logs. Runtime firmware
+was not read back. No powered motion, contact or firmware upload occurred.
+
+At the marked camera-to-pillar 60 cm centre position, red was valid in 28/28
+fresh frames; green was valid 4/112. Moving green to 40 cm centre gave 46/112.
+At roughly 40 cm toward the image's right side, green was valid 0/112; with
+added user-held diffuse light, 1/84. The empty wall alone made a broad but
+short invalid green component. Centre green frequently merged with it near
+ROI y=80; side green appeared almost black. In the side image the green
+pillar's median HSV V was about16, below the classifier's V>=20, and the
+extra light did not materially change its recorded median V. The lamp's
+irradiance at the pillar was not measured. Camera exposure was34-37 lines,
+versus earlier approximately149-155 lines in the previous room, confirming
+a materially different capture condition. A fixed green crop at y>=96 with
+minimum area200 isolated the centre pillar in sampled images but **failed the
+side image**; lowering V to12 introduced dark background components. Neither
+threshold change was adopted. The earlier reported 34/938 green-valid figure
+was cumulative across background and placement and must not be used as a
+green success rate; the bounded 4/112 measurement supersedes it.
+
+An AEC diagnostic command was briefly prepared and built but, following the
+user's request to keep the approach efficient and prioritize colour values,
+was removed **before any upload**. No AEC, HSV, ROI or blob geometry change
+from this camera session remains in the firmware. The prior pending upload
+question is superseded; do not upload that discarded diagnostic build.
+
+An offline sweep of 320 HSV combinations (hue limits, saturation and value
+limits) with the existing largest-blob and production geometry constraints
+recovered at most two of five green snapshots without accepting the empty
+background or red snapshot. The side pillar's sampled lower body had median
+RGB approximately (16,16,16), while the centred 40-cm green body was about
+(24,28,24); many side pixels contain no reliable hue. Lower V=8..12 made
+dark boundary components hundreds of pixels large in the empty view, while
+higher V missed the side pillar. The user wants the corresponding red side
+measurement next. Compare it at the identical pose, then decide whether a
+colour-only correction is defensible; do not adopt the rejected crop or a
+global low-V threshold from the current images.
+
+Follow-up side-red check after replacing the pillar and removing extra light:
+112/112 bounded frames were production-valid red. The red snapshot blob was
+about x234..266, 420 mm estimated, while the earlier green side blob was
+about x248..284, 400 mm estimated; physical replacement shifted the image
+roughly20 px and20 mm, so the pair is comparable as a side-view case, not a
+pixel-aligned colour sample. In matched interior samples, side red median RGB
+was about(41,12,16) versus side green(16,16,16). Raw red image, serial and
+stationary log are in the camera evidence directory with hashes in README.
+This supports a low green colour signal in that lighting, while leaving open
+whether another exposure/illumination or a more structured visual detector
+would restore reliability. No HSV or crop modification was applied.
+After reverting the experimental AEC command, the IDE-managed M7 build passed
+(RAM432552/523624, flash457168/786432; binary SHA256
+`ae19119097bbb2cf7f199e708c94a2014fd08a9a2123985f863c5465ab550a52`).
+M4 is unaffected. The robot still runs the original installed firmware; this
+source build was not uploaded.
+
+User then placed green on the left side at nominally40 cm. The image shows
+the pillar very near the left frame edge; 5/112 bounded stationary frames were
+green-valid. Lower-body median RGB was again about(16,16,16), like the right
+side, while the centred green had about(24,28,24). Thus the weak green signal
+is not confined to the right side. The image, original serial and stationary
+interval are saved in the camera evidence directory with hashes in README.
+Offline dark-silhouette extraction from y>=104 can find a vertical foreground
+shape, but it joins the outer boundary on the right and is clipped near the
+frame edge on the left; no safe production detector follows from this small
+sample. Next prioritize measured camera capture quality/illumination or an
+observation pose that keeps pillars nearer image centre; validate against the
+green wall and both colours before any official drive or firmware change.
+
+Follow-up after the user rejected more lighting experiments: the left pillar
+centre was approximately image x28, outside both acquisition x30..290 and the
+conservative empty-seat window x41..288. The right-side green centre was about
+x267, inside both. In offline raw-image replay, counting existing HSV-green
+samples in a seat-centred 36x40 pixel window at y100..140 gave 52/70 for two
+60-cm green images, 166 for centred 40-cm green, and 34 for right-side 40-cm
+green; current-room empty and red samples gave zero at their corresponding
+positions. This finds disconnected green evidence without globally lowering
+HSV value. However a previous-room red image had 28 falsely green floor
+samples in an off-axis x288 window. A second requirement, pillar darkness at
+y104..132 versus a flank 40 px away, was >=60 value units in each of the four
+in-view green snapshots and only 28 in that historical false region. This
+simple two-signal candidate separated the available images; it is **not yet
+validated per frame, in motion, or against all legal backgrounds/poses**.
+Ten independent confirmations at measured ~76.5-ms frame intervals require
+about 0.7-0.8 s. The 800-ms unresolved-station hold might allow this only if
+the candidate is visible promptly; global ten-frame confirmation would delay
+already reliable red detection and can miss an approaching green pillar. The
+two-frame empty-seat decision must also be vetoed while such a green candidate
+is being evaluated, or it may commit a false clear first. No firmware change or
+upload was made. Next obtain ten unchanged raw frames at an in-window right
+green position without added light, replay the two-signal score frame by frame,
+then consider a narrow seat-aware diagnostic/integration with red and empty
+controls before any drive.
+
+User then moved green to an approximately 40-cm, in-window right position.
+Ten separate stopped `c0`/`camshot` transfers at exposure42 lines all passed
+CRC, size and footer checks. Their actual pillar image centre was about x236;
+the fixed x236 seat-window score gave 201..234 HSV-green samples and
+147.7..149.9 brightness-contrast units, accepting 10/10 images. Complete raw
+USB transfers, decoded PNGs, hashes and metadata are archived in
+`simulation/evidence/camera_diagnostics/`. They were acquired seconds apart,
+not as consecutive 76.5-ms driving frames. A fresh normal-camera diagnostic
+interval at this same pose had 93/112 production-valid green frames; three
+printed valid blobs had x231..233, foot142 and estimated range388..389 mm.
+Thus moving from the former x~267 (~22-degree bearing, 0/112 valid) to x~236
+(~16 degrees, 93/112 valid) markedly improved ordinary segmentation with no
+colour threshold or illumination change. Camera/pose geometry may therefore
+be as important as the candidate seat-aware fallback. Next repeat ten raw
+images near the weak x~265 view, check the score there frame-by-frame, then
+choose the smallest route/vision change. No firmware was uploaded.
+
+The subsequent farther-right pose put green around x278 (fully visible and
+within the conservative centre-x window). Complete unchanged ten-image USB
+archives, PNGs, sidecars and fresh stationary telemetry are indexed in the
+camera evidence README. Current firmware recognized green in only 2/112
+settled frames; most printed green components belonged to the narrow wall
+region. Fixed x278 offline seat-window scores counted 19..51 green samples
+with 122.7..130.3 brightness contrast; both candidate conditions held in all
+ten independent images. This confirms recoverable green evidence even near
+the usable image edge, but the smallest count exceeds the exploratory
+15-sample limit by only four. Placement, exposure and backgrounds have limited
+coverage; ten seconds-apart USB images do not validate ten consecutive hold
+frames. No HSV, crop, route or firmware changes were made. A global HSV/crop
+adjustment remains rejected. Before production integration, test the
+seat-projected ROI and contrast against representative empty/red/other-seat
+views at the corresponding angles, then validate ten-frame timing and ensure
+green candidate evidence prevents a premature two-frame empty-seat decision.
+Sensitivity replay on the ten far-right images: shifting a fixed predicted
+window +8 px to the right rejected all ten, while offsets -12..+4 px accepted
+all ten. A production seat predictor will have pose, map and camera-centre
+error; a fixed narrow ROI plus ten-frame voting is therefore insufficient.
+Any local search must retain independent darkness/shape checks and be tested
+against right-edge floor reflections and red controls before integration.
+An exploratory +/-12-px search around projected centre accepted the available
+right/centre green snapshots and rejected the current-room empty/red controls
+and the prior-room red floor-reflection control. This still samples only a few
+static scenes, so the fallback remains an offline candidate, not firmware.
+
+Critical background recheck after user requested unchanged approach and FOV:
+the empty view's largest green component is a horizontal x80..192/y80..92
+strip (area800), already rejected by production height, bottom and width
+rules. However `Vision::processComponent` retains only the **largest area**
+component of each colour before downstream geometry validation. A rejected
+wall strip can therefore hide a smaller valid pillar. In centred 60-cm green,
+wall and pillar form one x104..180/y80..116 component whose width/height ratio
+rejects the whole detection; simply discarding wide components would erase
+the pillar evidence too. In far-right green at x~278, the wall is separate but
+the pillar's green fragments are too small: offline largest-valid-component
+selection still recovered 0/10 far-right snapshots. Thus broad-background
+rejection alone is incomplete. A targeted candidate should ignore the shallow
+upper strip while evaluating vertical/colour/darkness evidence around each
+*expected* seat, with a bounded horizontal search for pose error. Keep red
+classification and wall/raw evidence available for clear-veto; reject old-room
+green floor reflection; do not mark a seat empty while a plausible candidate
+is pending. User explicitly prefers no narrower driving approach or camera
+FOV. Do not require ten consecutive green frames; select a confirmation window
+only after replaying true consecutive moving-camera frames and negatives.
+
+2026-09-28 mapped-seat green fallback implementation (source only, not uploaded):
+The M7 camera path now evaluates raw RGB565 in a +/-18-pixel search around
+each geometrically visible, unconfirmed seat. It requires at least 15 existing
+HSV-green samples in the lower band, 40 brightness-contrast units, a vertical
+dark silhouette with 60-unit row contrast and normal blob geometry. The
+measured foot must project to the same mapped seat with at most 140 mm range
+error; three fresh candidate frames within 350 ms confirm green. A plausible
+candidate blocks that frame's empty-seat vote. Existing full-frame and red
+recognition, camera FOV, driving route and mode choice are unchanged. A stopped
+`c0`/`camseat <x> <foot_y>` command records ten consecutive frame IDs and
+candidate/legacy verdicts with per-ROI processing time; it does not drive.
+Offline replay of the archived PNGs accepts centre/side green and all ten
+far-right x~278 images, and rejects the empty green-wall view, current red
+views and older red floor-reflection control. Those ten USB snapshots were
+seconds apart; frame-to-frame and moving-camera reliability is unproven.
+The IDE-managed PlatformIO `giga_r1_m7` build succeeds (RAM 432672/523624,
+flash 461152/786432 bytes). M4 was unaffected and not built. The built M7
+firmware SHA-256 is
+`f87224f6a6458faa724a8f815045b3a3eaf39911228f47be1e8a32a3719c2081`.
+Exact next step:
+after explicit upload authorization, keep drive enable OFF and run `c0`, then
+`camseat 278 138` with the far-right green pillar, repeat with the pillar
+removed and with red at the same pose. Require 10/10 green candidates, 0/10
+empty/red candidates and ROI time below the camera frame interval before any
+drive. A first low-speed run must then check seat assignment and that an
+uncertain green is never marked clear. No physical acceptance is claimed.
+
+2026-09-28 stopped live-frame follow-up: After the user's upload readiness,
+the above M7 firmware was uploaded successfully by DFU. At the same stopped
+CCW view toward the green wall, `c0`/`camseat 278 138` returned ten consecutive
+green candidates at frames 450..459 (x267..271, foot138, 99..130 green
+samples, ROI 5699..5784 us), then 0/10 candidates with the pillar removed
+(frames 981..990), then 0/10 with red placed nominally at the same spot
+(frames 1544..1553). Nearby normal telemetry identified red as valid. Camera
+interval was ~76.5 ms. Complete text captures and SHA256 values are indexed
+in `simulation/evidence/camera_diagnostics/README.md`. The diagnostic blocks
+the disabled robot's main loop for ~0.9 s, causing an expected deferred gyro
+timeout warning; it is not a driving-mode timing result. Next: prepare one
+bounded low-speed first-lap `O` run with a green pillar in the difficult view,
+observe the mapped seat/colour and clear-veto in the log, and stop on any
+contact, false clear, unexpected standstill or excessive `green_roi_us`.
+No moving-camera or first-lap acceptance is claimed yet. User then selected
+the previously photographed full pillar layout for the first moving test,
+clockwise, with the two pillars near the parking start. This supersedes the
+proposed reduced CCW single-green setup. Keep the uploaded one-lap stop gate;
+capture the complete CW log and physical contact/standstill report before
+changing recognition thresholds or route logic.
+
+2026-09-28 CW photographed-layout attempt with uploaded M7 SHA-256
+`f87224f6a6458faa724a8f815045b3a3eaf39911228f47be1e8a32a3719c2081`:
+The user placed the prior photographed layout, including red/green near the
+start, and enabled the run. All five exit segments completed. The reverse
+parking-edge localization found a transition after 285.9 mm; its X correction
+was +55.8 mm and exceeded the configured 50 mm guard, while the -13.3 mm Y
+correction was accepted. The firmware locked the motor before parking-entry
+camera discovery and before any pillar. The user reported that the laptop
+cable got in the way; obstacle contact was not explicitly established. Do
+not tune the X gate or green algorithm from this physically disturbed run.
+The exact available laptop serial excerpt is
+`simulation/evidence/parking_exit_diagnostics/20260928_log_000_cw_excerpt.txt`
+(SHA-256 `7195c639a06c17f4226d3317d0263bd557d5515c320114a882d828b991a2b478`);
+`000` is a placeholder because the complete USB-stick original and true log
+number were not available. Obtain that complete source, archive it unchanged
+with its actual number, then repeat the same CW layout with the laptop cable
+removed before motion and the robot reset to its start pose. Require a valid
+parking-edge correction, then evaluate colour and seat recognition; the first
+attempt provides no moving-camera evidence.
+
+2026-09-28 CW photographed-layout batch, complete USB originals 399--405:
+All seven source files were copied byte-for-byte to
+`simulation/evidence/parking_exit_diagnostics/` and source/copy SHA-256 matched.
+The directory README contains each path, hash, byte count and physical report.
+The earlier `000` laptop excerpt belongs to complete log 399 and remains an
+unchanged separately indexed excerpt. All headers identify CW/turn=-1 and
+`Sep_28_2026_21_09_08`, consistent with uploaded M7 firmware SHA-256
+`f87224f6a6458faa724a8f815045b3a3eaf39911228f47be1e8a32a3719c2081`;
+the installed binary was not independently read back. The parking-exit analyzer
+processed every complete log; reproducible reports are under
+`local_workspace/parking-exit-analysis/20260928_batch399_405/`. No diagnostic
+overflow, truncation, duplicate ToF snapshots or event-order errors were found.
+Logs 401--403 had physically misplaced parking barriers per user and are
+excluded from route performance. Log 399 had the laptop cable intrusion and
+localization X correction +55.8 mm beyond its 50 mm gate.
+
+The user identified 400, 404, 405 as the three validly parked CW attempts on
+the photographed layout. Log 400 completed lap 1 after two 170 mm straight
+corner-view retraces; physical contact was not specifically confirmed absent.
+Log 404 needed no corner-view reverse, confirmed green seat 0 late at
+432 mm range/131 mm snap error (140 mm gate), then injected red seat 3 despite
+having confirmed opposite red seat 2 at parking entry. The user reports it
+passed green, went between green and red, then drove into the wall and was
+manually disabled; the log records a 5.8 mm/1 s stall at 100 mm/s target.
+Log 405 made two corner-view retraces, never confirmed green seat 0, injected
+the contradictory red seat 3, then stalled at 8.4 mm/1 s with 257 mm/s target.
+The user reports it passed too close left of the green near lap end and stuck
+against it. Logs do not locate the exact contact point or independently measure
+wheel clearance. The moving green fallback succeeded in several other mapped
+seats and in 404 at seat 0, but failed to confirm seat 0 in 400 and 405.
+
+Crucial layout mismatch: the photographed S0 had green at station 0 and red at
+station 1. Official Figure 8c makes a middle pillar solitary. After parking
+entry confirmed red seat 2, `sectionInferredEmpty(0)` resolved both end
+stations without camera evidence. The parking-entry scout printed `Station
+already resolved station=0`; ordinary approach slowdown/hold for green seat 0
+was skipped. Thus even log 400's lap completion does not establish safe green
+avoidance. This is an invalid practice arrangement for the default official
+`O` mode. The check-all `O3` mode is intended for such layouts but is not yet
+validated in a full moving run. Official Q&A was checked on 2026-09-28 and
+contained no change to the Figure 8c layout inference.
+
+Source mitigation: `src/obstacle_path.cpp` now rejects a detection at the
+opposite seat of an already confirmed station before a new vote or path
+injection, logs one bounded contradiction message, and excludes that opposite
+seat from green fallback. This enforces one pillar per station in both modes;
+it cannot prove that an earlier seat assignment was correct. Only M7 was
+built with IDE-managed PlatformIO (RAM 432696/523624, flash 461376/786432).
+Prepared binary SHA-256
+`ea9c28c24e2fa8555223e69399db8f798e4666bb0cebf57f8cad8664e90bc58c`.
+It has not been uploaded or driven. Corner-view reverse/return speed remains
+60 mm/s; speeding it before end-of-lap safety is resolved would confound the
+next test and could exceed the existing +20 mm travel guard.
+
+Exact next step: after explicit upload consent, upload the prepared M7 binary.
+For an official `O` first-lap trial, remove the green pillar at S0 station 0,
+retain the red middle pillar and the other photographed placements, restore
+the parking barriers, clear USB cables, and start CW with the one-lap stop gate.
+Observe physical wall/pillar clearance and obtain the complete numbered USB
+log. Require no contact, no contradictory path injection, and normal lap-1
+completion before tuning corner-view reverse speed. Test the original
+two-pillar start separately with `O3` after its scout/path safety is reviewed;
+do not use that layout to judge official-mode green reliability.
