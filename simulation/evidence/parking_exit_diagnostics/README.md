@@ -14,7 +14,11 @@ For every returned test batch:
 3. If only part is available, copy the exact excerpt as
    `YYYYMMDD_log_NNN_cw_excerpt.txt` (or `ccw`) and mark it incomplete below.
 4. Calculate SHA-256 from the tracked copy and add one row to the table below.
-5. Run `simulation/analyze_parking_exit_pose.py` against the tracked file.
+5. Run `python simulation/analyze_parking_exit_batch.py` from the repository root
+   to refresh all archived pose plots and reports under ignored
+   `local_workspace/parking-exit-analysis-all/`. The command selects complete
+   filenames and skips excerpts and byte-identical originals; it does not copy
+   logs from USB or update this metadata table.
 6. Add concise findings, limitations and the next test to
    `AGENT_DOCUMENTATION.md`, referring to this repository-relative path and hash.
 7. Before finishing, use `git status` to verify the log, this README and

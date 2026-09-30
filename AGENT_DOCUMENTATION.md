@@ -1,5 +1,16 @@
 # Agent documentation and engineering handoffs
 
+## 2026-09-30: repeatable laptop-side parking-exit batch analysis
+
+`simulation/analyze_parking_exit_batch.py` now regenerates the existing analyzer's
+reports and pose SVGs from all complete archived evidence filenames in one
+command. It excludes excerpt filenames and byte-identical sources, expands
+multi-session logs, and writes a source/hash/session/plot manifest under ignored
+`local_workspace/parking-exit-analysis-all/`. It does not ingest USB files or
+alter robot motion. Continue copying original logs, hashes and physical outcomes
+to the committed evidence README before analysis. Three wrapper tests and the
+16 analyzer tests pass. Generated plots remain onboard pose estimates.
+
 ## 2026-09-30: parking-exit SVG frame and geometry audit
 
 The old analyzer SVG falsely connected rear-ToF positioning in a local pose

@@ -56,7 +56,24 @@ about short reversal transients; changing the protocol is outside this test.
 
 ## Analysis
 
-From the repository root, run:
+To regenerate analysis and pose SVGs for every archived complete log in one step,
+run from the repository root:
+
+```powershell
+python simulation/analyze_parking_exit_batch.py
+```
+
+This selects files matching `YYYYMMDD_log_NNN_cw.txt` or `_ccw.txt` in the
+evidence directory, excludes `_excerpt` files, and skips byte-identical complete
+sources. It expands multiple sessions within one source and writes the report,
+plots, `parking_exit_sources.csv` (source hashes, build IDs and plot names), and
+`parking_exit_batch.md` to ignored `local_workspace/parking-exit-analysis-all/`.
+Re-running refreshes the reports; use the manifest to identify current plots if
+older SVG files remain in that directory. The command never copies logs from a
+USB drive, changes robot control, or edits committed evidence. Archive each new
+original log and its physical report first, as described below.
+
+For one log or a custom selection, run from the repository root:
 
 ```powershell
 python simulation/analyze_parking_exit_pose.py path/to/log.txt
