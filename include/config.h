@@ -847,6 +847,21 @@ constexpr auto OBSTACLE_GREEN_MIN_AREA = 400;
 constexpr auto OBSTACLE_GREEN_MIN_HEIGHT = 21;
 constexpr auto OBSTACLE_CONFIRM_FRAMES = 2;
 constexpr auto OBSTACLE_LOST_FRAMES = 3;
+
+// Additional mapped-seat green check for the green-wall room. The original
+// full-frame classifier and camera field of view remain unchanged. A shallow
+// wall strip cannot supply the lower colour pixels or upright dark silhouette.
+// Three fresh candidate frames are required before this fallback may confirm
+// a seat; the existing blob path retains its own two-vote rule.
+// +/-18 px tolerates modest pose error while the two legal side seats remain
+// much farther apart (about 80 px even at the 600 mm discovery limit).
+constexpr auto OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX = 18;
+constexpr auto OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES = 15;
+constexpr auto OBSTACLE_GREEN_SEAT_MIN_BAND_CONTRAST = 40;
+constexpr auto OBSTACLE_GREEN_SEAT_MIN_DARK_CONTRAST = 60;
+constexpr auto OBSTACLE_GREEN_SEAT_CONFIRM_FRAMES = 3;
+constexpr auto OBSTACLE_GREEN_SEAT_RANGE_TOLERANCE_MM = 140.0f;
+constexpr uint32_t OBSTACLE_GREEN_SEAT_VOTE_WINDOW_MS = 350;
 constexpr uint8_t OPEN_CORNER_CONFIRM_SAMPLES = 3;
 
 // Desired obstacle positions inside the 320 px image
@@ -1103,6 +1118,10 @@ constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 800UL;
 // giving the asynchronous camera time for two independent frames. This remains
 // above the drivetrain's observed sub-90 mm/s oscillation region.
 constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 100.0f;
+// Corner-view scan reverse only: 70 mm/s is a modest step above the
+// previously driven 60 mm/s. Keep the 60 mm/s return and all travel/pose
+// limits unchanged until the faster reverse is measured on the field.
+constexpr auto OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S = 70;
 
 // BO462 calibration values. Camera coordinates use the same robot frame as the
 // ToF mounts: +X forward, +Y left, with the rear-axle midpoint as the origin.

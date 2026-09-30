@@ -26,10 +26,13 @@ Next official-layout trial: remove only the green pillar at S0 station 0 and
 keep the red middle pillar and the remaining photographed placements. With the
 updated binary, run one CW first lap (`O`) and inspect that S0 station 0 is
 inferred empty, the contradictory red seat 3 is ignored, no contact occurs,
-and lap 1 stops normally. For the photographed two-pillar starting section,
+and lap 1 stops normally. The corner-view reverse command is now 70 mm/s;
+watch its braking and return pose. The forward retrace remains 60 mm/s.
+For the photographed two-pillar starting section,
 select `O3` instead; its route and start scout still need separate physical
 validation. Keep the disable switch reachable and abort on wall approach or
-contact. Do not speed up the corner reverse until the end-of-lap path is safe.
+contact. Do not increase reverse speed further until its physical travel and
+return-pose limits pass.
 
 ### Changed-room colour gate before the next official `O` drive
 

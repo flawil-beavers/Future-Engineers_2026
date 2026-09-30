@@ -7959,9 +7959,13 @@ it cannot prove that an earlier seat assignment was correct. Only M7 was
 built with IDE-managed PlatformIO (RAM 432696/523624, flash 461376/786432).
 Prepared binary SHA-256
 `ea9c28c24e2fa8555223e69399db8f798e4666bb0cebf57f8cad8664e90bc58c`.
-It has not been uploaded or driven. Corner-view reverse/return speed remains
-60 mm/s; speeding it before end-of-lap safety is resolved would confound the
-next test and could exceed the existing +20 mm travel guard.
+At the user's subsequent request, both corner-view reverse phases were raised
+modestly from 60 to 70 mm/s; the forward retraces remain 60 mm/s. All travel,
+time, pose, and +20 mm braking guards remain unchanged. The rebuilt M7 binary
+passed the IDE-managed PlatformIO build with the same RAM/flash use and has
+SHA-256 `dba7837d22e9b1d981ad185663890f6919a277a5f7c251299da9d392d704a91b`.
+Neither version has been uploaded or driven since this analysis. The faster
+reverse is not physically validated.
 
 Exact next step: after explicit upload consent, upload the prepared M7 binary.
 For an official `O` first-lap trial, remove the green pillar at S0 station 0,
@@ -7969,6 +7973,369 @@ retain the red middle pillar and the other photographed placements, restore
 the parking barriers, clear USB cables, and start CW with the one-lap stop gate.
 Observe physical wall/pillar clearance and obtain the complete numbered USB
 log. Require no contact, no contradictory path injection, and normal lap-1
-completion before tuning corner-view reverse speed. Test the original
+completion, and verify the 70 mm/s reverse meets its travel and return-pose
+guards before any further speed increase. Test the original
 two-pillar start separately with `O3` after its scout/path safety is reviewed;
 do not use that layout to judge official-mode green reliability.
+
+2026-09-28 follow-up CW `O` batch 406--408, no code/config changes:
+Complete USB originals are stored unchanged as
+`simulation/evidence/parking_exit_diagnostics/20260928_log_406_cw.txt`,
+`20260928_log_407_cw.txt`, and `20260928_log_408_cw.txt`, with full paths,
+byte counts, SHA-256 and physical reports indexed in that directory's README.
+Source and copy hashes matched. Headers show turn=-1 and M7 diagnostic build
+`Sep_28_2026_21_57_15`, matching the prepared source generation, but no
+installed binary readback was performed. Mode headers in 407/408 explicitly
+say `OFFICIAL_2026`; the user calls all three `O` runs. The layout was
+described as the team's official-rule arrangement, but exact physical pillar
+positions were not independently measured for this batch. Analyzer reports
+are reproducible under ignored
+`local_workspace/parking-exit-analysis/20260928_batch406_408/`. No overflow,
+diagnostic truncation, duplicate ToF snapshot or event-order error occurred.
+
+Log 406 stopped during the fifth parking-exit segment at about 77/150 mm and
+ends with `Manual disable`; there is no exit completion, localization,
+camera scan, obstacle path, autonomous stop or stall record. Rear-ToF settling
+needed one extra micro-correction but reached 64.7 mm range. The user says
+the first attempt exited, surveyed and then stopped, and explicitly denies
+switching the robot off. That account does not match this complete numbered
+log. `Manual disable` is the generic label from `navigation_disable()` when
+`mode_pause()` is called; it does not prove human action. A physical switch
+LOW input, serial `p`, stall or overload can call `mode_pause()`, but the
+normally preceding stall/overload message is absent. A brief LOW read on A2
+or an unintended serial pause is possible but unproven. Do not attribute the
+stop to a person or a specific firmware fault yet.
+
+Logs 407 and 408 each completed all five exit segments, accepted parking-edge
+localization (+21.7/-2.1 and +21.1/-5.9 mm X/Y), confirmed the expected five
+mapped pillar seats (red 2 and 11, green 14 and 18, red 23), completed lap 1,
+and fired the configured first-lap stop. The user reports no contact in either.
+Log 407 used one 170 mm corner-view reverse at station 3; log 408 used two,
+at stations 3 and 6. Reverse distances at scan were 172.0, 170.1 and
+172.1 mm. Estimated returns differed from origins by at most about 0.9 mm
+and 0.4 degrees. These are onboard pose estimates, not externally measured
+clearances. The new opposite-seat guard logged an ignored red seat 3 in both,
+plus an ignored green seat 15 in 407; neither caused a second path injection.
+The mapped green fallback confirmed seat 18 in both runs with three frames.
+This is strong evidence for this CW first-lap arrangement, not yet for three
+full laps, CCW, O3 or reliable handling of every lighting/layout variation.
+
+Exact next step: practice the parking start/exit with the same legal CW
+layout and no source changes.
+Record placement of both parking barriers, rear/side initial ToF ranges,
+whether any manual intervention occurred, contact, and the next full USB log.
+Compare its rear positioning, five exit segments and localization with 407/408
+before considering any tuning. Preserve the one-lap stop gate for now.
+
+2026-09-28 new photographed CW `O` layout, batch 409--412 (source review only):
+All four complete USB originals were copied unchanged to
+`simulation/evidence/parking_exit_diagnostics/20260928_log_409_cw.txt`
+through `20260928_log_412_cw.txt`; each source/copy SHA-256 matched. The
+evidence README indexes hashes, byte counts, build and physical reports.
+Headers are the same Sep_28_2026_21_57_15 CW M7 diagnostic build and each
+lap entry explicitly says `OFFICIAL_2026`; installed binary was not read back.
+The user supplied a new photo and clarified the CW order: green at the inner
+start seat; green at the rear/outer station of the next (left) section;
+red at the inner middle station of the opposite (far) section; then red
+inner at the first station and green outer at the third/last station in the
+right section. This is a legal official-layout arrangement. The expected
+CW seats are green 0, green 11, red 14, red 18 and green 23.
+The first left-section station was physically empty. Exact measured marker
+coordinates are unavailable. Analyzer reports are under ignored
+`local_workspace/parking-exit-analysis/20260928_batch409_412/`.
+No overflow/truncation or duplicate ToF snapshots; log 412 has one diagnostic
+ordering inversion. No code, tuning, build or upload was performed this batch.
+
+409 completed exit, scout/connector and lap-1 counter, but the user reports
+passing both red pillars on the wrong side and grazing the green start pillar.
+The route confirmed green seats 0/11 and red seat 19; it missed expected red
+14 and green 23, marking all S2 stations and S3 station 2 clear. Raw VISION
+output around S2 shows several
+substantial red blobs (e.g. x301/foot116, then x223/foot116 and x199/foot122),
+but DISCOVERY_TRACE classified nearby valid observations as NO_SEAT and no
+red S2 route was injected. This is not evidence that red HSV failed; matching
+the visible red to the mapped seat/pose is the immediate problem. For CW travel
+down the right section, the physical red was inner/right (seat 18), whereas
+the robot confirmed outer/left (seat 19). This is a concrete wrong-side seat
+assignment. With 200 mm between seats and a 140 mm snap radius, a lateral
+sighting error above about 100 mm can select the opposite side; the log cannot
+separate pose, bearing and range contributions. The log has no
+independent vehicle-to-pillar clearance or full passage trajectory to
+quantify the ensuing path error.
+Lap completion must be treated as a physical failure.
+
+410/411 each completed exit and stationary parking scan, marked S0 station1
+CLEAR, then confirmed green seat 0 during the 85 mm corner scout. After
+returning within 2.3/2.2 mm onboard pose error, the connector's simulated
+rollout failed at every lookahead from 150 to 25 mm and locked the motor
+before normal-lap motion; the recorded `before_pillar` phase was 50/100 mm
+relative to the clear reference station, not a measured physical clearance
+to the green pillar. The user's reported standstill is explained by this safety gate.
+Do not bypass the gate merely to keep the robot moving. The connector passed
+in 409 but its endpoint cross-track error was about 59.9 mm, near its 60 mm
+join threshold, indicating little margin for this start-green geometry.
+
+412 completed exit and connector only because the scout marked S0 station0
+CLEAR despite the photographed start green; no green seat 0 was confirmed.
+After first corner, S1 station0 was recorded CLEAR, then mapped green fallback
+injected seat 7 from three frames with measured range187 mm and snap109 mm.
+The user says this station was physically empty and the robot swerved left
+around empty places, so this is a likely false green confirmation. The current
+fallback's nominal clear-view minimum is230 mm but this confirmation was
+allowed closer; the raw normal green blob was a short floor-level fragment.
+It next stopped intentionally at unresolved S1 station1: hold began at300 mm,
+expired after800 ms, and no section-middle reverse is designed. The later
+generic `Manual disable` line is not the reason it originally stood still.
+
+This layout exposed three separate risks: premature CLEAR of a real start
+green; visible red blobs without a mapped obstacle; and a close-range false
+green in an empty station. These must be resolved before another full-speed
+run of this layout. Exact next step: confirm the five physical markers and
+empty S1/0 remained fixed in all four trials; replay seat projection and
+coverage decisions for 409/412 and the connector rollout for 410/411 using
+committed logs; propose bounded code fixes only after separating these causes.
+Then verify with stopped views or a single guarded low-speed first-lap run.
+
+Follow-up source audit: In 410/411 the connector waypoint capsule preflight
+and pointwise Pure Pursuit geometry passed, then `connectorRolloutFeasible()`
+returned false for every lookahead. The final
+`tracking_sample/target=0/0 forward=0 steering=0` values are uninitialized
+failure-detail placeholders from the pointwise check, not evidence that
+sample 0 or zero steering caused the rejection. The rollout can fail on
+wall/pillar clearance, non-forward/excess steering during simulated travel,
+or missed endpoint within maximum travel; its present log does not distinguish
+them. Add a reason and travel/pose/clearance to rollout diagnostics before
+changing the safety gate. In 409, the red S2 detection had production-valid
+observations with `obs_seat=-1`, while S3/0 was confirmed as seat 19 rather
+than physical seat 18. The log omits the sighting XY and snap error for
+NO_SEAT and vote events, so it cannot uniquely attribute either error to
+pose, camera calibration, range estimation or another red region. Avoid
+blanket HSV or snap-radius changes; log the projection and compare with
+expected seat bearings in a stopped view. The S1/0 false green in 412 was
+confirmed at measured range 187 mm despite the fallback's normal clear-view
+minimum of 230 mm; assess a bounded close-range safeguard and the fact that
+it reversed a previously observed CLEAR station.
+
+2026-09-28/29 stopped S1 view and bounded diagnostic revision:
+The user positioned the stopped CW robot before S1 with green at the last
+outer station; drive enable was off and USB was connected as COM7 for the
+capture. The original CRC-checked camera transfer and derivatives are under
+`simulation/evidence/camera_diagnostics/20260928_s1_empty_front_green_rear_stationary_01.*`
+and hashes are indexed in that directory README. Frame897, exposure144 lines;
+the true green is distant near the horizon and foreground printed floor lines
+are visible. `camseat 128 205` gave 0/10 candidate frames at this stopped pose;
+this does not reproduce the moving log-412 false positive, whose raw image is
+unavailable. Source audit found that the mapped-green fallback pooled upper
+HSV-green samples with a dark foot anywhere down to y208 without requiring
+continuous vertical support. `Vision::findGreenSeatCandidate` now rejects a
+candidate if adjacent dark-supported rows have a gap >12 px. This is a shape
+consistency check rather than a green range cutoff. An offline replica of the
+current candidate calculation showed 2-px maximum dark-row gap and acceptance
+in all ten archived true-green 40-cm images. It cannot establish that the
+new criterion rejects the unrecorded log-412 frame or generalize to all
+competition placements. The original S1 stationary view had 0/10 candidates
+before the revision.
+
+The connector rollout now prints the actual rejection reason, travel, pose,
+wall/pillar clearance, steering and endpoint error for each failed lookahead;
+the previous final `tracking_sample=0/0` values were misleading placeholders.
+`DISCOVERY_TRACE` now prints observed image centre/foot/bearing, projected XY,
+and the nearest unrestricted seat/error for valid observations. Neither
+change alters the connector safety gate or seat snap. IDE-managed M7-only
+build succeeded (RAM432696, flash462736 bytes), binary SHA256
+`d2cacaa34301059a17ed9e6bb80b34874012a57119a3544948c74e00e1390862`.
+No M4 build and no firmware upload. Exact next step: obtain explicit upload
+permission required by the obstacle test plan, upload M7 with drive switch
+off, then repeat a stopped camera comparison at the actual corner-entry pose
+if it can be reproduced safely. Drive one controlled CW first-lap attempt
+with the same five-pillar layout only after confirming the stationary green
+check; collect the complete USB log and physical contact/stop report. Inspect
+new rollout reasons and projected red seat errors before changing connector
+geometry or camera calibration.
+
+2026-09-29 repeat stopped S1 view: With the user-reconnected robot before
+the section containing the rear/outer green pillar, drive disabled, original
+camera transfer and ten-frame `camseat 128 205` output were saved under
+`simulation/evidence/camera_diagnostics/20260929_s1_empty_front_*` and
+hashed in that directory README. Front station is physically empty; the
+image shows the rear pillar near the horizon. The original firmware again
+reported 0/10 mapped-green candidates at the fixed empty-front image point.
+Exposure was97 lines versus144 in the previous stopped capture, so do not
+attribute this negative result to the moving log-412 view. USB was COM7
+at the time of capture; no machine-specific device path is stored in evidence.
+The built revision has not been uploaded as of this entry; explicit user
+permission was requested per the obstacle challenge test plan.
+
+2026-09-29 upload and post-upload stationary check: The user explicitly
+approved the combined M7 diagnostics plus green silhouette change. The
+IDE-managed PlatformIO M7-only DFU upload succeeded on the connected robot;
+binary SHA256 `d2cacaa34301059a17ed9e6bb80b34874012a57119a3544948c74e00e1390862`.
+No M4 upload and no independent firmware readback. With drive disabled,
+`camseat 128 205` again returned 0/10 candidate frames 416..425 at the
+empty S1 front image point. Full receiver output is
+`simulation/evidence/camera_diagnostics/20260929_s1_empty_front_post_upload_camseat_128_205.txt`
+and its SHA256 is indexed in the camera README. This stopped view did not
+reproduce the moving log-412 false positive before or after the revision.
+Next physical step requested from user: return robot to the CW parking start
+with the same five-pillar layout, drive disabled and USB connected. Check
+start green acquisition and connector outcome, then obtain complete moving
+log plus physical report. Do not claim moving reliability from this 0/10
+stationary result.
+
+2026-09-29 first CW `O` run after the diagnostic/green upload: The user
+confirmed the same five-pillar layout and CW parking start with drive OFF.
+The serial command `O` returned `Obstacle section layout: OFFICIAL_2026` and
+`Pending mode: OBSTACLE_CHALLENGE`; the user then enabled drive. Physical
+report: robot left the parking bay, stopped itself immediately afterward,
+and only then did the user switch it off. No contact was reported. Firmware
+binary SHA256 is the uploaded M7 build above. The USB original remains on
+the robot's memory stick and was not supplied in this batch; no complete
+log or excerpt is available for this run. Do not assign a log number, claim
+the new rollout diagnostic reason, or claim a connector fix from this physical
+report. The user prefers to avoid moving the memory stick for each run.
+Source review of older complete logs 409/410/411: in the start-green geometry,
+409 selected a merge phase 200 mm before clear reference station 1 and
+passed the rollout, reaching the join with 59.9 mm cross-track error against
+the 60 mm gate. Logs410/411 selected phases only50/100 mm before that clear
+reference station; every lookahead rollout failed and the motor was locked.
+The planner ranks one merge index by lateral ray error and tests only six
+lookaheads at that index; it does not search an earlier alternative merge
+index after rollout failure. The specific collision/steering/endpoint return
+inside the old rollouts was not logged. Do not mislabel `before_pillar` as
+measured physical distance to green seat0. Next: design a bounded alternate
+merge-index search which retains the existing capsule, control and endpoint
+gates; verify offline before another upload. For future drive evidence,
+capture serial output live over the already connected USB cable, with cable
+secured outside the track, or collect the stick in a later batch. Then address
+red seat mapping (409 red seat14 NO_SEAT and physical red18 mapped to19)
+using projected XY/nearest-seat diagnostics rather than changing HSV blindly.
+
+2026-09-29 bounded connector retry and red projection diagnostics (code only):
+`buildParkingEntryConnector()` now tries its original best-ray merge first.
+If the existing complete candidate preflight rejects it, it chooses at most
+three further route merge points with phases at least 50 mm earlier each
+time. Candidate selection retains the original forward, heading, phase and
+lateral score rules; `tryParkingEntryConnectorMerge()` retains the original
+static capsule, hidden-green guard, pointwise steering and 2-mm kinematic
+rollout gates. All attempts rejected still locks motor off and clears the
+temporary connector. The USB-stick log now records each candidate index,
+phase, detailed rejection, chosen success or final `No safe merge candidate`.
+For red production-valid blobs, rate-limited `[RED SEAT]` rows now record the
+decision, onboard pose, image centre/foot, bearing/range, projected XY,
+nearest geometric seat/error and accepted seat; confirmed events always log.
+This diagnoses the seat14 NO_SEAT and physical seat18-to19 error without
+altering red HSV thresholds, snap radius, pass side or the camera window.
+IDE-managed M7-only build succeeded (RAM432704, flash464120 bytes), binary
+SHA256 `eb7270f834d767e8f1ba024bf11019396beb37e5ec71cb00a3f7b65c08bc7f66`.
+M4 unchanged. This revision is not uploaded or physically validated yet;
+the robot was not USB-enumerated at the end of this session. User prefers no
+USB cable during drives; a cable may be connected briefly for upload and then
+removed before starting. Exact next step: upload this M7 revision when the
+robot is reconnected and drive switch is off; confirm successful DFU, remove
+the cable, perform one supervised CW first-lap run with the unchanged legal
+five-pillar layout, then obtain the complete original log from the stick in
+one later batch. Record actual contact/stop and compare candidate attempts,
+rollout reasons and red seat projections. Do not claim reliability or correct
+red mapping from the compile alone.
+
+2026-09-29 continuation: User reconnected USB with drive switch OFF for the
+requested new revision. IDE-managed PlatformIO M7 DFU upload of binary SHA256
+`eb7270f834d767e8f1ba024bf11019396beb37e5ec71cb00a3f7b65c08bc7f66`
+succeeded (`File downloaded successfully`, then upload task SUCCESS).
+Installed binary was not independently read back. The serial `O` command
+after upload returned `OFFICIAL_2026`, blue-ready and `System disabled.
+Pending mode: OBSTACLE_CHALLENGE`; mode remains temporary until restart.
+The user wants no USB cable during the drive. Exact next step: with physical
+drive switch still OFF, put robot back in CW parking start without moving
+the five pillars, leave its memory stick inserted, unplug only the laptop
+USB cable while keeping robot powered, then enable drive for one supervised
+first-lap trial. Record physical outcome and later acquire the complete
+original stick log in a single batch. There is no post-upload moving result
+for this revision yet.
+
+2026-09-29 returned CW stick batch, logs 413-416: Four complete originals
+were copied unchanged and source/copy SHA-256 matched under
+`simulation/evidence/parking_exit_diagnostics/20260929_log_NNN_cw.txt`;
+individual hashes and outcomes are in that directory's README. Analyzer
+reports remain in ignored `local_workspace/parking-exit-analysis/20260929_batch413_416/`.
+All four parking records have no overflow, truncation, duplicate ToF snapshot
+or ordering error. Log 413 aborted parking localization on heading 8.4 deg
+versus 8.0 deg limit; 414 failed rear stationary verification. Log 415
+unparked, confirmed start green, then stopped autonomously: all six old
+connector rollouts hit the 500 mm travel cap with endpoint 112-113 mm away,
+so the motor lock was intentional; its later `Manual disable` label was not
+the initiating cause. This likely corresponds to the previously reported
+stop after start, but physical run number is not confirmed.
+
+Log 416 contains the new bounded connector retry (`phase=300` passes) and
+`[RED SEAT]` projection diagnostics, consistent with the user's report of
+passing the first red on the wrong side, second red correctly, missing the
+last green and hitting start green. First red is visibly detected in at least
+ten frames, yet its projected field point remains near x=199..217 mm, roughly
+199..233 mm from expected middle inner seat 14; the fixed 140 mm snap gate
+rejects it, and S2 station 1 is marked clear. Second red projects to seat 19
+with errors 2..48 mm and is confirmed, though the user described the physical
+pillar as inner seat 18. Last green is present as green blobs while S3
+station 2 becomes clear; no seat-specific green rejection reason is logged.
+After the final corner, red projections remain outside snap and the robot
+stalls at 9.3 mm progress in 1 s at 259 mm/s target, matching reported
+physical contact but not identifying the precise struck object. The log
+does not independently establish actual pillar coordinates or robot pose.
+Only one of the two newly reported full-section runs is identifiable on the
+returned stick (newest file 416); do not assign the other run or claim a
+second logged outcome. Next: verify the physical red seat marks and camera
+pose at the first red; add concise green-seat rejection telemetry for last
+station before changing colour/geometry gates. Obtain the missing complete
+run if it was saved on another medium. Keep the safety snap and clear gates
+unchanged pending measured coordinate error; do not widen to 200+ mm merely
+to make these observations pass.
+
+2026-09-29 next three CW runs, complete logs 417-419: User reports run 1
+pulling inward after apparent extra green in S1, then autonomous stop; run 2
+correct S1 green passage, wrong first red side, correct second red passage,
+wrong last green side, start green passed; run 3 correct first green, skewed
+corner reverse, wrong first red side, collision at second red, missed last
+green and narrow start-green clearance. Original unmodified files and SHA-256
+are in `simulation/evidence/parking_exit_diagnostics/20260929_log_417_cw.txt`
+through `20260929_log_419_cw.txt`, with individual hashes/metadata in its
+README. Source/copy hashes matched. Analyzer output is in ignored
+`local_workspace/parking-exit-analysis/20260929_batch417_419/`; no exit
+diagnostic overflow, truncation, duplicate ToF or ordering errors. All three
+have completed unparking. Firmware is the already uploaded M7 connector-retry
+and red projection revision (prepared binary SHA-256
+`eb7270f834d767e8f1ba024bf11019396beb37e5ec71cb00a3f7b65c08bc7f66`);
+the installed image was not independently read back.
+
+Log 417: connector succeeds on fourth merge candidate phase150 but ends with
+10.2 deg heading error; S1/0 is first marked clear, then green fallback
+confirms seat7 (x/foot92/156, range320, snap21). S1/1 is then confirmed RED
+seat9. Both stations are physically empty per layout, so this creates an
+invalid official pattern (end plus middle); legal-layout inference mask stays
+zero. S1/2 still unresolved at the 300 mm hold; grace expires after 800 ms
+and the motor remains stopped. Thus the immediate stop is unresolved-station
+safety, triggered downstream of false confirmations, not a general rule that
+two same-colour pillars cannot be driven past. Avoid simply bypassing the
+hold or inferring the last seat clear from the contradictory map.
+
+Log 418: start green0 and S1 green11 confirmed; S2 red14 is visible but
+rejected outside the 140 mm snap at 162-254 mm error, matching previous
+log416. S3 first red is confirmed seat19 although physical report says
+inner seat18. S3 last green is confirmed seat22 while physical report says
+outer seat23. Lap counter completes but physical routing fails. Log 419:
+S1 last station is confirmed RED seat11 despite reported physical GREEN;
+S2 red maps to seat15; S3 first red is missed, and last GREEN is confirmed
+RED seat23. Start green is later confirmed seat2, not physical seat0.
+Some red/green blob identities remain uncertain without raw frames, so these
+are log-versus-layout contradictions, not proof that one particular pillar
+changed colour. The drift of projected field coordinates and far corner
+approach remain plausible causes of the seat mistakes; moving-image colour
+misclassification also needs direct evidence. No HSV, snap-radius, speed or
+hold gate was changed from this batch.
+
+Next: check physical seat-mark alignment and acquire brief raw camera frames
+at the S1 false-green/false-red view and after the curve before red14, with
+the robot stationary and drive disabled. Add low-volume rejection/seat trace
+if a further cable-free drive is needed, especially for green-seat candidate
+reasons. Compare visual truth against onboard pose at the curve exit before
+adjusting turn trajectory or field origin. Preserve hard stop for unresolved
+obstacles until detection and map consistency are reliable.

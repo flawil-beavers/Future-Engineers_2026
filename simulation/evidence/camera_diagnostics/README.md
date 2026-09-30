@@ -1,5 +1,53 @@
 # Stationary camera evidence
 
+## 2026-09-29: same S1 front-empty view before diagnostic upload
+
+The user reconnected the stopped robot before S1; front station empty, green
+pillar at the rear outer station. Drive stayed disabled. Complete CRC-checked
+`c0`/`camshot` transfer stem `20260929_s1_empty_front_recheck_01`:
+`.serial.bin` SHA256
+`0fef2444e074355778d70953427c9297e3e3e463eac1285acd814bab1ad77f66`;
+`.rgb565` `1f3c11b984f19f55574f4758ec8797e6bc0af806aa6fc77e57c90d8e18cf57ab`;
+`.json` `e44358d61ab1a086b47f22aa1e89752457691ba975dad0bb9e83fa814d817c30`;
+derived `.png`
+`920f055feb4f8858a7f1918ac27adc057b4378f6898ee6015cae9a6191755ecb`.
+Header: frame 9054, exposure 97 lines, CRC32 4232037854. The text capture
+`20260929_s1_empty_front_camseat_128_205.txt` SHA256
+`5509e19505f86a93fbb1eb431c4461bf22290605aed6308dbae7fe0b1bce8e3b`
+contains 10/10 candidate=0 frames 252..261 at the empty front seat.
+This is still the pre-revision firmware and a stopped view, not a replay of
+the moving log-412 false-positive image.
+
+After explicit user consent, M7 firmware binary SHA256
+`d2cacaa34301059a17ed9e6bb80b34874012a57119a3544948c74e00e1390862`
+was uploaded successfully with PlatformIO/DFU while drive remained disabled.
+The follow-up stopped receiver text
+`20260929_s1_empty_front_post_upload_camseat_128_205.txt` SHA256
+`4037641d7c12c047ac436645f1cee2e74ac9441c40e4a64dc658e251c81fe5a9`
+again shows 0/10 mapped-green candidates at the empty front image point,
+frames416..425. DFU success is not an independent binary readback. The
+physical moving false-positive case remains unverified.
+
+## 2026-09-28: CW empty S1 front, green at S1 rear
+
+The user placed the stopped robot before the left section, with the legal
+green pillar at the last outer station and the first station empty. Drive
+enable was off. The complete `c0`/`camshot` USB transfer and CRC-checked
+derivatives share stem `20260928_s1_empty_front_green_rear_stationary_01`.
+Original `.serial.bin` SHA256:
+`2ef03314dfea45134e1d04eeaf869f6aaf82cb89c67c46efd30e420d4e9792b9`;
+`.rgb565`: `a47fe1ca52db01545b31af8e9e442dbab881af4ab933c2e91f9de667a2ab25a87`;
+`.json`: `b7238e491c14dae0ada4e561743a565799af4fed6a7339555f24572acc37ed5f`;
+derived `.png`: `93f48722d9cebddf5fe5e0f606ccbfea593759f6ca621722bec689e77976eb18`.
+Header: frame 897, exposure 144 lines, CRC32 3880047042. The rear green is
+small near the horizon; foreground printed lines are visible. A stopped
+`camseat 128 205` check on ten subsequent fresh frames found 0/10 mapped-green
+candidates. This standing pose does not reproduce the moving false green
+confirmation in log 412, and no raw camera image from that exact drive pose
+exists. The subsequent offline continuity check retained candidates in all
+ten archived 40-cm true-green images. This is a limited image check, not
+moving-route acceptance.
+
 ## 2026-09-28: uploaded mapped-seat candidate, stopped live-frame check
 
 M7 firmware SHA256 `f87224f6a6458faa724a8f815045b3a3eaf39911228f47be1e8a32a3719c2081`

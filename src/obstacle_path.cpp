@@ -2684,7 +2684,8 @@ void updateCornerViewExtra(bool newFrame)
             discoveryStations[cornerViewStation].clearFrames[1] = 0;
             return;
         }
-        set_steering(cornerViewExtraSteering); set_speed(-60); return;
+        set_steering(cornerViewExtraSteering);
+        set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S); return;
     case CORNER_VIEW_EXTRA_OBSERVE:
         holdCornerViewSteering(cornerViewExtraSteering);
         cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
@@ -2822,7 +2823,7 @@ void updateCornerView(bool newCameraFrame)
             Serial.println("[CORNER VIEW] Brake then observe");
             return;
         }
-        set_speed(-60);
+        set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S);
         return;
     case CORNER_VIEW_OBSERVE:
         holdCornerViewCentered();

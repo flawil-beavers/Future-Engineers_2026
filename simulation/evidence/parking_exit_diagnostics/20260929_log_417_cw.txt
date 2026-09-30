@@ -1,0 +1,7817 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=165.0 parking_length_mm=247.5
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=37 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=-1.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK_DIAG_CONFIG] v=2 build=Sep_28_2026_22_58_57 turn=-1 center=80 mm_per_count=0.1154054 period_ms=200 sample_limit=150 byte_limit=65536 buffer=196608 sample_bytes=57000 event_bytes=8192 line_capacity=512 segments=5 exit_speed=80 brake_ms=150 rear_target=65.0 localize_max=430.0
+[PARK_DIAG] v=2 type=state t=2365 detail=rear_settle enc=-13 emm=-1.50 gyro=-0.01 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=2365 state=rear_settle seg=1 turn=-1 target=20.0 enc=-13 emm=-1.50 cmd=0 speed=0.00 steer=0 dc=0 gyro=-0.01 pose=0.0,0.0,0.00 nominal=0.0,0.0,0.00 ref=rear_marker s0=3,6,37.0,37.0,144.125,1.1,1,1 s1=3,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=none
+[PARK_DIAG] v=2 type=sample t=2569 state=rear_settle seg=1 turn=-1 target=20.0 enc=-13 emm=-1.50 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.87 pose=0.0,0.0,0.88 nominal=0.0,0.0,0.00 ref=rear_marker s0=10,6,68.0,68.0,17.406,1.6,1,1 s1=10,1,101.0,101.0,13.508,1.8,1,1 s2=none
+[PARK_DIAG] v=2 type=sample t=2774 state=rear_settle seg=1 turn=-1 target=20.0 enc=-13 emm=-1.50 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.98 pose=0.0,0.0,0.98 nominal=0.0,0.0,0.00 ref=rear_marker s0=17,5,65.0,65.0,17.789,1.3,1,1 s1=17,0,95.0,95.0,13.516,1.4,1,1 s2=2,60,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK_DIAG] v=2 type=sample t=2978 state=rear_settle seg=1 turn=-1 target=20.0 enc=-13 emm=-1.50 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.90 pose=0.0,0.0,0.90 nominal=0.0,0.0,0.00 ref=rear_marker s0=24,5,70.0,70.0,16.078,1.1,1,1 s1=24,0,102.0,102.0,13.117,1.2,1,1 s2=4,76,22.0,22.0,16.109,1.4,1,1
+[PARK REAR] One-shot correction start_range_mm=20.3 target_range_mm=65.0 direction=forward planned_mm=44.7
+[PARK_DIAG] v=2 type=state t=2996 detail=rear_drive enc=-13 emm=-1.50 gyro=0.89 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=2996 state=rear_drive seg=1 turn=-1 target=44.7 enc=-13 emm=-1.50 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.89 pose=0.0,0.0,0.90 nominal=0.0,0.0,0.00 ref=rear_marker s0=same s1=same s2=5,0,19.0,19.0,16.062,1.5,1,1
+[PARK_DIAG] v=2 type=direction t=2996 detail=0_to_1 enc=-13 emm=-1.50 gyro=0.89 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=3196 state=rear_drive seg=1 turn=-1 target=44.7 enc=13 emm=1.50 cmd=60 speed=17.72 steer=0 dc=1 gyro=0.89 pose=3.0,0.0,0.90 nominal=3.0,0.0,0.00 ref=rear_marker s0=31,18,72.0,72.0,16.547,1.2,1,1 s1=31,13,122.0,122.0,12.977,1.3,1,1 s2=7,9,21.0,21.0,16.055,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=3396 state=rear_drive seg=1 turn=-1 target=44.7 enc=113 emm=13.04 cmd=60 speed=57.05 steer=0 dc=1 gyro=0.84 pose=14.4,0.2,0.85 nominal=14.5,0.0,0.00 ref=rear_marker s0=38,11,76.0,76.0,18.641,1.1,1,1 s1=38,15,151.0,151.0,11.453,1.4,1,1 s2=9,15,22.0,22.0,15.383,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=3596 state=rear_drive seg=1 turn=-1 target=44.7 enc=229 emm=26.43 cmd=60 speed=59.95 steer=0 dc=1 gyro=0.96 pose=27.8,0.4,0.95 nominal=27.9,0.0,0.00 ref=rear_marker s0=45,7,89.0,89.0,17.219,1.2,1,1 s1=45,11,132.0,132.0,17.211,1.3,1,1 s2=11,29,23.0,23.0,13.719,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=3796 state=rear_drive seg=1 turn=-1 target=44.7 enc=349 emm=40.28 cmd=60 speed=58.28 steer=0 dc=1 gyro=0.97 pose=41.8,0.7,0.95 nominal=41.8,0.0,0.00 ref=rear_marker s0=52,4,117.0,117.0,17.086,1.2,1,1 s1=52,8,219.0,219.0,1.164,10.6,1,1 s2=13,37,28.0,28.0,13.742,1.2,1,1
+[PARK_DIAG] v=2 type=state t=3835 detail=rear_brake enc=371 emm=42.82 gyro=0.97 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=3835 state=rear_brake seg=1 turn=-1 target=20.0 enc=371 emm=42.82 cmd=60 speed=80.09 steer=0 dc=2 gyro=0.97 pose=44.3,0.7,0.94 nominal=44.3,0.0,0.00 ref=rear_marker s0=53,14,112.0,112.0,19.133,1.2,1,1 s1=53,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=same
+[PARK_DIAG] v=2 type=state t=3985 detail=rear_settle enc=372 emm=42.93 gyro=1.01 steer=0 cmd=0
+[PARK_DIAG] v=2 type=direction t=3985 detail=1_to_0 enc=372 emm=42.93 gyro=1.01 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=3985 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=8.52 steer=0 dc=0 gyro=1.01 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=58,18,116.0,116.0,19.109,1.2,1,1 s1=58,24,-1.0,9999.0,-1.000,-1.0,0,0 s2=15,38,34.0,34.0,13.016,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=4185 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.22 steer=0 dc=0 gyro=1.01 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=65,14,112.0,112.0,18.898,1.2,1,1 s1=65,23,-1.0,9999.0,-1.000,-1.0,0,0 s2=17,48,42.0,42.0,11.797,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=4385 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.01 steer=0 dc=0 gyro=1.02 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=72,9,116.0,116.0,18.625,1.2,1,1 s1=72,21,-1.0,9999.0,-1.000,-1.0,0,0 s2=19,58,51.0,51.0,10.734,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=4585 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=0 dc=0 gyro=1.02 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=79,5,112.0,112.0,18.508,1.2,1,1 s1=79,16,-1.0,9999.0,-1.000,-1.0,0,0 s2=21,69,60.0,60.0,10.047,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=4790 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=0 dc=0 gyro=1.02 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=86,6,115.0,115.0,18.438,1.2,1,1 s1=86,24,-1.0,9999.0,-1.000,-1.0,0,0 s2=23,81,64.0,64.0,10.406,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=4990 state=rear_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=0 dc=0 gyro=1.02 pose=44.4,0.7,0.97 nominal=44.4,0.0,0.00 ref=rear_marker s0=93,2,113.0,113.0,18.828,1.2,1,1 s1=93,22,-1.0,9999.0,-1.000,-1.0,0,0 s2=25,95,68.0,68.0,9.656,1.3,1,1
+[PARK REAR VERIFY] final_range_mm=69.7 target_error_mm=4.7 measured/expected_change_mm=49.3/44.8 accepted=yes
+Position initialized: (385.33, -1352.00), heading=180.00°
+[PARK_DIAG] v=2 type=rebase t=4990 detail=field_start enc=372 emm=42.93 gyro=1.02 steer=0 cmd=0
+[PARK FIELD START] turn=CW fixed_line_x=500.0 rear_axle_x_y_heading=385.3/-1352.0/180.0 start_y_source=outer_wall_tof range_mm=113.0 start_x_source=rear_tof rear_range/clearance_mm=69.7/54.7
+[PARK REAR RESULT] start/final_range_mm=20.3/69.7 start/final_clearance_mm=5.3/54.7 correction_travel_mm=44.8
+[PARK_DIAG] v=2 type=state t=4990 detail=segment_settle enc=372 emm=42.93 gyro=1.02 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=4990 state=segment_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=0 dc=0 gyro=1.02 pose=385.3,-1352.0,180.00 nominal=385.3,-1352.0,180.00 ref=none s0=same s1=same s2=26,0,72.0,72.0,9.188,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=5193 state=segment_settle seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=-50 dc=0 gyro=1.18 pose=385.3,-1352.0,180.17 nominal=385.3,-1352.0,180.00 ref=none s0=100,1,115.0,115.0,19.070,1.2,1,1 s1=100,24,-1.0,9999.0,-1.000,-1.0,0,0 s2=28,14,72.0,72.0,9.180,1.2,1,1
+[PARK EXIT] Segment 1 direction=reverse steering=-50 target_mm=20.0
+[PARK_DIAG] v=2 type=state t=5193 detail=segment_drive enc=372 emm=42.93 gyro=1.18 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=5193 state=segment_drive seg=1 turn=-1 target=20.0 enc=372 emm=42.93 cmd=0 speed=0.00 steer=-50 dc=0 gyro=1.18 pose=385.3,-1352.0,180.17 nominal=385.3,-1352.0,180.00 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=5193 detail=0_to_-1 enc=372 emm=42.93 gyro=1.18 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=5393 state=segment_drive seg=1 turn=-1 target=20.0 enc=318 emm=36.70 cmd=-80 speed=-24.54 steer=-50 dc=1 gyro=-0.14 pose=391.6,-1352.0,178.85 nominal=391.6,-1352.2,176.72 ref=none s0=106,26,115.0,115.0,18.516,1.2,1,1 s1=107,21,-1.0,9999.0,-1.000,-1.0,0,0 s2=30,21,73.0,73.0,9.211,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=5593 state=segment_drive seg=1 turn=-1 target=20.0 enc=242 emm=27.93 cmd=-80 speed=-47.60 steer=-50 dc=1 gyro=-3.90 pose=400.3,-1352.5,175.09 nominal=400.3,-1353.0,172.09 ref=none s0=113,18,112.0,112.0,18.148,1.2,1,1 s1=114,22,-1.0,9999.0,-1.000,-1.0,0,0 s2=32,34,72.0,72.0,9.211,1.2,1,1
+[PARK_DIAG] v=2 type=state t=5668 detail=segment_brake enc=198 emm=22.85 gyro=-6.46 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=5668 state=segment_brake seg=1 turn=-1 target=20.0 enc=198 emm=22.85 cmd=-80 speed=-57.62 steer=-50 dc=2 gyro=-6.46 pose=405.4,-1353.0,172.53 nominal=405.3,-1353.9,169.42 ref=none s0=116,6,118.0,118.0,17.008,1.2,1,1 s1=117,10,-1.0,9999.0,-1.000,-1.0,0,0 s2=33,10,71.0,71.0,9.188,1.3,1,1
+[PARK EXIT] Segment 1 stopped target_mm=20.0 actual_mm=20.2 heading_delta_deg=-10.4
+[PARK_DIAG] v=2 type=state t=5822 detail=segment_settle enc=197 emm=22.73 gyro=-9.42 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=direction t=5822 detail=-1_to_0 enc=197 emm=22.73 gyro=-9.42 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=5822 state=segment_settle seg=2 turn=-1 target=25.0 enc=197 emm=22.73 cmd=0 speed=-9.19 steer=-50 dc=0 gyro=-9.42 pose=405.5,-1353.0,169.58 nominal=405.4,-1353.9,169.35 ref=none s0=121,16,117.0,117.0,15.961,1.3,1,1 s1=122,20,-1.0,9999.0,-1.000,-1.0,0,0 s2=34,70,72.0,72.0,9.344,1.2,1,1
+[PARK EXIT] Segment 2 direction=forward steering=50 target_mm=25.0
+[PARK_DIAG] v=2 type=state t=6021 detail=segment_drive enc=197 emm=22.73 gyro=-8.65 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=6021 state=segment_drive seg=2 turn=-1 target=25.0 enc=197 emm=22.73 cmd=0 speed=-0.24 steer=50 dc=0 gyro=-8.65 pose=405.5,-1353.0,170.35 nominal=405.4,-1353.9,169.35 ref=none s0=128,14,122.0,122.0,13.367,1.3,1,1 s1=129,18,429.0,429.0,0.438,14.3,1,1 s2=36,83,68.0,68.0,9.852,1.2,1,1
+[PARK_DIAG] v=2 type=direction t=6021 detail=0_to_1 enc=197 emm=22.73 gyro=-8.65 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=6221 state=segment_drive seg=2 turn=-1 target=25.0 enc=270 emm=31.16 cmd=80 speed=54.87 steer=50 dc=1 gyro=-10.52 pose=397.2,-1351.5,168.49 nominal=397.2,-1352.0,164.91 ref=none s0=135,13,122.0,122.0,13.078,1.3,1,1 s1=136,17,429.0,429.0,0.383,13.3,1,1 s2=38,94,65.0,65.0,10.227,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6421 state=segment_drive seg=2 turn=-1 target=25.0 enc=356 emm=41.08 cmd=80 speed=48.79 steer=50 dc=1 gyro=-15.03 pose=387.6,-1349.1,163.98 nominal=387.8,-1349.0,159.68 ref=none s0=142,12,130.0,130.0,9.969,1.4,1,1 s1=143,16,422.0,422.0,0.453,13.7,1,1 s2=41,10,62.0,62.0,10.258,1.3,1,1
+[PARK_DIAG] v=2 type=state t=6531 detail=segment_brake enc=414 emm=47.78 gyro=-17.58 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=6531 state=segment_brake seg=2 turn=-1 target=25.0 enc=414 emm=47.78 cmd=80 speed=51.34 steer=50 dc=2 gyro=-17.58 pose=381.2,-1347.1,161.43 nominal=381.5,-1346.5,156.15 ref=none s0=146,7,134.0,134.0,7.359,1.5,1,1 s1=147,11,394.0,394.0,0.516,13.0,1,1 s2=42,24,63.0,63.0,10.273,1.2,1,1
+[PARK EXIT] Segment 2 stopped target_mm=25.0 actual_mm=24.7 heading_delta_deg=-20.3
+[PARK_DIAG] v=2 type=state t=6681 detail=segment_settle enc=411 emm=47.43 gyro=-19.23 steer=50 cmd=0
+[PARK_DIAG] v=2 type=direction t=6681 detail=1_to_0 enc=411 emm=47.43 gyro=-19.23 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=6681 state=segment_settle seg=3 turn=-1 target=20.0 enc=411 emm=47.43 cmd=0 speed=4.84 steer=50 dc=0 gyro=-19.23 pose=381.5,-1347.2,159.76 nominal=381.9,-1346.6,156.34 ref=none s0=151,13,136.0,136.0,5.094,1.9,1,1 s1=152,17,419.0,419.0,0.445,10.8,1,1 s2=43,79,63.0,63.0,11.398,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6881 state=segment_settle seg=3 turn=-1 target=20.0 enc=411 emm=47.43 cmd=0 speed=0.12 steer=-50 dc=0 gyro=-19.17 pose=381.5,-1347.2,159.82 nominal=381.9,-1346.6,156.34 ref=none s0=158,12,147.0,147.0,3.414,2.1,1,1 s1=159,16,397.0,397.0,0.445,14.1,1,1 s2=45,89,66.0,66.0,12.266,1.2,1,1
+[PARK EXIT] Segment 3 direction=reverse steering=-50 target_mm=20.0
+[PARK_DIAG] v=2 type=state t=6881 detail=segment_drive enc=411 emm=47.43 gyro=-19.17 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=6881 state=segment_drive seg=3 turn=-1 target=20.0 enc=411 emm=47.43 cmd=0 speed=0.12 steer=-50 dc=0 gyro=-19.17 pose=381.5,-1347.2,159.82 nominal=381.9,-1346.6,156.34 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=6881 detail=0_to_-1 enc=411 emm=47.43 gyro=-19.17 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=7081 state=segment_drive seg=3 turn=-1 target=20.0 enc=363 emm=41.89 cmd=-80 speed=-32.14 steer=-50 dc=1 gyro=-20.37 pose=386.7,-1349.1,158.62 nominal=386.9,-1349.0,153.42 ref=none s0=165,9,149.0,149.0,3.359,2.3,1,1 s1=166,15,406.0,406.0,0.438,13.8,1,1 s2=48,3,74.0,74.0,12.133,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=7281 state=segment_drive seg=3 turn=-1 target=20.0 enc=285 emm=32.89 cmd=-80 speed=-42.59 steer=-50 dc=1 gyro=-25.03 pose=394.9,-1352.8,153.96 nominal=394.8,-1353.3,148.67 ref=none s0=172,8,154.0,154.0,2.742,2.3,1,1 s1=173,13,414.0,414.0,0.312,17.5,1,1 s2=50,13,79.0,79.0,12.727,1.2,1,1
+[PARK_DIAG] v=2 type=state t=7374 detail=segment_brake enc=237 emm=27.35 gyro=-27.24 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=7374 state=segment_brake seg=3 turn=-1 target=20.0 enc=237 emm=27.35 cmd=-80 speed=-59.56 steer=-50 dc=2 gyro=-27.24 pose=399.9,-1355.3,151.76 nominal=399.4,-1356.3,145.75 ref=none s0=175,15,153.0,153.0,2.484,2.7,1,1 s1=176,20,-1.0,9999.0,-1.000,-1.0,0,0 s2=51,11,79.0,79.0,14.305,1.2,1,1
+[PARK EXIT] Segment 3 stopped target_mm=20.0 actual_mm=20.1 heading_delta_deg=-30.4
+[PARK_DIAG] v=2 type=state t=7527 detail=segment_settle enc=237 emm=27.35 gyro=-29.33 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=direction t=7527 detail=-1_to_0 enc=237 emm=27.35 gyro=-29.33 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=7527 state=segment_settle seg=4 turn=-1 target=85.0 enc=237 emm=27.35 cmd=0 speed=-5.27 steer=-50 dc=0 gyro=-29.33 pose=399.9,-1355.3,149.66 nominal=399.4,-1356.3,145.75 ref=none s0=180,23,162.0,162.0,2.000,2.7,1,1 s1=182,1,-1.0,9999.0,-1.000,-1.0,0,0 s2=52,70,81.0,81.0,13.758,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=7729 state=segment_settle seg=4 turn=-1 target=85.0 enc=237 emm=27.35 cmd=0 speed=-0.13 steer=50 dc=0 gyro=-29.34 pose=399.9,-1355.3,149.65 nominal=399.4,-1356.3,145.75 ref=none s0=187,25,167.0,167.0,1.742,3.1,1,1 s1=189,1,-1.0,9999.0,-1.000,-1.0,0,0 s2=54,82,80.0,80.0,15.695,1.1,1,1
+[PARK EXIT] Segment 4 direction=forward steering=50 target_mm=85.0
+[PARK_DIAG] v=2 type=state t=7729 detail=segment_drive enc=237 emm=27.35 gyro=-29.34 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=7729 state=segment_drive seg=4 turn=-1 target=85.0 enc=237 emm=27.35 cmd=0 speed=-0.13 steer=50 dc=0 gyro=-29.34 pose=399.9,-1355.3,149.65 nominal=399.4,-1356.3,145.75 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=7729 detail=0_to_1 enc=237 emm=27.35 gyro=-29.34 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=7930 state=segment_drive seg=4 turn=-1 target=85.0 enc=283 emm=32.66 cmd=80 speed=27.47 steer=50 dc=1 gyro=-30.98 pose=395.2,-1352.5,147.99 nominal=395.1,-1353.2,142.95 ref=none s0=194,24,172.0,172.0,1.828,2.7,1,1 s1=196,1,-1.0,9999.0,-1.000,-1.0,0,0 s2=56,93,79.0,79.0,16.609,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=8130 state=segment_drive seg=4 turn=-1 target=85.0 enc=338 emm=39.01 cmd=80 speed=27.46 steer=50 dc=1 gyro=-33.34 pose=390.2,-1349.2,145.64 nominal=390.1,-1349.2,139.61 ref=none s0=201,22,185.0,185.0,2.461,2.5,1,1 s1=203,0,-1.0,9999.0,-1.000,-1.0,0,0 s2=59,9,76.0,76.0,16.898,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=8334 state=segment_drive seg=4 turn=-1 target=85.0 enc=410 emm=47.32 cmd=80 speed=35.80 steer=50 dc=1 gyro=-37.09 pose=383.3,-1344.2,141.89 nominal=384.0,-1343.6,135.23 ref=none s0=208,24,192.0,192.0,7.906,1.4,1,1 s1=210,3,-1.0,9999.0,-1.000,-1.0,0,0 s2=61,23,77.0,77.0,16.391,1.2,1,1
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/41.6 deficit_mm_s=38.4 compensation_dc=9.2 output_dc=103.4
+[PARK_DIAG] v=2 type=sample t=8534 state=segment_drive seg=4 turn=-1 target=85.0 enc=493 emm=56.89 cmd=80 speed=41.61 steer=50 dc=1 gyro=-41.01 pose=376.0,-1338.0,137.96 nominal=377.5,-1336.6,130.18 ref=none s0=215,21,180.0,180.0,17.562,1.2,1,1 s1=217,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=63,31,80.0,80.0,16.203,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=8734 state=segment_drive seg=4 turn=-1 target=85.0 enc=610 emm=70.40 cmd=80 speed=59.79 steer=50 dc=1 gyro=-47.15 pose=366.6,-1328.5,131.82 nominal=369.5,-1325.8,123.06 ref=none s0=222,17,164.0,164.0,21.719,1.2,1,1 s1=224,1,-1.0,9999.0,-1.000,-1.0,0,0 s2=65,44,88.0,88.0,15.938,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=8934 state=segment_drive seg=4 turn=-1 target=85.0 enc=760 emm=87.71 cmd=80 speed=82.43 steer=50 dc=1 gyro=-54.72 pose=356.2,-1315.3,124.25 nominal=361.2,-1310.6,113.94 ref=none s0=229,12,141.0,141.0,17.984,1.3,1,1 s1=231,0,-1.0,9999.0,-1.000,-1.0,0,0 s2=67,55,100.0,100.0,15.289,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=9135 state=segment_drive seg=4 turn=-1 target=85.0 enc=903 emm=104.21 cmd=80 speed=74.51 steer=50 dc=1 gyro=-62.81 pose=347.7,-1300.7,116.17 nominal=355.7,-1295.0,105.24 ref=none s0=236,9,117.0,117.0,18.141,1.2,1,1 s1=238,0,-1.0,9999.0,-1.000,-1.0,0,0 s2=69,67,179.0,179.0,9.648,2.6,1,1
+[PARK_DIAG] v=2 type=state t=9229 detail=segment_brake enc=974 emm=112.40 gyro=-66.56 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=9229 state=segment_brake seg=4 turn=-1 target=85.0 enc=974 emm=112.40 cmd=80 speed=78.05 steer=50 dc=2 gyro=-66.56 pose=344.2,-1293.1,112.41 nominal=353.9,-1287.1,100.92 ref=none s0=239,15,108.0,108.0,17.945,1.2,1,1 s1=241,8,-1.0,9999.0,-1.000,-1.0,0,0 s2=70,65,202.0,202.0,3.820,3.5,1,1
+[PARK EXIT] Segment 4 stopped target_mm=85.0 actual_mm=85.1 heading_delta_deg=-70.4
+[PARK_DIAG] v=2 type=state t=9379 detail=segment_settle enc=974 emm=112.40 gyro=-69.34 steer=50 cmd=0
+[PARK_DIAG] v=2 type=direction t=9379 detail=1_to_0 enc=974 emm=112.40 gyro=-69.34 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=9379 state=segment_settle seg=5 turn=-1 target=150.0 enc=974 emm=112.40 cmd=0 speed=5.16 steer=50 dc=0 gyro=-69.34 pose=344.2,-1293.1,109.63 nominal=353.9,-1287.1,100.92 ref=none s0=244,20,102.0,102.0,16.453,1.2,1,1 s1=246,14,-1.0,9999.0,-1.000,-1.0,0,0 s2=72,26,199.0,199.0,1.750,6.3,1,1
+[PARK_DIAG] v=2 type=sample t=9579 state=segment_settle seg=5 turn=-1 target=150.0 enc=974 emm=112.40 cmd=0 speed=0.13 steer=-50 dc=0 gyro=-69.06 pose=344.2,-1293.1,109.89 nominal=353.9,-1287.1,100.92 ref=none s0=251,15,101.0,101.0,16.312,1.2,1,1 s1=253,11,-1.0,9999.0,-1.000,-1.0,0,0 s2=74,37,205.0,205.0,2.094,4.9,1,1
+[PARK EXIT] Segment 5 direction=forward steering=-50 target_mm=150.0
+[PARK_DIAG] v=2 type=state t=9579 detail=segment_drive enc=974 emm=112.40 gyro=-69.06 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=9579 state=segment_drive seg=5 turn=-1 target=150.0 enc=974 emm=112.40 cmd=0 speed=0.13 steer=-50 dc=0 gyro=-69.06 pose=344.2,-1293.1,109.89 nominal=353.9,-1287.1,100.92 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=9579 detail=0_to_1 enc=974 emm=112.40 gyro=-69.06 steer=-50 cmd=80
+[PARK_DIAG] v=2 type=sample t=9779 state=segment_drive seg=5 turn=-1 target=150.0 enc=1035 emm=119.44 cmd=80 speed=29.91 steer=-50 dc=1 gyro=-67.47 pose=341.8,-1286.5,111.49 nominal=352.3,-1280.2,104.63 ref=none s0=258,8,102.0,102.0,18.664,1.2,1,1 s1=260,12,-1.0,9999.0,-1.000,-1.0,0,0 s2=76,47,193.0,193.0,2.266,5.1,1,1
+[PARK_DIAG] v=2 type=sample t=9979 state=segment_drive seg=5 turn=-1 target=150.0 enc=1108 emm=127.87 cmd=80 speed=45.34 steer=-50 dc=1 gyro=-63.91 pose=338.4,-1278.7,115.06 nominal=349.9,-1272.1,109.07 ref=none s0=265,6,101.0,101.0,15.547,1.2,1,1 s1=267,11,-1.0,9999.0,-1.000,-1.0,0,0 s2=78,58,199.0,199.0,2.102,3.7,1,1
+[PARK_DIAG] v=2 type=sample t=10182 state=segment_drive seg=5 turn=-1 target=150.0 enc=1225 emm=141.37 cmd=80 speed=59.32 steer=-50 dc=1 gyro=-57.22 pose=332.5,-1267.7,121.75 nominal=344.7,-1259.7,116.19 ref=none s0=272,5,100.0,100.0,14.164,1.2,1,1 s1=274,13,-1.0,9999.0,-1.000,-1.0,0,0 s2=80,71,207.0,207.0,1.969,3.2,1,1
+[PARK_DIAG] v=2 type=sample t=10383 state=segment_drive seg=5 turn=-1 target=150.0 enc=1345 emm=155.22 cmd=80 speed=64.50 steer=-50 dc=1 gyro=-50.32 pose=324.3,-1255.9,128.65 nominal=337.8,-1247.7,123.49 ref=none s0=279,2,93.0,93.0,17.703,1.2,1,1 s1=281,13,-1.0,9999.0,-1.000,-1.0,0,0 s2=82,83,222.0,222.0,2.391,2.4,1,1
+[PARK_DIAG] v=2 type=sample t=10586 state=segment_drive seg=5 turn=-1 target=150.0 enc=1492 emm=172.18 cmd=80 speed=85.15 steer=-50 dc=1 gyro=-42.08 pose=312.7,-1243.2,136.88 nominal=327.4,-1234.3,132.43 ref=none s0=286,1,91.0,91.0,19.242,1.1,1,1 s1=288,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=85,1,222.0,222.0,14.844,2.0,1,1
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.0, actual_arc=0.0, radius=108.7 mm
+[PARK_DIAG] v=2 type=sample t=10786 state=segment_drive seg=5 turn=-1 target=150.0 enc=1652 emm=190.65 cmd=80 speed=80.81 steer=-50 dc=1 gyro=-32.63 pose=298.1,-1231.6,146.33 nominal=313.8,-1221.8,142.16 ref=none s0=292,26,86.0,86.0,18.336,1.1,1,1 s1=295,14,357.0,357.0,0.312,17.6,1,1 s2=87,11,203.0,203.0,20.867,1.8,1,1
+[PARK_DIAG] v=2 type=sample t=10986 state=segment_drive seg=5 turn=-1 target=150.0 enc=1802 emm=207.96 cmd=80 speed=76.74 steer=-50 dc=1 gyro=-23.53 pose=282.9,-1223.3,155.43 nominal=299.3,-1212.3,151.29 ref=none s0=299,21,77.0,77.0,17.680,1.2,1,1 s1=302,13,352.0,352.0,0.531,10.9,1,1 s2=89,21,192.0,192.0,18.883,1.9,1,1
+[PARK_DIAG] v=2 type=sample t=11186 state=segment_drive seg=5 turn=-1 target=150.0 enc=1927 emm=222.39 cmd=80 speed=73.38 steer=-50 dc=1 gyro=-15.74 pose=269.5,-1218.2,163.23 nominal=286.3,-1206.2,158.89 ref=none s0=306,18,73.0,73.0,18.273,1.1,1,1 s1=309,12,-1.0,9999.0,-1.000,-1.0,0,0 s2=91,34,194.0,194.0,17.891,1.9,1,1
+[PARK_DIAG] v=2 type=sample t=11386 state=segment_drive seg=5 turn=-1 target=150.0 enc=2053 emm=236.93 cmd=80 speed=68.59 steer=-50 dc=1 gyro=-8.04 pose=255.3,-1214.9,170.92 nominal=272.4,-1201.9,166.56 ref=none s0=313,13,67.0,67.0,12.461,1.2,1,1 s1=316,9,-1.0,9999.0,-1.000,-1.0,0,0 s2=93,38,197.0,197.0,14.328,1.7,1,1
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/60.0 deficit_mm_s=20.0 compensation_dc=0.0 output_dc=85.5
+[PARK_DIAG] v=2 type=sample t=11586 state=segment_drive seg=5 turn=-1 target=150.0 enc=2131 emm=245.93 cmd=80 speed=46.48 steer=-50 dc=1 gyro=-3.38 pose=246.4,-1213.8,175.59 nominal=263.6,-1200.2,171.30 ref=none s0=320,6,66.0,66.0,12.812,1.2,1,1 s1=323,10,625.0,9999.0,0.398,18.9,1,1 s2=95,55,251.0,251.0,1.023,10.2,1,1
+[PARK EXIT] Final alignment distance_mm=139.3 heading_error_deg=1.7 aligned=yes
+[PARK_DIAG] v=2 type=state t=11685 detail=segment_brake enc=2181 emm=251.70 gyro=-0.69 steer=0 cmd=80
+[PARK_DIAG] v=2 type=sample t=11685 state=segment_brake seg=5 turn=-1 target=150.0 enc=2181 emm=251.70 cmd=80 speed=49.25 steer=0 dc=2 gyro=-0.69 pose=240.6,-1213.5,178.28 nominal=257.8,-1199.5,174.35 ref=none s0=323,18,62.0,62.0,13.742,1.2,1,1 s1=326,22,625.0,9999.0,0.453,16.0,1,1 s2=96,59,280.0,280.0,0.570,17.1,1,1
+[PARK EXIT] Segment 5 stopped target_mm=150.0 actual_mm=139.8 heading_delta_deg=1.0
+[PARK EXIT RESULT] completed_segments=5/5 travel_mm=209.2 heading_error_deg=1.0 tof_start_left_right_mm=37/9999 tof_end_left_right_mm=61/9999
+[PARK_DIAG] v=2 type=correction t=11835 source=parking_end_y before=240.1,-1213.5,180.99 after=240.1,-1203.3,180.99 delta=0.0,10.2,0.00
+[PARK EXIT TOF REF] sensor=L filtered/raw_mm=61.0/61.0 signal_mcps=14.77 sigma_mm=1.1 rear_beyond_parking_end_mm=96.7 remaining_to_centerline_mm=203.3 beam_x_mm=201.8 beam_footprint_x_mm=190.1..213.4 expected_piece_x_mm=212.5..232.5 beam_over_piece=yes usable=yes localization_seed=yes apply_y=yes
+[PARK EXIT FIELD POSE] x_y_heading=240.1/-1203.3/181.0 tof_y_correction_mm=10.2
+[PARK LOCALIZE] Armed sensor=L initial_range_mm=61.0 direction=reverse approach/detection_speed_mm_s=100/60 max_travel_mm=430.0
+[PARK_DIAG] v=2 type=state t=11835 detail=localize_drive enc=2185 emm=252.16 gyro=2.03 steer=0 cmd=0
+[PARK_DIAG] v=2 type=direction t=11835 detail=1_to_0 enc=2185 emm=252.16 gyro=2.03 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=11835 state=localize_drive seg=6 turn=-1 target=430.0 enc=2185 emm=252.16 cmd=0 speed=8.56 steer=0 dc=0 gyro=2.03 pose=240.1,-1203.3,180.99 nominal=257.4,-1199.4,174.35 ref=parking_edges s0=328,22,61.0,61.0,14.766,1.1,1,1 s1=332,0,641.0,9999.0,0.461,14.4,1,1 s2=98,20,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK_DIAG] v=2 type=direction t=11836 detail=0_to_-1 enc=2185 emm=252.16 gyro=2.03 steer=0 cmd=-100
+[PARK LOCALIZE] First marker present at search start
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/0
+[PARK_DIAG] v=2 type=sample t=12037 state=localize_drive seg=6 turn=-1 target=430.0 enc=2156 emm=248.81 cmd=-100 speed=-20.67 steer=0 dc=1 gyro=1.97 pose=243.4,-1203.3,180.96 nominal=260.7,-1199.8,174.35 ref=parking_edges s0=335,23,59.0,59.0,15.844,1.2,1,1 s1=339,1,634.0,9999.0,0.422,16.0,1,1 s2=100,30,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.06/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.13/1
+[PARK_DIAG] v=2 type=sample t=12238 state=localize_drive seg=6 turn=-1 target=430.0 enc=2084 emm=240.50 cmd=-100 speed=-38.64 steer=1 dc=1 gyro=1.85 pose=251.4,-1203.1,180.85 nominal=269.0,-1200.6,174.35 ref=parking_edges s0=342,19,59.0,59.0,16.266,1.1,1,1 s1=346,1,670.0,9999.0,0.344,16.0,1,1 s2=102,43,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.17/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.19/1
+[PARK_DIAG] v=2 type=sample t=12438 state=localize_drive seg=6 turn=-1 target=430.0 enc=1995 emm=230.23 cmd=-100 speed=-49.48 steer=1 dc=1 gyro=1.82 pose=261.6,-1203.0,180.85 nominal=279.2,-1201.6,174.35 ref=parking_edges s0=349,15,60.0,60.0,13.945,1.2,1,1 s1=353,0,614.0,9999.0,0.422,19.0,1,1 s2=104,54,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.21/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.22/1
+[PARK LOCALIZE] First marker passed; searching second
+[PARK_DIAG] v=2 type=sample t=12639 state=localize_drive seg=6 turn=-1 target=430.0 enc=1853 emm=213.85 cmd=-100 speed=-79.03 steer=2 dc=1 gyro=1.78 pose=278.1,-1202.7,180.78 nominal=295.5,-1203.2,174.35 ref=parking_edges s0=356,13,254.0,254.0,5.914,2.7,1,1 s1=360,0,629.0,9999.0,0.445,14.9,1,1 s2=106,65,293.0,293.0,0.391,18.3,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.25/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.39/2
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-100/-100.0/-71.6 deficit_mm_s=28.4 compensation_dc=-4.2 output_dc=-90.0
+[PARK_DIAG] v=2 type=sample t=12843 state=localize_drive seg=6 turn=-1 target=430.0 enc=1713 emm=197.69 cmd=-100 speed=-82.33 steer=3 dc=1 gyro=1.55 pose=294.3,-1202.5,180.61 nominal=311.6,-1204.8,174.62 ref=parking_edges s0=363,16,256.0,256.0,5.258,2.1,1,1 s1=367,3,656.0,9999.0,0.430,16.9,1,1 s2=108,80,296.0,296.0,0.398,15.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.48/3
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.65/4
+[PARK_DIAG] v=2 type=sample t=13043 state=localize_drive seg=6 turn=-1 target=430.0 enc=1523 emm=175.76 cmd=-100 speed=-105.62 steer=4 dc=1 gyro=1.43 pose=316.5,-1202.3,180.52 nominal=333.4,-1206.7,175.23 ref=parking_edges s0=370,15,258.0,258.0,4.906,1.5,1,1 s1=374,2,649.0,9999.0,0.516,12.5,1,1 s2=110,88,289.0,289.0,0.383,14.1,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.60/4
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.50/3
+[PARK_DIAG] v=2 type=sample t=13243 state=localize_drive seg=6 turn=-1 target=430.0 enc=1278 emm=147.49 cmd=-100 speed=-136.47 steer=3 dc=1 gyro=1.75 pose=344.1,-1202.0,180.82 nominal=361.6,-1208.9,175.95 ref=parking_edges s0=377,13,254.0,254.0,4.680,1.7,1,1 s1=381,1,612.0,9999.0,0.453,17.0,1,1 s2=113,1,294.0,294.0,0.398,11.0,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.28/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.12/2
+[PARK_DIAG] v=2 type=sample t=13443 state=localize_drive seg=6 turn=-1 target=430.0 enc=1118 emm=129.02 cmd=-100 speed=-88.66 steer=1 dc=1 gyro=2.03 pose=362.9,-1201.7,181.07 nominal=380.0,-1210.1,176.14 ref=parking_edges s0=384,12,257.0,257.0,4.820,1.5,1,1 s1=388,0,670.0,9999.0,0.445,13.9,1,1 s2=115,12,294.0,294.0,0.398,12.2,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.09/1
+[PARK_DIAG] v=2 type=sample t=13643 state=localize_drive seg=6 turn=-1 target=430.0 enc=986 emm=113.79 cmd=-100 speed=-77.45 steer=0 dc=1 gyro=2.18 pose=378.0,-1201.4,181.19 nominal=395.2,-1211.2,176.14 ref=parking_edges s0=391,11,257.0,257.0,4.969,1.7,1,1 s1=395,0,619.0,9999.0,0.453,15.8,1,1 s2=117,26,296.0,296.0,0.406,11.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.23/0
+[PARK_DIAG] v=2 type=sample t=13846 state=localize_drive seg=6 turn=-1 target=430.0 enc=852 emm=98.33 cmd=-100 speed=-69.49 steer=-1 dc=1 gyro=2.32 pose=393.6,-1201.1,181.34 nominal=410.6,-1212.2,176.14 ref=parking_edges s0=398,12,256.0,256.0,5.125,1.5,1,1 s1=402,1,650.0,9999.0,0.500,14.1,1,1 s2=119,38,287.0,287.0,0.422,10.2,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.29/-1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.24/0
+[PARK_DIAG] v=2 type=sample t=14046 state=localize_drive seg=6 turn=-1 target=430.0 enc=647 emm=74.67 cmd=-100 speed=-112.76 steer=0 dc=1 gyro=2.20 pose=416.9,-1200.5,181.23 nominal=434.2,-1213.8,176.14 ref=parking_edges s0=405,11,257.0,257.0,5.148,1.7,1,1 s1=409,1,648.0,9999.0,0.453,14.9,1,1 s2=121,49,280.0,280.0,0.367,11.0,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.17/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.06/0
+[PARK_DIAG] v=2 type=sample t=14249 state=localize_drive seg=6 turn=-1 target=430.0 enc=446 emm=51.47 cmd=-100 speed=-100.36 steer=1 dc=1 gyro=1.99 pose=440.1,-1200.1,181.04 nominal=457.4,-1215.4,176.14 ref=parking_edges s0=412,12,254.0,254.0,5.164,1.5,1,1 s1=416,1,650.0,9999.0,0.430,13.5,1,1 s2=123,60,275.0,275.0,0.359,11.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.04/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.01/1
+[PARK_DIAG] v=2 type=sample t=14449 state=localize_drive seg=6 turn=-1 target=430.0 enc=261 emm=30.12 cmd=-100 speed=-99.82 steer=2 dc=1 gyro=1.83 pose=462.1,-1199.7,180.88 nominal=478.7,-1216.8,176.19 ref=parking_edges s0=419,11,251.0,251.0,5.102,1.6,1,1 s1=423,2,617.0,9999.0,0.414,17.4,1,1 s2=125,73,275.0,275.0,0.344,11.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.19/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.24/2
+[PARK_DIAG] v=2 type=sample t=14649 state=localize_drive seg=6 turn=-1 target=430.0 enc=107 emm=12.35 cmd=-100 speed=-86.07 steer=2 dc=1 gyro=1.76 pose=479.7,-1199.4,180.80 nominal=496.3,-1217.9,176.47 ref=parking_edges s0=426,10,255.0,255.0,5.430,1.5,1,1 s1=430,0,531.0,531.0,0.477,19.5,1,1 s2=127,84,279.0,279.0,0.328,12.1,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.20/2
+[PARK_DIAG] v=2 type=sample t=14850 state=localize_drive seg=6 turn=-1 target=430.0 enc=-46 emm=-5.31 cmd=-100 speed=-93.77 steer=2 dc=1 gyro=1.85 pose=497.1,-1199.2,180.91 nominal=513.9,-1219.0,176.74 ref=parking_edges s0=433,9,249.0,249.0,6.078,1.5,1,1 s1=437,1,369.0,369.0,1.258,9.5,1,1 s2=129,95,286.0,286.0,0.328,13.1,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.18/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.16/2
+[PARK LOCALIZE] Second marker acquired; slowing for edge
+[PARK_DIAG] v=2 type=sample t=15051 state=localize_drive seg=6 turn=-1 target=430.0 enc=-264 emm=-30.47 cmd=-60 speed=-124.22 steer=1 dc=1 gyro=1.98 pose=521.9,-1198.8,181.04 nominal=539.0,-1220.3,177.09 ref=parking_edges s0=440,8,25.0,25.0,156.469,1.1,1,1 s1=444,1,293.0,293.0,3.305,2.6,1,1 s2=132,12,285.0,285.0,0.430,11.5,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.05/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.03/1
+[PARK_DIAG] v=2 type=sample t=15252 state=localize_drive seg=6 turn=-1 target=430.0 enc=-446 emm=-51.47 cmd=-60 speed=-95.66 steer=1 dc=1 gyro=2.01 pose=543.0,-1198.4,181.08 nominal=560.0,-1221.4,177.09 ref=parking_edges s0=447,4,151.0,151.0,5.430,4.6,1,1 s1=451,0,278.0,278.0,4.484,2.0,1,1 s2=134,22,283.0,283.0,0.414,11.9,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.02/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.00/1
+[PARK_DIAG] v=2 type=state t=15431 detail=localize_brake enc=-539 emm=-62.20 gyro=2.06 steer=1 cmd=-60
+[PARK_DIAG] v=2 type=sample t=15431 state=localize_brake seg=6 turn=-1 target=430.0 enc=-539 emm=-62.20 cmd=-60 speed=-70.95 steer=1 dc=2 gyro=2.06 pose=554.5,-1198.2,181.13 nominal=570.7,-1221.9,177.09 ref=parking_edges s0=453,11,244.0,244.0,6.500,2.9,1,1 s1=457,7,276.0,276.0,3.680,2.2,1,1 s2=136,7,284.0,284.0,0.406,12.3,1,1
+[PARK_DIAG] v=2 type=correction t=15579 source=edge_localization before=554.5,-1198.2,181.10 after=576.8,-1214.3,181.10 delta=22.3,-16.1,0.00
+[PARK LOCALIZE RESULT] transition=yes creep_mm=314.4 piece_range_mm=151.0 piece_seen=yes wall_range_mm=250.0 expected_wall_range_mm=266.1 wall_residual_mm=-16.1 predicted/known_edge_x_mm=477.7/500.0 x_correction_mm=22.3 apply_x=yes wall_y_correction_mm=-16.1 apply_y=yes max_heading_error_deg=0.7
+[PARK LOCALIZE POSE] x_y_heading=576.8/-1214.3/181.1
+[PARK_DIAG] v=2 type=finish t=15579 detail=unparking_complete_bytes_27972_samples_77 enc=-539 emm=-62.20 gyro=2.04 steer=1 cmd=0
+[PARK EXIT] Complete - parking-entry discovery next
+
+======================
+VISION
+======================
+Processing: 3.26 ms
+
+RED:
+X: 93
+Y: 166
+Width: 41
+Height: 17
+Bottom Y: 174
+Area: 156
+
+GREEN:
+X: 11
+Y: 101
+Width: 33
+Height: 47
+Bottom Y: 126
+Area: 688
+ORANGE debug area: 316
+BLUE debug area: 1020
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PATH LAYOUT] mode=OFFICIAL_2026
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=180.0
+[PARK ENTRY] Localization reached arc start; steering preload=-50
+[PARK ENTRY] Pure Pursuit discovery armed turn=CW target=S0 station=1 points=7 reverse_mm=55.0 start_x_y_heading=576.8/-1214.3/181.1
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=0.0 steering=-50 arc_mm/radius_mm=55.0/109.0
+
+======================
+VISION
+======================
+Processing: 3.15 ms
+
+RED:
+X: 89
+Y: 162
+Width: 37
+Height: 17
+Bottom Y: 170
+Area: 152
+
+GREEN:
+X: 9
+Y: 109
+Width: 29
+Height: 29
+Bottom Y: 124
+Area: 368
+ORANGE debug area: 168
+BLUE debug area: 884
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.2, actual_arc=0.0, radius=108.7 mm
+
+======================
+VISION
+======================
+Processing: 2.81 ms
+
+RED:
+X: 148
+Y: 226
+Width: 53
+Height: 15
+Bottom Y: 234
+Area: 264
+
+GREEN:
+X: 105
+Y: 159
+Width: 21
+Height: 13
+Bottom Y: 168
+Area: 104
+ORANGE debug area: 124
+BLUE debug area: 504
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PARK ENTRY] Scan pose reached error_mm=6.4 heading_error_deg=4.7 travel/planned_mm=49.0/55.0 target_station=1
+
+======================
+VISION
+======================
+Processing: 3.08 ms
+
+RED:
+X: 280
+Y: 195
+Width: 35
+Height: 17
+Bottom Y: 204
+Area: 212
+
+GREEN:
+X: 134
+Y: 191
+Width: 43
+Height: 13
+Bottom Y: 198
+Area: 240
+ORANGE debug area: 304
+BLUE debug area: 1056
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[MAP] Clear S0 station=1
+[PARK ENTRY RESULT] resolved=yes station=1 result=CLEAR pose_x_y_heading=625.8/-1223.6/153.9 target_inner_seat=2 bearing_range_deg_mm=-1.5/579.5
+[PARK ENTRY SCOUT] Preflight PASS station/seat=0/0 arc/wall/pillar_mm=85.0/144.4/196.1
+[PARK ENTRY SCOUT] Armed station/seat steering=0/0 -50
+[PARK ENTRY SCOUT] Steering settled; reverse scan
+
+======================
+VISION
+======================
+Processing: 3.03 ms
+
+RED:
+X: 282
+Y: 171
+Width: 37
+Height: 25
+Bottom Y: 182
+Area: 244
+
+GREEN:
+X: 120
+Y: 165
+Width: 31
+Height: 13
+Bottom Y: 172
+Area: 132
+ORANGE debug area: 288
+BLUE debug area: 1348
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 187
+Y: 224
+Width: 87
+Height: 17
+Bottom Y: 230
+Area: 460
+
+GREEN:
+X: 133
+Y: 195
+Width: 43
+Height: 13
+Bottom Y: 200
+Area: 240
+ORANGE debug area: 1016
+BLUE debug area: 912
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-60/-60.0/-36.8 deficit_mm_s=23.2 compensation_dc=-1.6 output_dc=-85.6
+
+======================
+VISION
+======================
+Processing: 3.00 ms
+
+RED:
+X: 167
+Y: 220
+Width: 137
+Height: 31
+Bottom Y: 238
+Area: 1260
+
+GREEN:
+X: 122
+Y: 189
+Width: 53
+Height: 25
+Bottom Y: 200
+Area: 376
+ORANGE debug area: 140
+BLUE debug area: 544
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[MAP] Clear S0 station=0
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 197
+Y: 198
+Width: 31
+Height: 13
+Bottom Y: 206
+Area: 240
+
+GREEN:
+X: 273
+Y: 175
+Width: 51
+Height: 33
+Bottom Y: 192
+Area: 420
+ORANGE debug area: 268
+BLUE debug area: 1572
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PARK ENTRY SCOUT] Scan pose reached travel_mm=85.2
+[PARK ENTRY SCOUT] Resolved station/result=0CLEAR
+
+======================
+VISION
+======================
+Processing: 3.26 ms
+
+RED:
+X: 201
+Y: 136
+Width: 53
+Height: 33
+Bottom Y: 154
+Area: 404
+
+GREEN:
+X: 277
+Y: 188
+Width: 41
+Height: 25
+Bottom Y: 200
+Area: 428
+ORANGE debug area: 412
+BLUE debug area: 1108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 86
+Y: 143
+Width: 39
+Height: 45
+Bottom Y: 160
+Area: 612
+
+GREEN:
+X: 288
+Y: 174
+Width: 31
+Height: 27
+Bottom Y: 186
+Area: 348
+ORANGE debug area: 592
+BLUE debug area: 1612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.27 ms
+
+RED:
+X: 128
+Y: 166
+Width: 101
+Height: 35
+Bottom Y: 182
+Area: 1824
+ORANGE debug area: 248
+BLUE debug area: 2496
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.0, actual_arc=0.0, radius=108.7 mm
+[PARK ENTRY SCOUT] Return complete travel_mm=85.1
+
+======================
+VISION
+======================
+Processing: 2.84 ms
+
+RED:
+X: 142
+Y: 121
+Width: 125
+Height: 43
+Bottom Y: 142
+Area: 1652
+ORANGE debug area: 184
+BLUE debug area: 1212
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PARK ENTRY SCOUT] Returned pose_error/heading_deg=4.0/7.8
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=1/144/0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=150/500 pose=167.0,-1018.8,166.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=168.1/-13.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=150.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=125/500 pose=168.2,-1016.8,167.0 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=169.0/-13.0
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=125.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=100/500 pose=168.8,-1015.9,167.5 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=169.5/-12.5
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=100.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=75/500 pose=169.2,-1015.4,167.9 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=169.9/-12.1
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=75.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=50/500 pose=169.4,-1015.3,168.3 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=170.1/-11.7
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=50.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=25/500 pose=169.4,-1015.3,168.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=170.1/-11.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=25.0
+[PARK ENTRY CONNECTOR] Preflight FAIL tracking_sample/target=0/0 forward_mm=0.0 steering/min_lookahead_deg_mm=0.0/25.0 merge_forward/lateral/before_pillar_mm=661/-14/0
+[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=1/0
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=2/143/50
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=150/500 pose=170.5,-1012.7,168.0 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=121.2/-12.0
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=150.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=125/500 pose=172.0,-1010.6,168.7 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=122.4/-11.3
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=125.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=100/500 pose=172.8,-1009.5,169.3 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=123.1/-10.7
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=100.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=75/500 pose=173.2,-1009.1,169.9 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=123.6/-10.1
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=75.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=50/500 pose=173.5,-1009.1,170.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=123.8/-9.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=50.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=25/500 pose=173.6,-1009.3,170.5 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=123.9/-9.5
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=25.0
+[PARK ENTRY CONNECTOR] Preflight FAIL tracking_sample/target=0/0 forward_mm=0.0 steering/min_lookahead_deg_mm=0.0/25.0 merge_forward/lateral/before_pillar_mm=613/-29/50
+[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=2/50
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=3/142/100
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=150/500 pose=174.6,-1007.0,170.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=74.9/-9.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=150.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=125/500 pose=176.0,-1005.2,171.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=76.2/-8.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=125.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=100/500 pose=177.1,-1004.1,172.1 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=77.2/-7.9
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=100.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=75/500 pose=177.8,-1003.7,172.7 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=77.9/-7.3
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=75.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=50/500 pose=178.1,-1004.0,173.2 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=78.2/-6.8
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=50.0
+[PARK ENTRY CONNECTOR] Rollout reject reason=max_travel lookahead/travel_mm=25/500 pose=178.3,-1004.2,173.4 seat=-1 wall/pillar_mm=1000000000.0/1000000000.0 forward/steer=nan/nan end_error/heading=78.4/-6.6
+[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=25.0
+[PARK ENTRY CONNECTOR] Preflight FAIL tracking_sample/target=0/0 forward_mm=0.0 steering/min_lookahead_deg_mm=0.0/25.0 merge_forward/lateral/before_pillar_mm=566/-45/100
+[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=3/100
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=4/141/150
+[PARK ENTRY CONNECTOR] Preflight PASS merge_index=141 merge/seat_distance_mm=6992/0 pillar_seat=-1 hidden_guard_seat=-1 merge_forward/lateral/before_pillar_mm=518/-61/150 path_mm=534 lookahead_mm=150.0 points=22
+[PARK ENTRY CONNECTOR] Tangent baseline/actual_deg=-180.00/-180.00
+[CONNECTOR_CONFIG] v=1 build=Sep 29 2026_09:29:43
+[CONNECTOR_POINT] kind=connector index=0 x=623.06 y=-1220.64 h=161.69
+[CONNECTOR_POINT] kind=connector index=1 x=594.88 y=-1210.34 h=158.09
+[CONNECTOR_POINT] kind=connector index=2 x=569.14 y=-1199.04 h=154.51
+[CONNECTOR_POINT] kind=connector index=3 x=545.53 y=-1186.91 h=151.08
+[CONNECTOR_POINT] kind=connector index=4 x=523.78 y=-1174.10 h=147.94
+[CONNECTOR_POINT] kind=connector index=5 x=503.58 y=-1160.75 h=145.22
+[CONNECTOR_POINT] kind=connector index=6 x=484.63 y=-1147.03 h=143.04
+[CONNECTOR_POINT] kind=connector index=7 x=466.64 y=-1133.08 h=141.49
+[CONNECTOR_POINT] kind=connector index=8 x=449.32 y=-1119.06 h=140.67
+[CONNECTOR_POINT] kind=connector index=9 x=432.36 y=-1105.12 h=140.62
+[CONNECTOR_POINT] kind=connector index=10 x=415.48 y=-1091.42 h=141.39
+[CONNECTOR_POINT] kind=connector index=11 x=398.37 y=-1078.11 h=142.96
+[CONNECTOR_POINT] kind=connector index=12 x=380.75 y=-1065.33 h=145.30
+[CONNECTOR_POINT] kind=connector index=13 x=362.31 y=-1053.25 h=148.35
+[CONNECTOR_POINT] kind=connector index=14 x=342.76 y=-1042.02 h=151.97
+[CONNECTOR_POINT] kind=connector index=15 x=321.80 y=-1031.79 h=156.02
+[CONNECTOR_POINT] kind=connector index=16 x=299.15 y=-1022.72 h=160.31
+[CONNECTOR_POINT] kind=connector index=17 x=274.49 y=-1014.95 h=164.66
+[CONNECTOR_POINT] kind=connector index=18 x=247.55 y=-1008.64 h=168.90
+[CONNECTOR_POINT] kind=connector index=19 x=218.02 y=-1003.94 h=172.92
+[CONNECTOR_POINT] kind=connector index=20 x=185.60 y=-1001.01 h=176.64
+[CONNECTOR_POINT] kind=connector index=21 x=150.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=0 x=150.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=1 x=100.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=2 x=50.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=3 x=0.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=4 x=0.00 y=-1000.00 h=180.00
+[CONNECTOR_POINT] kind=route index=5 x=-50.00 y=-1000.00 h=180.00
+[PARK ENTRY CONNECTOR] Armed merge_index=141 points=22
+
+======================
+VISION
+======================
+Processing: 3.09 ms
+
+RED:
+X: 155
+Y: 119
+Width: 125
+Height: 33
+Bottom Y: 134
+Area: 1360
+
+GREEN:
+X: 268
+Y: 171
+Width: 39
+Height: 13
+Bottom Y: 178
+Area: 204
+ORANGE debug area: 348
+BLUE debug area: 784
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[GYRO] Main loop did not poll gyro for 1221ms; deferring sensor timeout check.
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/21.1 deficit_mm_s=58.9 compensation_dc=19.5 output_dc=130.1
+
+======================
+VISION
+======================
+Processing: 3.06 ms
+
+RED:
+X: 155
+Y: 119
+Width: 109
+Height: 33
+Bottom Y: 132
+Area: 1208
+
+GREEN:
+X: 257
+Y: 171
+Width: 29
+Height: 13
+Bottom Y: 176
+Area: 140
+ORANGE debug area: 380
+BLUE debug area: 948
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.91 ms
+
+RED:
+X: 146
+Y: 127
+Width: 85
+Height: 49
+Bottom Y: 148
+Area: 1560
+ORANGE debug area: 304
+BLUE debug area: 564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.71 ms
+
+RED:
+X: 154
+Y: 155
+Width: 83
+Height: 21
+Bottom Y: 164
+Area: 892
+ORANGE debug area: 264
+BLUE debug area: 848
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.77 ms
+
+RED:
+X: 153
+Y: 143
+Width: 121
+Height: 47
+Bottom Y: 164
+Area: 1656
+ORANGE debug area: 196
+BLUE debug area: 1356
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.94 ms
+
+RED:
+X: 142
+Y: 134
+Width: 97
+Height: 41
+Bottom Y: 152
+Area: 1312
+ORANGE debug area: 244
+BLUE debug area: 568
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.80 ms
+
+RED:
+X: 154
+Y: 156
+Width: 97
+Height: 23
+Bottom Y: 168
+Area: 1060
+ORANGE debug area: 232
+BLUE debug area: 1268
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.79 ms
+
+RED:
+X: 148
+Y: 174
+Width: 89
+Height: 11
+Bottom Y: 180
+Area: 548
+ORANGE debug area: 216
+BLUE debug area: 644
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.74 ms
+
+RED:
+X: 150
+Y: 160
+Width: 95
+Height: 21
+Bottom Y: 170
+Area: 976
+ORANGE debug area: 248
+BLUE debug area: 464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.86 ms
+
+RED:
+X: 140
+Y: 149
+Width: 103
+Height: 43
+Bottom Y: 168
+Area: 1340
+ORANGE debug area: 180
+BLUE debug area: 1344
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.13 ms
+
+RED:
+X: 147
+Y: 136
+Width: 89
+Height: 41
+Bottom Y: 158
+Area: 1568
+ORANGE debug area: 256
+BLUE debug area: 712
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[CONNECTOR_TRACK] t=27514 progress=18 x=260.30 y=-1014.50 h=160.36 tx=150.00 ty=-1000.00 forward=108.75 lateral=23.42 steering=-20.734 end_distance=111.25 end_heading=19.64 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=27614 progress=18 x=253.10 y=-1012.02 h=161.58 tx=150.00 ty=-1000.00 forward=101.61 lateral=21.18 steering=-21.462 end_distance=103.80 end_heading=18.42 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=27714 progress=18 x=246.39 y=-1009.88 h=162.96 tx=150.00 ty=-1000.00 forward=95.05 lateral=18.81 steering=-21.831 end_distance=96.90 end_heading=17.04 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=27814 progress=18 x=237.98 y=-1007.41 h=164.34 tx=150.00 ty=-1000.00 forward=86.71 lateral=16.62 steering=-23.090 end_distance=88.29 end_heading=15.66 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=27914 progress=19 x=231.51 y=-1005.68 h=165.67 tx=150.00 ty=-1000.00 forward=80.38 lateral=14.67 steering=-23.719 end_distance=81.71 end_heading=14.33 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+
+======================
+VISION
+======================
+Processing: 3.25 ms
+
+RED:
+X: 151
+Y: 120
+Width: 121
+Height: 49
+Bottom Y: 144
+Area: 1660
+
+GREEN:
+X: 282
+Y: 160
+Width: 35
+Height: 13
+Bottom Y: 166
+Area: 124
+ORANGE debug area: 184
+BLUE debug area: 1108
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[CONNECTOR_TRACK] t=28014 progress=19 x=223.32 y=-1003.72 h=167.34 tx=150.00 ty=-1000.00 forward=72.35 lateral=12.45 steering=-24.793 end_distance=73.41 end_heading=12.66 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=28114 progress=19 x=213.60 y=-1001.70 h=169.22 tx=150.00 ty=-1000.00 forward=62.79 lateral=10.23 steering=-26.823 end_distance=63.62 end_heading=10.78 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[PARK ENTRY CONNECTOR] Complete merge_index=141 endpoint_error/heading_deg=60.0/10.2
+[MAP] Clear S0 station=2
+
+======================
+VISION
+======================
+Processing: 3.07 ms
+
+RED:
+X: 141
+Y: 126
+Width: 83
+Height: 15
+Bottom Y: 132
+Area: 424
+
+GREEN:
+X: 260
+Y: 172
+Width: 41
+Height: 17
+Bottom Y: 180
+Area: 240
+ORANGE debug area: 260
+BLUE debug area: 1324
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[RED SEAT] t=28714 decision=vote_or_repeat pose=130,-984,174.2 image_x/foot=29/144 bearing/range=27.7/411 sighting=-375,-1124 nearest/error=5/127 accepted=5
+
+======================
+VISION
+======================
+Processing: 3.04 ms
+
+RED:
+X: 154
+Y: 121
+Width: 71
+Height: 13
+Bottom Y: 126
+Area: 460
+
+GREEN:
+X: 251
+Y: 203
+Width: 81
+Height: 21
+Bottom Y: 214
+Area: 368
+ORANGE debug area: 312
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PATH] Lap boundary reached with unresolved stations
+
+======================
+VISION
+======================
+Processing: 2.98 ms
+
+RED:
+X: 148
+Y: 221
+Width: 17
+Height: 21
+Bottom Y: 232
+Area: 124
+
+GREEN:
+X: 149
+Y: 198
+Width: 59
+Height: 9
+Bottom Y: 202
+Area: 300
+ORANGE debug area: 168
+BLUE debug area: 468
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.79 ms
+
+RED:
+X: 285
+Y: 204
+Width: 33
+Height: 15
+Bottom Y: 212
+Area: 184
+
+GREEN:
+X: 116
+Y: 186
+Width: 25
+Height: 11
+Bottom Y: 192
+Area: 108
+ORANGE debug area: 56
+BLUE debug area: 892
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.77 ms
+
+RED:
+X: 82
+Y: 146
+Width: 27
+Height: 15
+Bottom Y: 152
+Area: 112
+
+GREEN:
+X: 101
+Y: 236
+Width: 29
+Height: 5
+Bottom Y: 238
+Area: 96
+ORANGE debug area: 116
+BLUE debug area: 660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.55 ms
+
+RED:
+X: 75
+Y: 132
+Width: 23
+Height: 15
+Bottom Y: 140
+Area: 108
+
+GREEN:
+X: 106
+Y: 191
+Width: 15
+Height: 11
+Bottom Y: 196
+Area: 96
+ORANGE debug area: 120
+BLUE debug area: 336
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=31365 frame_t=31365 reason=approach station=3 pose=-541.1,-975.4,176.02 nudge=-15.68 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=136 evidence=0 s0=-59.37,522.1,0,0,1,0,0 s1=-43.09,637.4,0,0,1,0,0 raw=2,144,35,13,198,0
+
+======================
+VISION
+======================
+Processing: 2.68 ms
+
+GREEN:
+X: 106
+Y: 192
+Width: 35
+Height: 13
+Bottom Y: 198
+Area: 144
+ORANGE debug area: 160
+BLUE debug area: 356
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=31586 frame_t=31586 reason=approach station=3 pose=-594.5,-967.6,167.01 nudge=-24.61 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=133 evidence=0 s0=-54.33,476.3,0,0,1,0,0 s1=-35.89,583.4,0,0,1,0,0 raw=2,160,25,19,194,0
+[DISCOVERY_TRACE] v=1 t=31808 frame_t=31808 reason=approach station=3 pose=-640.5,-953.2,158.17 nudge=-24.31 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=134 evidence=0 s0=-48.74,431.3,0,0,1,0,0 s1=-27.98,532.3,0,0,1,0,0 raw=1,308,55,19,236,0
+
+======================
+VISION
+======================
+Processing: 3.08 ms
+
+RED:
+X: 168
+Y: 228
+Width: 87
+Height: 21
+Bottom Y: 238
+Area: 796
+
+GREEN:
+X: 146
+Y: 198
+Width: 95
+Height: 27
+Bottom Y: 212
+Area: 1012
+ORANGE debug area: 124
+BLUE debug area: 404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=32035 frame_t=32035 reason=approach station=3 pose=-681.7,-933.0,149.95 nudge=-25.59 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=2367 evidence=0 s0=-43.40,386.4,0,0,1,0,0 s1=-20.01,483.1,1,1,1,2,1 raw=2,816,107,25,224,0
+[DISCOVERY_TRACE] v=1 t=32255 frame_t=32255 reason=approach station=3 pose=-713.9,-912.0,143.53 nudge=-38.79 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=5047 evidence=0 s0=-39.31,348.4,0,0,1,0,0 s1=-13.31,442.3,1,1,1,2,1 raw=1,160,27,15,236,0
+
+======================
+VISION
+======================
+Processing: 2.92 ms
+
+RED:
+X: 58
+Y: 137
+Width: 27
+Height: 19
+Bottom Y: 146
+Area: 160
+
+GREEN:
+X: 92
+Y: 187
+Width: 31
+Height: 21
+Bottom Y: 198
+Area: 256
+ORANGE debug area: 48
+BLUE debug area: 1276
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=32472 frame_t=32472 reason=approach station=3 pose=-740.5,-889.7,136.20 nudge=-45.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=658 evidence=0 s0=-33.33,311.0,0,0,1,0,0 s1=-4.59,405.5,1,1,1,2,1 raw=1,608,115,19,238,0
+[DISCOVERY_TRACE] v=1 t=32699 frame_t=32699 reason=approach station=3 pose=-755.1,-874.2,130.79 nudge=-37.86 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=661 evidence=0 s0=-28.05,286.6,0,0,1,0,0 s1=2.49,384.0,1,0,1,2,1 raw=2,264,43,25,156,0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/74.9 deficit_mm_s=25.1 compensation_dc=2.5 output_dc=95.1
+[MAP] Clear S1 station=0
+
+======================
+VISION
+======================
+Processing: 3.43 ms
+
+RED:
+X: 281
+Y: 141
+Width: 39
+Height: 23
+Bottom Y: 154
+Area: 276
+
+GREEN:
+X: 219
+Y: 175
+Width: 43
+Height: 25
+Bottom Y: 186
+Area: 280
+ORANGE debug area: 740
+BLUE debug area: 916
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PATH] Live avoidance injected seat=7 color=GREEN clearance_mm=230
+[MAP] Confirmed S1 station=0 side=LEFT color=GREEN
+[PATH LAYOUT] section=1 mode=OFFICIAL_2026 inferred_empty_station_mask=0
+[GREEN SEAT] confirmed seat=7 frames=3 x/foot=92/156 green_samples/contrast=30/45 range/snap_mm=320/21
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 217
+Y: 172
+Width: 77
+Height: 51
+Bottom Y: 196
+Area: 712
+
+GREEN:
+X: 74
+Y: 138
+Width: 13
+Height: 13
+Bottom Y: 144
+Area: 96
+ORANGE debug area: 892
+BLUE debug area: 3256
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[SLIP] deviation=-95.8%, angle=-24, expected_arc=2.7, actual_arc=0.1, radius=291.0 mm
+
+======================
+VISION
+======================
+Processing: 2.94 ms
+
+RED:
+X: 156
+Y: 136
+Width: 115
+Height: 15
+Bottom Y: 144
+Area: 788
+ORANGE debug area: 420
+BLUE debug area: 472
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 2.66 ms
+ORANGE debug area: 440
+BLUE debug area: 412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=34537 frame_t=34537 reason=approach station=4 pose=-1048.1,-656.6,166.55 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=124 evidence=0 s0=-99.80,683.0,0,0,1,0,0 s1=-82.88,631.4,0,0,1,0,0
+[DISCOVERY_TRACE] v=1 t=34762 frame_t=34762 reason=approach station=4 pose=-1096.5,-644.3,164.75 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=126 evidence=0 s0=-102.16,688.7,0,0,1,0,0 s1=-85.59,622.5,0,0,1,0,0
+
+======================
+VISION
+======================
+Processing: 2.23 ms
+ORANGE debug area: 192
+BLUE debug area: 1412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=34981 frame_t=34981 reason=approach station=4 pose=-1141.1,-630.9,161.41 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=125 evidence=0 s0=-102.72,691.8,0,0,1,0,0 s1=-86.52,612.2,0,0,1,0,0
+[DISCOVERY_TRACE] v=1 t=35204 frame_t=35204 reason=approach station=4 pose=-1176.5,-617.5,157.32 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=125 evidence=0 s0=-101.85,691.1,0,0,1,0,0 s1=-85.93,600.8,0,0,1,0,0
+[DISCOVERY_TRACE] v=1 t=35426 frame_t=35426 reason=approach station=4 pose=-1213.6,-599.7,150.64 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=123 evidence=0 s0=-98.77,684.4,0,0,1,0,0 s1=-83.10,582.6,0,0,1,0,0 raw=2,176,39,11,238,0
+
+======================
+VISION
+======================
+Processing: 2.17 ms
+
+GREEN:
+X: 102
+Y: 234
+Width: 39
+Height: 11
+Bottom Y: 238
+Area: 176
+ORANGE debug area: 640
+BLUE debug area: 472
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=35650 frame_t=35650 reason=approach station=4 pose=-1239.2,-583.4,143.91 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=123 evidence=0 s0=-94.72,673.5,0,0,1,0,0 s1=-79.13,563.5,0,0,1,0,0 raw=2,248,35,23,238,0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/79.0 deficit_mm_s=21.0 compensation_dc=0.5 output_dc=103.3
+[DISCOVERY_TRACE] v=1 t=35871 frame_t=35871 reason=approach station=4 pose=-1187.2,-559.4,139.16 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=124 evidence=0 s0=-87.78,611.5,0,0,1,0,0 s1=-69.98,511.1,0,0,1,0,0 raw=2,268,29,21,238,0
+
+======================
+VISION
+======================
+Processing: 2.45 ms
+
+GREEN:
+X: 51
+Y: 222
+Width: 15
+Height: 15
+Bottom Y: 230
+Area: 100
+ORANGE debug area: 308
+BLUE debug area: 848
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=36093 frame_t=36093 reason=approach station=4 pose=-1195.6,-541.6,134.05 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=119 evidence=0 s0=-84.30,592.0,0,0,1,0,0 s1=-66.05,487.3,0,0,1,0,0 raw=2,140,19,11,238,0
+[DISCOVERY_TRACE] v=1 t=36314 frame_t=36314 reason=approach station=4 pose=-1229.3,-527.6,129.07 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=120 evidence=0 s0=-82.54,593.2,0,0,1,0,0 s1=-64.87,478.2,0,0,1,0,0 raw=2,128,19,13,238,0
+
+======================
+VISION
+======================
+Processing: 2.00 ms
+ORANGE debug area: 104
+BLUE debug area: 528
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=36538 frame_t=36538 reason=approach station=4 pose=-1258.3,-514.3,124.27 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=119 evidence=0 s0=-80.48,593.9,0,0,1,0,0 s1=-63.36,470.3,0,0,1,0,0 raw=2,108,15,11,238,0
+[DISCOVERY_TRACE] v=1 t=36758 frame_t=36758 reason=approach station=4 pose=-1276.8,-502.4,119.99 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=118 evidence=0 s0=-78.09,590.1,0,0,1,0,0 s1=-61.25,461.0,0,0,1,0,0 raw=2,152,17,17,238,0
+
+======================
+VISION
+======================
+Processing: 2.46 ms
+ORANGE debug area: 304
+BLUE debug area: 3532
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=36979 frame_t=36979 reason=approach station=4 pose=-1287.7,-487.8,115.40 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=120 evidence=0 s0=-75.06,579.1,0,0,1,0,0 s1=-58.17,445.9,0,0,1,0,0 raw=2,204,21,25,238,0
+[DISCOVERY_TRACE] v=1 t=37200 frame_t=37200 reason=approach station=4 pose=-1293.9,-469.0,109.37 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=118 evidence=0 s0=-70.49,559.3,0,0,1,0,0 s1=-53.21,422.7,0,0,1,0,0 raw=1,232,13,27,238,0
+[DISCOVERY_TRACE] v=1 t=37422 frame_t=37422 reason=approach station=4 pose=-1299.5,-449.7,103.77 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=126 evidence=0 s0=-66.36,540.4,0,0,1,0,0 s1=-48.70,400.4,0,0,1,0,0 raw=1,268,15,31,238,0
+
+======================
+VISION
+======================
+Processing: 3.14 ms
+
+RED:
+X: 311
+Y: 225
+Width: 15
+Height: 31
+Bottom Y: 238
+Area: 268
+
+GREEN:
+X: 8
+Y: 224
+Width: 19
+Height: 19
+Bottom Y: 232
+Area: 168
+ORANGE debug area: 512
+BLUE debug area: 5436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=37643 frame_t=37643 reason=approach station=4 pose=-1305.8,-430.1,97.97 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=118 evidence=0 s0=-62.08,522.4,0,0,1,0,0 s1=-44.05,379.0,0,0,1,0,0 raw=1,140,15,13,238,0
+[DISCOVERY_TRACE] v=1 t=37865 frame_t=37865 reason=approach station=4 pose=-1308.6,-412.0,93.27 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=119 evidence=0 s0=-58.63,505.3,0,0,1,0,0 s1=-40.18,359.2,0,0,1,0,0 raw=2,156,17,27,236,0
+
+======================
+VISION
+======================
+Processing: 2.92 ms
+
+RED:
+X: 312
+Y: 230
+Width: 13
+Height: 21
+Bottom Y: 238
+Area: 172
+
+GREEN:
+X: 19
+Y: 227
+Width: 27
+Height: 23
+Bottom Y: 236
+Area: 164
+ORANGE debug area: 940
+BLUE debug area: 3556
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=38086 frame_t=38086 reason=approach station=4 pose=-1310.1,-393.8,89.20 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=118 evidence=0 s0=-55.84,488.9,0,0,1,0,0 s1=-36.98,340.1,0,0,1,0,0 raw=1,128,15,15,238,0
+[DISCOVERY_TRACE] v=1 t=38306 frame_t=38306 reason=approach station=4 pose=-1308.6,-367.3,83.38 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=121 evidence=0 s0=-51.71,463.2,0,0,1,0,0 s1=-32.00,311.2,0,0,1,0,0 raw=2,144,25,21,230,0
+
+======================
+VISION
+======================
+Processing: 2.99 ms
+
+RED:
+X: 93
+Y: 101
+Width: 51
+Height: 15
+Bottom Y: 110
+Area: 188
+
+GREEN:
+X: 65
+Y: 229
+Width: 73
+Height: 23
+Bottom Y: 238
+Area: 436
+ORANGE debug area: 1564
+BLUE debug area: 1908
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=38528 frame_t=38528 reason=approach station=4 pose=-1306.2,-343.7,77.42 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=444 evidence=2 s0=-47.09,439.0,0,0,1,0,0 s1=-26.33,284.9,1,0,1,1,0 raw=2,336,35,31,238,0
+[DISCOVERY_TRACE] v=1 t=38750 frame_t=38750 reason=approach station=4 pose=-1300.0,-323.6,73.43 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=667 evidence=0 s0=-44.21,417.5,0,0,1,0,0 s1=-22.32,261.8,1,0,1,2,1 raw=2,444,41,31,238,0
+
+======================
+VISION
+======================
+Processing: 3.34 ms
+
+RED:
+X: 217
+Y: 145
+Width: 51
+Height: 85
+Bottom Y: 188
+Area: 1160
+
+GREEN:
+X: 78
+Y: 228
+Width: 81
+Height: 27
+Bottom Y: 238
+Area: 548
+ORANGE debug area: 1168
+BLUE debug area: 2172
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[RED SEAT] t=38971 decision=vote_or_repeat pose=-1293,-304,69.4 image_x/foot=214/178 bearing/range=-11.9/245 sighting=-1117,20 nearest/error=9/26 accepted=9
+[DISCOVERY_TRACE] v=1 t=38972 frame_t=38972 reason=approach station=4 pose=-1292.9,-304.1,69.44 nudge=0.00 obs=4 valid=1 obs_seat=9 obs_range=245.3 obs_geom=214,178,-11.9,-1117,20,9,26 green_roi_us=658 evidence=0 s0=-41.25,396.0,0,0,1,0,0 s1=-17.98,239.1,1,0,0,2,1 raw=2,576,61,35,238,0
+[PATH] Perception hold at S1 station=1 forward_mm=300 grace_ms=800
+[DISCOVERY_TRACE] v=1 t=39136 frame_t=39120 reason=hold_start station=4 pose=-1287.6,-291.8,67.04 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=126 evidence=0 s0=-39.50,382.1,0,0,1,0,0 s1=-15.20,224.7,0,0,1,2,1 raw=2,628,87,29,238,0
+[PATH] Live avoidance injected seat=9 color=RED clearance_mm=260
+[MAP] Confirmed S1 station=1 side=LEFT color=RED
+[PATH LAYOUT] section=1 mode=OFFICIAL_2026 inferred_empty_station_mask=0
+[RED SEAT] t=39269 decision=confirmed pose=-1282,-278,64.4 image_x/foot=210/168 bearing/range=-10.6/271 sighting=-1068,54 nearest/error=9/63 accepted=9
+[PATH] Perception hold resolved at station=4
+
+======================
+VISION
+======================
+Processing: 3.71 ms
+
+RED:
+X: 207
+Y: 144
+Width: 47
+Height: 67
+Bottom Y: 176
+Area: 1096
+
+GREEN:
+X: 68
+Y: 221
+Width: 59
+Height: 31
+Bottom Y: 236
+Area: 628
+ORANGE debug area: 2380
+BLUE debug area: 2404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[RED SEAT] t=39491 decision=vote_or_repeat pose=-1273,-269,62.7 image_x/foot=207/170 bearing/range=-9.7/265 sighting=-1057,53 nearest/error=9/69 accepted=9
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 181
+Y: 177
+Width: 53
+Height: 31
+Bottom Y: 192
+Area: 672
+
+GREEN:
+X: 47
+Y: 220
+Width: 21
+Height: 13
+Bottom Y: 226
+Area: 164
+ORANGE debug area: 1328
+BLUE debug area: 2480
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[RED SEAT] t=40003 decision=vote_or_repeat pose=-1249,-247,58.3 image_x/foot=195/182 bearing/range=-7.7/233 sighting=-1036,39 nearest/error=9/75 accepted=9
+[SLIP] deviation=-100.0%, angle=26, expected_arc=2.4, actual_arc=0.0, radius=265.6 mm
+[DISCOVERY_TRACE] v=1 t=40446 frame_t=40446 reason=approach station=5 pose=-1192.4,-181.9,43.05 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=108 evidence=0 s0=28.33,629.5,0,0,1,0,0 s1=46.85,596.5,0,0,1,0,0 raw=2,208,35,11,238,0
+
+======================
+VISION
+======================
+Processing: 4.09 ms
+
+RED:
+X: 187
+Y: 151
+Width: 73
+Height: 63
+Bottom Y: 180
+Area: 1140
+
+GREEN:
+X: 141
+Y: 234
+Width: 35
+Height: 11
+Bottom Y: 238
+Area: 208
+ORANGE debug area: 524
+BLUE debug area: 3268
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[DISCOVERY_TRACE] v=1 t=40667 frame_t=40667 reason=approach station=5 pose=-1154.9,-150.3,34.12 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=106 evidence=0 s0=41.26,599.6,0,0,1,0,0 s1=60.68,582.2,0,0,1,0,0 raw=2,264,63,9,238,0
+[DISCOVERY_TRACE] v=1 t=40888 frame_t=40888 reason=approach station=5 pose=-1106.2,-121.8,29.05 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=105 evidence=0 s0=51.15,569.4,0,0,1,0,0 s1=71.36,570.5,0,0,1,0,0 raw=2,100,21,5,236,0
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 144
+Y: 158
+Width: 125
+Height: 31
+Bottom Y: 176
+Area: 1028
+
+GREEN:
+X: 117
+Y: 233
+Width: 21
+Height: 5
+Bottom Y: 236
+Area: 100
+ORANGE debug area: 812
+BLUE debug area: 2380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.51 ms
+
+RED:
+X: 172
+Y: 153
+Width: 61
+Height: 21
+Bottom Y: 166
+Area: 332
+
+GREEN:
+X: 79
+Y: 224
+Width: 29
+Height: 11
+Bottom Y: 228
+Area: 144
+ORANGE debug area: 2028
+BLUE debug area: 2356
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 140
+Y: 167
+Width: 109
+Height: 27
+Bottom Y: 182
+Area: 724
+
+GREEN:
+X: 139
+Y: 234
+Width: 33
+Height: 11
+Bottom Y: 238
+Area: 244
+ORANGE debug area: 756
+BLUE debug area: 2488
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.79 ms
+
+RED:
+X: 196
+Y: 110
+Width: 37
+Height: 27
+Bottom Y: 124
+Area: 468
+
+GREEN:
+X: 87
+Y: 212
+Width: 41
+Height: 19
+Bottom Y: 222
+Area: 216
+ORANGE debug area: 3084
+BLUE debug area: 2460
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[MOTOR LOAD COMP] target/profile/measured_mm_s=100/100.0/75.6 deficit_mm_s=24.4 compensation_dc=2.2 output_dc=85.7
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 188
+Y: 107
+Width: 95
+Height: 25
+Bottom Y: 122
+Area: 500
+
+GREEN:
+X: 132
+Y: 229
+Width: 97
+Height: 15
+Bottom Y: 238
+Area: 664
+ORANGE debug area: 1024
+BLUE debug area: 1812
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 188
+Y: 108
+Width: 105
+Height: 21
+Bottom Y: 122
+Area: 488
+
+GREEN:
+X: 128
+Y: 229
+Width: 129
+Height: 23
+Bottom Y: 238
+Area: 1336
+ORANGE debug area: 516
+BLUE debug area: 1224
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 200
+Y: 157
+Width: 51
+Height: 29
+Bottom Y: 172
+Area: 476
+
+GREEN:
+X: 52
+Y: 227
+Width: 35
+Height: 13
+Bottom Y: 234
+Area: 204
+ORANGE debug area: 1376
+BLUE debug area: 1520
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PATH] Perception hold at S1 station=2 forward_mm=300 grace_ms=800
+[DISCOVERY_TRACE] v=1 t=44125 frame_t=44058 reason=hold_start station=5 pose=-889.3,174.4,80.52 nudge=0.00 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=108 evidence=0 s0=18.27,204.7,0,1,1,0,0 s1=58.31,307.2,0,0,1,0,0 raw=2,608,65,23,238,0
+
+======================
+VISION
+======================
+Processing: 3.33 ms
+
+RED:
+X: 176
+Y: 110
+Width: 109
+Height: 23
+Bottom Y: 126
+Area: 520
+
+GREEN:
+X: 148
+Y: 230
+Width: 103
+Height: 13
+Bottom Y: 238
+Area: 556
+ORANGE debug area: 1088
+BLUE debug area: 1440
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[PATH] Perception hold expired at S1 station=2
+[DISCOVERY_TRACE] v=1 t=44929 frame_t=44869 reason=hold_expired station=5 pose=-885.9,194.0,83.58 nudge=33.49 obs=0 valid=0 obs_seat=-1 obs_range=-1.0 green_roi_us=109 evidence=0 s0=15.19,184.0,0,0,1,0,0 s1=57.85,291.6,0,0,1,0,0 raw=2,884,91,17,238,0
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 196
+Y: 160
+Width: 59
+Height: 25
+Bottom Y: 172
+Area: 356
+
+GREEN:
+X: 59
+Y: 231
+Width: 25
+Height: 11
+Bottom Y: 236
+Area: 152
+ORANGE debug area: 2496
+BLUE debug area: 1512
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.35 ms
+
+RED:
+X: 199
+Y: 116
+Width: 57
+Height: 21
+Bottom Y: 126
+Area: 324
+ORANGE debug area: 1104
+BLUE debug area: 1512
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.36 ms
+
+RED:
+X: 179
+Y: 112
+Width: 101
+Height: 27
+Bottom Y: 130
+Area: 516
+
+GREEN:
+X: 158
+Y: 231
+Width: 41
+Height: 9
+Bottom Y: 236
+Area: 160
+ORANGE debug area: 1188
+BLUE debug area: 1596
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 195
+Y: 162
+Width: 51
+Height: 29
+Bottom Y: 176
+Area: 336
+
+GREEN:
+X: 86
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 204
+ORANGE debug area: 1404
+BLUE debug area: 1400
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 194
+Y: 114
+Width: 67
+Height: 25
+Bottom Y: 126
+Area: 408
+
+GREEN:
+X: 192
+Y: 231
+Width: 61
+Height: 11
+Bottom Y: 236
+Area: 164
+ORANGE debug area: 1236
+BLUE debug area: 1684
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 207
+Y: 136
+Width: 47
+Height: 23
+Bottom Y: 146
+Area: 292
+
+GREEN:
+X: 177
+Y: 228
+Width: 61
+Height: 19
+Bottom Y: 238
+Area: 464
+ORANGE debug area: 1452
+BLUE debug area: 1440
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.53 ms
+
+RED:
+X: 146
+Y: 106
+Width: 95
+Height: 19
+Bottom Y: 118
+Area: 664
+
+GREEN:
+X: 54
+Y: 228
+Width: 33
+Height: 9
+Bottom Y: 232
+Area: 176
+ORANGE debug area: 1388
+BLUE debug area: 1664
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 172
+Y: 146
+Width: 97
+Height: 17
+Bottom Y: 154
+Area: 384
+
+GREEN:
+X: 58
+Y: 227
+Width: 29
+Height: 7
+Bottom Y: 230
+Area: 132
+ORANGE debug area: 2348
+BLUE debug area: 1788
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 176
+Y: 109
+Width: 125
+Height: 19
+Bottom Y: 122
+Area: 512
+
+GREEN:
+X: 147
+Y: 230
+Width: 105
+Height: 21
+Bottom Y: 238
+Area: 1076
+ORANGE debug area: 1132
+BLUE debug area: 1632
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 171
+Y: 107
+Width: 59
+Height: 23
+Bottom Y: 120
+Area: 432
+
+GREEN:
+X: 53
+Y: 229
+Width: 37
+Height: 11
+Bottom Y: 234
+Area: 180
+ORANGE debug area: 2372
+BLUE debug area: 1752
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 177
+Y: 110
+Width: 105
+Height: 19
+Bottom Y: 124
+Area: 468
+
+GREEN:
+X: 154
+Y: 230
+Width: 99
+Height: 17
+Bottom Y: 238
+Area: 760
+ORANGE debug area: 1036
+BLUE debug area: 1436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 101
+Y: 118
+Width: 67
+Height: 39
+Bottom Y: 140
+Area: 452
+
+GREEN:
+X: 58
+Y: 230
+Width: 31
+Height: 11
+Bottom Y: 236
+Area: 192
+ORANGE debug area: 2460
+BLUE debug area: 1620
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 190
+Y: 156
+Width: 75
+Height: 27
+Bottom Y: 172
+Area: 380
+
+GREEN:
+X: 55
+Y: 228
+Width: 37
+Height: 11
+Bottom Y: 234
+Area: 200
+ORANGE debug area: 2580
+BLUE debug area: 1708
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.36 ms
+
+RED:
+X: 174
+Y: 110
+Width: 107
+Height: 21
+Bottom Y: 126
+Area: 512
+
+GREEN:
+X: 151
+Y: 231
+Width: 65
+Height: 13
+Bottom Y: 238
+Area: 352
+ORANGE debug area: 1120
+BLUE debug area: 1592
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.70 ms
+
+RED:
+X: 98
+Y: 121
+Width: 49
+Height: 35
+Bottom Y: 138
+Area: 380
+
+GREEN:
+X: 64
+Y: 231
+Width: 19
+Height: 9
+Bottom Y: 236
+Area: 120
+ORANGE debug area: 2384
+BLUE debug area: 1424
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.39 ms
+
+RED:
+X: 152
+Y: 107
+Width: 61
+Height: 11
+Bottom Y: 114
+Area: 304
+
+GREEN:
+X: 181
+Y: 230
+Width: 35
+Height: 7
+Bottom Y: 234
+Area: 116
+ORANGE debug area: 1196
+BLUE debug area: 1552
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 211
+Y: 137
+Width: 41
+Height: 25
+Bottom Y: 150
+Area: 316
+
+GREEN:
+X: 99
+Y: 229
+Width: 55
+Height: 17
+Bottom Y: 238
+Area: 420
+ORANGE debug area: 976
+BLUE debug area: 1288
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 143
+Y: 110
+Width: 129
+Height: 29
+Bottom Y: 130
+Area: 664
+
+GREEN:
+X: 87
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 208
+ORANGE debug area: 920
+BLUE debug area: 1764
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 171
+Y: 111
+Width: 107
+Height: 25
+Bottom Y: 126
+Area: 624
+
+GREEN:
+X: 200
+Y: 230
+Width: 43
+Height: 9
+Bottom Y: 234
+Area: 132
+ORANGE debug area: 1268
+BLUE debug area: 1612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 207
+Y: 137
+Width: 41
+Height: 29
+Bottom Y: 150
+Area: 356
+
+GREEN:
+X: 146
+Y: 228
+Width: 107
+Height: 19
+Bottom Y: 238
+Area: 860
+ORANGE debug area: 1164
+BLUE debug area: 1512
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 156
+Y: 108
+Width: 93
+Height: 25
+Bottom Y: 124
+Area: 680
+
+GREEN:
+X: 52
+Y: 227
+Width: 33
+Height: 9
+Bottom Y: 232
+Area: 136
+ORANGE debug area: 2552
+BLUE debug area: 1964
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 179
+Y: 110
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 492
+
+GREEN:
+X: 148
+Y: 231
+Width: 95
+Height: 15
+Bottom Y: 238
+Area: 904
+ORANGE debug area: 1764
+BLUE debug area: 1452
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 168
+Y: 108
+Width: 109
+Height: 17
+Bottom Y: 120
+Area: 436
+
+GREEN:
+X: 147
+Y: 231
+Width: 99
+Height: 19
+Bottom Y: 238
+Area: 1156
+ORANGE debug area: 1668
+BLUE debug area: 1384
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 159
+Y: 106
+Width: 93
+Height: 21
+Bottom Y: 122
+Area: 572
+
+GREEN:
+X: 53
+Y: 229
+Width: 29
+Height: 9
+Bottom Y: 234
+Area: 172
+ORANGE debug area: 2452
+BLUE debug area: 1292
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 178
+Y: 111
+Width: 107
+Height: 23
+Bottom Y: 126
+Area: 532
+
+GREEN:
+X: 157
+Y: 229
+Width: 109
+Height: 15
+Bottom Y: 236
+Area: 560
+ORANGE debug area: 1056
+BLUE debug area: 1464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 195
+Y: 159
+Width: 63
+Height: 27
+Bottom Y: 174
+Area: 424
+
+GREEN:
+X: 61
+Y: 231
+Width: 23
+Height: 11
+Bottom Y: 236
+Area: 156
+ORANGE debug area: 2348
+BLUE debug area: 1500
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 191
+Y: 113
+Width: 71
+Height: 21
+Bottom Y: 124
+Area: 400
+
+GREEN:
+X: 180
+Y: 231
+Width: 33
+Height: 5
+Bottom Y: 234
+Area: 120
+ORANGE debug area: 1296
+BLUE debug area: 1544
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.39 ms
+
+RED:
+X: 177
+Y: 111
+Width: 99
+Height: 21
+Bottom Y: 124
+Area: 492
+
+GREEN:
+X: 156
+Y: 230
+Width: 71
+Height: 9
+Bottom Y: 236
+Area: 300
+ORANGE debug area: 1008
+BLUE debug area: 1516
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 196
+Y: 162
+Width: 53
+Height: 27
+Bottom Y: 176
+Area: 340
+
+GREEN:
+X: 86
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 200
+ORANGE debug area: 2288
+BLUE debug area: 1428
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 173
+Y: 111
+Width: 107
+Height: 25
+Bottom Y: 126
+Area: 564
+
+GREEN:
+X: 193
+Y: 231
+Width: 53
+Height: 9
+Bottom Y: 234
+Area: 160
+ORANGE debug area: 1232
+BLUE debug area: 1472
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 197
+Y: 110
+Width: 59
+Height: 19
+Bottom Y: 122
+Area: 356
+
+GREEN:
+X: 148
+Y: 229
+Width: 111
+Height: 21
+Bottom Y: 238
+Area: 924
+ORANGE debug area: 1112
+BLUE debug area: 1660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 136
+Y: 111
+Width: 129
+Height: 33
+Bottom Y: 132
+Area: 948
+
+GREEN:
+X: 52
+Y: 229
+Width: 35
+Height: 9
+Bottom Y: 234
+Area: 128
+ORANGE debug area: 2276
+BLUE debug area: 1736
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 176
+Y: 110
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 492
+
+GREEN:
+X: 155
+Y: 231
+Width: 81
+Height: 15
+Bottom Y: 238
+Area: 700
+ORANGE debug area: 988
+BLUE debug area: 1440
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 175
+Y: 109
+Width: 109
+Height: 23
+Bottom Y: 126
+Area: 500
+
+GREEN:
+X: 147
+Y: 231
+Width: 99
+Height: 17
+Bottom Y: 238
+Area: 1112
+ORANGE debug area: 988
+BLUE debug area: 1388
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 102
+Y: 117
+Width: 63
+Height: 35
+Bottom Y: 136
+Area: 448
+
+GREEN:
+X: 55
+Y: 230
+Width: 31
+Height: 11
+Bottom Y: 236
+Area: 180
+ORANGE debug area: 1876
+BLUE debug area: 1656
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.36 ms
+
+RED:
+X: 177
+Y: 111
+Width: 105
+Height: 21
+Bottom Y: 124
+Area: 508
+
+GREEN:
+X: 154
+Y: 230
+Width: 97
+Height: 11
+Bottom Y: 236
+Area: 464
+ORANGE debug area: 1048
+BLUE debug area: 1452
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 196
+Y: 162
+Width: 53
+Height: 29
+Bottom Y: 178
+Area: 384
+
+GREEN:
+X: 87
+Y: 227
+Width: 25
+Height: 15
+Bottom Y: 236
+Area: 172
+ORANGE debug area: 2392
+BLUE debug area: 1392
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 93
+Y: 124
+Width: 53
+Height: 35
+Bottom Y: 142
+Area: 376
+
+GREEN:
+X: 59
+Y: 230
+Width: 29
+Height: 13
+Bottom Y: 236
+Area: 172
+ORANGE debug area: 2616
+BLUE debug area: 1212
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.37 ms
+
+RED:
+X: 178
+Y: 111
+Width: 113
+Height: 21
+Bottom Y: 124
+Area: 552
+
+GREEN:
+X: 171
+Y: 230
+Width: 69
+Height: 9
+Bottom Y: 234
+Area: 248
+ORANGE debug area: 1040
+BLUE debug area: 1456
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 162
+Y: 106
+Width: 117
+Height: 15
+Bottom Y: 116
+Area: 388
+
+GREEN:
+X: 88
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 272
+ORANGE debug area: 1288
+BLUE debug area: 1376
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.46 ms
+
+RED:
+X: 194
+Y: 115
+Width: 69
+Height: 31
+Bottom Y: 132
+Area: 412
+
+GREEN:
+X: 189
+Y: 232
+Width: 51
+Height: 5
+Bottom Y: 234
+Area: 148
+ORANGE debug area: 1316
+BLUE debug area: 1764
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.54 ms
+
+RED:
+X: 208
+Y: 138
+Width: 43
+Height: 27
+Bottom Y: 152
+Area: 344
+
+GREEN:
+X: 123
+Y: 229
+Width: 57
+Height: 19
+Bottom Y: 238
+Area: 516
+ORANGE debug area: 1636
+BLUE debug area: 1380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 171
+Y: 108
+Width: 119
+Height: 17
+Bottom Y: 120
+Area: 456
+
+GREEN:
+X: 111
+Y: 227
+Width: 27
+Height: 19
+Bottom Y: 238
+Area: 224
+ORANGE debug area: 1680
+BLUE debug area: 1320
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.52 ms
+
+RED:
+X: 154
+Y: 106
+Width: 83
+Height: 17
+Bottom Y: 116
+Area: 544
+
+GREEN:
+X: 55
+Y: 227
+Width: 31
+Height: 9
+Bottom Y: 232
+Area: 164
+ORANGE debug area: 1452
+BLUE debug area: 1464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 176
+Y: 109
+Width: 107
+Height: 21
+Bottom Y: 124
+Area: 476
+
+GREEN:
+X: 149
+Y: 231
+Width: 107
+Height: 19
+Bottom Y: 238
+Area: 1136
+ORANGE debug area: 1012
+BLUE debug area: 1472
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 136
+Y: 149
+Width: 117
+Height: 23
+Bottom Y: 164
+Area: 424
+
+GREEN:
+X: 55
+Y: 229
+Width: 39
+Height: 11
+Bottom Y: 234
+Area: 224
+ORANGE debug area: 2408
+BLUE debug area: 1736
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 187
+Y: 112
+Width: 87
+Height: 23
+Bottom Y: 128
+Area: 424
+
+GREEN:
+X: 155
+Y: 230
+Width: 107
+Height: 15
+Bottom Y: 238
+Area: 596
+ORANGE debug area: 1836
+BLUE debug area: 1548
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 174
+Y: 109
+Width: 109
+Height: 21
+Bottom Y: 124
+Area: 488
+
+GREEN:
+X: 150
+Y: 230
+Width: 105
+Height: 17
+Bottom Y: 238
+Area: 944
+ORANGE debug area: 1132
+BLUE debug area: 1404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 100
+Y: 117
+Width: 63
+Height: 39
+Bottom Y: 140
+Area: 456
+
+GREEN:
+X: 58
+Y: 229
+Width: 29
+Height: 11
+Bottom Y: 234
+Area: 176
+ORANGE debug area: 2712
+BLUE debug area: 1260
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.39 ms
+
+RED:
+X: 179
+Y: 111
+Width: 105
+Height: 23
+Bottom Y: 126
+Area: 532
+
+GREEN:
+X: 163
+Y: 230
+Width: 107
+Height: 15
+Bottom Y: 236
+Area: 424
+ORANGE debug area: 1204
+BLUE debug area: 1524
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 198
+Y: 162
+Width: 37
+Height: 29
+Bottom Y: 176
+Area: 276
+
+GREEN:
+X: 87
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 212
+ORANGE debug area: 2380
+BLUE debug area: 1464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 177
+Y: 112
+Width: 107
+Height: 33
+Bottom Y: 134
+Area: 564
+
+GREEN:
+X: 82
+Y: 209
+Width: 17
+Height: 19
+Bottom Y: 220
+Area: 104
+ORANGE debug area: 1172
+BLUE debug area: 1456
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 170
+Y: 108
+Width: 125
+Height: 19
+Bottom Y: 122
+Area: 476
+
+GREEN:
+X: 120
+Y: 227
+Width: 55
+Height: 19
+Bottom Y: 238
+Area: 404
+ORANGE debug area: 1132
+BLUE debug area: 1408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 154
+Y: 109
+Width: 141
+Height: 19
+Bottom Y: 122
+Area: 568
+
+GREEN:
+X: 87
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 220
+ORANGE debug area: 1444
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 170
+Y: 110
+Width: 107
+Height: 27
+Bottom Y: 126
+Area: 664
+
+GREEN:
+X: 83
+Y: 209
+Width: 23
+Height: 21
+Bottom Y: 220
+Area: 148
+ORANGE debug area: 1248
+BLUE debug area: 1524
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 149
+Y: 109
+Width: 153
+Height: 21
+Bottom Y: 124
+Area: 680
+
+GREEN:
+X: 149
+Y: 229
+Width: 103
+Height: 21
+Bottom Y: 238
+Area: 968
+ORANGE debug area: 1008
+BLUE debug area: 1408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 102
+Y: 115
+Width: 73
+Height: 35
+Bottom Y: 136
+Area: 452
+
+GREEN:
+X: 50
+Y: 228
+Width: 29
+Height: 7
+Bottom Y: 232
+Area: 144
+ORANGE debug area: 2436
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 177
+Y: 110
+Width: 109
+Height: 21
+Bottom Y: 124
+Area: 472
+
+GREEN:
+X: 148
+Y: 231
+Width: 87
+Height: 15
+Bottom Y: 238
+Area: 828
+ORANGE debug area: 964
+BLUE debug area: 1408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 192
+Y: 110
+Width: 71
+Height: 19
+Bottom Y: 122
+Area: 336
+
+GREEN:
+X: 150
+Y: 230
+Width: 113
+Height: 19
+Bottom Y: 238
+Area: 1216
+ORANGE debug area: 1568
+BLUE debug area: 1652
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 101
+Y: 117
+Width: 69
+Height: 37
+Bottom Y: 138
+Area: 432
+
+GREEN:
+X: 52
+Y: 229
+Width: 31
+Height: 9
+Bottom Y: 234
+Area: 156
+ORANGE debug area: 2376
+BLUE debug area: 1708
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 179
+Y: 111
+Width: 111
+Height: 19
+Bottom Y: 124
+Area: 496
+
+GREEN:
+X: 151
+Y: 231
+Width: 91
+Height: 13
+Bottom Y: 238
+Area: 512
+ORANGE debug area: 1024
+BLUE debug area: 1480
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 196
+Y: 161
+Width: 59
+Height: 31
+Bottom Y: 178
+Area: 408
+
+GREEN:
+X: 62
+Y: 231
+Width: 19
+Height: 11
+Bottom Y: 236
+Area: 136
+ORANGE debug area: 2364
+BLUE debug area: 1524
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 96
+Y: 121
+Width: 55
+Height: 39
+Bottom Y: 142
+Area: 448
+
+GREEN:
+X: 58
+Y: 229
+Width: 33
+Height: 11
+Bottom Y: 236
+Area: 212
+ORANGE debug area: 2648
+BLUE debug area: 1644
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.37 ms
+
+RED:
+X: 181
+Y: 112
+Width: 111
+Height: 27
+Bottom Y: 130
+Area: 560
+
+GREEN:
+X: 177
+Y: 229
+Width: 87
+Height: 15
+Bottom Y: 236
+Area: 320
+ORANGE debug area: 1164
+BLUE debug area: 1556
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 197
+Y: 162
+Width: 55
+Height: 27
+Bottom Y: 176
+Area: 408
+
+GREEN:
+X: 87
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 200
+ORANGE debug area: 1444
+BLUE debug area: 1692
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 201
+Y: 118
+Width: 57
+Height: 29
+Bottom Y: 134
+Area: 396
+
+GREEN:
+X: 59
+Y: 226
+Width: 29
+Height: 7
+Bottom Y: 230
+Area: 104
+ORANGE debug area: 1300
+BLUE debug area: 1652
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 168
+Y: 107
+Width: 123
+Height: 15
+Bottom Y: 118
+Area: 444
+
+GREEN:
+X: 151
+Y: 228
+Width: 107
+Height: 19
+Bottom Y: 238
+Area: 792
+ORANGE debug area: 908
+BLUE debug area: 1308
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 211
+Y: 136
+Width: 51
+Height: 27
+Bottom Y: 150
+Area: 340
+
+GREEN:
+X: 87
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 256
+ORANGE debug area: 756
+BLUE debug area: 1636
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 91
+Y: 119
+Width: 61
+Height: 25
+Bottom Y: 134
+Area: 336
+
+GREEN:
+X: 58
+Y: 227
+Width: 29
+Height: 7
+Bottom Y: 230
+Area: 140
+ORANGE debug area: 1312
+BLUE debug area: 1660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 209
+Y: 138
+Width: 49
+Height: 27
+Bottom Y: 152
+Area: 380
+
+GREEN:
+X: 146
+Y: 229
+Width: 97
+Height: 19
+Bottom Y: 238
+Area: 1044
+ORANGE debug area: 932
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 177
+Y: 108
+Width: 63
+Height: 21
+Bottom Y: 122
+Area: 420
+
+GREEN:
+X: 55
+Y: 228
+Width: 35
+Height: 11
+Bottom Y: 234
+Area: 184
+ORANGE debug area: 2564
+BLUE debug area: 1932
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.43 ms
+
+RED:
+X: 176
+Y: 110
+Width: 111
+Height: 23
+Bottom Y: 126
+Area: 492
+
+GREEN:
+X: 153
+Y: 231
+Width: 101
+Height: 17
+Bottom Y: 238
+Area: 816
+ORANGE debug area: 1016
+BLUE debug area: 1536
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 165
+Y: 107
+Width: 99
+Height: 11
+Bottom Y: 114
+Area: 400
+
+GREEN:
+X: 148
+Y: 231
+Width: 97
+Height: 19
+Bottom Y: 238
+Area: 1184
+ORANGE debug area: 1720
+BLUE debug area: 1496
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 102
+Y: 116
+Width: 79
+Height: 37
+Bottom Y: 138
+Area: 460
+
+GREEN:
+X: 54
+Y: 228
+Width: 39
+Height: 11
+Bottom Y: 234
+Area: 200
+ORANGE debug area: 2416
+BLUE debug area: 1728
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.46 ms
+
+RED:
+X: 179
+Y: 110
+Width: 113
+Height: 17
+Bottom Y: 122
+Area: 540
+
+GREEN:
+X: 144
+Y: 231
+Width: 77
+Height: 13
+Bottom Y: 238
+Area: 508
+ORANGE debug area: 1112
+BLUE debug area: 1624
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 103
+Y: 115
+Width: 55
+Height: 29
+Bottom Y: 130
+Area: 404
+
+GREEN:
+X: 59
+Y: 231
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 168
+ORANGE debug area: 2540
+BLUE debug area: 1612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.34 ms
+
+RED:
+X: 175
+Y: 111
+Width: 97
+Height: 21
+Bottom Y: 124
+Area: 520
+
+GREEN:
+X: 180
+Y: 230
+Width: 57
+Height: 9
+Bottom Y: 234
+Area: 192
+ORANGE debug area: 1168
+BLUE debug area: 1460
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 199
+Y: 164
+Width: 49
+Height: 27
+Bottom Y: 176
+Area: 400
+
+GREEN:
+X: 88
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 240
+ORANGE debug area: 988
+BLUE debug area: 1332
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 195
+Y: 160
+Width: 55
+Height: 33
+Bottom Y: 178
+Area: 412
+
+GREEN:
+X: 63
+Y: 232
+Width: 19
+Height: 9
+Bottom Y: 236
+Area: 120
+ORANGE debug area: 2216
+BLUE debug area: 1492
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 198
+Y: 115
+Width: 53
+Height: 23
+Bottom Y: 126
+Area: 332
+
+GREEN:
+X: 173
+Y: 231
+Width: 31
+Height: 5
+Bottom Y: 234
+Area: 112
+ORANGE debug area: 1212
+BLUE debug area: 1588
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 172
+Y: 107
+Width: 119
+Height: 17
+Bottom Y: 120
+Area: 412
+
+GREEN:
+X: 88
+Y: 231
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 220
+ORANGE debug area: 1924
+BLUE debug area: 1360
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.49 ms
+
+RED:
+X: 138
+Y: 105
+Width: 61
+Height: 15
+Bottom Y: 114
+Area: 368
+
+GREEN:
+X: 200
+Y: 231
+Width: 59
+Height: 11
+Bottom Y: 234
+Area: 156
+ORANGE debug area: 1264
+BLUE debug area: 1704
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 208
+Y: 138
+Width: 43
+Height: 25
+Bottom Y: 150
+Area: 340
+
+GREEN:
+X: 150
+Y: 230
+Width: 111
+Height: 21
+Bottom Y: 238
+Area: 1032
+ORANGE debug area: 1428
+BLUE debug area: 1368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 197
+Y: 167
+Width: 37
+Height: 33
+Bottom Y: 182
+Area: 328
+
+GREEN:
+X: 87
+Y: 231
+Width: 23
+Height: 15
+Bottom Y: 238
+Area: 228
+ORANGE debug area: 1404
+BLUE debug area: 1352
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 145
+Y: 105
+Width: 85
+Height: 15
+Bottom Y: 114
+Area: 472
+
+GREEN:
+X: 84
+Y: 209
+Width: 17
+Height: 17
+Bottom Y: 218
+Area: 112
+ORANGE debug area: 1236
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 175
+Y: 109
+Width: 109
+Height: 19
+Bottom Y: 122
+Area: 512
+
+GREEN:
+X: 148
+Y: 230
+Width: 103
+Height: 19
+Bottom Y: 238
+Area: 1084
+ORANGE debug area: 1016
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 102
+Y: 115
+Width: 69
+Height: 33
+Bottom Y: 134
+Area: 408
+
+GREEN:
+X: 52
+Y: 229
+Width: 33
+Height: 7
+Bottom Y: 232
+Area: 144
+ORANGE debug area: 2512
+BLUE debug area: 1812
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 175
+Y: 110
+Width: 109
+Height: 21
+Bottom Y: 124
+Area: 460
+
+GREEN:
+X: 152
+Y: 231
+Width: 93
+Height: 17
+Bottom Y: 238
+Area: 696
+ORANGE debug area: 944
+BLUE debug area: 1452
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.49 ms
+
+RED:
+X: 175
+Y: 109
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 504
+
+GREEN:
+X: 147
+Y: 231
+Width: 101
+Height: 17
+Bottom Y: 238
+Area: 1140
+ORANGE debug area: 964
+BLUE debug area: 1424
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.69 ms
+
+RED:
+X: 94
+Y: 123
+Width: 63
+Height: 25
+Bottom Y: 136
+Area: 280
+
+GREEN:
+X: 56
+Y: 228
+Width: 35
+Height: 11
+Bottom Y: 234
+Area: 168
+ORANGE debug area: 1856
+BLUE debug area: 1960
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 186
+Y: 111
+Width: 85
+Height: 21
+Bottom Y: 126
+Area: 400
+
+GREEN:
+X: 162
+Y: 230
+Width: 95
+Height: 17
+Bottom Y: 238
+Area: 576
+ORANGE debug area: 1008
+BLUE debug area: 1336
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.68 ms
+
+RED:
+X: 96
+Y: 119
+Width: 71
+Height: 41
+Bottom Y: 142
+Area: 516
+
+GREEN:
+X: 58
+Y: 231
+Width: 27
+Height: 11
+Bottom Y: 236
+Area: 180
+ORANGE debug area: 2456
+BLUE debug area: 1492
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 203
+Y: 144
+Width: 39
+Height: 19
+Bottom Y: 152
+Area: 284
+
+GREEN:
+X: 188
+Y: 229
+Width: 65
+Height: 13
+Bottom Y: 236
+Area: 220
+ORANGE debug area: 1072
+BLUE debug area: 1548
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 176
+Y: 111
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 568
+
+GREEN:
+X: 156
+Y: 230
+Width: 111
+Height: 15
+Bottom Y: 238
+Area: 488
+ORANGE debug area: 948
+BLUE debug area: 1464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 92
+Y: 123
+Width: 49
+Height: 33
+Bottom Y: 138
+Area: 364
+
+GREEN:
+X: 62
+Y: 231
+Width: 19
+Height: 9
+Bottom Y: 236
+Area: 140
+ORANGE debug area: 2532
+BLUE debug area: 1388
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 198
+Y: 115
+Width: 61
+Height: 21
+Bottom Y: 124
+Area: 348
+
+GREEN:
+X: 163
+Y: 232
+Width: 59
+Height: 5
+Bottom Y: 234
+Area: 160
+ORANGE debug area: 1184
+BLUE debug area: 1660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 209
+Y: 136
+Width: 47
+Height: 27
+Bottom Y: 150
+Area: 352
+
+GREEN:
+X: 121
+Y: 225
+Width: 47
+Height: 13
+Bottom Y: 232
+Area: 324
+ORANGE debug area: 1048
+BLUE debug area: 1412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 197
+Y: 163
+Width: 51
+Height: 31
+Bottom Y: 180
+Area: 436
+
+GREEN:
+X: 87
+Y: 228
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 176
+ORANGE debug area: 2272
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.43 ms
+
+RED:
+X: 139
+Y: 105
+Width: 49
+Height: 11
+Bottom Y: 112
+Area: 300
+
+GREEN:
+X: 86
+Y: 208
+Width: 15
+Height: 13
+Bottom Y: 214
+Area: 80
+ORANGE debug area: 1232
+BLUE debug area: 1684
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 167
+Y: 107
+Width: 117
+Height: 15
+Bottom Y: 118
+Area: 424
+
+GREEN:
+X: 149
+Y: 228
+Width: 103
+Height: 19
+Bottom Y: 238
+Area: 880
+ORANGE debug area: 964
+BLUE debug area: 1316
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 147
+Y: 104
+Width: 89
+Height: 15
+Bottom Y: 114
+Area: 584
+
+GREEN:
+X: 51
+Y: 229
+Width: 35
+Height: 9
+Bottom Y: 234
+Area: 140
+ORANGE debug area: 1396
+BLUE debug area: 1676
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 178
+Y: 110
+Width: 115
+Height: 21
+Bottom Y: 124
+Area: 520
+
+GREEN:
+X: 147
+Y: 231
+Width: 93
+Height: 15
+Bottom Y: 238
+Area: 916
+ORANGE debug area: 920
+BLUE debug area: 1468
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 200
+Y: 150
+Width: 75
+Height: 45
+Bottom Y: 172
+Area: 604
+
+GREEN:
+X: 55
+Y: 230
+Width: 39
+Height: 11
+Bottom Y: 234
+Area: 224
+ORANGE debug area: 2424
+BLUE debug area: 1412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 182
+Y: 108
+Width: 33
+Height: 21
+Bottom Y: 122
+Area: 300
+
+GREEN:
+X: 53
+Y: 228
+Width: 39
+Height: 11
+Bottom Y: 234
+Area: 216
+ORANGE debug area: 2380
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.45 ms
+
+RED:
+X: 177
+Y: 110
+Width: 107
+Height: 23
+Bottom Y: 126
+Area: 512
+
+GREEN:
+X: 156
+Y: 231
+Width: 85
+Height: 15
+Bottom Y: 238
+Area: 604
+ORANGE debug area: 1040
+BLUE debug area: 1444
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 97
+Y: 117
+Width: 63
+Height: 35
+Bottom Y: 136
+Area: 500
+
+GREEN:
+X: 59
+Y: 230
+Width: 31
+Height: 11
+Bottom Y: 236
+Area: 188
+ORANGE debug area: 1752
+BLUE debug area: 1468
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 152
+Y: 113
+Width: 163
+Height: 27
+Bottom Y: 130
+Area: 888
+
+GREEN:
+X: 163
+Y: 232
+Width: 53
+Height: 9
+Bottom Y: 236
+Area: 208
+ORANGE debug area: 1132
+BLUE debug area: 1584
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 209
+Y: 135
+Width: 49
+Height: 27
+Bottom Y: 150
+Area: 348
+
+GREEN:
+X: 88
+Y: 230
+Width: 27
+Height: 17
+Bottom Y: 238
+Area: 252
+ORANGE debug area: 1248
+BLUE debug area: 1384
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 197
+Y: 163
+Width: 53
+Height: 31
+Bottom Y: 180
+Area: 404
+
+GREEN:
+X: 88
+Y: 227
+Width: 25
+Height: 15
+Bottom Y: 236
+Area: 164
+ORANGE debug area: 2376
+BLUE debug area: 1700
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 111
+Y: 113
+Width: 87
+Height: 31
+Bottom Y: 132
+Area: 500
+
+GREEN:
+X: 159
+Y: 233
+Width: 67
+Height: 7
+Bottom Y: 236
+Area: 196
+ORANGE debug area: 1160
+BLUE debug area: 1660
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 168
+Y: 107
+Width: 127
+Height: 15
+Bottom Y: 118
+Area: 416
+
+GREEN:
+X: 108
+Y: 228
+Width: 73
+Height: 17
+Bottom Y: 238
+Area: 580
+ORANGE debug area: 848
+BLUE debug area: 1236
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.54 ms
+
+RED:
+X: 144
+Y: 105
+Width: 77
+Height: 19
+Bottom Y: 116
+Area: 548
+
+GREEN:
+X: 205
+Y: 232
+Width: 35
+Height: 7
+Bottom Y: 236
+Area: 108
+ORANGE debug area: 1372
+BLUE debug area: 1812
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 175
+Y: 109
+Width: 113
+Height: 17
+Bottom Y: 120
+Area: 480
+
+GREEN:
+X: 147
+Y: 231
+Width: 89
+Height: 15
+Bottom Y: 238
+Area: 1080
+ORANGE debug area: 892
+BLUE debug area: 1584
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 174
+Y: 109
+Width: 113
+Height: 19
+Bottom Y: 122
+Area: 508
+
+GREEN:
+X: 147
+Y: 229
+Width: 97
+Height: 21
+Bottom Y: 238
+Area: 1032
+ORANGE debug area: 1120
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 178
+Y: 108
+Width: 69
+Height: 21
+Bottom Y: 122
+Area: 448
+
+GREEN:
+X: 53
+Y: 228
+Width: 25
+Height: 9
+Bottom Y: 232
+Area: 148
+ORANGE debug area: 2448
+BLUE debug area: 1768
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.45 ms
+
+RED:
+X: 177
+Y: 110
+Width: 117
+Height: 17
+Bottom Y: 120
+Area: 512
+
+GREEN:
+X: 148
+Y: 231
+Width: 91
+Height: 15
+Bottom Y: 238
+Area: 752
+ORANGE debug area: 992
+BLUE debug area: 1400
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 196
+Y: 159
+Width: 69
+Height: 29
+Bottom Y: 174
+Area: 428
+
+GREEN:
+X: 62
+Y: 230
+Width: 17
+Height: 11
+Bottom Y: 236
+Area: 132
+ORANGE debug area: 2376
+BLUE debug area: 1448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 194
+Y: 114
+Width: 73
+Height: 23
+Bottom Y: 126
+Area: 388
+
+GREEN:
+X: 172
+Y: 231
+Width: 79
+Height: 9
+Bottom Y: 234
+Area: 252
+ORANGE debug area: 1200
+BLUE debug area: 1596
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 177
+Y: 111
+Width: 105
+Height: 19
+Bottom Y: 124
+Area: 496
+
+GREEN:
+X: 152
+Y: 230
+Width: 93
+Height: 11
+Bottom Y: 236
+Area: 384
+ORANGE debug area: 1088
+BLUE debug area: 1528
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.68 ms
+
+RED:
+X: 196
+Y: 162
+Width: 53
+Height: 31
+Bottom Y: 178
+Area: 364
+
+GREEN:
+X: 87
+Y: 227
+Width: 25
+Height: 15
+Bottom Y: 236
+Area: 160
+ORANGE debug area: 2468
+BLUE debug area: 1396
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.45 ms
+
+RED:
+X: 170
+Y: 110
+Width: 105
+Height: 25
+Bottom Y: 126
+Area: 652
+
+GREEN:
+X: 154
+Y: 233
+Width: 55
+Height: 5
+Bottom Y: 236
+Area: 148
+ORANGE debug area: 1208
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 208
+Y: 137
+Width: 45
+Height: 29
+Bottom Y: 150
+Area: 372
+
+GREEN:
+X: 117
+Y: 228
+Width: 43
+Height: 17
+Bottom Y: 238
+Area: 332
+ORANGE debug area: 872
+BLUE debug area: 1332
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 154
+Y: 108
+Width: 111
+Height: 25
+Bottom Y: 122
+Area: 848
+
+GREEN:
+X: 52
+Y: 228
+Width: 39
+Height: 11
+Bottom Y: 234
+Area: 192
+ORANGE debug area: 2504
+BLUE debug area: 1828
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.51 ms
+
+RED:
+X: 137
+Y: 105
+Width: 59
+Height: 13
+Bottom Y: 112
+Area: 312
+
+GREEN:
+X: 52
+Y: 227
+Width: 37
+Height: 7
+Bottom Y: 230
+Area: 156
+ORANGE debug area: 1340
+BLUE debug area: 1584
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 176
+Y: 109
+Width: 113
+Height: 21
+Bottom Y: 124
+Area: 492
+
+GREEN:
+X: 148
+Y: 230
+Width: 105
+Height: 19
+Bottom Y: 238
+Area: 1128
+ORANGE debug area: 904
+BLUE debug area: 1448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 138
+Y: 149
+Width: 129
+Height: 27
+Bottom Y: 168
+Area: 488
+
+GREEN:
+X: 53
+Y: 229
+Width: 33
+Height: 9
+Bottom Y: 234
+Area: 180
+ORANGE debug area: 2332
+BLUE debug area: 1672
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 180
+Y: 111
+Width: 107
+Height: 23
+Bottom Y: 126
+Area: 524
+
+GREEN:
+X: 154
+Y: 230
+Width: 111
+Height: 15
+Bottom Y: 238
+Area: 668
+ORANGE debug area: 1012
+BLUE debug area: 1444
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 204
+Y: 164
+Width: 43
+Height: 21
+Bottom Y: 174
+Area: 320
+
+GREEN:
+X: 59
+Y: 232
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 144
+ORANGE debug area: 2428
+BLUE debug area: 1616
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 98
+Y: 117
+Width: 69
+Height: 39
+Bottom Y: 140
+Area: 512
+
+GREEN:
+X: 58
+Y: 230
+Width: 33
+Height: 13
+Bottom Y: 236
+Area: 224
+ORANGE debug area: 2600
+BLUE debug area: 1312
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 194
+Y: 113
+Width: 69
+Height: 21
+Bottom Y: 124
+Area: 392
+
+GREEN:
+X: 143
+Y: 231
+Width: 75
+Height: 9
+Bottom Y: 236
+Area: 280
+ORANGE debug area: 1116
+BLUE debug area: 1612
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 198
+Y: 164
+Width: 47
+Height: 31
+Bottom Y: 180
+Area: 392
+
+GREEN:
+X: 88
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 252
+ORANGE debug area: 920
+BLUE debug area: 1348
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.45 ms
+
+RED:
+X: 166
+Y: 110
+Width: 105
+Height: 27
+Bottom Y: 126
+Area: 724
+
+GREEN:
+X: 83
+Y: 211
+Width: 21
+Height: 17
+Bottom Y: 220
+Area: 140
+ORANGE debug area: 1380
+BLUE debug area: 1592
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 173
+Y: 108
+Width: 117
+Height: 17
+Bottom Y: 120
+Area: 520
+
+GREEN:
+X: 146
+Y: 231
+Width: 99
+Height: 17
+Bottom Y: 238
+Area: 1096
+ORANGE debug area: 1228
+BLUE debug area: 1436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 176
+Y: 108
+Width: 109
+Height: 19
+Bottom Y: 122
+Area: 412
+
+GREEN:
+X: 143
+Y: 228
+Width: 105
+Height: 19
+Bottom Y: 238
+Area: 700
+ORANGE debug area: 1392
+BLUE debug area: 1464
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 151
+Y: 106
+Width: 113
+Height: 21
+Bottom Y: 120
+Area: 684
+
+GREEN:
+X: 51
+Y: 228
+Width: 33
+Height: 9
+Bottom Y: 232
+Area: 152
+ORANGE debug area: 2488
+BLUE debug area: 1496
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.49 ms
+
+RED:
+X: 175
+Y: 110
+Width: 109
+Height: 19
+Bottom Y: 122
+Area: 496
+
+GREEN:
+X: 148
+Y: 231
+Width: 99
+Height: 17
+Bottom Y: 238
+Area: 972
+ORANGE debug area: 1044
+BLUE debug area: 1488
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 194
+Y: 157
+Width: 79
+Height: 25
+Bottom Y: 172
+Area: 436
+
+GREEN:
+X: 58
+Y: 230
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 196
+ORANGE debug area: 2516
+BLUE debug area: 1552
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 133
+Y: 111
+Width: 125
+Height: 29
+Bottom Y: 130
+Area: 744
+
+GREEN:
+X: 53
+Y: 229
+Width: 35
+Height: 9
+Bottom Y: 234
+Area: 200
+ORANGE debug area: 2452
+BLUE debug area: 1712
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 198
+Y: 113
+Width: 57
+Height: 19
+Bottom Y: 124
+Area: 344
+
+GREEN:
+X: 148
+Y: 231
+Width: 85
+Height: 13
+Bottom Y: 238
+Area: 480
+ORANGE debug area: 1024
+BLUE debug area: 1476
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 197
+Y: 160
+Width: 49
+Height: 27
+Bottom Y: 174
+Area: 336
+
+GREEN:
+X: 62
+Y: 231
+Width: 17
+Height: 9
+Bottom Y: 236
+Area: 128
+ORANGE debug area: 2456
+BLUE debug area: 1304
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.38 ms
+
+RED:
+X: 172
+Y: 110
+Width: 101
+Height: 23
+Bottom Y: 124
+Area: 604
+
+GREEN:
+X: 76
+Y: 203
+Width: 31
+Height: 19
+Bottom Y: 214
+Area: 140
+ORANGE debug area: 1128
+BLUE debug area: 1368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 209
+Y: 136
+Width: 47
+Height: 29
+Bottom Y: 150
+Area: 328
+
+GREEN:
+X: 113
+Y: 227
+Width: 33
+Height: 19
+Bottom Y: 238
+Area: 240
+ORANGE debug area: 912
+BLUE debug area: 1316
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.57 ms
+
+RED:
+X: 155
+Y: 106
+Width: 63
+Height: 19
+Bottom Y: 116
+Area: 552
+
+GREEN:
+X: 85
+Y: 211
+Width: 17
+Height: 17
+Bottom Y: 220
+Area: 140
+ORANGE debug area: 1480
+BLUE debug area: 1136
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 203
+Y: 118
+Width: 57
+Height: 19
+Bottom Y: 126
+Area: 308
+
+GREEN:
+X: 58
+Y: 227
+Width: 29
+Height: 7
+Bottom Y: 230
+Area: 120
+ORANGE debug area: 1248
+BLUE debug area: 1492
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 107
+Y: 108
+Width: 83
+Height: 17
+Bottom Y: 120
+Area: 340
+
+GREEN:
+X: 147
+Y: 229
+Width: 101
+Height: 19
+Bottom Y: 238
+Area: 960
+ORANGE debug area: 1080
+BLUE debug area: 1400
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 154
+Y: 107
+Width: 101
+Height: 23
+Bottom Y: 122
+Area: 624
+
+GREEN:
+X: 50
+Y: 229
+Width: 37
+Height: 7
+Bottom Y: 232
+Area: 176
+ORANGE debug area: 2416
+BLUE debug area: 1668
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.51 ms
+
+RED:
+X: 178
+Y: 110
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 520
+
+GREEN:
+X: 149
+Y: 231
+Width: 99
+Height: 15
+Bottom Y: 238
+Area: 804
+ORANGE debug area: 1056
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 97
+Y: 118
+Width: 65
+Height: 41
+Bottom Y: 142
+Area: 444
+
+GREEN:
+X: 57
+Y: 230
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 168
+ORANGE debug area: 2260
+BLUE debug area: 1732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 186
+Y: 109
+Width: 37
+Height: 21
+Bottom Y: 122
+Area: 328
+
+GREEN:
+X: 54
+Y: 228
+Width: 37
+Height: 11
+Bottom Y: 234
+Area: 180
+ORANGE debug area: 1784
+BLUE debug area: 1804
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 195
+Y: 112
+Width: 65
+Height: 19
+Bottom Y: 124
+Area: 380
+
+GREEN:
+X: 152
+Y: 231
+Width: 89
+Height: 13
+Bottom Y: 238
+Area: 508
+ORANGE debug area: 1056
+BLUE debug area: 1552
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 91
+Y: 124
+Width: 51
+Height: 37
+Bottom Y: 142
+Area: 372
+
+GREEN:
+X: 60
+Y: 232
+Width: 25
+Height: 9
+Bottom Y: 236
+Area: 168
+ORANGE debug area: 2444
+BLUE debug area: 1564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 141
+Y: 105
+Width: 49
+Height: 11
+Bottom Y: 112
+Area: 280
+
+GREEN:
+X: 177
+Y: 231
+Width: 57
+Height: 9
+Bottom Y: 236
+Area: 184
+ORANGE debug area: 1124
+BLUE debug area: 1648
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 209
+Y: 135
+Width: 53
+Height: 27
+Bottom Y: 148
+Area: 364
+
+GREEN:
+X: 114
+Y: 226
+Width: 33
+Height: 19
+Bottom Y: 238
+Area: 228
+ORANGE debug area: 1640
+BLUE debug area: 1440
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 198
+Y: 162
+Width: 51
+Height: 27
+Bottom Y: 176
+Area: 396
+
+GREEN:
+X: 87
+Y: 228
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 192
+ORANGE debug area: 2032
+BLUE debug area: 1276
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.44 ms
+
+RED:
+X: 203
+Y: 119
+Width: 53
+Height: 31
+Bottom Y: 136
+Area: 380
+
+GREEN:
+X: 59
+Y: 226
+Width: 31
+Height: 7
+Bottom Y: 230
+Area: 132
+ORANGE debug area: 1356
+BLUE debug area: 1760
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 170
+Y: 107
+Width: 117
+Height: 19
+Bottom Y: 122
+Area: 436
+
+GREEN:
+X: 119
+Y: 228
+Width: 51
+Height: 19
+Bottom Y: 238
+Area: 400
+ORANGE debug area: 1132
+BLUE debug area: 1548
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.52 ms
+
+RED:
+X: 154
+Y: 107
+Width: 97
+Height: 23
+Bottom Y: 122
+Area: 700
+
+GREEN:
+X: 50
+Y: 228
+Width: 31
+Height: 7
+Bottom Y: 232
+Area: 128
+ORANGE debug area: 1320
+BLUE debug area: 1664
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 180
+Y: 110
+Width: 111
+Height: 23
+Bottom Y: 126
+Area: 476
+
+GREEN:
+X: 151
+Y: 231
+Width: 109
+Height: 19
+Bottom Y: 238
+Area: 1044
+ORANGE debug area: 992
+BLUE debug area: 1384
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 198
+Y: 111
+Width: 59
+Height: 21
+Bottom Y: 124
+Area: 328
+
+GREEN:
+X: 150
+Y: 229
+Width: 117
+Height: 21
+Bottom Y: 238
+Area: 992
+ORANGE debug area: 1380
+BLUE debug area: 1404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 155
+Y: 146
+Width: 103
+Height: 15
+Bottom Y: 154
+Area: 360
+
+GREEN:
+X: 49
+Y: 229
+Width: 25
+Height: 7
+Bottom Y: 232
+Area: 148
+ORANGE debug area: 2360
+BLUE debug area: 1560
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 181
+Y: 111
+Width: 113
+Height: 21
+Bottom Y: 124
+Area: 524
+
+GREEN:
+X: 151
+Y: 231
+Width: 103
+Height: 17
+Bottom Y: 238
+Area: 760
+ORANGE debug area: 944
+BLUE debug area: 1476
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 190
+Y: 107
+Width: 49
+Height: 19
+Bottom Y: 120
+Area: 300
+
+GREEN:
+X: 58
+Y: 230
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 192
+ORANGE debug area: 2676
+BLUE debug area: 1280
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.34 ms
+
+RED:
+X: 176
+Y: 111
+Width: 101
+Height: 21
+Bottom Y: 124
+Area: 524
+
+GREEN:
+X: 178
+Y: 230
+Width: 87
+Height: 11
+Bottom Y: 234
+Area: 260
+ORANGE debug area: 1056
+BLUE debug area: 1564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 178
+Y: 110
+Width: 105
+Height: 21
+Bottom Y: 124
+Area: 484
+
+GREEN:
+X: 157
+Y: 230
+Width: 99
+Height: 15
+Bottom Y: 238
+Area: 584
+ORANGE debug area: 1028
+BLUE debug area: 1532
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.70 ms
+
+RED:
+X: 197
+Y: 162
+Width: 59
+Height: 33
+Bottom Y: 180
+Area: 424
+
+GREEN:
+X: 59
+Y: 231
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 180
+ORANGE debug area: 2376
+BLUE debug area: 1600
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 173
+Y: 111
+Width: 111
+Height: 25
+Bottom Y: 126
+Area: 612
+
+GREEN:
+X: 185
+Y: 230
+Width: 53
+Height: 7
+Bottom Y: 234
+Area: 152
+ORANGE debug area: 1216
+BLUE debug area: 1656
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 170
+Y: 108
+Width: 121
+Height: 19
+Bottom Y: 122
+Area: 452
+
+GREEN:
+X: 88
+Y: 231
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 240
+ORANGE debug area: 1424
+BLUE debug area: 1360
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 141
+Y: 105
+Width: 67
+Height: 13
+Bottom Y: 112
+Area: 380
+
+GREEN:
+X: 196
+Y: 232
+Width: 43
+Height: 5
+Bottom Y: 234
+Area: 96
+ORANGE debug area: 1364
+BLUE debug area: 1792
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.39 ms
+
+RED:
+X: 201
+Y: 116
+Width: 53
+Height: 23
+Bottom Y: 126
+Area: 316
+
+GREEN:
+X: 61
+Y: 226
+Width: 19
+Height: 7
+Bottom Y: 230
+Area: 100
+ORANGE debug area: 1264
+BLUE debug area: 1568
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 175
+Y: 107
+Width: 111
+Height: 19
+Bottom Y: 122
+Area: 420
+
+GREEN:
+X: 104
+Y: 229
+Width: 61
+Height: 19
+Bottom Y: 238
+Area: 576
+ORANGE debug area: 888
+BLUE debug area: 1292
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 150
+Y: 104
+Width: 87
+Height: 13
+Bottom Y: 112
+Area: 524
+
+GREEN:
+X: 51
+Y: 228
+Width: 33
+Height: 9
+Bottom Y: 232
+Area: 176
+ORANGE debug area: 1368
+BLUE debug area: 1664
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.55 ms
+
+RED:
+X: 178
+Y: 109
+Width: 109
+Height: 21
+Bottom Y: 124
+Area: 484
+
+GREEN:
+X: 147
+Y: 231
+Width: 97
+Height: 17
+Bottom Y: 238
+Area: 1148
+ORANGE debug area: 1132
+BLUE debug area: 1432
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 106
+Y: 114
+Width: 99
+Height: 39
+Bottom Y: 140
+Area: 544
+
+GREEN:
+X: 55
+Y: 229
+Width: 37
+Height: 11
+Bottom Y: 234
+Area: 192
+ORANGE debug area: 2452
+BLUE debug area: 1740
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 137
+Y: 110
+Width: 131
+Height: 33
+Bottom Y: 130
+Area: 924
+
+GREEN:
+X: 53
+Y: 228
+Width: 37
+Height: 9
+Bottom Y: 232
+Area: 172
+ORANGE debug area: 2268
+BLUE debug area: 1812
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.45 ms
+
+RED:
+X: 177
+Y: 110
+Width: 115
+Height: 21
+Bottom Y: 124
+Area: 480
+
+GREEN:
+X: 147
+Y: 231
+Width: 87
+Height: 15
+Bottom Y: 238
+Area: 920
+ORANGE debug area: 872
+BLUE debug area: 1452
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 97
+Y: 117
+Width: 65
+Height: 39
+Bottom Y: 140
+Area: 480
+
+GREEN:
+X: 56
+Y: 229
+Width: 35
+Height: 11
+Bottom Y: 236
+Area: 220
+ORANGE debug area: 2584
+BLUE debug area: 1804
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 120
+Y: 111
+Width: 115
+Height: 23
+Bottom Y: 126
+Area: 476
+
+GREEN:
+X: 173
+Y: 230
+Width: 71
+Height: 15
+Bottom Y: 238
+Area: 316
+ORANGE debug area: 1036
+BLUE debug area: 1436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 198
+Y: 162
+Width: 53
+Height: 27
+Bottom Y: 176
+Area: 376
+
+GREEN:
+X: 86
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 188
+ORANGE debug area: 1380
+BLUE debug area: 1320
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 98
+Y: 120
+Width: 41
+Height: 23
+Bottom Y: 130
+Area: 308
+
+GREEN:
+X: 57
+Y: 231
+Width: 33
+Height: 11
+Bottom Y: 236
+Area: 196
+ORANGE debug area: 2568
+BLUE debug area: 1592
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 197
+Y: 114
+Width: 57
+Height: 21
+Bottom Y: 126
+Area: 368
+
+GREEN:
+X: 190
+Y: 229
+Width: 57
+Height: 11
+Bottom Y: 234
+Area: 168
+ORANGE debug area: 884
+BLUE debug area: 1480
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.64 ms
+
+RED:
+X: 88
+Y: 132
+Width: 55
+Height: 27
+Bottom Y: 146
+Area: 308
+
+GREEN:
+X: 87
+Y: 229
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 220
+ORANGE debug area: 2364
+BLUE debug area: 1732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.51 ms
+
+RED:
+X: 198
+Y: 116
+Width: 67
+Height: 31
+Bottom Y: 132
+Area: 448
+
+GREEN:
+X: 83
+Y: 209
+Width: 17
+Height: 15
+Bottom Y: 216
+Area: 128
+ORANGE debug area: 1460
+BLUE debug area: 1880
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 207
+Y: 137
+Width: 41
+Height: 27
+Bottom Y: 152
+Area: 384
+
+GREEN:
+X: 121
+Y: 229
+Width: 57
+Height: 21
+Bottom Y: 238
+Area: 536
+ORANGE debug area: 900
+BLUE debug area: 1368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 170
+Y: 107
+Width: 109
+Height: 17
+Bottom Y: 120
+Area: 408
+
+GREEN:
+X: 89
+Y: 231
+Width: 27
+Height: 17
+Bottom Y: 238
+Area: 272
+ORANGE debug area: 1068
+BLUE debug area: 1428
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.53 ms
+
+RED:
+X: 165
+Y: 109
+Width: 107
+Height: 29
+Bottom Y: 128
+Area: 824
+
+GREEN:
+X: 84
+Y: 211
+Width: 21
+Height: 17
+Bottom Y: 220
+Area: 128
+ORANGE debug area: 1396
+BLUE debug area: 1524
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.53 ms
+
+RED:
+X: 172
+Y: 108
+Width: 109
+Height: 17
+Bottom Y: 120
+Area: 448
+
+GREEN:
+X: 147
+Y: 231
+Width: 99
+Height: 17
+Bottom Y: 238
+Area: 1164
+ORANGE debug area: 956
+BLUE debug area: 1324
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.67 ms
+
+RED:
+X: 132
+Y: 148
+Width: 95
+Height: 19
+Bottom Y: 160
+Area: 340
+
+GREEN:
+X: 51
+Y: 229
+Width: 29
+Height: 9
+Bottom Y: 234
+Area: 156
+ORANGE debug area: 2472
+BLUE debug area: 1604
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.43 ms
+
+RED:
+X: 177
+Y: 110
+Width: 105
+Height: 23
+Bottom Y: 126
+Area: 480
+
+GREEN:
+X: 152
+Y: 230
+Width: 101
+Height: 15
+Bottom Y: 238
+Area: 588
+ORANGE debug area: 992
+BLUE debug area: 1504
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.54 ms
+
+RED:
+X: 207
+Y: 140
+Width: 41
+Height: 27
+Bottom Y: 152
+Area: 356
+
+GREEN:
+X: 150
+Y: 231
+Width: 107
+Height: 17
+Bottom Y: 238
+Area: 1000
+ORANGE debug area: 936
+BLUE debug area: 1508
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 99
+Y: 118
+Width: 61
+Height: 35
+Bottom Y: 136
+Area: 412
+
+GREEN:
+X: 57
+Y: 230
+Width: 31
+Height: 11
+Bottom Y: 236
+Area: 204
+ORANGE debug area: 2516
+BLUE debug area: 1788
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.39 ms
+
+RED:
+X: 175
+Y: 111
+Width: 105
+Height: 21
+Bottom Y: 124
+Area: 524
+
+GREEN:
+X: 185
+Y: 229
+Width: 49
+Height: 11
+Bottom Y: 236
+Area: 188
+ORANGE debug area: 1184
+BLUE debug area: 1436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 197
+Y: 163
+Width: 51
+Height: 29
+Bottom Y: 178
+Area: 400
+
+GREEN:
+X: 87
+Y: 228
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 192
+ORANGE debug area: 2108
+BLUE debug area: 1480
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.46 ms
+
+RED:
+X: 197
+Y: 115
+Width: 61
+Height: 25
+Bottom Y: 126
+Area: 400
+
+GREEN:
+X: 82
+Y: 209
+Width: 17
+Height: 19
+Bottom Y: 220
+Area: 112
+ORANGE debug area: 1096
+BLUE debug area: 1556
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 192
+Y: 114
+Width: 75
+Height: 23
+Bottom Y: 126
+Area: 412
+
+GREEN:
+X: 164
+Y: 232
+Width: 67
+Height: 9
+Bottom Y: 236
+Area: 224
+ORANGE debug area: 1136
+BLUE debug area: 1564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 198
+Y: 163
+Width: 41
+Height: 27
+Bottom Y: 176
+Area: 364
+
+GREEN:
+X: 88
+Y: 230
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 244
+ORANGE debug area: 2120
+BLUE debug area: 1312
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 143
+Y: 147
+Width: 135
+Height: 21
+Bottom Y: 156
+Area: 472
+
+GREEN:
+X: 83
+Y: 212
+Width: 19
+Height: 19
+Bottom Y: 222
+Area: 144
+ORANGE debug area: 1220
+BLUE debug area: 1628
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 171
+Y: 108
+Width: 115
+Height: 17
+Bottom Y: 120
+Area: 472
+
+GREEN:
+X: 145
+Y: 230
+Width: 101
+Height: 17
+Bottom Y: 238
+Area: 1016
+ORANGE debug area: 1380
+BLUE debug area: 1364
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.62 ms
+
+RED:
+X: 101
+Y: 116
+Width: 69
+Height: 33
+Bottom Y: 134
+Area: 456
+
+GREEN:
+X: 54
+Y: 229
+Width: 37
+Height: 11
+Bottom Y: 234
+Area: 184
+ORANGE debug area: 2372
+BLUE debug area: 1704
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 171
+Y: 110
+Width: 97
+Height: 27
+Bottom Y: 126
+Area: 768
+
+GREEN:
+X: 49
+Y: 228
+Width: 27
+Height: 9
+Bottom Y: 232
+Area: 136
+ORANGE debug area: 1380
+BLUE debug area: 1688
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.55 ms
+
+RED:
+X: 207
+Y: 139
+Width: 45
+Height: 27
+Bottom Y: 152
+Area: 360
+
+GREEN:
+X: 148
+Y: 231
+Width: 105
+Height: 17
+Bottom Y: 238
+Area: 1104
+ORANGE debug area: 1028
+BLUE debug area: 1448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.65 ms
+
+RED:
+X: 186
+Y: 109
+Width: 33
+Height: 25
+Bottom Y: 126
+Area: 280
+
+GREEN:
+X: 53
+Y: 230
+Width: 33
+Height: 9
+Bottom Y: 234
+Area: 180
+ORANGE debug area: 2444
+BLUE debug area: 1388
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.37 ms
+
+RED:
+X: 181
+Y: 112
+Width: 115
+Height: 25
+Bottom Y: 128
+Area: 572
+
+GREEN:
+X: 156
+Y: 230
+Width: 95
+Height: 13
+Bottom Y: 238
+Area: 464
+ORANGE debug area: 1148
+BLUE debug area: 1436
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 98
+Y: 118
+Width: 43
+Height: 31
+Bottom Y: 134
+Area: 392
+
+GREEN:
+X: 86
+Y: 227
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 132
+ORANGE debug area: 2356
+BLUE debug area: 1708
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.44 ms
+
+RED:
+X: 199
+Y: 116
+Width: 67
+Height: 23
+Bottom Y: 126
+Area: 348
+
+GREEN:
+X: 190
+Y: 230
+Width: 53
+Height: 9
+Bottom Y: 234
+Area: 172
+ORANGE debug area: 1224
+BLUE debug area: 1620
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.37 ms
+
+RED:
+X: 180
+Y: 111
+Width: 111
+Height: 23
+Bottom Y: 126
+Area: 544
+
+GREEN:
+X: 176
+Y: 230
+Width: 71
+Height: 11
+Bottom Y: 236
+Area: 248
+ORANGE debug area: 1072
+BLUE debug area: 1544
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 208
+Y: 134
+Width: 47
+Height: 25
+Bottom Y: 148
+Area: 316
+
+GREEN:
+X: 87
+Y: 230
+Width: 25
+Height: 15
+Bottom Y: 238
+Area: 220
+ORANGE debug area: 2280
+BLUE debug area: 1328
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.49 ms
+
+RED:
+X: 120
+Y: 111
+Width: 111
+Height: 27
+Bottom Y: 128
+Area: 604
+
+GREEN:
+X: 87
+Y: 208
+Width: 21
+Height: 15
+Bottom Y: 216
+Area: 140
+ORANGE debug area: 1176
+BLUE debug area: 1568
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 207
+Y: 138
+Width: 39
+Height: 29
+Bottom Y: 152
+Area: 392
+
+GREEN:
+X: 146
+Y: 229
+Width: 107
+Height: 19
+Bottom Y: 238
+Area: 932
+ORANGE debug area: 1088
+BLUE debug area: 1368
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 155
+Y: 107
+Width: 95
+Height: 23
+Bottom Y: 122
+Area: 608
+
+GREEN:
+X: 50
+Y: 228
+Width: 31
+Height: 9
+Bottom Y: 232
+Area: 144
+ORANGE debug area: 2572
+BLUE debug area: 1768
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.50 ms
+
+RED:
+X: 172
+Y: 110
+Width: 99
+Height: 27
+Bottom Y: 126
+Area: 696
+
+GREEN:
+X: 55
+Y: 228
+Width: 29
+Height: 9
+Bottom Y: 232
+Area: 140
+ORANGE debug area: 1292
+BLUE debug area: 1620
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.56 ms
+
+RED:
+X: 173
+Y: 109
+Width: 117
+Height: 17
+Bottom Y: 120
+Area: 504
+
+GREEN:
+X: 146
+Y: 230
+Width: 105
+Height: 19
+Bottom Y: 238
+Area: 1152
+ORANGE debug area: 1128
+BLUE debug area: 1456
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 121
+Y: 149
+Width: 93
+Height: 27
+Bottom Y: 168
+Area: 368
+
+GREEN:
+X: 53
+Y: 229
+Width: 29
+Height: 13
+Bottom Y: 236
+Area: 144
+ORANGE debug area: 2504
+BLUE debug area: 1780
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.44 ms
+
+RED:
+X: 177
+Y: 111
+Width: 109
+Height: 19
+Bottom Y: 124
+Area: 556
+
+GREEN:
+X: 152
+Y: 230
+Width: 105
+Height: 15
+Bottom Y: 238
+Area: 560
+ORANGE debug area: 1484
+BLUE debug area: 1540
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.68 ms
+
+RED:
+X: 196
+Y: 160
+Width: 59
+Height: 29
+Bottom Y: 176
+Area: 400
+
+GREEN:
+X: 59
+Y: 231
+Width: 29
+Height: 11
+Bottom Y: 236
+Area: 172
+ORANGE debug area: 2536
+BLUE debug area: 1780
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.66 ms
+
+RED:
+X: 101
+Y: 117
+Width: 65
+Height: 35
+Bottom Y: 136
+Area: 484
+
+GREEN:
+X: 55
+Y: 228
+Width: 33
+Height: 11
+Bottom Y: 234
+Area: 152
+ORANGE debug area: 2576
+BLUE debug area: 1720
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.40 ms
+
+RED:
+X: 176
+Y: 111
+Width: 105
+Height: 21
+Bottom Y: 124
+Area: 556
+
+GREEN:
+X: 153
+Y: 230
+Width: 101
+Height: 13
+Bottom Y: 238
+Area: 408
+ORANGE debug area: 1000
+BLUE debug area: 1504
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 90
+Y: 124
+Width: 53
+Height: 39
+Bottom Y: 144
+Area: 400
+
+GREEN:
+X: 86
+Y: 228
+Width: 25
+Height: 17
+Bottom Y: 238
+Area: 140
+ORANGE debug area: 2332
+BLUE debug area: 1300
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 195
+Y: 115
+Width: 49
+Height: 23
+Bottom Y: 126
+Area: 340
+
+GREEN:
+X: 187
+Y: 231
+Width: 47
+Height: 7
+Bottom Y: 234
+Area: 144
+ORANGE debug area: 1136
+BLUE debug area: 1548
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.59 ms
+
+RED:
+X: 207
+Y: 135
+Width: 49
+Height: 27
+Bottom Y: 150
+Area: 376
+
+GREEN:
+X: 119
+Y: 227
+Width: 51
+Height: 19
+Bottom Y: 238
+Area: 348
+ORANGE debug area: 1336
+BLUE debug area: 1376
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 91
+Y: 124
+Width: 47
+Height: 31
+Bottom Y: 138
+Area: 372
+
+GREEN:
+X: 86
+Y: 229
+Width: 25
+Height: 15
+Bottom Y: 236
+Area: 172
+ORANGE debug area: 1464
+BLUE debug area: 1624
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.48 ms
+
+RED:
+X: 169
+Y: 110
+Width: 115
+Height: 25
+Bottom Y: 126
+Area: 652
+
+GREEN:
+X: 57
+Y: 227
+Width: 31
+Height: 7
+Bottom Y: 230
+Area: 112
+ORANGE debug area: 1348
+BLUE debug area: 1608
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.61 ms
+
+RED:
+X: 171
+Y: 107
+Width: 115
+Height: 17
+Bottom Y: 120
+Area: 460
+
+GREEN:
+X: 126
+Y: 228
+Width: 69
+Height: 19
+Bottom Y: 238
+Area: 564
+ORANGE debug area: 880
+BLUE debug area: 1276
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 159
+Y: 108
+Width: 123
+Height: 25
+Bottom Y: 124
+Area: 796
+
+GREEN:
+X: 52
+Y: 228
+Width: 25
+Height: 7
+Bottom Y: 232
+Area: 112
+ORANGE debug area: 2204
+BLUE debug area: 1776
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.51 ms
+
+RED:
+X: 175
+Y: 110
+Width: 107
+Height: 23
+Bottom Y: 126
+Area: 496
+
+GREEN:
+X: 150
+Y: 231
+Width: 113
+Height: 19
+Bottom Y: 238
+Area: 1072
+ORANGE debug area: 1772
+BLUE debug area: 1448
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.60 ms
+
+RED:
+X: 199
+Y: 110
+Width: 55
+Height: 19
+Bottom Y: 122
+Area: 304
+
+GREEN:
+X: 143
+Y: 229
+Width: 97
+Height: 19
+Bottom Y: 238
+Area: 908
+ORANGE debug area: 912
+BLUE debug area: 1408
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.58 ms
+
+RED:
+X: 132
+Y: 112
+Width: 131
+Height: 37
+Bottom Y: 136
+Area: 924
+
+GREEN:
+X: 49
+Y: 228
+Width: 29
+Height: 9
+Bottom Y: 232
+Area: 148
+ORANGE debug area: 2360
+BLUE debug area: 1700
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.52 ms
+
+RED:
+X: 176
+Y: 110
+Width: 109
+Height: 21
+Bottom Y: 124
+Area: 508
+
+GREEN:
+X: 146
+Y: 231
+Width: 87
+Height: 15
+Bottom Y: 238
+Area: 844
+ORANGE debug area: 1824
+BLUE debug area: 1424
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.68 ms
+
+RED:
+X: 100
+Y: 117
+Width: 67
+Height: 39
+Bottom Y: 140
+Area: 492
+
+GREEN:
+X: 57
+Y: 230
+Width: 29
+Height: 13
+Bottom Y: 236
+Area: 184
+ORANGE debug area: 2664
+BLUE debug area: 1668
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 177
+Y: 111
+Width: 107
+Height: 23
+Bottom Y: 126
+Area: 528
+
+GREEN:
+X: 158
+Y: 230
+Width: 75
+Height: 11
+Bottom Y: 236
+Area: 300
+ORANGE debug area: 1188
+BLUE debug area: 1404
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 176
+Y: 110
+Width: 111
+Height: 21
+Bottom Y: 124
+Area: 480
+
+GREEN:
+X: 149
+Y: 231
+Width: 99
+Height: 15
+Bottom Y: 238
+Area: 772
+ORANGE debug area: 952
+BLUE debug area: 1516
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.68 ms
+
+RED:
+X: 194
+Y: 157
+Width: 71
+Height: 25
+Bottom Y: 172
+Area: 432
+
+GREEN:
+X: 57
+Y: 230
+Width: 35
+Height: 11
+Bottom Y: 236
+Area: 212
+ORANGE debug area: 2532
+BLUE debug area: 1800
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.42 ms
+
+RED:
+X: 178
+Y: 111
+Width: 103
+Height: 21
+Bottom Y: 124
+Area: 492
+
+GREEN:
+X: 160
+Y: 230
+Width: 59
+Height: 9
+Bottom Y: 234
+Area: 264
+ORANGE debug area: 996
+BLUE debug area: 1556
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.63 ms
+
+RED:
+X: 176
+Y: 106
+Width: 89
+Height: 19
+Bottom Y: 120
+Area: 364
+
+GREEN:
+X: 87
+Y: 228
+Width: 25
+Height: 15
+Bottom Y: 236
+Area: 156
+ORANGE debug area: 2296
+BLUE debug area: 1632
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.47 ms
+
+RED:
+X: 195
+Y: 115
+Width: 61
+Height: 21
+Bottom Y: 126
+Area: 368
+
+GREEN:
+X: 178
+Y: 231
+Width: 55
+Height: 7
+Bottom Y: 234
+Area: 144
+ORANGE debug area: 1288
+BLUE debug area: 1656
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.41 ms
+
+RED:
+X: 199
+Y: 141
+Width: 39
+Height: 25
+Bottom Y: 152
+Area: 316
+
+GREEN:
+X: 170
+Y: 229
+Width: 31
+Height: 7
+Bottom Y: 232
+Area: 100
+ORANGE debug area: 1172
+BLUE debug area: 1704
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.53 ms
+
+RED:
+X: 188
+Y: 118
+Width: 101
+Height: 41
+Bottom Y: 142
+Area: 636
+
+GREEN:
+X: 141
+Y: 223
+Width: 83
+Height: 27
+Bottom Y: 238
+Area: 784
+ORANGE debug area: 1768
+BLUE debug area: 2012
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+
+======================
+VISION
+======================
+Processing: 3.54 ms
+
+RED:
+X: 200
+Y: 117
+Width: 55
+Height: 23
+Bottom Y: 126
+Area: 336
+
+GREEN:
+X: 102
+Y: 208
+Width: 23
+Height: 13
+Bottom Y: 214
+Area: 140
+ORANGE debug area: 2608
+BLUE debug area: 1808
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.00
+[STATE CHANGE] Manual disable -> IDLE
+  LEFT:  Dist: 55 mm (Raw: 55) | Sig: 16.26 | Sigma: 1.19
+  RIGHT: Dist: 63 mm (Raw: 63) | Sig: 18.52 | Sigma: 1.16
+  Current angle: -95.7°
+  Distance since last state: 2914 mm
+Navigation controller disabled
+Paused. Pending mode: OBSTACLE_CHALLENGE
+SYSTEM DISABLED
