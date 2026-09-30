@@ -1,5 +1,60 @@
 # Agent documentation and engineering handoffs
 
+## 2026-09-30: parking-exit SVG frame and geometry audit
+
+The old analyzer SVG falsely connected rear-ToF positioning in a local pose
+frame (near 0,0) to the field-pose reset (hundreds of mm and y near -1373), and
+scaled X/Y independently. This created a diagonal teleport and distorted arc
+shapes. The analyzer now plots the field exit at equal X/Y millimetre scale,
+provides a separate five-segment `_exit_pose.svg`, shows subsequent edge
+localization in `_pose.svg`, and marks estimator corrections separately from
+physical travel. Rear-only aborts remain in a clearly labeled local frame.
+The generated plots are rear-axle estimates, not camera traces or chassis
+footprints. Log 384 and the full 38-session batch were regenerated and checked.
+
+The tracked `simulation/parking_exit_path.svg` reproduces the standalone
+idealized five-segment model and is not a measured run. Its 70 mm reverse tail
+is historical; the current sensor-guided localization can travel farther.
+The older forward-first two-arc exit was replaced after front-marker contact.
+Current firmware and logs use 20/25/20/85 mm segments then gyro-ended final
+arc at logical steering magnitude 50. `OBSTACLE_PARKING_EXIT_FINAL_STEERING=45`
+still exists in config but is unused by `src/obstacle.cpp`; logs 384 and 419
+explicitly show final steering -50. Historical handoffs describing validated
+45-degree arcs must not be read as the current commanded path. Do not change
+motion based on the drawing alone; reconcile that unused constant separately
+with powered clearance validation. No firmware motion code changed here.
+
+## 2026-09-30: parking-exit reanalysis after three upstream commits
+
+Fast-forwarded to `1f8afa1` while preserving local analyzer/documentation work.
+Twenty-one new complete raw log files (399--419) and one duplicate excerpt (000)
+are already committed with hashes and physical reports in
+`simulation/evidence/parking_exit_diagnostics/README.md`. The 37 complete source
+files expand to 38 diagnostic sessions, including two in log 398. Updated
+`simulation/analyze_parking_exit_pose.py` validates new firmware sample/event byte
+sub-budgets and excludes seven aborted/incomplete sessions from combined
+statistics, while retaining them in per-session reports and CSVs. Sixteen
+analyzer tests pass; full report is regenerated under ignored
+`local_workspace/parking-exit-analysis-all/`. No firmware changed or uploaded.
+
+Among 31 completed, untruncated sessions, 32 settled rear-marker moves have
+encoder-minus-ToF median +0.45 mm, spread 3.57 mm, maximum absolute 13.27 mm;
+all lie within conservative uncertainty. Only one is reverse. Interrupted log
+406 has reverse encoder -13.39 mm versus ToF -6.0 mm, disagreement -7.39 mm
+versus 5.84 mm uncertainty; log 414 fails stationary verification because rear
+ToF rises while encoder remains stopped. Neither isolates motor backlash;
+investigate rear-ToF stability, marker geometry and movement before compensation.
+
+Completed-run exploratory servo centre is 80.97 degrees; increasing/decreasing
+approach candidates 81.67/80.08 (midpoint 80.87), still too divergent for an
+automatic change from 80. The 14 newly completed CW exits give edge-localization
+dx +21.7 mm mean (4.7 mm spread); all 29 completed CW exits give +22.5 mm
+(4.3 mm spread), versus only two older CCW exits at -22.8 mm (0.8 mm spread).
+This correction is sensor-based, not external pose truth. New tests contain no
+additional CCW exits. Exact next work: obtain normal CCW exits with explicit
+physical outcome; review rear-ToF instability in a controlled repeat; defer
+servo-centre, geometry and closed-loop arc changes until those checks.
+
 ## 2026-09-28: owner corrects green placement; pause colour tests
 
 Latest owner correction: green had been moved, so the 20260927 green distance

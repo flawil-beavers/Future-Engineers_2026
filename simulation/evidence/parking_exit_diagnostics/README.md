@@ -124,3 +124,44 @@ Main-loop timing and exact scout observation duration are not recorded. Pose
 errors/clearances are onboard estimates, not external measurements. Rear-ToF age
 is M7 receipt age; all 15 reversal-loss estimates are unobservable. Servo-neutral
 fits vary by run/subgroup and do not justify changing the steering centre.
+
+### Cross-batch unparking reanalysis on 2026-09-27
+
+The analyzer now expands multiple diagnostic sessions directly from one unchanged
+source, so both sessions in log 398 are reproducible without unsynchronized slice
+files. All 16 sources produce 17 sessions. Nineteen rear-positioning moves have
+a fixed rear-marker comparison: encoder-minus-ToF median +1.23 mm, spread 2.53
+mm, maximum absolute 5.50 mm, all within conservative ToF/settling uncertainty.
+Only one is a reverse move, so drivetrain backlash remains unidentified.
+
+The combined exploratory servo fit is 80.62 degrees. Increasing/decreasing
+steering-approach groups give 81.51/80.06 degrees (midpoint 80.78); retain centre
+80 because this span can include linkage hysteresis and controller/sensor lag.
+Edge-localization X corrections are mirrored and repeatable: CW +23.3 mm mean
+(3.8 mm spread, 15 runs), CCW -22.8 mm mean (0.8 mm spread, two runs). This is
+evidence of a systematic model/reference offset, not independent absolute pose.
+Generated tables and plots remain in `local_workspace/parking-exit-analysis-all/`.
+
+### Reanalysis including 2026-09-28/29 runs (2026-09-30)
+
+The 37 complete source files expand to 38 sessions; the `000` excerpt repeats
+part of complete log 399 and is not counted. Thirty-one sessions have an
+untruncated `unparking_complete` record. Combined motion summaries now exclude
+the seven aborted/incomplete sessions, while retaining them in per-run output.
+Completion does not establish a valid physical setup or obstacle result; use the
+run metadata above for those distinctions.
+
+Among completed exits, 32 settled rear-marker moves have encoder-minus-ToF
+median +0.45 mm, spread 3.57 mm and maximum absolute disagreement 13.27 mm,
+all within conservative sensor/settling uncertainty. Only one reverses. The
+interrupted log 406 has reverse disagreement -7.39 mm beyond 5.84 mm uncertainty;
+log 414 fails stationary rear-ToF verification with range rising after the
+encoder stops. These isolated failures do not quantify drivetrain backlash.
+
+Completed-run exploratory servo centre is 80.97 degrees; increasing/decreasing
+approach estimates are 81.67/80.08 degrees. Keep configured centre 80 pending a
+controlled physical comparison. Fourteen new completed CW exits have mean edge
+X correction +21.7 mm (4.7 mm spread); all 29 completed CW exits average +22.5
+mm (4.3 mm spread). The only CCW evidence remains two older exits averaging
+-22.8 mm. This correction compares two onboard pose references, not ground truth.
+The regenerated report is `local_workspace/parking-exit-analysis-all/parking_exit_analysis.md`.
