@@ -2,7 +2,7 @@
 
 **Project:** WRO Future Engineers 2026 robot  
 **Date:** August 2026  
-**Status:** Prototype path found; staged physical validation in progress
+**Status:** Historical feasibility model; current robot runs have separate pose traces
 
 ## 1. Purpose
 
@@ -15,6 +15,17 @@ The program searches for a low-speed multi-point path that moves the complete
 robot footprint out of the parking lot without intersecting either magenta
 block or the outer black wall. It is a feasibility and path-design tool. It
 does not run on the robot and does not replace physical clearance testing.
+
+The SVG is a parking-local, idealized footprint drawing. Its five exit controls
+now use 20/25/20/85/150 mm at logical steering magnitude 50, but the robot ends
+the last arc by gyro alignment within its configured bounds. The illustrated
+70 mm straight reverse was an earlier localization envelope; current firmware
+can continue farther while searching for the marker edge. For measured exits,
+use the generated `_exit_pose.svg` and `_pose.svg` files from
+`analyze_parking_exit_pose.py`. Earlier path tables below document the route's
+development and are not current motor-command specifications.
+The declared `OBSTACLE_PARKING_EXIT_FINAL_STEERING=45` is currently unused by
+the exit motion code; recent logs record 50-degree magnitude in segment 5.
 
 ## 2. Coordinate system
 
@@ -150,14 +161,14 @@ Controls below are relative to the outer wall:
 | 1 | Reverse | Toward wall | 20 mm |
 | 2 | Forward | Away from wall | 25 mm |
 | 3 | Reverse | Toward wall | 20 mm |
-| 4 | Forward | Away from wall | 75 mm |
-| 5 | Forward | Toward wall until parallel | about 140 mm modeled |
+| 4 | Forward | Away from wall | 85 mm |
+| 5 | Forward | Toward wall until parallel | about 150 mm modeled |
 
 After segment 4, the robot has cleared enough of the 200 mm piece ends to use
 one continuous full-lock arc outside the parking lot. In the geometric model,
-140 mm removes the remaining 73.6 degrees of heading. Firmware uses the gyro
-rather than assuming the simulated radius exactly: it may stop from 120 mm
-once heading error is at most 2 degrees, and must stop by 180 mm.
+150 mm removes the modeled remaining 78.8 degrees of heading. Firmware uses
+the gyro rather than assuming the simulated radius exactly: it may stop from
+120 mm once heading error is at most 2 degrees, and must stop by 220 mm.
 
 The five-segment path passed all 16 modeled tolerance combinations.
 
