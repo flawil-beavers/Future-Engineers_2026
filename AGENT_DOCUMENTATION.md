@@ -8714,3 +8714,52 @@ raw images at the false RED confirmations of 431/438 and the short final arc
 plus physical pink clearance around reverse localization in 441. Only then
 build the affected M7 environment and retest cable-free, beginning with the
 three failing single-seat positions and a monitored parking-reverse run.
+
+2026-10-05 focused follow-up on the nine stopped start-seat trials after user
+correction: Analyze 430-438 first; the RED-middle stall is a separate issue.
+In GREEN-middle 430/432, the connector preflight passed but live Pure Pursuit
+lookahead remained pinned to its final connector point (250,-1053.33), rather
+than continuing into the following route. At the last recorded poses the
+handoff gate was still unmet (distance/heading 62.35 mm/17.10 deg and
+67.65 mm/20.40 deg versus 60 mm/15 deg) while commanded steering reached
+-42.026/-42.024 deg, just beyond the 42 deg safety limit. The existing
+`simulation/analyze_connector_tracking.py` exactly replayed both logged
+targets and found that an outgoing-route lookahead at those same poses would
+request -26.44/-28.24 deg, with positive forward projection. That is an
+offline candidate only: the script does not prove swept body clearance or
+closed-loop completion. In GREEN-middle 431, the first two stations were
+marked CLEAR, then a RED blob was assigned to S0/1 seat2 even though the
+user reports a GREEN pillar there; the newly injected route had no candidate
+meeting the current 350-800 mm forward/phase/heading selection. The log has
+no raw frame to identify the blob source.
+
+GREEN-far/left 433-435 all cleared S0/0 and S0/1, armed a connector for the
+currently empty map, then confirmed the actual GREEN S0/2 seat4 after that
+connector was active. Rebuilding against the displaced route yielded no
+candidate even before a preflight candidate was printed. The logs do not
+expose which selection bound excluded all route points; do not infer that a
+specific clearance gate failed. RED-near/right 436/437 correctly confirmed
+S0/0 seat0; each planned connector candidate then failed either simulated
+tracking within 500 mm, minimum pillar clearance (as little as 9.7 mm), or
+hidden-seat footprint clearance (<0). 438 initially marked the near station
+CLEAR and later mapped RED to S0/1 seat2; its replan had no candidate. These
+are three distinct mechanisms, so a colour-threshold or safety-limit increase
+is not a general fix.
+
+The measured outer-wall start ranges for the RED-near/right failures were
+102/95/99 mm, overlapping successful RED-far/left starts at 101/101/100 mm
+and RED-middle starts at 98/100/101 mm (excluding the physical stall). Their
+post-exit estimated x was 240.5/240.6/244.1 mm, also overlapping successful
+starts. Thus the side placement at start does not explain the repeated RED
+near/right planning stops. The user observed a close pass by the pink parking
+field; logs do not measure corner-to-pink physical clearance. The RED-near
+scout preflight reported modeled wall clearance 145.7-157.9 mm, but that is
+not a physical clearance measurement and must not override the user's view.
+At least in 436/437, the motor never began the connector because preflight
+locked it, so any observed close pink pass occurred earlier in exit/scout.
+No firmware change from this focused review. Next: separately validate a
+route-continuation lookahead for GREEN middle with full swept clearance,
+capture why route-point selection is empty on S0/2 GREEN injection, and
+reconstruct RED-near connector geometry from logged poses while checking
+pink clearance through exit and scout. Leave the 42 deg steering and pillar
+clearance safety limits intact.
