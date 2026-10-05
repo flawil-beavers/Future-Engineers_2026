@@ -89,6 +89,11 @@ PathPoint smoothingBuffer[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 PathPoint parkingEntryConnector[
     OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];
+// The first outgoing samples must remain fixed if a later pillar is learned
+// while the already validated parking connector is being driven.
+constexpr uint8_t PARKING_CONNECTOR_ROUTE_PREFIX_POINTS = 8;
+PathPoint parkingEntryConnectorRoutePrefix[
+    PARKING_CONNECTOR_ROUTE_PREFIX_POINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
 DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
 bool greenSeatCandidateThisFrame[OBSTACLE_SEAT_COUNT] = {};
@@ -164,6 +169,7 @@ bool parkingEntryJoining = false;
 bool parkingEntryRecovering = false;
 bool parkingEntryConnectorActive = false;
 bool parkingEntryConnectorReplanPending = false;
+int8_t parkingEntryConnectorChangedSeat = -1;
 bool parkingEntryScouting = false;
 bool parkingEntryPrimaryRetryUsed = false;
 ParkingEntryScoutPhase parkingEntryScoutPhase =
@@ -177,6 +183,7 @@ uint8_t parkingEntryConnectorProgress = 0;
 uint16_t parkingEntryConnectorMergeIndex = 0;
 float parkingEntryConnectorStartEncoderDistance = 0.0f;
 float parkingEntryConnectorLookaheadMm = 0.0f;
+uint8_t parkingEntryConnectorRoutePrefixCount = 0;
 bool parkingEntryConnectorRouteLookahead = false;
 uint32_t parkingEntryConnectorTraceMs = 0;
 uint8_t parkingEntryConnectorTraceCount = 0;
@@ -1367,6 +1374,101 @@ bool buildParkingEntryConnector(
     return false;
 }
 
+void captureParkingConnectorRoutePrefix(
+    const PathPoint *route, uint16_t mergeIndex)
+{
+    parkingEntryConnectorRoutePrefixCount = 0;
+    if (route == nullptr || pathLength < 2)
+        return;
+    float travel = 0.0f;
+    for (uint8_t offset = 0;
+         offset < PARKING_CONNECTOR_ROUTE_PREFIX_POINTS &&
+         offset < pathLength;
+         ++offset)
+    {
+        const PathPoint &point = route[(mergeIndex + offset) % pathLength];
+        if (offset > 0)
+        {
+            const PathPoint &previous =
+                parkingEntryConnectorRoutePrefix[offset - 1];
+            travel += hypotf(point.x - previous.x, point.y - previous.y);
+        }
+        parkingEntryConnectorRoutePrefix[offset] = point;
+        parkingEntryConnectorRoutePrefixCount = offset + 1;
+        if (travel >= parkingEntryConnectorLookaheadMm + 50.0f &&
+            parkingEntryConnectorRoutePrefixCount >= 2)
+            return;
+    }
+    // Never retain a connector if the stored prefix cannot cover the live
+    // lookahead and a short continuation beyond its handoff.
+    parkingEntryConnectorRoutePrefixCount = 0;
+}
+
+bool parkingConnectorRoutePrefixUnchanged(const PathPoint *route)
+{
+    if (route == nullptr || parkingEntryConnectorRoutePrefixCount < 2)
+        return false;
+    for (uint8_t offset = 0;
+         offset < parkingEntryConnectorRoutePrefixCount;
+         ++offset)
+    {
+        const PathPoint &oldPoint =
+            parkingEntryConnectorRoutePrefix[offset];
+        const PathPoint &newPoint = route[
+            (parkingEntryConnectorMergeIndex + offset) % pathLength];
+        if (hypotf(oldPoint.x - newPoint.x,
+                   oldPoint.y - newPoint.y) > 1.0f)
+            return false;
+    }
+    return true;
+}
+
+bool retainParkingConnectorForFarGreen(
+    const PositionEstimate &pose, const PathPoint *route)
+{
+    // CW single-pillar GREEN at the last inner start seat can become visible
+    // after the empty first two stations have been scanned. Rebuilding from
+    // the now advanced pose asks for a fresh 350 mm approach that no longer
+    // exists. Keep the earlier connector only if its handoff and outgoing
+    // lookahead are unchanged and a fresh swept rollout from the actual pose
+    // clears the newly confirmed pillar.
+    constexpr uint8_t farGreenSeat = 4;
+    if (!parkingEntryConnectorActive || routeTurnSign >= 0 ||
+        parkingEntryTargetStation != 1 ||
+        parkingEntryConnectorChangedSeat != farGreenSeat ||
+        !seats[farGreenSeat].confirmed ||
+        !seats[farGreenSeat].injected || seats[farGreenSeat].red ||
+        !discoveryStations[0].observedClear ||
+        !discoveryStations[1].observedClear)
+        return false;
+
+    if (!parkingConnectorRoutePrefixUnchanged(route))
+    {
+        Serial.println("[PARK ENTRY CONNECTOR] Far GREEN route prefix changed");
+        return false;
+    }
+
+    constexpr uint8_t firstTargetSeat = 2;
+    const uint8_t referenceSeat =
+        seats[firstTargetSeat].y > seats[firstTargetSeat + 1].y
+            ? firstTargetSeat : firstTargetSeat + 1;
+    if (!connectorRolloutFeasible(
+            pose, parkingEntryConnectorLookaheadMm, referenceSeat,
+            -1, -1, route, parkingEntryConnectorMergeIndex,
+            parkingEntryConnectorRouteLookahead))
+        return false;
+
+    Serial.print("[PARK ENTRY CONNECTOR] Retained after far GREEN seat=");
+    Serial.print(farGreenSeat);
+    Serial.print(" pose=");
+    Serial.print(pose.x_mm, 1); Serial.print(",");
+    Serial.print(pose.y_mm, 1); Serial.print(",");
+    Serial.print(pose.heading_deg, 1);
+    Serial.print(" merge_index=");
+    Serial.println(parkingEntryConnectorMergeIndex);
+    return true;
+}
+
 void buildParkingEntryPath(const PositionEstimate &start)
 {
     parkingEntryLength = 0;
@@ -2043,7 +2145,12 @@ void injectSeat(uint8_t seatIndex, bool delayed)
         ++injectionCount;
     rebuildLivePath();
     if (parkingEntryConnectorActive)
+    {
+        parkingEntryConnectorChangedSeat =
+            parkingEntryConnectorReplanPending ? -2 :
+                static_cast<int8_t>(seatIndex);
         parkingEntryConnectorReplanPending = true;
+    }
     ObstacleClearanceSample snapshot;
     if (obstacle_path_get_planned_clearance(seatIndex, snapshot))
     {
@@ -3045,9 +3152,11 @@ void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
     }
 
     parkingEntryConnectorMergeIndex = mergeIndex;
+    captureParkingConnectorRoutePrefix(route, mergeIndex);
     parkingEntryConnectorProgress = 0;
     parkingEntryConnectorActive = true;
     parkingEntryConnectorReplanPending = false;
+    parkingEntryConnectorChangedSeat = -1;
     parkingEntryConnectorStartEncoderDistance = get_distance();
     progressIndex = mergeIndex;
     servo_disabled = false;
@@ -3940,6 +4049,7 @@ void obstacle_path_reset()
     parkingEntryRecovering = false;
     parkingEntryConnectorActive = false;
     parkingEntryConnectorReplanPending = false;
+    parkingEntryConnectorChangedSeat = -1;
     parkingEntryScouting = false;
     parkingEntryPrimaryRetryUsed = false;
     parkingEntryScoutPhase = PARKING_ENTRY_SCOUT_STEER_SETTLE;
@@ -3952,6 +4062,7 @@ void obstacle_path_reset()
     parkingEntryConnectorMergeIndex = 0;
     parkingEntryConnectorStartEncoderDistance = 0.0f;
     parkingEntryConnectorLookaheadMm = 0.0f;
+    parkingEntryConnectorRoutePrefixCount = 0;
     parkingEntryConnectorRouteLookahead = false;
     parkingEntryObserveStartMs = 0;
     parkingEntryUsbWritten = false;
@@ -4198,25 +4309,37 @@ void obstacle_path_update(bool new_camera_frame)
         if (parkingEntryConnectorReplanPending)
         {
             stop(false);
-            uint16_t mergeIndex = 0;
-            if (!buildParkingEntryConnector(
-                    get_position_struct(), path, mergeIndex))
+            if (retainParkingConnectorForFarGreen(
+                    get_position_struct(), path))
             {
-                parkingEntryConnectorActive = false;
                 parkingEntryConnectorReplanPending = false;
-                parkingEntryTestHold = true;
-                set_steering(0);
-                Serial.println(
-                    "[PARK ENTRY CONNECTOR] Replan rejected - drive motor locked off");
-                return;
+                parkingEntryConnectorChangedSeat = -1;
             }
-            parkingEntryConnectorMergeIndex = mergeIndex;
-            parkingEntryConnectorProgress = 0;
-            parkingEntryConnectorReplanPending = false;
-            parkingEntryConnectorStartEncoderDistance = get_distance();
-            progressIndex = mergeIndex;
-            Serial.print("[PARK ENTRY CONNECTOR] Replanned merge_index=");
-            Serial.println(mergeIndex);
+            else
+            {
+                uint16_t mergeIndex = 0;
+                if (!buildParkingEntryConnector(
+                        get_position_struct(), path, mergeIndex))
+                {
+                    parkingEntryConnectorActive = false;
+                    parkingEntryConnectorReplanPending = false;
+                    parkingEntryConnectorChangedSeat = -1;
+                    parkingEntryTestHold = true;
+                    set_steering(0);
+                    Serial.println(
+                        "[PARK ENTRY CONNECTOR] Replan rejected - drive motor locked off");
+                    return;
+                }
+                parkingEntryConnectorMergeIndex = mergeIndex;
+                captureParkingConnectorRoutePrefix(path, mergeIndex);
+                parkingEntryConnectorProgress = 0;
+                parkingEntryConnectorReplanPending = false;
+                parkingEntryConnectorChangedSeat = -1;
+                parkingEntryConnectorStartEncoderDistance = get_distance();
+                progressIndex = mergeIndex;
+                Serial.print("[PARK ENTRY CONNECTOR] Replanned merge_index=");
+                Serial.println(mergeIndex);
+            }
         }
         const PositionEstimate connectorPose = get_position_struct();
         while (parkingEntryConnectorProgress + 1 <

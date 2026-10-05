@@ -29,14 +29,16 @@ def curve(start,end,n):
         dy=(end['y']-start['y'])*(6*t-6*t2)+sy*(3*t2-4*t+1)+ey*(3*t2-2*t)
         out.append(dict(x=x,y=y,h=math.degrees(math.atan2(dy,dx))))
     return out
-def simulate(c,r,L=150,shift=(0,0,0), mirror=False, yaw_gain=1.0):
-    p=dict(c[0]);p['x']+=shift[0];p['y']+=shift[1];p['h']+=shift[2];idx=0
+def simulate(c,r,L=150,shift=(0,0,0), mirror=False, yaw_gain=1.0,
+             start_index=0, check_pink=False, pillar_seats=None):
+    p=dict(c[start_index]);p['x']+=shift[0];p['y']+=shift[1];p['h']+=shift[2];idx=start_index
     min_wall=min_pillar=math.inf
     for step in range(251):
         for rear in (0,70):
             angle=math.radians(p['h'])
             pose=(p['x']-rear*math.cos(angle),p['y']-rear*math.sin(angle),p['h'])
-            for seat in ((-500 if mirror else 500,-900),(0,-900)):
+            for seat in (pillar_seats if pillar_seats is not None else
+                         ((-500 if mirror else 500,-900),(0,-900))):
                 wall,pillar=clearance(pose,seat)
                 min_wall=min(min_wall,wall);min_pillar=min(min_pillar,pillar)
         if min_wall<=10 or min_pillar<=10:
@@ -47,6 +49,11 @@ def simulate(c,r,L=150,shift=(0,0,0), mirror=False, yaw_gain=1.0):
         target=lookahead(c,r,idx,L)
         x,y,s=steering(p,target,100)
         if x<=1 or abs(s)>42:return dict(status='guard',travel_mm=step*2,distance_mm=d,heading_deg=h,steering_deg=s)
+        if check_pink:
+            from parking_exit_swept_search import Pose, collision
+            local_pose=Pose(480-p['x'],p['y']+1500,180-p['h'])
+            if any(collision(local_pose,-round(s),gap) for gap in (242.5,252.5)):
+                return dict(status='pink',travel_mm=step*2)
         curvature=-math.tan(math.radians(s))/100*yaw_gain
         angle=math.radians(p['h']);delta=curvature*2
         if abs(curvature)>1e-6:

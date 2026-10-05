@@ -1,5 +1,38 @@
 # Connector diagnostic run and acceptance sequence
 
+## Prepared next test: GREEN at the far/left start seat (2026-10-05)
+
+Logs 433–435 show the first two start stations CLEAR, then GREEN at S0
+station2 inner seat4 confirmed while the already preflighted parking connector
+is active. The old code discarded that connector and demanded a fresh merge
+from the advanced pose; all three runs stopped with `No safe merge candidate`.
+The prepared M7 keeps the existing connector only for this exact CW case,
+when its outgoing route prefix is unchanged and a fresh 2 mm swept rollout
+from the measured pose clears the newly confirmed GREEN. The existing
+steering, wall/pillar, 60 mm/15 degree handoff and total 500 mm encoder travel
+limits remain in force. If a check fails, the existing replan/hold remains.
+
+`simulation/replay_green_far_connector.py` replays the archived connector
+geometry from logs 433–435 at four saved route points with assumed +/-10 mm
+position and +/-2 degree heading variation. All 108 cases per log reached the
+handoff without modeled wall, seat4 pillar, pink-rail, steering or remaining
+500 mm travel failure. Log 434's maximum modeled remaining travel was 488 mm,
+so its total live encoder limit needs particular attention. The logs do not
+contain the exact pose at GREEN confirmation; this replay is an ideal model,
+not proof that every physical approach works. Real pink placement and later
+path following also require the drive test.
+
+Next: upload the prepared M7 firmware, keep the single GREEN pillar at the
+far/left start station and the remaining layout as in tests 433–435. Start CW
+from the usual parking pose, with the laptop USB cable disconnected for the
+drive. Watch the pink rails, the connector and the GREEN bypass. The log
+should show `Retained after far GREEN seat=4`, `Complete` and the first-lap
+stop; it must not show `No safe merge candidate`, tracking rejection or travel
+limit. Stop manually if there is contact or an unsafe gap. Save the complete
+log and report the location of any halt. After a safe first run, repeat three
+times with normal small placement variation. This test does not validate the
+separate RED near/right case.
+
 ## Prepared next test: GREEN at the middle start seat (2026-10-05)
 
 Logs 430 and 432 correctly confirmed GREEN at S0/1 right seat2, then stopped

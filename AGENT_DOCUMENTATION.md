@@ -8836,3 +8836,38 @@ Diagnose the empty candidate selection and pre-map/replan timing offline
 before another powered trial. RED near/right remains separately unresolved
 and needs pink-rail clearance review. No firmware source changes from this
 physical batch.
+
+2026-10-05 GREEN-far/left start seat4 connector correction, prepared but not
+uploaded: Complete archived CW logs 433-435 show S0 stations0/1 CLEAR and an
+initially validated connector. Once GREEN at station2 inner seat4 was injected
+while that connector was active, all three stopped at `No safe merge candidate`.
+The new merge search requires at least 350 mm forward from the progressed
+pose; it did not test whether the already armed connector remained valid.
+That timing explanation is consistent with the logs, but the exact pose at
+the injection instant is absent from them.
+
+M7 `src/obstacle_path.cpp` now retains the active connector only in the CW,
+target-station1, first-two-stations-CLEAR, newly confirmed GREEN seat4 case.
+It compares the saved outgoing XY prefix against the rebuilt live path, then
+reruns the existing 2 mm swept rollout from the measured pose including the
+newly confirmed pillar. Any mismatch or failed rollout falls through to the
+existing replan/hold. It does not change the 42 degree steering, 10 mm swept
+clearance, 60 mm/15 degree handoff or total 500 mm live encoder travel limit.
+Retention and route-prefix rejection have explicit serial messages.
+
+`simulation/replay_green_far_connector.py` reproduces the logged connector
+geometry from unchanged evidence logs 433-435, checking modeled field/pillar
+and pink-rail geometry at four connector points with assumed +/-10 mm XY and
++/-2 degree heading variation. All 108 cases per log passed. Minimum modeled
+wall margins were 182.1/177.4/169.8 mm, and seat4 pillar margins were
+592.0/542.2/591.6 mm. Maximum remaining ideal travel was 440/488/438 mm;
+434 is near the live total 500 mm gate, which this replay does not measure.
+The model is not a physical validation and actual pink rail placement and
+post-handoff route remain unverified. M7-only IDE-managed PlatformIO build
+succeeded, RAM 432872/523624, flash 466144/786432 bytes; binary SHA-256
+`f9b35bc2d8848d5e5a219539fc2ffb9478fe815d7d3b060dc97bd4a7c5723e86`.
+M4 was not affected or built. No firmware upload or powered run in this
+session. The cable-free CW test, expected log markers, stop conditions and
+repeat criteria are at the top of `CONNECTOR_NEXT_TEST.md`. Next: owner uploads
+this M7, tests only GREEN at far/left start seat with the other layout as in
+433-435, and supplies the complete USB log and physical contact report.
