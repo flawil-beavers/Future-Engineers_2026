@@ -8580,3 +8580,65 @@ binary. No M4 code or shared interface was changed in this exit revision, so
 M4 need not be reflashed. Do not claim that the revised exit is physically
 validated until the next cable-free run. Watch the side-ToF start guard and
 pink clearance during reverse localization and forward scouting/connector.
+
+2026-10-05 cable-free CW batch from PHILIPP USB, files 420-428: All nine
+complete original source files were copied byte-for-byte into
+`simulation/evidence/parking_exit_diagnostics/` as
+`20261005_log_NNN_cw.txt` and SHA-256 verified against the stick. Exact
+filenames, sizes, hashes, physical reports and per-run limitations are in that
+directory's README. SHA-256 by log number: 420
+`3ecec2de4d50625372b6d95e4908e911cc5b2ab5984302b2a27486aaa78c0965`,
+421 `0e7ab297951df5682b98a6e7d454c3281846c76e710913f4703ce7683d4bb9b5`,
+422 `52f4cf386c15aa5db4b00f8714beb451ffa3b509813f2469b8ed1f933c7d0d13`,
+423 `3b8571f69bb06d4362d26507b80c0a975f65854dee598bebcc80fce630cb5f63`,
+424 `9cf72c8a12c5d23181de8e652d4c472e50eadb9c62fa6f019bc72d8f618d744b`,
+425 `9ae31292d0657db7f46d6da35e2d13ccbe5ebf3ef21a6560412e7b5c5843833a`,
+426 `f4d62993364b9b6f2b9ff6511895b5e2f0034cc711aacf2f81c81e2630eb7110`,
+427 `60a8c24993c431c51500d7aac383d7dd4bb39e88bd5c72121979b74591887f19`,
+428 `80b374c95a341791c123661354bad147404cc974270b7882231fb794281ac687`.
+The stick RTC dates are not trusted; the portable filename date is the receipt
+date. Logs 420-424 carry the older Sep_28_2026_22_58_57 parking build header
+and 85/150 mm exit, so they must not be mixed with the revised-exit trial.
+420 and 424 completed an onboard lap; 421 and 423 were manually disabled
+before exit/localization completion; 422 ended at a connector tracking gate.
+Their individual physical outcomes were not assigned by the user.
+
+Logs 425-428 carry the Oct__5_2026_21_30_53 parking header and 90/155 mm
+targets, consistent with the prepared M7 revision; the installed binary was
+not read back. They match the user's four new same-layout reports by sequence:
+425, 427, 428 physically perfect with no contact and onboard lap 1 complete;
+426 paused, resumed, then autonomously stopped in the start section. All four
+completed five exit segments and parking edge localization (reverse creep
+307.2/309.4/310.8/309.5 mm). Start wall ranges 99/97/98/99 mm passed the
+new pose guard. Final alignment distances 148.4/148.4/141.8/139.2 mm,
+despite the 155 mm modeled target, terminated normally by gyro. The initial
+parking-piece side-ToF reference was usable in 425 but over its 180 mm range
+gate in 426-428 (193/185/203 mm); all four still found the edge and applied
+bounded x/y localization. No pink contact was reported, so the revised exit
+has three successful whole-lap physical trials, not a proof for all placements.
+
+In 426 the primary S0 station1 scan timed out UNKNOWN while many RED blobs
+projected 170-240 mm outside a station seat. The fallback scout marked S0
+station0 CLEAR. The connector passed preflight and began driving. At pose
+about (345,-1028,154 deg), two near red observations projected to seat2
+(39 mm seat error), triggered `RED` confirmation at S0 station1, and injected
+a new avoidance path; the same station had been marked CLEAR earlier. Active
+connector replanning then printed `No safe merge candidate` and stopped the
+motor. Manual disable in the log followed that autonomous stop. This is a
+deliberate safety hold following a contradictory late seat assignment, not a
+motor or parking-exit failure. The user reports the previous photograph's
+unchanged layout, in which S0 station1 has no red block; text telemetry alone
+cannot identify whether the blob was a wrong colour, a different real red
+block projected to seat2, or another visual target. In successful 425 a late
+S0 station1 RED seat3 confirmation also follows an earlier CLEAR, though the
+user reports a physically perfect lap; this reinforces the need to review
+late start-section detections rather than loosening the connector safety gate.
+No firmware thresholds or stop logic were changed from this batch. The batch
+analyzer now covers 46 complete source files / 47 diagnostic sessions; its
+reproducible report stays under `local_workspace/parking-exit-analysis-all/`.
+Next: compare a stationary raw camera frame at the log426 red-confirmation
+view (approximately the start-section middle while facing CW) against the
+known empty S0 station1 marks and any visible red blocks. Keep drive disabled
+and use USB only while stationary. If the raw image identifies the interfering
+object, adjust colour/geometry association narrowly and retest cable-free;
+retain the connector preflight and hold for genuinely unresolved layouts.
