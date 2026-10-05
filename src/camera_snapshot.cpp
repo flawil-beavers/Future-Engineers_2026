@@ -85,3 +85,90 @@ void camera_snapshot_export()
     if (!resumed)
         robot_logger.println("[CAMSHOT ERROR] Camera restart failed");
 }
+
+void camera_green_seat_diagnostic(int expected_x, int expected_foot_y)
+{
+    if (current_mode != MODE_CAMERA_CALIBRATION || system_enabled ||
+        expected_x < 30 || expected_x > 290 ||
+        expected_foot_y < 105 || expected_foot_y > 205)
+    {
+        robot_logger.println(
+            "[CAM SEAT ERROR] Use c0 with drive OFF, x30..290, foot_y105..205");
+        return;
+    }
+    stop(false);
+    struct Sample {
+        uint32_t frame = 0;
+        bool legacyValid = false;
+        bool candidateValid = false;
+        int16_t x = 0;
+        int16_t foot = 0;
+        uint16_t greenSamples = 0;
+        int16_t contrast = 0;
+        uint32_t processingUs = 0;
+    } samples[10];
+
+    for (uint8_t index = 0; index < 10; ++index)
+    {
+        const uint32_t started = millis();
+        while (!camera.capture())
+        {
+            if (millis() - started > 1500)
+            {
+                robot_logger.println("[CAM SEAT ERROR] Fresh frame timeout");
+                return;
+            }
+            delay(1);
+        }
+        if (!vision.update(camera.getBuffer(), camera.getWidth(),
+                           camera.getHeight()))
+        {
+            robot_logger.println("[CAM SEAT ERROR] Vision update failed");
+            return;
+        }
+        Sample &sample = samples[index];
+        sample.frame = camera.getCompletedFrameCount();
+        sample.legacyValid = obstacle_blob_valid_for_acquisition(
+            &vision.getResult().green);
+        GreenSeatCandidate candidate;
+        const uint32_t startedProcessingUs = micros();
+        sample.candidateValid = vision.findGreenSeatCandidate(
+            camera.getBuffer(), camera.getWidth(), camera.getHeight(),
+            expected_x, expected_foot_y, candidate);
+        sample.processingUs = micros() - startedProcessingUs;
+        if (sample.candidateValid)
+        {
+            sample.x = candidate.blob.centerX;
+            sample.foot = candidate.blob.maxY;
+            sample.greenSamples = candidate.greenSamples;
+            sample.contrast = candidate.brightnessContrast;
+        }
+    }
+
+    robot_logger.print("[CAM SEAT] expected_x/foot=");
+    robot_logger.print(expected_x);
+    robot_logger.print("/");
+    robot_logger.println(expected_foot_y);
+    for (uint8_t index = 0; index < 10; ++index)
+    {
+        const Sample &sample = samples[index];
+        robot_logger.print("[CAM SEAT] sample=");
+        robot_logger.print(index + 1);
+        robot_logger.print(" frame=");
+        robot_logger.print(sample.frame);
+        robot_logger.print(" legacy=");
+        robot_logger.print(sample.legacyValid ? 1 : 0);
+        robot_logger.print(" candidate=");
+        robot_logger.print(sample.candidateValid ? 1 : 0);
+        robot_logger.print(" x/foot=");
+        robot_logger.print(sample.x);
+        robot_logger.print("/");
+        robot_logger.print(sample.foot);
+        robot_logger.print(" samples/contrast=");
+        robot_logger.print(sample.greenSamples);
+        robot_logger.print("/");
+        robot_logger.print(sample.contrast);
+        robot_logger.print(" roi_us=");
+        robot_logger.println(sample.processingUs);
+    }
+}

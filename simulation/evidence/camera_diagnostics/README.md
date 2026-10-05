@@ -1,5 +1,85 @@
 # Stationary camera evidence
 
+## 2026-10-05: green and empty control in a different room
+
+The user corrected the setup: this GREEN measurement was made in a different
+room from the RED measurement below. The robot was USB-connected, stationary,
+and drive-disabled. The near green pillar was on a marked seat and the raw
+`20261005_green_middle_same_pose_01.serial.bin` passed CRC32 `39ad899f`
+and footer validation (frame 36766, exposure 360 lines). The broad legacy
+GREEN region x191, foot124, width89, height45, area1396 was production-invalid
+because it joined background; the visible pillar itself is upright in the
+decoded image. The separate mapped-seat diagnostic at expected x207/foot126
+found a compact candidate x195-196/foot124 in 10/10 fresh frames, while the
+same now-empty position at expected x196/foot124 yielded 0/10 candidate
+frames. This supports the fallback for this one stationary view. It does not
+validate moving-run colour or seat assignment. Do not pair its exposure or
+range with the RED image from the other room.
+
+| Evidence file | SHA-256 |
+| --- | --- |
+| `20261005_green_middle_same_pose_01.serial.bin` | `7155dafb5a9de8ebac92ad9fda9e6075ce174d07e81f5c2809ed1ac6cf1e9395` |
+| `20261005_green_middle_same_pose_01.rgb565` | `5e6396851e27784bb9e40d1fd943ec869edeaa047a21d288f8f481eb0831b8ef` |
+| `20261005_green_middle_same_pose_01.json` | `b82baac5f425b5bfb3be9207939814d2f847404a233a52e123f7a1551abf1e8c` |
+| `20261005_green_middle_same_pose_01.png` | `7bce7af71486e5b7d41243db79e93c625f6a6a32afbfd23325e63191c80a177b` |
+| `20261005_green_middle_same_pose_01.stationary.txt` | `37ff912baf58cb66d6f8ecd52f1f57acfe6112d8fd953d8cdbe1d5a670b2370e` |
+| `20261005_green_middle_same_pose_01.camseat.txt` | `1541c8f2b7500728f972db1c960ca826ff849ced4333f466376ccda555dab1bd` |
+| `20261005_green_room_empty_camseat_196_124.txt` | `e2ff93df5f6097f8067fbb8f805ab9a5112fa32930f2e2847490cd3de76c4a4c` |
+
+After the empty control, the user placed RED at the same near seat in this
+new room. Its complete `20261005_red_green_room_same_pose_01.serial.bin`
+passed CRC/footer validation (CRC32 `7c438c51`, frame 3490, exposure 360
+lines). The stopped red blob was production-valid at x197, foot124, area
+about1120, bearing -7.5 deg and estimated range526 mm. Red-valid counter
+increased by 28 across each of two 28-frame intervals; the green-valid
+counter did not increase. At the same expected green seat x196/foot124,
+the diagnostic found 0/10 green candidates. All three controls therefore
+separate at this particular stationary pose and room light: green fallback
+10/10, empty0/10, red0/10 green false candidates. The normal broad GREEN
+blob itself was shape-invalid; neither moving colour nor field-seat mapping
+is proven. The earlier RED capture was from a different room and must not
+be treated as paired with these samples.
+
+| Evidence file | SHA-256 |
+| --- | --- |
+| `20261005_red_green_room_same_pose_01.serial.bin` | `890a5f8e06e4cacb517da282d6d9a96e8939c59515db7a88354e984c132d574f` |
+| `20261005_red_green_room_same_pose_01.rgb565` | `5c086b107a2908946649bef1d5007dd15b69a4b6f1891a43771954d40af33610` |
+| `20261005_red_green_room_same_pose_01.json` | `359225923b9c06ba637a827fd240ce679da2ac6d5d09caef46a547814603ba7d` |
+| `20261005_red_green_room_same_pose_01.png` | `3e3ad085d176b283afa00d7249bdf854e29057bb36d82deb6b06629fba0ad650` |
+| `20261005_red_green_room_same_pose_01.stationary.txt` | `a2ba53846fbfb140d281701cb8781591aff595132e08b694b8a4b5178d5e0cfb` |
+| `20261005_red_green_room_same_pose_01.camseat.txt` | `d0f254737ffbbe8dc8f415b7cd065d3661619339580039bca1427e548812a744` |
+
+## 2026-10-05: middle red pillar after the preceding corner
+
+The user positioned the stationary robot before the middle inner red pillar
+in the section opposite the start, with USB attached and drive disabled.
+The user subsequently provided an overhead photo showing the near red pillar
+on the marked inner middle seat and estimated camera-to-pillar distance at
+about 55 cm, not tape-measured. The robot was manually placed; its onboard
+field pose from a moving run is unavailable. This capture therefore cannot
+calibrate field position. The
+original `20261005_red_middle_after_corner_01.serial.bin` is a complete
+`camshot` transfer (153,600 RGB565 payload bytes, CRC32 `1eb94299`, frame
+443, exposure 94 lines); receiver CRC and footer validation passed. A
+derived `.rgb565`, `.json` and rotated `.png` accompany it. The independent
+`.stationary.txt` c0 capture shows 29/29 production-valid RED frames, x=207,
+foot y=126, area 1,036, bearing -9.7 degrees and estimated ray range
+507.3 mm. The near red pillar is visibly complete; a smaller red pillar is
+also visible farther back at the right edge. This supports colour/shape
+recognition at this stopped view. The estimated 507 mm ray range is broadly
+consistent with the user's approximate 550 mm physical estimate, but that
+estimate is too uncertain for a camera calibration or a 20 cm pose-error
+claim. This does not establish moving-run seat projection. No firmware or
+drive setting changed.
+
+| File suffix | SHA-256 |
+| --- | --- |
+| `.serial.bin` | `898818cfe5a326382f965989553cd5e1359ce729d469f3ec5af0ac4b3b85733a` |
+| `.rgb565` | `2696da7a887e6cc15a8fe78f0818093889b48644fd0dff41779235c547d7e4bf` |
+| `.json` | `85e605ed68495c019a2d5f32583275f771224ac72ba7a5eb1db0fd2a194d7787` |
+| `.png` | `dedb672a64ee7cbf130a4c23234ed6802c4c8d717002844b7d6712c9cde014d5` |
+| `.stationary.txt` | `3d61942c85c3daf97f9643138bf5b799ea7abbce6ed82b26252cec9223a00419` |
+
 ## 2026-09-29: same S1 front-empty view before diagnostic upload
 
 The user reconnected the stopped robot before S1; front station empty, green

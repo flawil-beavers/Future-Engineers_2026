@@ -8339,3 +8339,178 @@ if a further cable-free drive is needed, especially for green-seat candidate
 reasons. Compare visual truth against onboard pose at the curve exit before
 adjusting turn trajectory or field origin. Preserve hard stop for unresolved
 obstacles until detection and map consistency are reliable.
+
+2026-10-05 first stationary red check: User placed the USB-connected robot
+before the middle inner red pillar in the section opposite the start. No drive
+or firmware upload occurred; serial `c0` reported stationary camera mode and
+motors disabled. `camshot` produced a complete CRC-verified RGB565 image,
+committed evidence stem
+`simulation/evidence/camera_diagnostics/20261005_red_middle_after_corner_01`
+with hashes and metadata in the camera evidence README. The stopped camera
+reports 29/29 production-valid RED frames, blob centre x207, foot y126,
+area1036, bearing -9.7 deg, estimated ray range507.3 mm. The image visually
+shows the complete near red pillar plus a smaller, farther red pillar at the
+right. Thus colour/shape recognition works at this pose. Physical distance
+from lens to pillar and the robot's overhead field pose remain unmeasured;
+the 507 mm camera estimate cannot yet be judged as accurate, nor can the
+20 cm moving-run seat error be attributed to camera range, path/odometry or
+field placement from this stopped image alone. User was asked for a measured
+camera-to-foot distance and an overhead photo with robot, pillar and field
+marks. Next: compare those with image bearing/range and the known seat14
+coordinate before any calibration, snap or corner trajectory edit.
+
+Follow-up: User supplied an overhead photo showing the near red pillar on
+the marked inner middle seat; lens-to-pillar distance was estimated at about
+550 mm, not measured. The stopped camera range estimate was 507 mm, broadly
+compatible with that rough estimate and far smaller discrepancy than the
+~200 mm moving-run field projection offset. Because placement was manual and
+the robot's onboard run pose is unknown, this is suggestive, not proof that
+the camera range fit is exact or the corner alone caused the map offset.
+Next controlled step: preserve the first red pillar, restart from the normal
+CW parking position without a trailing USB cable, and stop at a safe point
+immediately after the preceding curve but before approaching red closely;
+photograph the unshifted robot against the field marks and retrieve the run
+log. Compare the recorded onboard pose at stop with physical pose. Do not
+alter HSV, snap or corner gain before that comparison.
+
+2026-10-05 parking-start review prompted by user's report that rear clearance
+looks larger than front and the vehicle sometimes passes close to pink pieces:
+The current code reads both side ToF sensors at start to choose the nearer
+outer wall and steering sign, then uses the rear M4 ToF to position against
+the rear pink limit. A side ToF also seeds field Y and later references the
+parking-end/wall during reverse localization. The fixed five-segment exit
+does not actively centre between the pink limits from live side readings.
+In CW logs 417/418/419, initial rear range20.3/21.3/23.3 mm implied rear
+body clearance5.3/6.3/8.3 mm; rear positioning moved forward to final
+range69.7/67.0/66.0 mm, giving rear clearance54.7/52.0/51.0 mm. With the
+assumed 247.5 mm bay length and 165 mm robot body, computed front clearance
+is27.8/30.5/31.5 mm. Side start left ranges37/102/105 mm, right out of
+range, choose CW away steering. The 37 mm reading may be a nearby pink piece
+or wall; it does not establish physical wheel clearance by itself.
+Offline selected five-segment swept-model replay at rear targets35,40,42.5,
+45,50,55 mm passed8/16,8/16,16/16,16/16,16/16,12/16 modeled tolerance
+cases respectively. A 42.5-45 mm rear target would distribute the nominal
+82.5 mm total fore/aft free length more evenly, but code assumes the current
+65 mm rear sensor target and 60-70 mm usable range. Do not change one
+constant alone; verify actual gap/body dimensions and sensor repeatability,
+then update all dependent gates and physically validate CW/CCW clearance.
+For immediate testing, place the robot approximately centred fore/aft in the
+legal bay to avoid beginning only 5-8 mm from the rear limit.
+
+The stationary RED sample first taken on 2026-10-05 was 29/29 valid, but the
+user later clarified that the subsequent GREEN check was in a different room.
+Those first red/green images are not a paired light comparison. No firmware
+change yet.
+
+2026-10-05 same-new-room colour controls: In the user's current green-test
+room, the near GREEN pillar's normal broad blob was production-invalid
+because it joined background, but the existing mapped-seat fallback at
+x207/foot126 detected 10/10 fresh frames. With all pillars removed in this
+room, the same place at x196/foot124 yielded 0/10 candidates. User then
+placed RED at that same near seat without moving robot/light; normal RED
+remained production-valid over two 28-frame counter intervals, and
+mapped-GREEN at x196/foot124 yielded 0/10. The complete CRC-verified
+green/red raw frames and text controls, hashes and caveats are recorded in
+`simulation/evidence/camera_diagnostics/README.md` under 2026-10-05. This
+supports local stationary colour separation only; moving logs 417-419 still
+show wrong colours/seats and remain unresolved. No HSV or crop change was
+made. Next: user moves the stopped robot to the actual parking start bay;
+read fresh side/rear ToF and measure physical front/rear body clearance
+before considering a rear-target change.
+
+2026-10-05 follow-up offline pink-limit clearance calculation: User says a
+20 mm rear body clearance is sufficient in practice, cannot use a trailing USB
+cable during motion, and reports occasional pink-limit contact when the robot
+passes the parking bay after leaving it. The current swept model in
+`simulation/parking_exit_swept_search.py` was replayed with 1 mm integration
+through its five nominal exit segments and a 310 mm straight reverse, measuring
+distance from all modeled body/wheel polygons to the physical 20 x 200 mm pink
+pieces. Working calculation is in ignored
+`local_workspace/parking_pink_clearance_20261005.py`. With 50 mm modeled rear
+clearance and nominal lateral rear-axle coordinate 137.5 mm away from the outer
+wall, the smallest gap in the final exit arc and reverse is 27.9 mm; shifting
+the initial pose 10, 20, 30 mm toward the outer wall gives 17.9, 7.9, 0 mm.
+Shifting 20 mm toward the inner island increases the gap to 47.9 mm. The
+minimum over the *entire* nominal exit is 17.2 mm in segment 2, so these
+figures must not be presented as whole-exit minima. The nominal model has no
+measured actual pink-piece placement, slip, steering tracking error or later
+scout/connector path. Logs 417-419 provide field-pose seeds, not measured
+physical lateral clearance; no contact can be proven or excluded from them.
+An exploratory +10 mm to segment 4 and +10 mm to modeled segment 5 raised the
+final-arc/reverse nominal gap to 47.6 mm and passed the existing 16/16 modeled
+placement/heading exit cases, but could change the side-ToF piece reference
+and subsequent localization and has not been implemented. Next: identify the
+exact contact phase and which pink limit from the user's observation, then
+model that phase including the ensuing scout/connector before any motion edit.
+Keep the user-specified cable-free driving workflow. Do not change rear-ToF
+target or exit segments on this limited evidence alone.
+
+User clarified the occasional pink contact occurs in the straight reverse
+localization and again during the ensuing forward motion, not in the final
+exit arc alone. Replaying the logged odometric poses against the field-frame
+pink rectangles (outer-wall y=-1500..-1300 mm; CW marker x=480..500 and
+212.5..232.5 mm) and modeled wheel/body polygons gives minimum reverse gaps
+of 21.9/17.4/23.5 mm for complete logs 417/418/419 respectively. These are
+nominal pose-based gaps, not measured physical gaps. Planned forward connector
+point minima are 51.5/69.0/52.9 mm respectively; its initial scout and
+unlogged forward trajectory are not fully covered by these waypoint samples.
+The calculation lives in ignored
+`local_workspace/parking_logged_pink_gap_20261005.py`. An outward 10 mm shift
+would nearly erase the 17.4 mm reverse margin. Moving inward instead increases
+that particular gap, so the exact side and contact point matter. Testing a
+20 mm rear-clearance target with the *unchanged* exit segments failed all
+16 modeled tolerance cases (35 mm passes 8/16, 45-50 mm passes 16/16). This
+does not refute the user's observation that the stationary robot physically
+fits with 20 mm rear clearance; the current algorithm moves forward to about
+50 mm before the arcs. Next: distinguish forward scout/connector from straight
+reverse contact by a cable-free visual observation, and model the full actual
+forward driven trace or measure the body/pink geometry before changing path.
+
+2026-10-05 side-reserve implementation, not yet uploaded: User requested about
+10 mm more lateral clearance past the pink parking limits while retaining the
+50 mm rear-ToF target. M7 exit segment 4 changed from 85 to 90 mm. The
+gyro-aligned fifth-arc model distance changed from 150 to 155 mm; its real
+termination remains gyro alignment within the existing 120-220 mm bounds.
+The updated swept model predicts the aligned pose 9.8 mm farther from the
+pink open ends (nominal reverse gap 27.9 -> 37.7 mm) and passes 16/16 cases
+for each of +/-5, +/-10, +/-15 and +/-20 mm lateral start offsets, with +/-5
+mm longitudinal and +/-1 deg heading perturbations. The existing 24/24
+rear-positioning sweep still passes. To prevent a pink-piece return being
+treated as the outer wall, the post-rear-position side-ToF field-start seed
+now requires 80-130 mm instead of accepting any positive reading up to 180
+mm or silently using a nominal Y. This covers approximately +/-20 mm
+placement from the nominal 102.5 mm sensor range with allowance. Invalid
+readings produce `parking_start_outer_wall_invalid`, save the USB log and hold
+the drive. Archived valid CW/CCW field-start wall ranges (100-113 mm) fit
+the gate; the earlier 37 mm pre-positioning reading would not, if repeated at
+the field-start measurement. The complete path, including its changed
+forward scouting/connector start pose, remains to be physically validated.
+The accepted side-ToF frame must also be no older than 250 ms; a stale frame
+holds the drive with the same explicit reason.
+Simulation and diagram were regenerated in `simulation/`; IDE-managed
+`giga_r1_m7` build succeeded, binary SHA-256
+`c4b09b4b85e31d61a9bfe88c5ff82599b7e47dabe0a278780d28493f810b746b`.
+No firmware upload occurred. Next: after explicit upload consent, make a
+cable-free CW run with the normal bay start, observe pink clearance in straight
+reverse and forward scout/connector, and compare the new USB log's field-start
+range, fifth-arc alignment distance, edge localization and physical clearance.
+
+2026-10-05 upload handoff: User reports that unparking already works in the
+previous physical runs and wants to close this part before personally uploading
+the prepared build for further testing. The 90/155 mm exit revision above is
+compiled and simulated but has not itself been run physically, so its extra
+pink clearance remains a prediction. `platformio.ini` selects DFU upload for
+`giga_r1_m7`. Current `include/config.h` selects Obstacle at startup,
+OFFICIAL_2026 section inference (`OBSTACLE_STARTUP_CHECK_ALL_STATIONS=false`),
+rear positioning, all five exit segments, reverse edge localization, camera
+entry discovery and connector, then a hold after lap 1. The confusing
+`OBSTACLE_PARKING_EXIT_TEST_ONLY=true` does not stop after exit while
+`OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED=true`; source branch in
+`src/obstacle.cpp` confirms this. No `O` serial command or connected laptop is
+needed for a normal run. M7 binary SHA-256 remains
+`c4b09b4b85e31d61a9bfe88c5ff82599b7e47dabe0a278780d28493f810b746b`;
+the IDE-managed M7 build succeeded, and source modification times precede the
+binary. No M4 code or shared interface was changed in this exit revision, so
+M4 need not be reflashed. Do not claim that the revised exit is physically
+validated until the next cable-free run. Watch the side-ToF start guard and
+pink clearance during reverse localization and forward scouting/connector.

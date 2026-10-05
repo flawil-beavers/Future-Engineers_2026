@@ -504,15 +504,31 @@ static_assert(
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_LENGTH_MM,
     "Rear-ToF target must leave positive clearance at both parking limits");
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 150.0f;
+// Five extra millimetres in the preceding away arc require about five more
+// millimetres in this gyro-terminated return arc. Together they move the
+// aligned exit pose about 10 mm farther past the pink parking-piece ends.
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 155.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 220.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
+// The side ToF must see the outer wall after rear positioning. A much shorter
+// return can be the nearby pink limit; accepting it as the wall corrupts the
+// initial field Y even though the rear ToF has positioned X correctly. This
+// interval covers approximately +/-20 mm lateral placement about the nominal
+// 102.5 mm wall-to-sensor range, plus measurement allowance.
+constexpr auto OBSTACLE_PARKING_START_WALL_RANGE_MIN_MM = 80.0f;
+constexpr auto OBSTACLE_PARKING_START_WALL_RANGE_MAX_MM = 130.0f;
+constexpr unsigned long OBSTACLE_PARKING_START_WALL_MAX_AGE_MS = 250UL;
 // A short side-ToF return after alignment is expected to be the exact 200 mm
 // open end of the adjacent magenta parking piece, not the more distant outer
 // field wall. Both mirrored exits have validated this geometry. Apply it only
 // when the estimated sensor beam lies over the expected 20 mm magenta piece;
 // the tolerance matches the measured parking-piece placement accuracy.
 constexpr auto OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM = 180.0f;
+static_assert(
+    OBSTACLE_PARKING_START_WALL_RANGE_MIN_MM > 0.0f &&
+        OBSTACLE_PARKING_START_WALL_RANGE_MAX_MM <
+            OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM,
+    "Parking start wall range must be plausible and within side-ToF limit");
 constexpr auto OBSTACLE_PARKING_EXIT_BEAM_X_TOLERANCE_MM = 5.0f;
 // ST documents an approximately 22-degree detection volume at a 100 mm
 // target (18 degrees at 1000 mm). Parking-end references are only 40-70 mm
@@ -859,6 +875,9 @@ constexpr auto OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX = 18;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES = 15;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_BAND_CONTRAST = 40;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_DARK_CONTRAST = 60;
+// Require one continuous upright silhouette. A distant green region and a
+// separate dark floor marking must not combine into a nearby green pillar.
+constexpr auto OBSTACLE_GREEN_SEAT_MAX_DARK_ROW_GAP_PX = 12;
 constexpr auto OBSTACLE_GREEN_SEAT_CONFIRM_FRAMES = 3;
 constexpr auto OBSTACLE_GREEN_SEAT_RANGE_TOLERANCE_MM = 140.0f;
 constexpr uint32_t OBSTACLE_GREEN_SEAT_VOTE_WINDOW_MS = 350;

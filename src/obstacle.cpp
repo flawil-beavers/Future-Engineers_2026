@@ -85,7 +85,7 @@ static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
     {-1, -1, 20.0f},
     {+1, +1, 25.0f},
     {-1, -1, 20.0f},
-    {+1, +1, 85.0f},
+    {+1, +1, 90.0f},
     {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
 
 static ParkingExitState oc_parking_exit_state =
@@ -275,7 +275,7 @@ static void resetParkingExit()
     oc_parking_localization_continue_start_distance = 0.0f;
 }
 
-static void initializeParkingFieldPose(float rearTofRangeMm)
+static bool initializeParkingFieldPose(float rearTofRangeMm)
 {
     const int8_t turnSign =
         oc_parking_exit_steering > 0 ? -1 : 1;
@@ -301,24 +301,39 @@ static void initializeParkingFieldPose(float rearTofRangeMm)
             : rearReferenceX -
                 OBSTACLE_PARKING_EXIT_PROTOTYPE_REAR_MM -
                 measuredRearClearance;
-    const float nominalStartY =
-        OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM -
-        OBSTACLE_WHEEL_OUTSIDE_WIDTH_MM * 0.5f;
     const TofSensor outerWallSensor =
         oc_parking_exit_steering > 0 ? TOF_LEFT : TOF_RIGHT;
     const float outerWallRange = get_tof_distance(outerWallSensor);
+    TofDiagnosticSnapshot outerWallSnapshot;
+    const bool outerWallFresh =
+        get_tof_diagnostic_snapshot(outerWallSensor, outerWallSnapshot) &&
+        millis() - outerWallSnapshot.sampled_ms <=
+            OBSTACLE_PARKING_START_WALL_MAX_AGE_MS;
     const float outerWallSensorOffset =
         outerWallSensor == TOF_LEFT
             ? fabsf(OBSTACLE_TOF_LEFT_LOCAL_Y_MM)
             : fabsf(OBSTACLE_TOF_RIGHT_LOCAL_Y_MM);
     const bool outerWallReferenceUsable =
-        outerWallRange > 0.0f &&
-        outerWallRange <= OBSTACLE_PARKING_EXIT_TOF_REFERENCE_MAX_MM;
+        outerWallFresh && isfinite(outerWallRange) &&
+        outerWallRange >= OBSTACLE_PARKING_START_WALL_RANGE_MIN_MM &&
+        outerWallRange <= OBSTACLE_PARKING_START_WALL_RANGE_MAX_MM;
+    if (!outerWallReferenceUsable)
+    {
+        Serial.print("[PARK FIELD START] Outer wall range invalid sensor=");
+        Serial.print(outerWallSensor == TOF_LEFT ? "L" : "R");
+        Serial.print(" range_mm=");
+        Serial.print(outerWallRange, 1);
+        Serial.print(" fresh=");
+        Serial.print(outerWallFresh ? "yes" : "no");
+        Serial.print(" expected_mm=");
+        Serial.print(OBSTACLE_PARKING_START_WALL_RANGE_MIN_MM, 1);
+        Serial.print("..");
+        Serial.println(OBSTACLE_PARKING_START_WALL_RANGE_MAX_MM, 1);
+        return false;
+    }
     const float startY =
-        outerWallReferenceUsable
-            ? OBSTACLE_SOUTH_OUTER_WALL_Y_MM +
-                  outerWallRange + outerWallSensorOffset
-            : nominalStartY;
+        OBSTACLE_SOUTH_OUTER_WALL_Y_MM +
+        outerWallRange + outerWallSensorOffset;
     const float startHeading = turnSign > 0 ? 0.0f : 180.0f;
 
     position_reset(startX, startY, startHeading);
@@ -336,7 +351,7 @@ static void initializeParkingFieldPose(float rearTofRangeMm)
     Serial.print("/");
     Serial.print(startHeading, 1);
     Serial.print(" start_y_source=");
-    Serial.print(outerWallReferenceUsable ? "outer_wall_tof" : "nominal");
+    Serial.print("outer_wall_tof");
     Serial.print(" range_mm=");
     Serial.print(outerWallRange, 1);
     Serial.print(" start_x_source=");
@@ -345,6 +360,7 @@ static void initializeParkingFieldPose(float rearTofRangeMm)
     Serial.print(rearTofRangeMm, 1);
     Serial.print("/");
     Serial.println(measuredRearClearance, 1);
+    return true;
 }
 
 static void printParkingExitGeometry()
@@ -497,7 +513,17 @@ static void beginParkingExitSegments(float rearRangeMm)
     oc_parking_exit_state_distance = get_distance();
     oc_parking_exit_run_start_distance = get_distance();
     oc_parking_exit_start_heading = get_angle();
-    initializeParkingFieldPose(rearRangeMm);
+    if (!initializeParkingFieldPose(rearRangeMm))
+    {
+        stop(false);
+        set_steering(0);
+        oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+        parking_exit_diagnostics_finish("parking_start_outer_wall_invalid");
+        Serial.println(
+            "[PARK EXIT] Start lateral pose invalid - drive motor locked off");
+        robot_logger.write_to_usb();
+        return;
+    }
     oc_parking_exit_segment = 0;
     oc_parking_exit_settle_start_ms = millis();
     oc_parking_exit_state = PARKING_EXIT_SEGMENT_SETTLE;

@@ -32,6 +32,178 @@ const VisionResult &Vision::getResult() const
     return result;
 }
 
+bool Vision::findGreenSeatCandidate(
+    const uint8_t *buffer,
+    uint16_t width,
+    uint16_t height,
+    int16_t expectedX,
+    int16_t expectedFootY,
+    GreenSeatCandidate &candidate) const
+{
+    candidate = GreenSeatCandidate();
+    if (buffer == nullptr || width != 320 || height != 240 ||
+        expectedX < OBSTACLE_START_MIN_X ||
+        expectedX > OBSTACLE_START_MAX_X)
+        return false;
+
+    const auto rawAt = [&](int x, int y) -> uint16_t {
+        const uint16_t sourceX = ROTATE_180 ? width - 1 - x : x;
+        const uint16_t sourceY = ROTATE_180 ? height - 1 - y : y;
+        return readRGB565Raw(
+            buffer, static_cast<uint32_t>(sourceY) * width + sourceX);
+    };
+    const auto valueAt = [&](int x, int y) -> int {
+        const uint16_t raw = rawAt(x, y);
+        const uint8_t r5 = (raw >> 11) & 0x1F;
+        const uint8_t g6 = (raw >> 5) & 0x3F;
+        const uint8_t b5 = raw & 0x1F;
+        const int red = (r5 << 3) | (r5 >> 2);
+        const int green = (g6 << 2) | (g6 >> 4);
+        const int blue = (b5 << 3) | (b5 >> 2);
+        return red > green ? (red > blue ? red : blue)
+                           : (green > blue ? green : blue);
+    };
+    const auto meanValue = [&](int centerX, int halfWidth,
+                               int yStart, int yEnd) -> int {
+        uint32_t sum = 0;
+        uint16_t samples = 0;
+        for (int y = yStart; y < yEnd; y += 2)
+            for (int x = centerX - halfWidth;
+                 x < centerX + halfWidth; x += 2)
+            {
+                if (x < 0 || x >= width)
+                    continue;
+                sum += valueAt(x, y);
+                ++samples;
+            }
+        return samples == 0 ? -1 : static_cast<int>(sum / samples);
+    };
+    const auto flankValue = [&](int centerX, int halfWidth,
+                                int yStart, int yEnd) -> int {
+        const int left = meanValue(centerX - 40, halfWidth, yStart, yEnd);
+        const int right = meanValue(centerX + 40, halfWidth, yStart, yEnd);
+        return left > right ? left : right;
+    };
+
+    int bestFootError = 32767;
+    for (int centerX = expectedX - OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX;
+         centerX <= expectedX + OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX;
+         centerX += 2)
+    {
+        if (centerX < OBSTACLE_START_MIN_X ||
+            centerX > OBSTACLE_START_MAX_X)
+            continue;
+
+        // Count existing HSV-green pixels in the lower pillar band without
+        // demanding that they join the wall or one another into a blob.
+        uint16_t greenSamples = 0;
+        for (int y = 100; y < 140; y += 2)
+            for (int x = centerX - 18; x < centerX + 18; x += 2)
+            {
+                if (x < 0 || x >= width)
+                    continue;
+                greenSamples += colorLookup[rawAt(x, y)] ==
+                    static_cast<uint8_t>(ColorType::GREEN);
+            }
+        if (greenSamples < OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES)
+            continue;
+
+        const int middleValue = meanValue(centerX, 12, 104, 132);
+        const int contrast = flankValue(centerX, 12, 104, 132) - middleValue;
+        if (middleValue < 0 || contrast < OBSTACLE_GREEN_SEAT_MIN_BAND_CONTRAST)
+            continue;
+
+        // Find the physical foot from the last strongly contrasting row.
+        // Unlike a horizontal green wall strip, this must continue down to
+        // the projected ground position of the mapped seat.
+        int footY = -1;
+        for (int y = 96; y < 210; y += 2)
+        {
+            const int middle = meanValue(centerX, 10, y, y + 2);
+            if (flankValue(centerX, 10, y, y + 2) - middle >=
+                OBSTACLE_GREEN_SEAT_MIN_DARK_CONTRAST)
+                footY = y;
+        }
+        if (footY < 100)
+            continue;
+
+        uint16_t darkSamples = 0;
+        uint32_t sumX = 0;
+        uint32_t sumY = 0;
+        int minX = width;
+        int minY = height;
+        int maxX = -1;
+        int maxY = -1;
+        int previousDarkRow = -1;
+        int largestDarkRowGap = 0;
+        for (int y = 96; y <= footY; y += 2)
+        {
+            const int flank = flankValue(centerX, 12, y, y + 2);
+            bool darkRow = false;
+            for (int x = centerX - 20; x < centerX + 20; x += 2)
+            {
+                if (x < 0 || x >= width ||
+                    flank - valueAt(x, y) <
+                        OBSTACLE_GREEN_SEAT_MIN_DARK_CONTRAST)
+                    continue;
+                darkRow = true;
+                ++darkSamples;
+                sumX += x;
+                sumY += y;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+            if (darkRow)
+            {
+                if (previousDarkRow >= 0 &&
+                    y - previousDarkRow > largestDarkRowGap)
+                    largestDarkRowGap = y - previousDarkRow;
+                previousDarkRow = y;
+            }
+        }
+        if (darkSamples == 0 ||
+            largestDarkRowGap > OBSTACLE_GREEN_SEAT_MAX_DARK_ROW_GAP_PX)
+            continue;
+
+        Blob blob;
+        blob.found = true;
+        blob.color = ColorType::GREEN;
+        blob.centerX = static_cast<int16_t>(sumX / darkSamples);
+        blob.centerY = static_cast<int16_t>(sumY / darkSamples);
+        blob.minX = minX;
+        blob.minY = minY;
+        blob.maxX = maxX;
+        blob.maxY = maxY;
+        blob.area = static_cast<uint32_t>(darkSamples) * 4U;
+        if (blob.area < OBSTACLE_GREEN_MIN_AREA ||
+            blob.height() < OBSTACLE_GREEN_MIN_HEIGHT ||
+            blob.maxY < OBSTACLE_MIN_BOTTOM_Y ||
+            blob.minY > OBSTACLE_MAX_TOP_Y ||
+            blob.centerX < OBSTACLE_START_MIN_X ||
+            blob.centerX > OBSTACLE_START_MAX_X ||
+            blob.width() > OBSTACLE_MAX_START_WIDTH ||
+            blob.height() > OBSTACLE_MAX_START_HEIGHT ||
+            static_cast<float>(blob.width()) >
+                static_cast<float>(blob.height()) *
+                    OBSTACLE_MAX_WIDTH_HEIGHT_RATIO)
+            continue;
+
+        const int footError = abs(footY - expectedFootY);
+        if (candidate.blob.found &&
+            (footError > bestFootError ||
+             (footError == bestFootError &&
+              greenSamples <= candidate.greenSamples)))
+            continue;
+        bestFootError = footError;
+        candidate.blob = blob;
+        candidate.greenSamples = greenSamples;
+        candidate.brightnessContrast = contrast;
+    }
+    return candidate.blob.found;
+}
+
 // ============================================================
 // RGB565 -> RGB888
 // ============================================================

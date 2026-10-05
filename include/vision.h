@@ -100,6 +100,13 @@ struct VisionResult
     }
 };
 
+struct GreenSeatCandidate
+{
+    Blob blob;
+    uint16_t greenSamples = 0;
+    int16_t brightnessContrast = 0;
+};
+
 class Vision
 {
 public:
@@ -116,6 +123,18 @@ public:
     );
 
     const VisionResult& getResult() const;
+
+    /** Look for a dark upright green pillar near one mapped seat. The broad
+     * green wall is outside the lower colour band; the returned blob uses
+     * measured silhouette pixels and remains subject to normal geometry and
+     * range checks before it can affect a route. */
+    bool findGreenSeatCandidate(
+        const uint8_t* buffer,
+        uint16_t width,
+        uint16_t height,
+        int16_t expectedX,
+        int16_t expectedFootY,
+        GreenSeatCandidate& candidate) const;
 
     HSV getHSVAt(
         const uint8_t* buffer,

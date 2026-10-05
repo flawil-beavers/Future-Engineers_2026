@@ -150,16 +150,24 @@ Controls below are relative to the outer wall:
 | 1 | Reverse | Toward wall | 20 mm |
 | 2 | Forward | Away from wall | 25 mm |
 | 3 | Reverse | Toward wall | 20 mm |
-| 4 | Forward | Away from wall | 75 mm |
-| 5 | Forward | Toward wall until parallel | about 140 mm modeled |
+| 4 | Forward | Away from wall | 90 mm |
+| 5 | Forward | Toward wall until parallel | about 155 mm modeled |
 
 After segment 4, the robot has cleared enough of the 200 mm piece ends to use
-one continuous full-lock arc outside the parking lot. In the geometric model,
-140 mm removes the remaining 73.6 degrees of heading. Firmware uses the gyro
-rather than assuming the simulated radius exactly: it may stop from 120 mm
-once heading error is at most 2 degrees, and must stop by 180 mm.
+one continuous arc outside the parking lot. The added 5 mm in segment 4 leads
+to approximately 5 mm more travel before gyro alignment in segment 5. The
+modeled aligned pose is about 10 mm farther past the pink ends than the prior
+85/150 mm route. Firmware uses the gyro rather than assuming the simulated
+radius exactly: it may stop from 120 mm once heading error is at most 2
+degrees, and must stop by 220 mm.
 
-The five-segment path passed all 16 modeled tolerance combinations.
+The five-segment path and a 310 mm straight reverse passed all 16 modeled
+combinations at each lateral start displacement of +/-5, +/-10, +/-15 and
++/-20 mm, with +/-5 mm longitudinal and +/-1 degree heading error. This is
+modeled clearance; physical pink placement and steering error remain to be
+checked. The rear-ToF target remains 50 mm behind the body. The lateral wall
+range is accepted only from 80 to 130 mm after rear positioning; a shorter
+pink-piece return or a frame older than 250 ms cannot seed the field pose.
 
 ![Top-down five-segment parking exit](parking_exit_path.svg)
 

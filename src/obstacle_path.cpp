@@ -804,6 +804,29 @@ bool connectorRolloutFeasible(
     float heading = start.heading_deg * PI / 180.0f;
     uint8_t progress = 0;
     const PathPoint &end = parkingEntryConnector[parkingEntryConnectorLength - 1];
+    const auto reject = [&](const char *reason, float travel, int seat,
+                            const ObstacleClearanceSample &clearance,
+                            float forward, float steering) -> bool {
+        Serial.print("[PARK ENTRY CONNECTOR] Rollout reject reason=");
+        Serial.print(reason);
+        Serial.print(" lookahead/travel_mm=");
+        Serial.print(lookaheadMm, 0); Serial.print("/"); Serial.print(travel, 0);
+        Serial.print(" pose="); Serial.print(x, 1); Serial.print(",");
+        Serial.print(y, 1); Serial.print(",");
+        Serial.print(heading * 180.0f / PI, 1);
+        Serial.print(" seat="); Serial.print(seat);
+        Serial.print(" wall/pillar_mm=");
+        Serial.print(clearance.wallMm, 1); Serial.print("/");
+        Serial.print(clearance.pillarMm, 1);
+        Serial.print(" forward/steer=");
+        Serial.print(forward, 1); Serial.print("/");
+        Serial.print(steering, 1);
+        Serial.print(" end_error/heading=");
+        Serial.print(hypotf(x - end.x, y - end.y), 1); Serial.print("/");
+        Serial.println(wrap180(heading * 180.0f / PI - end.headingDeg), 1);
+        return false;
+    };
+    const ObstacleClearanceSample noClearance{};
     for (float travel = 0.0f;
          travel <= OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM;
          travel += stepMm)
@@ -817,19 +840,26 @@ bool connectorRolloutFeasible(
             const float px = x - offset * cosf(heading);
             const float py = y - offset * sinf(heading);
             ObstacleClearanceSample clearance{};
-            if (!calculateClearanceAtPose(seats[referenceSeat], px, py,
-                    heading * 180.0f / PI, clearance) ||
+            const bool referenceValid = calculateClearanceAtPose(
+                seats[referenceSeat], px, py,
+                heading * 180.0f / PI, clearance);
+            if (!referenceValid ||
                 clearance.wallMm <= clearanceMarginMm ||
                 (confirmedSeat >= 0 && clearance.pillarMm <= clearanceMarginMm))
-                return false;
+                return reject(referenceValid ? "reference_clearance" :
+                    "reference_geometry", travel, referenceSeat, clearance,
+                    NAN, NAN);
             for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
             {
                 if (!seats[seat].confirmed && seat != guardSeat)
                     continue;
-                if (!calculateClearanceAtPose(seats[seat], px, py,
-                        heading * 180.0f / PI, clearance) ||
+                const bool seatValid = calculateClearanceAtPose(
+                    seats[seat], px, py,
+                    heading * 180.0f / PI, clearance);
+                if (!seatValid ||
                     clearance.pillarMm <= clearanceMarginMm)
-                    return false;
+                    return reject(seatValid ? "pillar_clearance" :
+                        "pillar_geometry", travel, seat, clearance, NAN, NAN);
             }
         }
         if (hypotf(x - end.x, y - end.y) <= OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
@@ -837,7 +867,7 @@ bool connectorRolloutFeasible(
                 OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG)
             return true;
         if (travel + stepMm > OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM)
-            return false;
+            return reject("max_travel", travel, -1, noClearance, NAN, NAN);
         while (progress + 1 < parkingEntryConnectorLength &&
                hypotf(x - parkingEntryConnector[progress + 1].x,
                       y - parkingEntryConnector[progress + 1].y) <
@@ -852,7 +882,8 @@ bool connectorRolloutFeasible(
         const float steering = -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
         if (!isfinite(forward) || !isfinite(steering) || forward <= 1.0f ||
             fabsf(steering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG)
-            return false;
+            return reject("tracking", travel, -1, noClearance,
+                forward, steering);
         const float nextHeading = heading + curvature * stepMm;
         if (fabsf(curvature) > 1.0e-6f)
         {
@@ -869,118 +900,15 @@ bool connectorRolloutFeasible(
     return false;
 }
 
-bool buildParkingEntryConnector(
-    const PositionEstimate &start,
-    const PathPoint *route,
-    uint16_t &mergeIndex)
+// Build and validate one merge candidate. Every retry uses the same swept
+// footprint, steering and terminal-pose gates as the original preflight.
+bool tryParkingEntryConnectorMerge(
+    const PositionEstimate &start, const PathPoint *route,
+    uint16_t best, uint8_t referenceSeat, int8_t confirmedSeat,
+    int8_t guardSeat, float bestForward, float bestLateral,
+    float bestBeforePillar, uint16_t &mergeIndex)
 {
-    if (parkingEntryTargetStation < 0)
-        return false;
-    const uint8_t firstSeat = static_cast<uint8_t>(
-        parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
-    int8_t confirmedSeat = -1;
-    for (uint8_t offset = 0; offset < COURSE_SEATS_PER_STATION; ++offset)
-    {
-        if (seats[firstSeat + offset].confirmed)
-        {
-            confirmedSeat = static_cast<int8_t>(firstSeat + offset);
-            break;
-        }
-    }
-
-    // A confirmed pillar owns the displaced-route merge phase. If the parking
-    // scan resolved CLEAR, use the same inner-seat station phase as a fixed-
-    // field reference, but run wall-only preflight because no pillar exists.
-    const uint8_t referenceSeat = confirmedSeat >= 0
-        ? static_cast<uint8_t>(confirmedSeat)
-        : (seats[firstSeat].y > seats[firstSeat + 1].y
-               ? firstSeat
-               : firstSeat + 1);
-    // The station immediately after leaving the parking lot is encountered
-    // before the station resolved by the parking scan. Its inner pillar can be
-    // hidden by the parking walls, so guard its legal position even while the
-    // station is still unresolved. The parking-section outer seat is known
-    // empty by the current rules geometry.
-    int8_t guardSeat = -1;
-    if (parkingEntryTargetStation > 0)
-    {
-        const uint8_t guardStation = static_cast<uint8_t>(
-            parkingEntryTargetStation - 1);
-        const uint8_t guardFirstSeat = static_cast<uint8_t>(
-            guardStation * COURSE_SEATS_PER_STATION);
-        if (seats[guardFirstSeat].confirmed)
-            guardSeat = static_cast<int8_t>(guardFirstSeat);
-        else if (seats[guardFirstSeat + 1].confirmed)
-            guardSeat = static_cast<int8_t>(guardFirstSeat + 1);
-        else if (!discoveryStations[guardStation].observedClear)
-            guardSeat = static_cast<int8_t>(
-                seats[guardFirstSeat].y > seats[guardFirstSeat + 1].y
-                    ? guardFirstSeat
-                    : guardFirstSeat + 1);
-    }
-
     const float startHeading = start.heading_deg * PI / 180.0f;
-    const float headingX = cosf(startHeading);
-    const float headingY = sinf(startHeading);
-    uint16_t best = 0;
-    float bestScore = 1.0e12f;
-    float bestForward = 0.0f;
-    float bestLateral = 0.0f;
-    float bestBeforePillar = -1.0f;
-    for (uint16_t index = 0; index < pathLength; ++index)
-    {
-        if (fabsf(wrap180(start.heading_deg - route[index].headingDeg)) > 100.0f)
-            continue;
-        const float dx = route[index].x - start.x_mm;
-        const float dy = route[index].y - start.y_mm;
-        const float forward = dx * headingX + dy * headingY;
-        const float lateral = -dx * headingY + dy * headingX;
-        if (forward < OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM ||
-            forward > OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_FORWARD_MM)
-            continue;
-
-        float beforePillar = -1.0f;
-        float score = fabsf(lateral);
-        if (confirmedSeat >= 0)
-        {
-            beforePillar = cyclicDistanceForward(
-                route[index].distanceMm,
-                seats[referenceSeat].pathDistanceMm);
-            if (beforePillar <
-                    OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM ||
-                beforePillar >
-                    OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM)
-                continue;
-            // Prefer the route point closest to the current heading ray, then
-            // the farthest forward point when sampled candidates are similar.
-            score -= forward * 0.01f;
-        }
-        else
-        {
-            // With no pillar, the closest sampled point to the forward ray is
-            // the route intersection requested by the measured scan heading.
-            // Keep that intersection on this station's forward approach so a
-            // different side of the closed lap cannot win the ray search.
-            beforePillar = cyclicDistanceForward(
-                route[index].distanceMm,
-                seats[referenceSeat].pathDistanceMm);
-            if (beforePillar >
-                OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM)
-                continue;
-            score += forward * 0.001f;
-        }
-        if (score < bestScore)
-        {
-            bestScore = score;
-            best = index;
-            bestForward = forward;
-            bestLateral = lateral;
-            bestBeforePillar = beforePillar;
-        }
-    }
-    if (bestScore >= 1.0e12f)
-        return false;
-
     PathPoint end = route[best];
     end.headingDeg = connectorRouteHeading(route, best);
     if (!isfinite(end.headingDeg))
@@ -1285,6 +1213,151 @@ bool buildParkingEntryConnector(
         routeIndex = next;
     }
     return parkingEntryConnectorLength >= 3;
+}
+
+bool buildParkingEntryConnector(
+    const PositionEstimate &start,
+    const PathPoint *route,
+    uint16_t &mergeIndex)
+{
+    if (parkingEntryTargetStation < 0)
+        return false;
+    const uint8_t firstSeat = static_cast<uint8_t>(
+        parkingEntryTargetStation * COURSE_SEATS_PER_STATION);
+    int8_t confirmedSeat = -1;
+    for (uint8_t offset = 0; offset < COURSE_SEATS_PER_STATION; ++offset)
+    {
+        if (seats[firstSeat + offset].confirmed)
+        {
+            confirmedSeat = static_cast<int8_t>(firstSeat + offset);
+            break;
+        }
+    }
+
+    // A confirmed pillar owns the displaced-route merge phase. If the parking
+    // scan resolved CLEAR, use the same inner-seat station phase as a fixed-
+    // field reference, but run wall-only preflight because no pillar exists.
+    const uint8_t referenceSeat = confirmedSeat >= 0
+        ? static_cast<uint8_t>(confirmedSeat)
+        : (seats[firstSeat].y > seats[firstSeat + 1].y
+               ? firstSeat
+               : firstSeat + 1);
+    // The station immediately after leaving the parking lot is encountered
+    // before the station resolved by the parking scan. Its inner pillar can be
+    // hidden by the parking walls, so guard its legal position even while the
+    // station is still unresolved. The parking-section outer seat is known
+    // empty by the current rules geometry.
+    int8_t guardSeat = -1;
+    if (parkingEntryTargetStation > 0)
+    {
+        const uint8_t guardStation = static_cast<uint8_t>(
+            parkingEntryTargetStation - 1);
+        const uint8_t guardFirstSeat = static_cast<uint8_t>(
+            guardStation * COURSE_SEATS_PER_STATION);
+        if (seats[guardFirstSeat].confirmed)
+            guardSeat = static_cast<int8_t>(guardFirstSeat);
+        else if (seats[guardFirstSeat + 1].confirmed)
+            guardSeat = static_cast<int8_t>(guardFirstSeat + 1);
+        else if (!discoveryStations[guardStation].observedClear)
+            guardSeat = static_cast<int8_t>(
+                seats[guardFirstSeat].y > seats[guardFirstSeat + 1].y
+                    ? guardFirstSeat
+                    : guardFirstSeat + 1);
+    }
+
+    const float startHeading = start.heading_deg * PI / 180.0f;
+    const float headingX = cosf(startHeading);
+    const float headingY = sinf(startHeading);
+
+    // Keep the established best-ray candidate first. If its complete rollout
+    // fails, try up to three progressively earlier merge phases. A failed
+    // candidate never enables the motor or weakens a safety threshold.
+    float minimumBeforePillar = confirmedSeat >= 0
+        ? OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM : 0.0f;
+    for (uint8_t attempt = 0; attempt < 4; ++attempt)
+    {
+        uint16_t best = 0;
+        float bestScore = 1.0e12f;
+        float bestForward = 0.0f;
+        float bestLateral = 0.0f;
+        float bestBeforePillar = -1.0f;
+        for (uint16_t index = 0; index < pathLength; ++index)
+        {
+            if (fabsf(wrap180(start.heading_deg - route[index].headingDeg)) > 100.0f)
+                continue;
+            const float dx = route[index].x - start.x_mm;
+            const float dy = route[index].y - start.y_mm;
+            const float forward = dx * headingX + dy * headingY;
+            const float lateral = -dx * headingY + dy * headingX;
+            if (forward < OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM ||
+                forward > OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_FORWARD_MM)
+                continue;
+
+            float beforePillar = -1.0f;
+            float score = fabsf(lateral);
+            if (confirmedSeat >= 0)
+            {
+                beforePillar = cyclicDistanceForward(
+                    route[index].distanceMm,
+                    seats[referenceSeat].pathDistanceMm);
+                if (beforePillar <
+                        OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM ||
+                    beforePillar >
+                        OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM)
+                    continue;
+                // Prefer the route point closest to the current heading ray, then
+                // the farthest forward point when sampled candidates are similar.
+                score -= forward * 0.01f;
+            }
+            else
+            {
+                // With no pillar, the closest sampled point to the forward ray is
+                // the route intersection requested by the measured scan heading.
+                // Keep that intersection on this station's forward approach so a
+                // different side of the closed lap cannot win the ray search.
+                beforePillar = cyclicDistanceForward(
+                    route[index].distanceMm,
+                    seats[referenceSeat].pathDistanceMm);
+                if (beforePillar >
+                    OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM)
+                    continue;
+                score += forward * 0.001f;
+            }
+            if (beforePillar < minimumBeforePillar)
+                continue;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = index;
+                bestForward = forward;
+                bestLateral = lateral;
+                bestBeforePillar = beforePillar;
+            }
+        }
+
+        if (bestScore >= 1.0e12f)
+            break;
+        Serial.print("[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=");
+        Serial.print(attempt + 1); Serial.print("/");
+        Serial.print(best); Serial.print("/");
+        Serial.println(bestBeforePillar, 0);
+        if (tryParkingEntryConnectorMerge(start, route, best,
+                referenceSeat, confirmedSeat, guardSeat, bestForward,
+                bestLateral, bestBeforePillar, mergeIndex))
+            return true;
+        Serial.print("[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=");
+        Serial.print(attempt + 1); Serial.print("/");
+        Serial.println(bestBeforePillar, 0);
+        minimumBeforePillar = fmaxf(
+            minimumBeforePillar, bestBeforePillar + 50.0f);
+        if (minimumBeforePillar >
+            OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_BEFORE_PILLAR_MM)
+            break;
+    }
+    parkingEntryConnectorLength = 0;
+    parkingEntryConnectorLookaheadMm = 0.0f;
+    Serial.println("[PARK ENTRY CONNECTOR] No safe merge candidate");
+    return false;
 }
 
 void buildParkingEntryPath(const PositionEstimate &start)
@@ -2465,6 +2538,34 @@ void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
     Serial.print(" valid="); Serial.print(lastDiscoveryObservation.productionValid ? 1 : 0);
     Serial.print(" obs_seat="); Serial.print(lastDiscoveryObservation.seatId);
     Serial.print(" obs_range="); Serial.print(lastDiscoveryObservation.rangeMm, 1);
+    if (lastDiscoveryObservation.productionValid &&
+        isfinite(lastDiscoveryObservation.sightingXmm) &&
+        isfinite(lastDiscoveryObservation.sightingYmm))
+    {
+        int nearest = -1;
+        float nearestSquared = INFINITY;
+        for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+        {
+            const float errorSquared = distanceSquared(
+                lastDiscoveryObservation.sightingXmm,
+                lastDiscoveryObservation.sightingYmm,
+                seats[seat].x, seats[seat].y);
+            if (errorSquared < nearestSquared)
+            {
+                nearestSquared = errorSquared;
+                nearest = seat;
+            }
+        }
+        Serial.print(" obs_geom=");
+        Serial.print((lastDiscoveryObservation.left +
+                      lastDiscoveryObservation.right) / 2);
+        Serial.print(","); Serial.print(lastDiscoveryObservation.bottom);
+        Serial.print(","); Serial.print(lastDiscoveryObservation.bearingDeg, 1);
+        Serial.print(","); Serial.print(lastDiscoveryObservation.sightingXmm, 0);
+        Serial.print(","); Serial.print(lastDiscoveryObservation.sightingYmm, 0);
+        Serial.print(","); Serial.print(nearest);
+        Serial.print(","); Serial.print(sqrtf(nearestSquared), 0);
+    }
     Serial.print(" green_roi_us="); Serial.print(lastGreenSeatProcessingUs);
     Serial.print(" evidence="); Serial.print(coverage.lastClearEvidenceMask);
     for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
@@ -4591,6 +4692,50 @@ void finalizeConfirmedSeat(ObstacleObservationResult &result)
     result.passSide = seat.red ? 'R' : 'L';
 }
 
+void logRedSeatProjection(const ObstacleObservationResult &result,
+                          const char *decision, bool force = false)
+{
+    if (!result.productionValid || result.color != ColorType::RED)
+        return;
+    static unsigned long lastLoggedMs = 0;
+    const unsigned long now = millis();
+    if (!force && lastLoggedMs != 0 && now - lastLoggedMs < 150UL)
+        return;
+    lastLoggedMs = now;
+    int nearest = -1;
+    float nearestSquared = INFINITY;
+    if (isfinite(result.sightingXmm) && isfinite(result.sightingYmm))
+    {
+        for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+        {
+            const float errorSquared = distanceSquared(
+                result.sightingXmm, result.sightingYmm,
+                seats[seat].x, seats[seat].y);
+            if (errorSquared < nearestSquared)
+            {
+                nearestSquared = errorSquared;
+                nearest = seat;
+            }
+        }
+    }
+    Serial.print("[RED SEAT] t="); Serial.print(now);
+    Serial.print(" decision="); Serial.print(decision);
+    Serial.print(" pose="); Serial.print(result.robotXmm, 0);
+    Serial.print(","); Serial.print(result.robotYmm, 0);
+    Serial.print(","); Serial.print(result.robotHeadingDeg, 1);
+    Serial.print(" image_x/foot=");
+    Serial.print((result.left + result.right) / 2);
+    Serial.print("/"); Serial.print(result.bottom);
+    Serial.print(" bearing/range=");
+    Serial.print(result.bearingDeg, 1);
+    Serial.print("/"); Serial.print(result.rangeMm, 0);
+    Serial.print(" sighting="); Serial.print(result.sightingXmm, 0);
+    Serial.print(","); Serial.print(result.sightingYmm, 0);
+    Serial.print(" nearest/error="); Serial.print(nearest);
+    Serial.print("/"); Serial.print(nearest >= 0 ? sqrtf(nearestSquared) : -1.0f, 0);
+    Serial.print(" accepted="); Serial.println(result.seatId);
+}
+
 ObstacleObservationResult obstacle_path_observe(const Blob *blob)
 {
     ObstacleObservationResult result;
@@ -4651,6 +4796,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     {
         expirePendingVotes();
         result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+        logRedSeatProjection(result, "outside_snap");
         return result;
     }
 
@@ -4677,6 +4823,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
             expirePendingVotes();
             result.status = OBSTACLE_OBSERVATION_NO_SEAT;
             result.seatId = -1;
+            logRedSeatProjection(result, "not_upcoming");
             return result;
         }
     }
@@ -4698,6 +4845,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         expirePendingVotes();
         result.status = OBSTACLE_OBSERVATION_NO_SEAT;
         result.seatId = -1;
+        logRedSeatProjection(result, "opposite_confirmed");
         return result;
     }
 
@@ -4723,6 +4871,10 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     result.injectionCount = injectionCount;
     if (seat.confirmed)
         result.passSide = seat.red ? 'R' : 'L';
+    logRedSeatProjection(result,
+        result.status == OBSTACLE_OBSERVATION_CONFIRMED
+            ? "confirmed" : "vote_or_repeat",
+        result.status == OBSTACLE_OBSERVATION_CONFIRMED);
     return result;
 }
 

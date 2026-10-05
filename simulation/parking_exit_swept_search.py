@@ -346,10 +346,11 @@ SELECTED_CONTROLS = (
     (-1, +50, 20.0),
     (+1, -50, 25.0),
     (-1, +50, 20.0),
-    (+1, -50, 85.0),
-    # Model distance to return from about 73.6 degrees to parallel. Firmware
-    # terminates this final arc from gyro alignment within bounded distance.
-    (+1, +50, 150.0),
+    (+1, -50, 90.0),
+    # The longer away arc adds approximately 10 mm lateral clearance after
+    # alignment. Firmware ends the return arc from the gyro, not this model
+    # distance, so a physical run still needs to confirm the final pose.
+    (+1, +50, 155.0),
 )
 
 # Test-only straight reverse after the five exit segments. Firmware may stop
