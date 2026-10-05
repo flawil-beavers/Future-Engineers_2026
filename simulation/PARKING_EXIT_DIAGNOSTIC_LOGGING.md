@@ -56,16 +56,49 @@ about short reversal transients; changing the protocol is outside this test.
 
 ## Analysis
 
-From the repository root, run:
+To regenerate analysis and pose SVGs for every archived complete log in one step,
+run from the repository root:
+
+```powershell
+python simulation/analyze_parking_exit_batch.py
+```
+
+This selects files matching `YYYYMMDD_log_NNN_cw.txt` or `_ccw.txt` in the
+evidence directory, excludes `_excerpt` files, and skips byte-identical complete
+sources. It expands multiple sessions within one source and writes the report,
+plots, `parking_exit_sources.csv` (source hashes, build IDs and plot names), and
+`parking_exit_batch.md` to ignored `local_workspace/parking-exit-analysis-all/`.
+Re-running refreshes the reports; use the manifest to identify current plots if
+older SVG files remain in that directory. The command never copies logs from a
+USB drive, changes robot control, or edits committed evidence. Archive each new
+original log and its physical report first, as described below.
+
+For one log or a custom selection, run from the repository root:
 
 ```powershell
 python simulation/analyze_parking_exit_pose.py path/to/log.txt
 ```
 
-Results go to `local_workspace/parking-exit-analysis/`. The Markdown report and
-CSV files and one SVG trace per log include input hashes, schema/build identity,
-completion, ordering, overflow, duplicate sensor data, segment errors, braking
-travel, repeatability and reversals.
+Results go to `local_workspace/parking-exit-analysis/`. A source file containing
+multiple `[PARK_DIAG_CONFIG]` headers is expanded into separately identified
+sessions without editing the committed evidence. The Markdown report, CSV files
+and SVG traces include source hashes/line mappings, schema/build
+identity, completion, ordering, overflow, duplicate sensor data, segment errors,
+braking travel, repeatability and reversals. `parking_exit_rear_motion.csv`
+compares settled encoder and rear-ToF motion during rear positioning;
+`parking_exit_corrections.csv` records the existing field-pose corrections.
+Each field-pose session gets an `_exit_pose.svg` of the five exit segments and a
+`_pose.svg` that also shows the later reverse edge localization. A rear-only
+abort gets one `_pose.svg` in its local frame. Both axes use the same millimetre
+scale; the field-pose reset is not drawn as robot travel. Purple marks an
+estimator correction, which is also not physical motion. The SVGs show the rear
+axle only; the separate `simulation/parking_exit_path.svg` is an idealized
+parking-local footprint model, not a trace from a robot run.
+A combined report summarizes only sessions with an untruncated
+`unparking_complete` record; aborted/incomplete sessions still appear in the
+per-session report and CSVs. Physical setup and outcome must be checked against
+the evidence README. For newer firmware headers the analyzer also verifies the
+separate sample and event byte budgets, counting CRLF as the firmware does.
 A reversal is assigned an effective lost-motion estimate only when valid ToF
 samples observe the same unambiguous rear marker on both sides. Other cases are
 reported as unobservable rather than guessed.
@@ -76,6 +109,11 @@ rear-positioning or localization intervals with unchanged steering are used.
 The report separates estimates by travel direction, exit direction and steering
 approach when enough samples exist. Treat disagreement as backlash or hysteresis
 range; never copy one candidate into `SERVO_CENTER` automatically.
+
+The report also gives steering-approach-specific candidates and their midpoint.
+Their span may show servo/linkage hysteresis or feedback lag, but it is not a
+direct wheel-angle measurement. A centre change still requires a controlled
+physical comparison.
 
 Encoder position is measured upstream of wheel/gear play. Differences between
 encoder and ToF motion can also come from tire slip, compliance, imperfect wall

@@ -128,3 +128,33 @@ backlash, but slip, compliance and sensor geometry must remain alternative cause
 Do not implement backlash compensation or new pose control until repeated logs
 show a material, consistent error. Any later correction requires its own plan,
 offline safety validation and powered testing.
+
+## Current evidence result (2026-09-30)
+
+The 37 committed complete source files contain 38 diagnostic sessions; the
+separate `000` excerpt duplicates complete log 399. Thirty-one sessions have an
+untruncated `unparking_complete` record. Seven aborted or incomplete sessions
+remain available per run but are excluded from the combined motion summaries.
+Review the evidence README for physical setup and outcome before treating any
+completed run as a valid performance trial.
+
+Across 32 observable rear-marker moves in completed sessions, median
+encoder-minus-ToF motion is +0.45 mm, spread 3.57 mm and maximum absolute
+difference 13.27 mm. All fall within conservative sensor/settling uncertainty;
+only one is a reverse move. Log 414 failed rear stationary verification after
+the range rose while the encoder remained stationary. The interrupted log 406
+has a reverse movement whose 7.39 mm disagreement exceeds its 5.84 mm
+uncertainty, but its exit never completed. These observations warrant rear-ToF
+investigation and do not identify drivetrain backlash on their own.
+
+The exploratory completed-run curvature fit gives raw centre 80.97 degrees.
+Increasing/decreasing steering approaches give 81.67/80.08 degrees, midpoint
+80.87 degrees. The 1.59-degree span still prevents a precise centre claim;
+retain `SERVO_CENTER=80` and treat 81 as a controlled physical comparison only.
+
+Existing edge localization applies CW mean dx +22.5 mm (4.3 mm spread,
+29 completed runs) and CCW mean dx -22.8 mm (0.8 mm spread, only two runs).
+The 14 newly completed CW runs alone average +21.7 mm (4.7 mm spread). This
+supports a repeatable sensor-versus-model offset, not external ground truth.
+Keep the existing correction; obtain more CCW exits and investigate rear-ToF
+settling before changing geometry, steering control or backlash compensation.

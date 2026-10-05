@@ -353,9 +353,9 @@ SELECTED_CONTROLS = (
     (+1, +50, 155.0),
 )
 
-# Test-only straight reverse after the five exit segments. Firmware may stop
-# sooner when two wall frames confirm that the side-ToF cone has crossed the
-# opposite magenta-piece edge.
+# Historical 70 mm reverse used to check the original exit-localization
+# envelope. Current firmware searches for the marker edge with a larger bound;
+# this illustrative tail is not its present stop point or a measured trace.
 SELECTED_WITH_REVERSE_LOCALIZATION = SELECTED_CONTROLS + (
     (-1, 0, 70.0),
 )
@@ -421,11 +421,11 @@ def write_svg(start, output_path):
     out = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 800" '
         'role="img" aria-labelledby="title desc">',
-        '<title id="title">Parking exit and reverse localization path</title>',
+        '<title id="title">Idealized five-segment parking exit</title>',
         '<desc id="desc">Top-down geometry of the two magenta parking pieces, '
-        'outer wall, rear-axle path, and robot footprint at the start, after '
-        'segment four, parallel outside the parking lot, and after the bounded '
-        'reverse localization movement.</desc>',
+        'outer wall, rear-axle model path, and robot footprint. The 70 mm '
+        'reverse tail is a historical illustration, not current firmware '
+        'localization travel or measured robot motion.</desc>',
         '<rect width="850" height="800" fill="#ffffff"/>',
         f'<line x1="{tx(x_min):.1f}" y1="{ty(0):.1f}" '
         f'x2="{tx(x_max):.1f}" y2="{ty(0):.1f}" stroke="#111827" '
@@ -453,7 +453,7 @@ def write_svg(start, output_path):
     shown = (("Start", start, 0),
              ("After segment 4", endpoints[3], -50),
              ("Parallel outside", endpoints[4], +50),
-             ("Reverse localization limit", endpoints[5], 0))
+             ("Historical 70 mm reverse", endpoints[5], 0))
     for label, pose, steering in shown:
         for poly in robot_polygons(pose, steering, 0.0):
             out.append(svg_polygon(poly, tx, ty, fill="#22c55e",
@@ -503,7 +503,7 @@ def report_selected():
     localized_pose = localized_segments[-1][3]
     reverse_passed, reverse_total = validate_segments(
         start, localized_segments)
-    print("  reverse localization limit -> "
+    print("  historical 70 mm reverse illustration -> "
           f"({localized_pose.x:.1f},{localized_pose.y:.1f},"
           f"{localized_pose.heading_deg:.1f}deg)")
     print("  exit_plus_reverse_tolerance_scenarios="

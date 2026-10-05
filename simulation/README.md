@@ -15,6 +15,7 @@ contact testing.
 | `parking_exit_path.svg` | Generated top-down visualization of the selected parking-exit and localization path. |
 | `PARKING_EXIT_PATH_SIMULATION.md` | Parking-exit coordinate system, footprint, search, selected path, limitations, and physical-validation history. |
 | `analyze_parking_exit_pose.py` | Validates and analyzes automatic parking-exit pose, braking, reversal and servo-neutral diagnostics. |
+| `analyze_parking_exit_batch.py` | Regenerates pose plots and reports from all archived complete parking-exit logs, with a source-hash manifest. |
 | `analyze_connector_tracking.py` | Replays recorded connector tail targets and compares an offline route-continuation candidate; physical run procedure is in `../CONNECTOR_NEXT_TEST.md`. |
 | `connector_transition_sim.py` | Ideal closed-loop connector rollout using actual outgoing route tangents, capsule clearances and assumed sensitivity cases; mirrored cases are synthetic. |
 | `analyze_discovery_trace.py` | Per-seat visibility and clear-block reasons from bounded cached first-lap discovery records. |
@@ -42,6 +43,17 @@ python simulation/parking_exit_swept_search.py
 ```
 
 The script regenerates `parking_exit_path.svg` beside itself.
+That SVG is an idealized footprint model. To generate the estimated paths from
+recorded robot runs instead, use:
+
+```powershell
+python simulation/analyze_parking_exit_batch.py
+```
+
+The resulting plots and source manifest are written under ignored
+`local_workspace/parking-exit-analysis-all/`. See
+[`PARKING_EXIT_DIAGNOSTIC_LOGGING.md`](PARKING_EXIT_DIAGNOSTIC_LOGGING.md) for
+the evidence and interpretation rules.
 
 ## Parking-entry models
 

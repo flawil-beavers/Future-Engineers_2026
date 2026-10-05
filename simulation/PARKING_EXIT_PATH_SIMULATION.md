@@ -2,7 +2,7 @@
 
 **Project:** WRO Future Engineers 2026 robot  
 **Date:** August 2026  
-**Status:** Prototype path found; staged physical validation in progress
+**Status:** Historical feasibility model; current robot runs have separate pose traces
 
 ## 1. Purpose
 
@@ -15,6 +15,17 @@ The program searches for a low-speed multi-point path that moves the complete
 robot footprint out of the parking lot without intersecting either magenta
 block or the outer black wall. It is a feasibility and path-design tool. It
 does not run on the robot and does not replace physical clearance testing.
+
+The SVG is a parking-local, idealized footprint drawing. Its five exit controls
+now use 20/25/20/90/about 155 mm at logical steering magnitude 50, but the robot ends
+the last arc by gyro alignment within its configured bounds. The illustrated
+70 mm straight reverse was an earlier localization envelope; current firmware
+can continue farther while searching for the marker edge. For measured exits,
+use the generated `_exit_pose.svg` and `_pose.svg` files from
+`analyze_parking_exit_pose.py`. Earlier path tables below document the route's
+development and are not current motor-command specifications.
+The declared `OBSTACLE_PARKING_EXIT_FINAL_STEERING=45` is currently unused by
+the exit motion code; recent logs record 50-degree magnitude in segment 5.
 
 ## 2. Coordinate system
 
@@ -171,7 +182,9 @@ pink-piece return or a frame older than 250 ms cannot seed the field pose.
 
 ![Top-down five-segment parking exit](parking_exit_path.svg)
 
-The blue curve is the rear-axle path. Numbered circles mark segment endpoints.
+The blue curve is the idealized rear-axle path. Its 70 mm reverse tail is a
+historical illustration, not the current sensor-guided localization distance
+or a measured run. Numbered circles mark segment endpoints.
 Green outlines show the physical robot at the start, after segment 4, and when
 parallel outside the parking lot. Pink rectangles retain their exact 200 mm
 length in the driving model.
