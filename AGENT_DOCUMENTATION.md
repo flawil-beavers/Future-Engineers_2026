@@ -8794,3 +8794,45 @@ CW test/stop criteria are at the top of `CONNECTOR_NEXT_TEST.md`. Next:
 owner uploads this prepared M7, run GREEN-middle once with otherwise
 unchanged layout, then repeat with modest normal placement variation only
 after the first safe completion; archive full USB logs and physical reports.
+
+2026-10-05 GREEN-middle physical validation batch, PHILIPP USB logs 446-448:
+The user ran three cable-free CW trials with only GREEN on the middle start
+seat and the rest of the previous layout unchanged. They report that all
+three completed without contact or even a visibly narrow gap to the green
+pillar or pink parking rails. Complete source files were copied unchanged to
+`simulation/evidence/parking_exit_diagnostics/20261005_log_446_cw.txt`,
+`20261005_log_447_cw.txt` and `20261005_log_448_cw.txt`; source and archive
+SHA-256 matched. Hashes are 446
+`2aa752b5d7d605baeb5c7e3ef0cfd6b0b19259d1c68579f6d3c9c1683b37e385`,
+447 `d1f2609fbba83eac6e149a01fc0e3d2b2a461adafe5fc889b6adde0c4715c34a`,
+448 `d18bb1b05dc9e82557b25bcfadd5413aa1ab656a3d1a2567f25aff5981784e1d`.
+Sizes, firmware and outcomes are in the evidence README. All logs carry
+connector build `Oct 5 2026_22:51:38` and `route_lookahead=yes`, consistent
+with prepared M7 binary SHA-256
+`29291f3dfa0667a6606c2ad2f8f2e036a23b1439e3f5253a8ce10115e79996f0`;
+installed flash contents were not read back. The parking diagnostics header
+remains `Oct__5_2026_21_30_53` because that unchanged object was not rebuilt.
+
+All three completed five exit segments, found the parking edge with reverse
+creep 305.5/310.4/310.6 mm, confirmed GREEN at S0 station1 right seat2,
+passed the connector preflight, then printed connector completion at endpoint
+distance/heading 60.0 mm/12.4 deg, 60.0 mm/11.4 deg and 49.2 mm/14.9 deg.
+All three printed `[PATH] Completed lap 1` and the configured first-lap stop;
+no connector replan, steering rejection or stall occurred. In 447/448 a
+later contradictory opposite seat3 observation was ignored after seat2 had
+already been confirmed. It did not affect these runs but shows vision/seat
+association still needs attention. The third handoff heading is only 0.1 deg
+inside the 15 deg gate; physical clearance was good by observation, but this
+is not broad placement/lighting or CCW validation. The offline batch analyzer
+now covers 66 complete source files / 67 sessions, with reports in ignored
+`local_workspace/parking-exit-analysis-all/`.
+
+Conclusion: GREEN-middle connector correction works in these three matching
+CW physical trials, with route continuation confirmed in each log. Do not
+weaken the 15 deg handoff gate based on the third run. Next prioritize the
+other repeatable failed start arrangement, GREEN at the far/left station:
+its 433-435 logs had a late GREEN S0/2 confirmation and no replan candidate.
+Diagnose the empty candidate selection and pre-map/replan timing offline
+before another powered trial. RED near/right remains separately unresolved
+and needs pink-rail clearance review. No firmware source changes from this
+physical batch.
