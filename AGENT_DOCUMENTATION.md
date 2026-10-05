@@ -8642,3 +8642,75 @@ known empty S0 station1 marks and any visible red blocks. Keep drive disabled
 and use USB only while stationary. If the raw image identifies the interfering
 object, adjust colour/geometry association narrowly and retest cable-free;
 retain the connector preflight and hold for genuinely unresolved layouts.
+
+2026-10-05 single-start-pillar CW matrix from PHILIPP USB, logs 429-445:
+The user kept the remainder of the last photographed layout unchanged and
+did not upload any later firmware. Logs 430-445 map by sequence and confirmed
+seat to three runs each with GREEN at the middle start seat (430-432), GREEN
+at the far/left start seat (433-435), RED at the near/right start seat
+(436-438), four runs with RED at the middle seat (439-442), then three runs
+with RED at the far/left seat (443-445). Log 429 is a separate short
+rear-position failure; its physical outcome is unassigned. Every complete
+original file was copied unchanged to
+`simulation/evidence/parking_exit_diagnostics/20261005_log_NNN_cw.txt` and
+SHA-256 verified against the USB source. README rows contain exact per-file
+hashes, sizes, firmware identity, physical reports and result. All carry M7
+parking header `Oct__5_2026_21_30_53` and 90/155 mm exit targets, consistent
+with the previous batch; installed binary was not read back. Hashes by log:
+429 `fe0065270a694e477caaba2b56f9e4fb5b539a433a3dd543c832267bda74279e`,
+430 `9a5111cc46b7e74a8d1a570358d0c6f5184ad318fcfa971bc700efbe8789176a`,
+431 `054bfd6c51fb09c71d97d4ffc7679b399a70ac158c57737f1f2a0ec3964f9e1e`,
+432 `2d83f4b212e9d6818e8e75930e750995a83088f0b750e871d39a3d9e14e3e04d`,
+433 `e377c97825b6e4c83f0a7049d8830e5e547370219f4f09a78cbbd5678106fdf8`,
+434 `a6b1f10f78223e46d8baf2b8c07f004c05d38ec8adf0973efb8c53e4bbd27849`,
+435 `eadac6b0e5127d64bfd81f8a2534592e1f5daef3726d5a1fed45ab6671adb00a`,
+436 `184a87791f43db6aac8274da26a39e6b20d4698dddac5db698eea1cc7ccc8694`,
+437 `fb51ec4e27cd2722bf3218c6a423833cdc0e10c71af9933a2c70c00b52188474`,
+438 `743cde84d3ddf522ff1ccac95ac4870eef66d00aca75aed32aaa41c186cf932b`,
+439 `ed4473b48ddb74d0fbc2b7b3e5669c7303e93f0705ee04991dffd4b5aeed11ee`,
+440 `17af9e8fe42fca1ec546c5330ed854c512585ec700f5b46d0f41f2fb797147f8`,
+441 `6bc1dc20a965e3d73d233e4c7c9b4dcf28443fc0e1b56cc4a675a0abb0664fea`,
+442 `1b8df66148985b0df413ecd3fed7c67e5646f6cf7b2e496f4cb3a8ffbea4d49e`,
+443 `ae4dc499d29c9ab5e45d2a1ea6fae325d5f86ebc08e3b11db60b66523d085e1f`,
+444 `3462f0fe002b4cffb87edeffbc5753e31ac6463dcfe1d5f94cf528d5bf9043c8`,
+445 `7b19cf9063d4382cb38936efd0a4bb57c3fbc79efe34400b74ccc53530435306`.
+
+Observed matrix: GREEN middle 430/432 confirmed the correct S0/1 GREEN
+seat2 but the connector's executing forward-tracking guard rejected at
+59.8/64.4 mm after a passing preflight. 431 initially cleared S0/1 and
+S0/0, then confirmed RED at S0/1 seat2 despite reported GREEN and stopped
+because no safe connector replan existed. GREEN far/left 433-435 initially
+cleared the first two stations, armed an empty-layout connector, then
+correctly confirmed GREEN S0/2 seat4 too late for a safe replan; all stopped.
+RED near/right 436-437 correctly confirmed S0/0 seat0, but all connector
+preflight candidates failed tracking/max-travel or hidden-pillar clearance;
+438 missed that near seat and later assigned RED to S0/1 seat2, then stopped
+on replan. RED middle 439/440/442 confirmed S0/1 seat2 and physically
+completed lap 1. RED far/left 443-445 confirmed S0/2 seat4 and physically
+completed lap 1. Successful runs also traversed the unchanged other sections
+per the user's physical report. This matrix shows position-dependent path
+construction and late map injection as the main repeatable start faults;
+the GREEN-middle forward tracking rejection is a separate execution mismatch,
+while 431 and 438 additionally expose colour/seat assignment instability.
+Do not describe all failures as merely camera colour errors.
+
+The fourth RED-middle run, 441, finished all five exit segments but had a
+shorter gyro-limited final arc (134.1 mm versus 142.6-148.5 mm in the three
+successful RED-middle runs). Reverse edge localization began at estimated
+pose (248.7,-1231.4,179.3 deg). After about 68 mm reverse, speed collapsed
+from -82 to -3 mm/s while -100 mm/s remained commanded; only 8.4 mm progress
+over 1004 ms caused the onboard stall detector before the subsequent manual
+disable. The user reports physical contact/hanging at a wall, but the log
+cannot identify the contacted surface. Side ToF at stall read about 230 mm
+and rear ToF about 299 mm, so neither proves clearance of the robot corners.
+Log 429 separately failed rear stationary verification after 20.4 mm and
+did not reach exit. No source or firmware changes were made from this batch.
+The offline analyzer now covers 63 complete files / 64 sessions; reproducible
+output is in ignored `local_workspace/parking-exit-analysis-all/`.
+Next: reproduce all five start-seat cases in the offline connector model with
+their logged localized poses and map-injection timing. Repair the connector
+geometry/replan timing while retaining collision checks; separately inspect
+raw images at the false RED confirmations of 431/438 and the short final arc
+plus physical pink clearance around reverse localization in 441. Only then
+build the affected M7 environment and retest cable-free, beginning with the
+three failing single-seat positions and a monitored parking-reverse run.

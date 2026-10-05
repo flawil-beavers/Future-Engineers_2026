@@ -1,0 +1,36 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=165.0 parking_length_mm=247.5
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=87 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=-1.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK_DIAG_CONFIG] v=2 build=Oct__5_2026_21_30_53 turn=-1 center=80 mm_per_count=0.1154054 period_ms=200 sample_limit=150 byte_limit=65536 buffer=196608 sample_bytes=57000 event_bytes=8192 line_capacity=512 segments=5 exit_speed=80 brake_ms=150 rear_target=65.0 localize_max=430.0
+[PARK_DIAG] v=2 type=state t=2366 detail=rear_settle enc=0 emm=0.00 gyro=0.08 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=2366 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.08 pose=0.0,0.0,0.08 nominal=0.0,0.0,0.08 ref=rear_marker s0=3,6,87.0,87.0,29.758,1.5,1,1 s1=3,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=none
+[PARK_DIAG] v=2 type=sample t=2571 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.42 pose=0.0,0.0,2.42 nominal=0.0,0.0,0.08 ref=rear_marker s0=10,6,92.0,92.0,19.664,1.6,1,1 s1=10,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=none
+[PARK_DIAG] v=2 type=sample t=2774 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=3.17 pose=0.0,0.0,3.17 nominal=0.0,0.0,0.08 ref=rear_marker s0=17,1,99.0,99.0,18.336,1.4,1,1 s1=17,5,-1.0,9999.0,-1.000,-1.0,0,0 s2=2,63,-1.0,9999.0,-1.000,-1.0,0,1
+[PARK_DIAG] v=2 type=sample t=2975 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.88 pose=0.0,0.0,2.87 nominal=0.0,0.0,0.08 ref=rear_marker s0=24,0,99.0,99.0,18.805,1.1,1,1 s1=24,5,662.0,9999.0,0.375,12.4,1,1 s2=4,73,45.0,45.0,14.625,1.4,1,1
+[PARK REAR] One-shot correction start_range_mm=44.7 target_range_mm=65.0 direction=forward planned_mm=20.3
+[PARK_DIAG] v=2 type=state t=2999 detail=rear_drive enc=0 emm=0.00 gyro=2.88 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=2999 state=rear_drive seg=1 turn=-1 target=20.3 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.88 pose=0.0,0.0,2.87 nominal=0.0,0.0,0.08 ref=rear_marker s0=same s1=25,0,629.0,9999.0,0.367,13.9,1,1 s2=5,0,44.0,44.0,31.000,1.5,1,1
+[PARK_DIAG] v=2 type=direction t=3001 detail=0_to_1 enc=0 emm=0.00 gyro=2.88 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=3201 state=rear_drive seg=1 turn=-1 target=20.3 enc=73 emm=8.42 cmd=60 speed=33.77 steer=0 dc=1 gyro=3.01 pose=8.0,0.4,3.00 nominal=8.4,0.0,0.08 ref=rear_marker s0=31,22,98.0,98.0,19.273,1.2,1,1 s1=32,0,684.0,9999.0,0.336,13.2,1,1 s2=7,13,44.0,44.0,23.836,1.3,1,1
+[PARK_DIAG] v=2 type=state t=3334 detail=rear_brake enc=167 emm=19.27 gyro=3.19 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=3334 state=rear_brake seg=1 turn=-1 target=20.0 enc=167 emm=19.27 cmd=60 speed=65.55 steer=0 dc=2 gyro=3.19 pose=19.2,1.0,3.16 nominal=19.3,0.0,0.08 ref=rear_marker s0=36,8,100.0,100.0,19.336,1.1,1,1 s1=36,18,670.0,9999.0,0.336,13.4,1,1 s2=8,47,44.0,44.0,15.500,1.2,1,1
+[PARK_DIAG] v=2 type=state t=3484 detail=rear_settle enc=174 emm=20.08 gyro=3.39 steer=0 cmd=0
+[PARK_DIAG] v=2 type=direction t=3484 detail=1_to_0 enc=174 emm=20.08 gyro=3.39 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=3484 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=12.56 steer=0 dc=0 gyro=3.39 pose=20.1,1.1,3.35 nominal=20.1,0.0,0.08 ref=rear_marker s0=41,12,66.0,66.0,8.203,2.3,1,1 s1=41,24,680.0,9999.0,0.336,13.8,1,1 s2=10,9,46.0,46.0,14.383,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=3684 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.32 steer=0 dc=0 gyro=3.26 pose=20.1,1.1,3.24 nominal=20.1,0.0,0.08 ref=rear_marker s0=48,7,46.0,46.0,21.023,1.3,1,1 s1=48,22,88.0,88.0,17.336,1.6,1,1 s2=12,18,49.0,49.0,14.312,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=3884 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.01 steer=0 dc=0 gyro=3.52 pose=20.1,1.1,3.50 nominal=20.1,0.0,0.08 ref=rear_marker s0=55,3,48.0,48.0,15.781,1.2,1,1 s1=55,18,70.0,70.0,21.438,1.2,1,1 s2=14,27,51.0,51.0,14.125,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=4088 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.37 pose=20.1,1.1,2.35 nominal=20.1,0.0,0.08 ref=rear_marker s0=62,2,51.0,51.0,10.227,1.2,1,1 s1=62,18,63.0,63.0,21.578,1.1,1,1 s2=16,40,53.0,53.0,14.352,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=4293 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.57 pose=20.1,1.1,2.56 nominal=20.1,0.0,0.08 ref=rear_marker s0=69,2,53.0,53.0,9.961,1.3,1,1 s1=69,19,57.0,57.0,15.633,1.2,1,1 s2=18,53,50.0,50.0,17.664,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=4493 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.94 pose=20.1,1.1,2.94 nominal=20.1,0.0,0.08 ref=rear_marker s0=75,26,54.0,54.0,11.047,1.2,1,1 s1=76,14,67.0,67.0,10.266,1.2,1,1 s2=20,63,41.0,41.0,22.938,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=4693 state=rear_settle seg=1 turn=-1 target=20.0 enc=174 emm=20.08 cmd=0 speed=0.00 steer=0 dc=0 gyro=2.83 pose=20.1,1.1,2.84 nominal=20.1,0.0,0.08 ref=rear_marker s0=82,22,56.0,56.0,14.844,1.1,1,1 s1=83,13,90.0,90.0,8.719,1.3,1,1 s2=22,71,37.0,37.0,25.961,1.1,1,1
+[PARK REAR VERIFY] final_range_mm=35.7 target_error_mm=29.3 measured/expected_change_mm=-9.0/20.4 accepted=no
+[PARK_DIAG] v=2 type=finish t=4811 detail=stationary_verification_failed_bytes_4902_samples_14 enc=174 emm=20.08 gyro=2.95 steer=0 cmd=0
+[PARK REAR] Failed reason=stationary_verification_failed range_mm=33.0 travel_mm=20.4
+[PARK REAR DIAG] sequence/filtered/raw_mm=24/33.0/33.0 signal_mcps=27.656 sigma_mm=1.1
+[PARK REAR] Drive motor locked off
