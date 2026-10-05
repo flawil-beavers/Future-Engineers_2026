@@ -8763,3 +8763,34 @@ capture why route-point selection is empty on S0/2 GREEN injection, and
 reconstruct RED-near connector geometry from logged poses while checking
 pink clearance through exit and scout. Leave the 42 deg steering and pillar
 clearance safety limits intact.
+
+2026-10-05 GREEN-middle connector correction, prepared but not uploaded:
+The user selected GREEN at S0/1 middle as the first stop to fix. M7-only
+`src/obstacle_path.cpp` now continues the connector Pure Pursuit lookahead
+into the actual outgoing route when the connector is built for a confirmed
+GREEN target-station seat. The same `connectorLookaheadFrom()` target is used
+by static steering preflight, 2 mm swept rollout and live steering. Other
+connector cases retain their finite-path target; the 42 degree steering,
+front/rear wall/pillar and 500 mm travel guards are unchanged. The selected
+preflight prints `route_lookahead=yes`. Failed/replanned connectors reset this
+mode; a later detected seat still triggers the normal replan/hold logic.
+
+Reproducible `simulation/replay_green_middle_connector.py` uses the archived
+430/432 geometry and recorded final tracking poses. Finite targets reproduce
+immediate steering rejection at those poses; route continuation reaches the
+existing 60 mm/15 degree handoff in 8/18 mm ideal motion. The assumed grid
+of +/-10 mm X/Y, +/-2 deg heading and yaw gain 0.85/1.00/1.15 yields 81/81
+passes from each connector start and 81/81 from each logged last pose. The
+minimum modeled wall and GREEN seat2 pillar clearances from the start grid
+are 167.5/157.9 mm across the two logs; these are ideal fixed-field capsule
+figures. The script additionally checks the modeled pink rails at both
+parking-gap extremes; none of the simulated connector cases contacts them.
+Real rail placement and tracking remain unverified. The script does not
+explain log 431's false RED. IDE-managed PlatformIO `giga_r1_m7` build
+succeeded, RAM 432704/523624, flash 464928/786432 bytes; binary SHA-256
+`29291f3dfa0667a6606c2ad2f8f2e036a23b1439e3f5253a8ce10115e79996f0`.
+M4 is unaffected. No upload or powered test was performed. Exact cable-free
+CW test/stop criteria are at the top of `CONNECTOR_NEXT_TEST.md`. Next:
+owner uploads this prepared M7, run GREEN-middle once with otherwise
+unchanged layout, then repeat with modest normal placement variation only
+after the first safe completion; archive full USB logs and physical reports.

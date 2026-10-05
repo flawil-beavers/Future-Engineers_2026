@@ -1,5 +1,41 @@
 # Connector diagnostic run and acceptance sequence
 
+## Prepared next test: GREEN at the middle start seat (2026-10-05)
+
+Logs 430 and 432 correctly confirmed GREEN at S0/1 right seat2, then stopped
+because live steering reached -42.02 degrees immediately before connector
+handoff while the allowed magnitude is 42 degrees. The connector target was
+pinned to its final waypoint. M7 now lets only a connector built for a
+confirmed GREEN target station continue its fixed lookahead along the outgoing
+route. The preflight rollout and live controller use the same target function;
+the existing steering, footprint and 500 mm travel gates remain active. This
+does not address the different false-RED/replan failure in log 431, nor GREEN
+at the far start seat or RED at the near seat.
+
+`python simulation/replay_green_middle_connector.py` replays both archived
+connector geometries. At the actual last poses, the old target immediately
+reproduces a steering rejection; continued lookahead reaches the handoff in
+8/18 mm of ideal travel. A grid of +/-10 mm x/y, +/-2 degrees heading and
+0.85/1.00/1.15 yaw response passes 81/81 cases per run from connector start
+and 81/81 per run from the logged stop pose. Minimum modeled wall/pillar
+clearances in the connector-start grid are 167.5/157.9 mm. These are model
+assumptions, not measured physical margins. The replay also checks both
+modeled parking-rail gap extremes; real pink placement still needs observation.
+The M7-only PlatformIO build
+succeeded; no firmware upload or robot test occurred for this revision.
+
+Next powered test after the owner uploads the prepared M7: leave the other
+pillars as in the single-start-pillar matrix, put only GREEN at the middle
+start seat, use the normal CW parking start and drive without a connected
+laptop cable. Watch the pink bay during exit/scout and the green bypass.
+The log should show `route_lookahead=yes` on the connector preflight, then
+`[PARK ENTRY CONNECTOR] Complete` and the expected first-lap stop. Stop
+manually for physical contact or an unsafe gap; preserve the full USB log and
+report the exact stop/contact location. A single success checks feasibility;
+repeat at least three times with modest normal placement variation before
+calling the case reliable. Do not use this revision to claim the other start
+seat arrangements are repaired.
+
 ## Paused at owner's request (2026-09-28)
 
 Owner corrected that green had been moved: the 20260927 green distance check

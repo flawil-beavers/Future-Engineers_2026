@@ -177,6 +177,7 @@ uint8_t parkingEntryConnectorProgress = 0;
 uint16_t parkingEntryConnectorMergeIndex = 0;
 float parkingEntryConnectorStartEncoderDistance = 0.0f;
 float parkingEntryConnectorLookaheadMm = 0.0f;
+bool parkingEntryConnectorRouteLookahead = false;
 uint32_t parkingEntryConnectorTraceMs = 0;
 uint8_t parkingEntryConnectorTraceCount = 0;
 uint32_t parkingEntryObserveStartMs = 0;
@@ -777,7 +778,10 @@ bool calculateClearanceAtPose(
     float headingDeg,
     ObstacleClearanceSample &sample);
 
-PathPoint connectorLookaheadFrom(uint8_t index, float lookaheadMm);
+PathPoint connectorLookaheadFrom(
+    uint8_t index, float lookaheadMm, const PathPoint *route,
+    uint16_t mergeIndex, bool continueIntoRoute,
+    uint16_t *targetIndex = nullptr);
 
 float connectorRouteHeading(const PathPoint *route, uint16_t index)
 {
@@ -796,7 +800,8 @@ float connectorRouteHeading(const PathPoint *route, uint16_t index)
 
 bool connectorRolloutFeasible(
     const PositionEstimate &start, float lookaheadMm,
-    uint8_t referenceSeat, int8_t confirmedSeat, int8_t guardSeat)
+    uint8_t referenceSeat, int8_t confirmedSeat, int8_t guardSeat,
+    const PathPoint *route, uint16_t mergeIndex, bool continueIntoRoute)
 {
     constexpr float stepMm = 2.0f;
     constexpr float clearanceMarginMm = 10.0f;
@@ -874,7 +879,8 @@ bool connectorRolloutFeasible(
                hypotf(x - parkingEntryConnector[progress].x,
                       y - parkingEntryConnector[progress].y))
             ++progress;
-        const PathPoint target = connectorLookaheadFrom(progress, lookaheadMm);
+        const PathPoint target = connectorLookaheadFrom(
+            progress, lookaheadMm, route, mergeIndex, continueIntoRoute);
         const float dx = target.x - x, dy = target.y - y;
         const float forward = dx * cosf(heading) + dy * sinf(heading);
         const float lateral = -dx * sinf(heading) + dy * cosf(heading);
@@ -909,6 +915,8 @@ bool tryParkingEntryConnectorMerge(
     float bestBeforePillar, uint16_t &mergeIndex)
 {
     const float startHeading = start.heading_deg * PI / 180.0f;
+    const bool continueIntoRoute = confirmedSeat >= 0 &&
+        !seats[confirmedSeat].red;
     PathPoint end = route[best];
     end.headingDeg = connectorRouteHeading(route, best);
     if (!isfinite(end.headingDeg))
@@ -1060,7 +1068,7 @@ bool tryParkingEntryConnectorMerge(
     float failedForward = 0.0f;
     float failedSteering = 0.0f;
     uint8_t failedSample = 0;
-    uint8_t failedTarget = 0;
+    uint16_t failedTarget = 0;
     for (float candidateLookahead = desiredLookahead;
          candidateLookahead >=
              OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM - 0.1f;
@@ -1083,19 +1091,10 @@ bool tryParkingEntryConnectorMerge(
             {
                 break;
             }
-            uint8_t targetSample = sample;
-            float accumulated = 0.0f;
-            while (targetSample + 1 < parkingEntryConnectorLength &&
-                   accumulated < candidateLookahead)
-            {
-                accumulated += hypotf(
-                    parkingEntryConnector[targetSample + 1].x -
-                        parkingEntryConnector[targetSample].x,
-                    parkingEntryConnector[targetSample + 1].y -
-                        parkingEntryConnector[targetSample].y);
-                ++targetSample;
-            }
-            const PathPoint &target = parkingEntryConnector[targetSample];
+            uint16_t targetSample = sample;
+            const PathPoint target = connectorLookaheadFrom(
+                sample, candidateLookahead, route, best,
+                continueIntoRoute, &targetSample);
             const float dx = target.x - at.x;
             const float dy = target.y - at.y;
             const float heading = at.headingDeg * PI / 180.0f;
@@ -1119,7 +1118,8 @@ bool tryParkingEntryConnectorMerge(
             }
         }
         if (feasible && !connectorRolloutFeasible(
-                start, candidateLookahead, referenceSeat, confirmedSeat, guardSeat))
+                start, candidateLookahead, referenceSeat, confirmedSeat,
+                guardSeat, route, best, continueIntoRoute))
         {
             feasible = false;
             Serial.print("[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=");
@@ -1173,6 +1173,8 @@ bool tryParkingEntryConnectorMerge(
     Serial.print(parkingEntryConnector[parkingEntryConnectorLength - 1].distanceMm, 0);
     Serial.print(" lookahead_mm=");
     Serial.print(parkingEntryConnectorLookaheadMm, 1);
+    Serial.print(" route_lookahead=");
+    Serial.print(continueIntoRoute ? "yes" : "no");
     Serial.print(" points=");
     Serial.println(parkingEntryConnectorLength);
     Serial.print("[PARK ENTRY CONNECTOR] Tangent baseline/actual_deg=");
@@ -1220,6 +1222,7 @@ bool buildParkingEntryConnector(
     const PathPoint *route,
     uint16_t &mergeIndex)
 {
+    parkingEntryConnectorRouteLookahead = false;
     if (parkingEntryTargetStation < 0)
         return false;
     const uint8_t firstSeat = static_cast<uint8_t>(
@@ -1344,7 +1347,11 @@ bool buildParkingEntryConnector(
         if (tryParkingEntryConnectorMerge(start, route, best,
                 referenceSeat, confirmedSeat, guardSeat, bestForward,
                 bestLateral, bestBeforePillar, mergeIndex))
+        {
+            parkingEntryConnectorRouteLookahead = confirmedSeat >= 0 &&
+                !seats[confirmedSeat].red;
             return true;
+        }
         Serial.print("[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=");
         Serial.print(attempt + 1); Serial.print("/");
         Serial.println(bestBeforePillar, 0);
@@ -3821,7 +3828,10 @@ PathPoint findLookahead(
     return path[index];
 }
 
-PathPoint connectorLookaheadFrom(uint8_t index, float lookaheadMm)
+PathPoint connectorLookaheadFrom(
+    uint8_t index, float lookaheadMm, const PathPoint *route,
+    uint16_t mergeIndex, bool continueIntoRoute,
+    uint16_t *targetIndex)
 {
     float accumulated = 0.0f;
     while (index + 1 < parkingEntryConnectorLength &&
@@ -3834,12 +3844,39 @@ PathPoint connectorLookaheadFrom(uint8_t index, float lookaheadMm)
                 parkingEntryConnector[index].y);
         ++index;
     }
-    return parkingEntryConnector[index];
+    PathPoint target = parkingEntryConnector[index];
+    if (targetIndex != nullptr)
+        *targetIndex = index;
+    if (!continueIntoRoute || accumulated >= lookaheadMm ||
+        route == nullptr || pathLength < 2)
+        return target;
+
+    // Green joining can still need a forward target before the handoff gate
+    // is met. Continue the same lookahead along the validated outgoing route
+    // instead of pinning it to the connector endpoint.
+    for (uint16_t step = 1; step < pathLength; ++step)
+    {
+        const PathPoint &next = route[(mergeIndex + step) % pathLength];
+        const float segment = hypotf(next.x - target.x, next.y - target.y);
+        if (segment < 1.0f)
+            continue;
+        accumulated += segment;
+        target = next;
+        if (targetIndex != nullptr)
+            *targetIndex = parkingEntryConnectorLength + step - 1;
+        if (accumulated >= lookaheadMm)
+            break;
+    }
+    return target;
 }
 
-PathPoint findConnectorLookahead(float lookaheadMm)
+PathPoint findConnectorLookahead(
+    float lookaheadMm, const PathPoint *route)
 {
-    return connectorLookaheadFrom(parkingEntryConnectorProgress, lookaheadMm);
+    return connectorLookaheadFrom(
+        parkingEntryConnectorProgress, lookaheadMm, route,
+        parkingEntryConnectorMergeIndex,
+        parkingEntryConnectorRouteLookahead);
 }
 } // namespace
 
@@ -3915,6 +3952,7 @@ void obstacle_path_reset()
     parkingEntryConnectorMergeIndex = 0;
     parkingEntryConnectorStartEncoderDistance = 0.0f;
     parkingEntryConnectorLookaheadMm = 0.0f;
+    parkingEntryConnectorRouteLookahead = false;
     parkingEntryObserveStartMs = 0;
     parkingEntryUsbWritten = false;
     parkingEntryStartEncoderDistance = get_distance();
@@ -4277,7 +4315,7 @@ void obstacle_path_update(bool new_camera_frame)
     PathPoint target;
     if (parkingEntryConnectorActive)
     {
-        target = findConnectorLookahead(lookahead);
+        target = findConnectorLookahead(lookahead, path);
     }
     else
     {
