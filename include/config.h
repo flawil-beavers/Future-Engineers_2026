@@ -618,7 +618,7 @@ constexpr bool OBSTACLE_PARKING_CW_SHORT_START_ENABLED = true;
 // Measured-pose short start: allow small brake settling after the 2-degree
 // alignment target. Swept scan/connector checks still use the actual pose.
 // This does NOT relax the separate 2-degree ToF reference correction gate.
-constexpr float OBSTACLE_PARKING_CW_SHORT_START_HEADING_TOLERANCE_DEG = 3.0f;
+constexpr float OBSTACLE_PARKING_CW_SHORT_START_HEADING_TOLERANCE_DEG = 5.0f;
 // OFFICIAL O, CCW: only the right/front place is ahead after unparking.
 // Stop at the second-edge reference without the legacy extra 70 mm reverse;
 // observe that front place with the existing 55 mm arc. The middle and left
@@ -930,7 +930,16 @@ constexpr auto OBSTACLE_LOST_FRAMES = 3;
 // +/-18 px tolerates modest pose error while the two legal side seats remain
 // much farther apart (about 80 px even at the 600 mm discovery limit).
 constexpr auto OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX = 18;
+// Close start-seat projections must have a plausible ground foot. This
+// rejects tall pink-boundary projections such as the false RED in log471.
+constexpr auto OBSTACLE_PARKING_SEAT_FOOT_TOLERANCE_PX = 18;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES = 15;
+// Local, silhouette-validated fallback only: accommodate brighter exposure.
+// Full-frame green thresholds stay independent of this mapped-seat check.
+constexpr auto OBSTACLE_GREEN_SEAT_MAX_COLOR_VALUE = 200;
+// An upright object at this projected foot blocks empty evidence even when
+// its colour is unresolved; it does NOT become a GREEN map entry.
+constexpr auto OBSTACLE_SEAT_SILHOUETTE_FOOT_TOLERANCE_PX = 12;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_BAND_CONTRAST = 40;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_DARK_CONTRAST = 60;
 // Require one continuous upright silhouette. A distant green region and a
@@ -1125,6 +1134,11 @@ constexpr auto OBSTACLE_PARKING_CCW_GREEN_LAP1_PLATEAU_WAYPOINTS = 1;
 // to equal the adjacent second clearance, so route construction must pass an
 // explicit plateau flag rather than infer the shape from clearance alone.
 constexpr auto OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM = 210.0f;
+// Official normal-section solitary middles only: less lateral excursion.
+constexpr auto OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM = 210.0f;
+// Normal-section solitary middles permit a shorter extreme displacement, preserving
+// more wall reserve. End-pair passing plateaus retain their 210mm target.
+constexpr auto OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM = 190.0f;
 // Preserve the learned lap-1 route around the start/lap seam. This prevents
 // a new avoidance shape from jumping sideways under a middle starting sign
 // during the 1 -> 2 handoff. Fade into the later-lap route farther away.

@@ -102,6 +102,7 @@ struct VisionResult
 
 struct GreenSeatCandidate
 {
+    bool silhouetteFound = false; // Occupancy evidence only, never a colour vote.
     Blob blob;
     uint16_t greenSamples = 0;
     int16_t brightnessContrast = 0;

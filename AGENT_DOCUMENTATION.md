@@ -9691,3 +9691,60 @@ hashes/physical reports in tracked README; details/limits in
 RED lap2, CCW S3-entry GREEN lap1. Archive logs immediately; assess LATER_TRACK
 and injection poses before expanding layouts; investigate missing seat12 if it
 recurs. Physical reliability remains unproven. No user answers needed this turn.
+
+
+## 2026-10-06 CW/CCW471-476 batch received
+
+Complete originals471-476 secured unchanged, SHA256 compared to source and
+archive; portable names/hashes in evidence README.471-474 CW in reported order:
+471start GREEN contact/halt;472exit then hold;473/4743laps contact-free, visually
+4-5cm wall margin at S3 middle-inner RED, unnecessary wide preceding corner.
+475/476CCW returned logs contain3laps; user reports all CCW trials contact-free.
+Unchanged A. Headers parking `Oct__6_2026_19_54_43`, connector `Oct 6 2026_19:54:26`,
+consistent with previous candidate source builds, installed binary not read back.
+Start471 scan falsely clears S0 middle, scouts behind start and confirms REDseat0;
+472settled exit heading3.23deg exceeds3deg gate. Exact interpretation and fixes
+pending. Prioritize start perception and measured-pose preflight, then targeted
+known-route corner optimization both directions, regress/build M7 only. No upload
+or agent commit; received logs will be tracked before batch finish.
+
+
+471-476 review complete; raw logs/hashes in tracked evidence README.471 S0 middle
+false CLEAR at300.3,-1221.6,147.7deg, no GREEN bypass, then false REDseat0 and
+stall5.3mm/1000ms after physical GREEN contact. No saved RGB frame: missing GREEN
+optical cause unproven.472finite initialized exit pose rejected solely by settled
+heading3.23deg>3deg.473/474CW3laps and475/476CCW3laps contact-free per user;
+CCW first-edge accepted30.1/41.9mm remaining reverse, scanx357.7/357.6 with84mm arc.
+Sampled onboard capsule CW S3 wall minimum57.5/56.5 and81.2/68.6mm (laps2/3),
+not independent clearance; supports user4-5cm report. Both CW successful maps
+omit actual S2 first-inner GREENseat12, whereas CCW sees its counterpartseat17.
+
+Candidate: CW heading prerequisite5deg with unchanged finite/swept checks;
+close start-seat ground-foot agreement18px rejects471false projections;
+mapped GREEN silhouette fallback accepts brighter dominant-green pixels V<=200,
+full-frame/FOV unchanged. Geometrically matching unknown upright silhouette
+blocks CLEAR but never confirms colour. Existing retry/scout retained; unresolved
+holds are still required. Initial observe GREEN_START_CHECK enabled. One stopped
+CW middle-CLEAR cached RGB56564x96 window sampled2px,48hex rows,7130bytes logged
+(<=8kB); no extra capture/save/motion. Diagnostic cannot recreate471raw image.
+
+Official later-route inner lane carries same-colour end->next solitary middle
+through non-start corners, minradius180, full-footprint fallback. Carry into S0
+excluded to preserve seam: unrestricted carry left15.6mm modeled pillar reserve.
+Reduced targets only normal-section solitary middles: moderate210/extreme190;
+start and end-pair targets retain previous values. Broader reduction rejected
+(min15.2mm). First-lap avoidance, O3 geometry and1.50later factor retained.
+
+Verification:8943CW measured/perturbed5deg scan/connector cases pass; GREEN/RED
+archived images and synthetic brightness, unknown occupancy, wall/floor controls
+pass; projected-foot471regression, ROI gating/rotation/once/budget pass;
+CW/CCW stored-state and2400footprint cases, CCW first-edge state pass.
+Final2803CAD later-route cases pass including30mm pillar-reserve gate; matrix
+minwall90.4/pillar36.1mm. Rollout omits ToF closed-loop/servo delay/perception;
+no hardware guarantee. Analyzer94complete files/95sessions, all outputs ignored.
+Final IDE M7-only build RAM432776/523624, flash484344/786432, SHA256`6521bc8ecc4caf1dd373231d9ee4e1d5d1b554759d2bed61aae6da5b72081c3a`.
+Existing Serial warnings; M4 interface/consumers unchanged. No upload/agent commit.
+Details `simulation/CW_CCW_471_476_REVIEW.md`; scripts/reports relative there.
+Next user uploadM7, unchanged A3fresh CW full3lap trials then2CCW, cable-free.
+Watch S0 GREEN, S3 RED wall/corner and missingseat12; secure complete originals
+first, inspect START_ROI/GREEN_START_CHECK/foot rejects/carry fallback/LATER_TRACK.

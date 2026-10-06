@@ -94,20 +94,6 @@ bool Vision::findGreenSeatCandidate(
             centerX > OBSTACLE_START_MAX_X)
             continue;
 
-        // Count existing HSV-green pixels in the lower pillar band without
-        // demanding that they join the wall or one another into a blob.
-        uint16_t greenSamples = 0;
-        for (int y = 100; y < 140; y += 2)
-            for (int x = centerX - 18; x < centerX + 18; x += 2)
-            {
-                if (x < 0 || x >= width)
-                    continue;
-                greenSamples += colorLookup[rawAt(x, y)] ==
-                    static_cast<uint8_t>(ColorType::GREEN);
-            }
-        if (greenSamples < OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES)
-            continue;
-
         const int middleValue = meanValue(centerX, 12, 104, 132);
         const int contrast = flankValue(centerX, 12, 104, 132) - middleValue;
         if (middleValue < 0 || contrast < OBSTACLE_GREEN_SEAT_MIN_BAND_CONTRAST)
@@ -191,6 +177,34 @@ bool Vision::findGreenSeatCandidate(
             continue;
 
         const int footError = abs(footY - expectedFootY);
+        if (footError <= OBSTACLE_SEAT_SILHOUETTE_FOOT_TOLERANCE_PX)
+            candidate.silhouetteFound = true;
+        // Count existing HSV-green pixels in the lower pillar band without
+        // demanding that they join the wall or one another into a blob.
+        uint16_t greenSamples = 0;
+        for (int y = 100; y < 140; y += 2)
+            for (int x = centerX - 18; x < centerX + 18; x += 2)
+            {
+                if (x < 0 || x >= width)
+                    continue;
+                const uint16_t raw = rawAt(x, y);
+                if (colorLookup[raw] == static_cast<uint8_t>(ColorType::GREEN))
+                {
+                    ++greenSamples;
+                    continue;
+                }
+                const uint8_t r5 = (raw >> 11) & 31, g6 = (raw >> 5) & 63, b5 = raw & 31;
+                const int r = (r5 << 3) | (r5 >> 2);
+                const int g = (g6 << 2) | (g6 >> 4);
+                const int b = (b5 << 3) | (b5 >> 2);
+                const int low = r < b ? r : b;
+                // Dominant green means hue60..180; saturation guards gray.
+                greenSamples += g > r && g >= b && g >= 20 &&
+                    g <= OBSTACLE_GREEN_SEAT_MAX_COLOR_VALUE &&
+                    (g-low)*255 >= g*30;
+            }
+        if (greenSamples < OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES)
+            continue;
         if (candidate.blob.found &&
             (footError > bestFootError ||
              (footError == bestFootError &&

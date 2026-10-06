@@ -47,7 +47,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
-        'bool buildOptimizedPath()', 'bool completePendingLap()', 'void updateProgress(',
+        'void carryKnownInnerLaneToMiddle(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
@@ -312,6 +312,12 @@ int main(){
                 passed=bool(int(passed)),minimum_wall_mm=float(wall),minimum_pillar_mm=float(pillar),
                 failure_reason=0 if int(passed) else int(reason),
                 failure_seat=int(seat),pose=[float(x),float(y),float(h)])
+    # A collision-free ideal replay with only a few mm reserve is not an
+    # acceptable optimization. Preserve a30mm modeled pillar-reserve floor.
+    for c in cases:
+        if c['passed'] and c['minimum_pillar_mm'] < 30:
+            c['passed']=False
+            c['failure_reason']=7
     failed=[c for c in cases if not c['passed']]
     report=dict(total=len(cases),failed=len(failed),cases=cases,
                 limitations=['Known explicit layouts, calibrated CAD plant, no images, ToF feedback or servo delay',

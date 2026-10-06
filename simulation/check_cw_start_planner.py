@@ -160,8 +160,8 @@ def main():
 int main() {
  PositionEstimate settled;settled.x_mm=240.9f;settled.y_mm=-1220.6f;settled.heading_deg=182.2f;
  if(!cwShortStartPoseUsable(true,2.1f,settled) ||
-    !cwShortStartPoseUsable(true,3.0f,settled) ||
-    cwShortStartPoseUsable(true,3.01f,settled) ||
+    !cwShortStartPoseUsable(true,5.0f,settled) ||
+    cwShortStartPoseUsable(true,5.01f,settled) ||
     cwShortStartPoseUsable(false,2.1f,settled) ||
     cwShortStartPoseUsable(true,NAN,settled))return 2;
  settled.heading_deg=NAN;if(cwShortStartPoseUsable(true,2.1f,settled))return 2;
@@ -192,6 +192,12 @@ int main() {
     cases += [(240.9+dx,-1220.6+dy,182.2+dh,*layout,0,0,0)
               for dx in (-5,0,5) for dy in (-5,0,5) for dh in (-.8,0,.8)
               for layout in layouts]
+    # Current measured failed/successful exits and 5-degree candidate boundary.
+    cases += [(238.8+dx,-1222.0+dy,183.23+dh,*layout,0,0,0)
+              for dx in (-5,0,5) for dy in (-5,0,5) for dh in (-1,0,1)
+              for layout in layouts]
+    cases += [(240,-1220,180+dh,*layout,0,0,0)
+              for dh in (-5,5) for layout in layouts]
     inputs = '\n'.join(' '.join(map(str,c)) for c in cases)+'\n'
     result = subprocess.run([str(executable)], input=inputs, text=True, capture_output=True)
     (destination/'result.txt').write_text(result.stdout+result.stderr)

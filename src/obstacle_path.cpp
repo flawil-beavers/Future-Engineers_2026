@@ -104,6 +104,7 @@ uint16_t progressIndex = 0;
 uint8_t completedLaps = 0;
 uint32_t laterTrackingTraceMs = 0;
 uint16_t laterTrackingTraceCount = 0;
+bool parkingStartRoiLogged = false;
 int8_t routeTurnSign = 1;
 bool running = false;
 bool finished = false;
@@ -1934,9 +1935,14 @@ float optimizedClearanceForSeat(uint8_t seatIndex)
         seatIndex == 4 && !seats[seatIndex].red &&
         seats[seatIndex].lateralMm < 0.0f)
         return OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
+    if (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+        seatIndex >= 6 && seatIndex % 6 / 2 == 1 && targetsOuterExtreme(seats[seatIndex]))
+        return OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM;
     if (targetsOuterExtreme(seats[seatIndex]))
         return OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM;
-    return OBSTACLE_LAP1_CLEARANCE_MM;
+    return sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+            seatIndex >= 6 && seatIndex % 6 / 2 == 1
+        ? OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM : OBSTACLE_LAP1_CLEARANCE_MM;
 }
 
 bool optimizedUsesOuterPlateau(uint8_t seatIndex)
@@ -2493,6 +2499,70 @@ void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)
     }
 }
 
+// Official repeated laps: retain an already safe inner lane through the
+// corner when the next section has a same-colour solitary middle sign.
+// Returning to the centre before taking the same side again wastes a turn.
+// Discovery/O3 geometry and all opposite-colour transitions stay independent.
+void carryKnownInnerLaneToMiddle(PathPoint *route)
+{
+    if (sectionLayoutMode != OBSTACLE_SECTION_LAYOUT_OFFICIAL) return;
+    for (uint8_t corner = 0; corner < 4; ++corner)
+    {
+        const uint8_t endFirst = corner * 6 + 4;
+        const uint8_t nextFirst = ((corner + 1) % 4) * 6;
+        // The start-section seam is preserved separately. A carry into it
+        // would overwrite that blend and narrow a previously safe start pass.
+        if (nextFirst == 0) continue;
+        int endSeat = -1, middleSeat = -1;
+        for (uint8_t side = 0; side < 2; ++side)
+        {
+            if (seats[endFirst + side].confirmed) endSeat = endFirst + side;
+            if (seats[nextFirst + 2 + side].confirmed) middleSeat = nextFirst + 2 + side;
+        }
+        if (endSeat < 0 || middleSeat < 0 ||
+            seats[endSeat].red != seats[middleSeat].red ||
+            seats[nextFirst].confirmed || seats[nextFirst + 1].confirmed ||
+            seats[nextFirst + 4].confirmed || seats[nextFirst + 5].confirmed)
+            continue;
+        uint16_t first = 0, last = 0;
+        for (uint16_t i = 0; i < pathLength; ++i)
+        {
+            if (fabsf(baselinePath[i].distanceMm-corners[corner].pathStartMm)<1) first=i;
+            if (fabsf(baselinePath[i].distanceMm-corners[corner].pathEndMm)<1) last=i;
+        }
+        if (last <= first) continue;
+        const float h = baselinePath[first].headingDeg * PI / 180.0f;
+        const float cx = baselinePath[first].x-routeTurnSign*OBSTACLE_CORNER_RADIUS_MM*sinf(h);
+        const float cy = baselinePath[first].y+routeTurnSign*OBSTACLE_CORNER_RADIUS_MM*cosf(h);
+        const float radius = hypotf(route[first].x-cx,route[first].y-cy);
+        // Never carry a tighter radius than the existing 180mm model bound,
+        // nor convert an outer route into this optional inner-lane shortcut.
+        if (radius < 180.0f || radius >= OBSTACLE_CORNER_RADIUS_MM-20.0f) continue;
+        const float oldEndX=route[last].x, oldEndY=route[last].y;
+        for (uint16_t i=first;i<=last;++i)
+        {
+            const float scale=radius/OBSTACLE_CORNER_RADIUS_MM;
+            route[i].x=cx+(baselinePath[i].x-cx)*scale;
+            route[i].y=cy+(baselinePath[i].y-cy)*scale;
+        }
+        const float extraX=route[last].x-oldEndX, extraY=route[last].y-oldEndY;
+        // Blend to the existing middle bypass over300mm, before the middle
+        // station500mm after entry. Retain its proven pillar plateau.
+        for(uint16_t step=1;step<pathLength;++step)
+        {
+            const uint16_t i=(last+step)%pathLength;
+            const float distance=cyclicDistanceForward(
+                baselinePath[last].distanceMm,baselinePath[i].distanceMm);
+            if(distance>=300.0f)break;
+            float t=distance/300.0f;t=t*t*(3.0f-2.0f*t);
+            route[i].x+=extraX*(1.0f-t);route[i].y+=extraY*(1.0f-t);
+        }
+        Serial.print("[LAPS] Inner lane carried corner/end/middle/radius=");
+        Serial.print(corner);Serial.print("/");Serial.print(endSeat);Serial.print("/");
+        Serial.print(middleSeat);Serial.print("/");Serial.println(radius,1);
+    }
+}
+
 bool buildOptimizedPath()
 {
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
@@ -2517,7 +2587,19 @@ bool buildOptimizedPath()
     }
     preserveLaterLapSeam(optimizedPath);
     roundKnownCornerPairs(optimizedPath);
-    if (!laterLapRouteSafe(optimizedPath))
+    // Optional shorter lane must pass the same full-footprint preflight.
+    // Keep the prior optimized shape if this candidate is not safe.
+    PathPoint beforeLaneCarry[OBSTACLE_MAX_PATH_WAYPOINTS];
+    memcpy(beforeLaneCarry, optimizedPath, sizeof(PathPoint)*pathLength);
+    carryKnownInnerLaneToMiddle(optimizedPath);
+    bool routeSafe = laterLapRouteSafe(optimizedPath);
+    if (!routeSafe)
+    {
+        memcpy(optimizedPath, beforeLaneCarry, sizeof(PathPoint)*pathLength);
+        Serial.println("[LAPS] Inner-lane shortcut rejected; prior optimized route retained");
+        routeSafe = laterLapRouteSafe(optimizedPath);
+    }
+    if (!routeSafe)
     {
         // A complete map does not automatically establish a safe new shape.
         // Keep the learned route only if the same geometric gates accept it.
@@ -2907,6 +2989,53 @@ bool seatComfortablyVisible(
            fabsf(bearingDeg) <= bearingLimit;
 }
 
+// One <=8kB sampled RGB565 window on a stopped CW middle-clear decision.
+// Diagnostic only: no extra camera capture, USB save, or motion. Preserve the
+// colour evidence even when neither connected blobs nor the local fallback
+// recognize a pillar. Coordinates are in the upright image, sampled every2px.
+void logParkingStartClearImage(uint8_t seatIndex, const PositionEstimate &pose)
+{
+    if (parkingStartRoiLogged || !parkingCwShortStart || !parkingEntryObserving ||
+        parkingEntryTargetStation != 1 || seatIndex != 2 ||
+        camera.getBuffer() == nullptr || camera.getWidth()!=320 || camera.getHeight()!=240)
+        return;
+    parkingStartRoiLogged=true;
+    float bearing=0.0f,range=-1.0f;seatCameraGeometry(seatIndex,pose,bearing,range);
+    const float forward=range*cosf(bearing*PI/180.0f);
+    if (!isfinite(forward) || forward<=0.0f) return;
+    const int center=static_cast<int>(lroundf(OBSTACLE_CAMERA_PRINCIPAL_X_PX-
+        OBSTACLE_CAMERA_FOCAL_X_PX*tanf(bearing*PI/180.0f)));
+    const int foot=static_cast<int>(lroundf(OBSTACLE_CAMERA_GROUND_HORIZON_Y+
+        OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX/forward));
+    const int x0=static_cast<int>(clampFloat(center-32,0,256));
+    const int y0=static_cast<int>(clampFloat(foot-80,0,144));
+    const uint8_t *buffer=camera.getBuffer();
+    static const char hex[]="0123456789abcdef";
+    Serial.print("[START_ROI] t=");Serial.print(millis());
+    Serial.print(" seat=2 x0/y0=");Serial.print(x0);Serial.print("/");Serial.print(y0);
+    Serial.print(" width/height/step=64/96/2 rgb565=msb-upright pose=");
+    Serial.print(pose.x_mm,1);Serial.print(",");Serial.print(pose.y_mm,1);Serial.print(",");
+    Serial.println(pose.heading_deg,1);
+    for(int y=0;y<96;y+=2)
+    {
+        // 32 sampled pixels =>128 hex chars per row, fixed stack budget.
+        char row[129];int out=0;
+        for(int x=0;x<64;x+=2)
+        {
+            const int imageX=x0+x,imageY=y0+y;
+            const int sx=Vision::rotates180()?319-imageX:imageX;
+            const int sy=Vision::rotates180()?239-imageY:imageY;
+            const uint32_t offset=(sy*320+sx)*2;
+            const uint8_t hi=buffer[offset+(Vision::rgb565MsbFirst()?0:1)];
+            const uint8_t lo=buffer[offset+(Vision::rgb565MsbFirst()?1:0)];
+            row[out++]=hex[hi>>4];row[out++]=hex[hi&15];
+            row[out++]=hex[lo>>4];row[out++]=hex[lo&15];
+        }
+        row[out]=0;Serial.print("[START_ROI_ROW] ");Serial.println(row);
+    }
+    Serial.println("[START_ROI_END]");
+}
+
 void updateDiscoveryCoverage(
     const ObstacleObservationResult &observation,
     const PositionEstimate &pose,
@@ -2975,7 +3104,10 @@ void updateDiscoveryCoverage(
                 ? OBSTACLE_PARKING_ENTRY_CLEAR_FRAMES
                 : OBSTACLE_DISCOVERY_CLEAR_FRAMES;
             if (coverage.clearFrames[side] >= requiredClearFrames)
+            {
+                logParkingStartClearImage(seatIndex,pose);
                 coverage.seatObservedClear[side] = true;
+            }
         }
 
         if (!coverage.seatObservedClear[0] ||
@@ -4550,6 +4682,7 @@ void obstacle_path_reset()
     completedLaps = 0;
     laterTrackingTraceMs = 0;
     laterTrackingTraceCount = 0;
+    parkingStartRoiLogged = false;
     routeTurnSign = 1;
     running = false;
     finished = false;
@@ -5623,6 +5756,23 @@ void finalizeConfirmedSeat(ObstacleObservationResult &result)
     result.passSide = seat.red ? 'R' : 'L';
 }
 
+bool mappedParkingSeatFootMatches(uint8_t seatIndex,
+                                  const PositionEstimate &pose, int footY)
+{
+    if (!parkingSectionInnerSeatsOnly || seatIndex >= 6) return true;
+    float bearing=0.0f,range=-1.0f;
+    seatCameraGeometry(seatIndex,pose,bearing,range);
+    const float forward=range*cosf(bearing*PI/180.0f);
+    // Keep distant discovery independent; the tight projection test addresses
+    // close start views where a parking boundary can resemble a tall pillar.
+    if (forward < OBSTACLE_DISCOVERY_VIEW_MIN_MM ||
+        forward > OBSTACLE_DISCOVERY_VIEW_MAX_MM) return true;
+    const float expectedFoot=OBSTACLE_CAMERA_GROUND_HORIZON_Y+
+        OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX/forward;
+    return isfinite(expectedFoot) &&
+        fabsf(footY-expectedFoot)<=OBSTACLE_PARKING_SEAT_FOOT_TOLERANCE_PX;
+}
+
 void logRedSeatProjection(const ObstacleObservationResult &result,
                           const char *decision, bool force = false)
 {
@@ -5735,6 +5885,15 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
+    if (!mappedParkingSeatFootMatches(static_cast<uint8_t>(result.seatId), pose, result.bottom))
+    {
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+        result.seatId = -1;
+        logRedSeatProjection(result, "start_foot_mismatch");
+        return result;
+    }
+
     if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
         !parkingEntryScouting && !parkingEntryConnectorActive)
     {
@@ -5820,7 +5979,7 @@ void logParkingGreenCheck(uint8_t seatIndex, const PositionEstimate &pose,
     if (!parkingSectionInnerSeatsOnly || routeTurnSign >= 0 ||
         completedLaps != 0 || seatIndex >= 6 ||
         seats[seatIndex].y < seats[seatIndex ^ 1U].y ||
-        parkingEntryActive)
+        (parkingEntryActive && !parkingEntryObserving))
         return;
     const uint8_t station = seatIndex / COURSE_SEATS_PER_STATION;
     const uint32_t now = millis();
@@ -5921,10 +6080,15 @@ void processGreenSeatCandidates(
                 expectedX, expectedFootY, candidate))
         {
             seat.greenSeatCandidateFrames = 0;
-            logParkingGreenCheck(seatIndex, pose, "no_silhouette");
+            // Unknown colour on a mapped upright object is not proof of an
+            // empty place. Existing primary retry/scout obtains another view.
+            greenSeatCandidateThisFrame[seatIndex] = candidate.silhouetteFound;
+            logParkingGreenCheck(seatIndex, pose,
+                candidate.silhouetteFound ? "occupied_colour_unknown" : "no_silhouette");
             continue;
         }
 
+        greenSeatCandidateThisFrame[seatIndex] = candidate.silhouetteFound;
         // The silhouette's measured foot supplies independent distance;
         // angular overlap alone would confuse two aligned station seats.
         const float measuredRangeMm =
