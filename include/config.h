@@ -595,8 +595,8 @@ static_assert(
 // directions use different field-x positions before the mirrored scan arc.
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_ARC_START_X_MM = 60.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_CW_ARC_START_X_MM = 520.0f;
-// Continue the existing CCW gyro-held localization reverse to the scan-arc
-// start instead of scheduling a second centered reverse after localization.
+// Legacy O3 / CHECK_ALL: continue the CCW gyro-held localization reverse to
+// the old scan-arc start. Official O uses the shorter reference below.
 constexpr auto OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM = 70.0f;
 // A 40 mm arc left the official green inner pillar clipped near image x=11
 // in repeated CCW runs; acquisition is calibrated only from x=30. The extra
@@ -605,10 +605,19 @@ constexpr auto OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM = 70.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 55.0f;
 // OFFICIAL O, CW start only: observe the middle from the measured exit pose,
 // then look back at the right inner place without crossing its x=500 line.
-// O3 / CHECK_ALL and CCW retain their established localization and scan.
+// O3 / CHECK_ALL retains its established localization and scan.
 constexpr bool OBSTACLE_PARKING_CW_SHORT_START_ENABLED = true;
+// OFFICIAL O, CCW: only the right/front place is ahead after unparking.
+// Stop at the second-edge reference without the legacy extra 70 mm reverse;
+// observe that front place with the existing 55 mm arc. The middle and left
+// places stay behind the complete body and are checked on the later approach.
+constexpr bool OBSTACLE_PARKING_CCW_SHORT_START_ENABLED = true;
+constexpr auto OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM = 0.0f;
 constexpr auto OBSTACLE_PARKING_CW_SCAN_ARC_MM = 65.0f;
 constexpr auto OBSTACLE_PARKING_CW_SCOUT_ARC_MM = 130.0f;
+// The following CW-named connector parameters are intentionally shared by
+// BOTH official short starts. Names are retained; scan/scout lengths above
+// still select their own direction. Every connector shape keeps swept checks.
 constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_MIN_FORWARD_MM = 100.0f;
 // The short scan can join 50 mm before the middle pillar. Acceptance still
 // requires the complete body/steering rollout; this is only a search bound.
@@ -619,6 +628,13 @@ constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_START_TANGENT_SCALE = 0.65f;
 constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_END_TANGENT_SCALE = 1.25f;
 // Activate the stored right-place bypass only on the later normal approach.
 constexpr auto OBSTACLE_PARKING_CW_STORED_SEAT_APPROACH_MM = 800.0f;
+// Same normal-route release distance for BOTH CCW behind places; recording
+// their colours never moves the initial connector toward those passed places.
+constexpr auto OBSTACLE_PARKING_CCW_STORED_SEAT_APPROACH_MM = 800.0f;
+static_assert(OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM >= 0 &&
+              OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM <
+                  OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM,
+              "Official CCW localization continuation must remain bounded");
 static_assert(OBSTACLE_PARKING_CW_SCAN_ARC_MM > 0 &&
               OBSTACLE_PARKING_CW_SCOUT_ARC_MM > 0 &&
               OBSTACLE_PARKING_CW_SCAN_ARC_MM +

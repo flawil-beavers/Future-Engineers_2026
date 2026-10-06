@@ -1,5 +1,26 @@
 # Connector diagnostic run and acceptance sequence
 
+## Current CCW short start (2026-10-06)
+
+Implemented for official `O`, controlled by
+`OBSTACLE_PARKING_CCW_SHORT_START_ENABLED=true`: second-edge localization
+without the extra 70 mm, direct measured-pose 55 mm scan, front station 2 only,
+no middle scout, two behind-place records released separately within 800 mm
+on normal return. Existing CW and legacy `O3` selection is preserved.
+`simulation/CCW_START_LAYOUT_REVIEW.md` contains the replaced faults, actual
+code checks and limits. 2970 scan/connector cases, 33 ideal return calculations,
+135 shorter-reference prefix cases and 2400 shared footprint comparisons pass;
+CW still passes 7319 planner cases. Physical tests are outstanding.
+
+Next after upload: cable-free CCW official one-lap start, inner front/right RED
+first, then GREEN; middle and back/left each RED/GREEN, then four end pairs.
+Use marked places, preserve other sections, one per layout then three repeats
+for successful layouts. Watch pink clearance, front observation, correct-side
+front passing, and later discovery/release of BOTH behind places. Save complete
+logs. `[CCW START]` identifies each new decision; safety holds remain active.
+The possible opposite-side surprise parking remains an open later task in
+`SURPRISE_CHALLENGE_PREPARATION.md`.
+
 ## Current CW start candidate (2026-10-06)
 
 All ten official CW parking-section layouts are now implemented for review;
@@ -10,7 +31,8 @@ The old unresolved RED-right status below is historical.
 `O` / OFFICIAL uses the short CW start: 65 mm middle scan, optional 130 mm
 right-place scout/retrace, checked short connector. Right RED/GREEN are
 stored initially and their bypass is activated on the later normal approach.
-CCW and `O3` retain their existing scan/localization selection.
+`O3` retains its existing scan/localization selection; CCW now uses the short
+official selection above.
 
 Actual C++ checks pass 7319 planner/late-detection cases and both-colour
 stored-seat timing; 1200 footprint comparisons agree. M7-only build passes

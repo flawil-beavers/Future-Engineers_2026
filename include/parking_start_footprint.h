@@ -37,11 +37,12 @@ inline bool overlaps(const Quad &a, const Quad &b) {
     return true;
 }
 
-// Fixed field coordinates; CW parking piece is x=480..500, y=-1500..-1300.
+// Fixed field coordinates; parking piece is x=480..500, y=-1500..-1300.
 // Piece faces include 5 mm reserve. Gap is checked at both measured extremes.
 // wheelSign uses firmware steering sign in the fixed field frame.
 inline bool safe(float x, float y, float headingDeg, int wheelSign,
-                 bool keepBehindNearSeat, float bodyMargin=0.0f) {
+                 bool keepBehindNearSeat, float bodyMargin=0.0f,
+                 bool keepAheadMiddleSeat=false) {
     if (!isfinite(x) || !isfinite(y) || !isfinite(headingDeg)) return false;
     constexpr float rad=0.017453292519943295f;
     const float h=headingDeg*rad, c=cosf(h), s=sinf(h);
@@ -62,7 +63,8 @@ inline bool safe(float x, float y, float headingDeg, int wheelSign,
         for (Point &p : q.p) {
             const float lx=p.x, ly=p.y;
             p={x+c*lx-s*ly,y+s*lx+c*ly};
-            if (p.y <= -1495 || (keepBehindNearSeat && p.x >= 500)) return false;
+            if (p.y <= -1495 || (keepBehindNearSeat && p.x >= 500) ||
+                (keepAheadMiddleSeat && p.x <= 0)) return false;
         }
         if (overlaps(q,fixed) || overlaps(q,moved[0]) || overlaps(q,moved[1]))
             return false;

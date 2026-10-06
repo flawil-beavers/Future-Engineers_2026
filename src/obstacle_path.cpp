@@ -159,6 +159,22 @@ uint8_t parkingEntryLength = 0;
 bool parkingSectionInnerSeatsOnly = false;
 bool parkingCwShortStart = false;
 int8_t parkingCwStoredSeat = -1;
+bool parkingCcwShortStart = false;
+// Separate station bits: the left/back and middle/back may both be observed
+// even in a surprise diagnostic. One scalar seat would lose the first record.
+uint8_t parkingCcwStoredSeatMask = 0;
+
+bool parkingShortStart()
+{
+    return parkingCwShortStart || parkingCcwShortStart;
+}
+
+bool parkingStartFootprintSafe(float x, float y, float headingDeg,
+                               int wheelSign, float bodyMargin = 0.0f)
+{
+    return parking_start_footprint::safe(x, y, headingDeg, wheelSign,
+        parkingCwShortStart, bodyMargin, parkingCcwShortStart);
+}
 
 float parkingEntryScanArcMm()
 {
@@ -167,6 +183,8 @@ float parkingEntryScanArcMm()
 }
 float parkingEntryScoutArcMm()
 {
+    if (parkingCcwShortStart)
+        return 0.0f; // Both preceding stations are behind the initial CCW body.
     return parkingCwShortStart ? OBSTACLE_PARKING_CW_SCOUT_ARC_MM
                                : OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM;
 }
@@ -898,11 +916,11 @@ bool connectorRolloutFeasible(
                         "pillar_geometry", travel, seat, clearance, NAN, NAN);
             }
         }
-        if (parkingCwShortStart &&
-            (!parking_start_footprint::safe(
-                x, y, heading * 180.0f / PI, -1, true, 5.0f) ||
-             !parking_start_footprint::safe(
-                x, y, heading * 180.0f / PI, 1, true, 5.0f)))
+        if (parkingShortStart() &&
+            (!parkingStartFootprintSafe(
+                x, y, heading * 180.0f / PI, -1, 5.0f) ||
+             !parkingStartFootprintSafe(
+                x, y, heading * 180.0f / PI, 1, 5.0f)))
             return reject("parking_piece", travel, -1, noClearance, NAN, NAN);
         if (hypotf(x - end.x, y - end.y) <= OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
             fabsf(wrap180(heading * 180.0f / PI - end.headingDeg)) <=
@@ -953,7 +971,7 @@ bool tryParkingEntryConnectorMerge(
     float shortStartScale = 0.0f, float shortEndScale = 0.0f)
 {
     const float startHeading = start.heading_deg * PI / 180.0f;
-    const bool continueIntoRoute = parkingCwShortStart ||
+    const bool continueIntoRoute = parkingShortStart() ||
         (confirmedSeat >= 0 && !seats[confirmedSeat].red);
     PathPoint end = route[best];
     end.headingDeg = connectorRouteHeading(route, best);
@@ -964,13 +982,13 @@ bool tryParkingEntryConnectorMerge(
         return false;
     const float endHeading = end.headingDeg * PI / 180.0f;
     const float startTangentLength = fminf(
-        chord * (parkingCwShortStart
+        chord * (parkingShortStart()
             ? (shortStartScale > 0 ? shortStartScale :
                 OBSTACLE_PARKING_CW_CONNECTOR_START_TANGENT_SCALE)
             : OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_SCALE),
         OBSTACLE_PARKING_ENTRY_CONNECTOR_START_TANGENT_MAX_MM);
     const float endTangentLength = fminf(
-        chord * (parkingCwShortStart
+        chord * (parkingShortStart()
             ? (shortEndScale > 0 ? shortEndScale :
                 OBSTACLE_PARKING_CW_CONNECTOR_END_TANGENT_SCALE)
             : OBSTACLE_PARKING_ENTRY_CONNECTOR_END_TANGENT_SCALE),
@@ -1105,7 +1123,7 @@ bool tryParkingEntryConnectorMerge(
     // steering envelope.
     float desiredLookahead = adaptiveLookahead(
         OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S);
-    if (!parkingCwShortStart && confirmedSeat >= 0 && !seats[confirmedSeat].red)
+    if (!parkingShortStart() && confirmedSeat >= 0 && !seats[confirmedSeat].red)
         desiredLookahead *=
             OBSTACLE_PARKING_ENTRY_GREEN_JOIN_LOOKAHEAD_SCALE;
     parkingEntryConnectorLookaheadMm = 0.0f;
@@ -1319,12 +1337,12 @@ bool buildParkingEntryConnector(
     // Keep the established best-ray candidate first. If its complete rollout
     // fails, try up to three progressively earlier merge phases. A failed
     // candidate never enables the motor or weakens a safety threshold.
-    const float minimumApproach = parkingCwShortStart
+    const float minimumApproach = parkingShortStart()
         ? OBSTACLE_PARKING_CW_CONNECTOR_MIN_BEFORE_PILLAR_MM
         : OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_BEFORE_PILLAR_MM;
     float minimumBeforePillar = confirmedSeat >= 0 ? minimumApproach : 0.0f;
     uint16_t triedShortMerges[10] = {};
-    for (uint8_t attempt = 0; attempt < (parkingCwShortStart ? 10 : 4); ++attempt)
+    for (uint8_t attempt = 0; attempt < (parkingShortStart() ? 10 : 4); ++attempt)
     {
         uint16_t best = 0;
         float bestScore = 1.0e12f;
@@ -1334,7 +1352,7 @@ bool buildParkingEntryConnector(
         for (uint16_t index = 0; index < pathLength; ++index)
         {
             bool tried = false;
-            if (parkingCwShortStart)
+            if (parkingShortStart())
                 for (uint8_t previous = 0; previous < attempt; ++previous)
                     tried = tried || triedShortMerges[previous] == index;
             if (tried)
@@ -1345,7 +1363,7 @@ bool buildParkingEntryConnector(
             const float dy = route[index].y - start.y_mm;
             const float forward = dx * headingX + dy * headingY;
             const float lateral = -dx * headingY + dy * headingX;
-            if (forward < (parkingCwShortStart
+            if (forward < (parkingShortStart()
                     ? OBSTACLE_PARKING_CW_CONNECTOR_MIN_FORWARD_MM
                     : OBSTACLE_PARKING_ENTRY_CONNECTOR_MIN_FORWARD_MM) ||
                 forward > OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_FORWARD_MM)
@@ -1408,7 +1426,7 @@ bool buildParkingEntryConnector(
             OBSTACLE_PARKING_CW_CONNECTOR_START_TANGENT_SCALE, 0.75f, 1.0f, 1.25f, 0.5f};
         const float shortEndScales[] = {
             OBSTACLE_PARKING_CW_CONNECTOR_END_TANGENT_SCALE, 1.4f, 1.25f, 1.5f, 1.5f};
-        for (uint8_t shape = 0; shape < (parkingCwShortStart ? 5 : 1); ++shape)
+        for (uint8_t shape = 0; shape < (parkingShortStart() ? 5 : 1); ++shape)
         {
             if (tryParkingEntryConnectorMerge(start, route, best,
                     referenceSeat, confirmedSeat, guardSeat, bestForward,
@@ -1421,14 +1439,14 @@ bool buildParkingEntryConnector(
         }
         if (accepted)
         {
-            parkingEntryConnectorRouteLookahead = parkingCwShortStart ||
+            parkingEntryConnectorRouteLookahead = parkingShortStart() ||
                 (confirmedSeat >= 0 && !seats[confirmedSeat].red);
             return true;
         }
         Serial.print("[PARK ENTRY CONNECTOR] Candidate rejected attempt/phase_mm=");
         Serial.print(attempt + 1); Serial.print("/");
         Serial.println(bestBeforePillar, 0);
-        if (!parkingCwShortStart)
+        if (!parkingShortStart())
             minimumBeforePillar = fmaxf(
                 minimumBeforePillar, bestBeforePillar + 50.0f);
         if (minimumBeforePillar >
@@ -1545,7 +1563,9 @@ void buildParkingEntryPath(const PositionEstimate &start)
     float straight = fabsf(headingX) > 0.5f
         ? (x - arcStartX) / headingX
         : 0.0f;
-    straight = parkingCwShortStart ? 0.0f : clampFloat(straight, 0.0f, 450.0f);
+    // Official short starts use the settled measured reference directly;
+    // no second tiny centred reverse after localization has already stopped.
+    straight = parkingShortStart() ? 0.0f : clampFloat(straight, 0.0f, 450.0f);
     float remaining = straight;
     while (remaining > 0.1f)
     {
@@ -2268,6 +2288,25 @@ void activateCwStoredSeat(float currentDistanceMm)
     injectSeat(stored, true);
     Serial.print("[CW START] Stored bypass activated on later approach seat=");
     Serial.println(stored);
+}
+
+void activateCcwStoredSeats(float currentDistanceMm)
+{
+    if (parkingEntryConnectorActive || !parkingCcwShortStart)
+        return;
+    for (uint8_t seatIndex = 0; seatIndex < 4; ++seatIndex)
+    {
+        const uint8_t bit = static_cast<uint8_t>(1U << seatIndex);
+        if (!(parkingCcwStoredSeatMask & bit) ||
+            cyclicDistanceForward(currentDistanceMm,
+                seats[seatIndex].pathDistanceMm) >
+                    OBSTACLE_PARKING_CCW_STORED_SEAT_APPROACH_MM)
+            continue;
+        parkingCcwStoredSeatMask &= static_cast<uint8_t>(~bit);
+        injectSeat(seatIndex, true);
+        Serial.print("[CCW START] Stored bypass activated on later approach seat=");
+        Serial.println(seatIndex);
+    }
 }
 
 void buildOptimizedPath()
@@ -3198,15 +3237,26 @@ void updateCornerView(bool newCameraFrame)
     }
 }
 
+bool parkingEntryPrerequisitesResolved()
+{
+    if (parkingEntryTargetStation < 0 ||
+        !stationResolved(static_cast<uint8_t>(parkingEntryTargetStation)))
+        return false;
+    // CCW has no upcoming preceding station: both are behind the complete
+    // body and cannot be mandatory initial observations.
+    return parkingCcwShortStart || parkingEntryTargetStation == 0 ||
+        stationResolved(static_cast<uint8_t>(parkingEntryTargetStation - 1));
+}
+
 void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
 {
     const bool primaryResolved =
         parkingEntryTargetStation >= 0 &&
         stationResolved(static_cast<uint8_t>(parkingEntryTargetStation));
     const bool scoutResolved =
-        parkingEntryTargetStation <= 0 ||
+        parkingCcwShortStart || parkingEntryTargetStation <= 0 ||
         stationResolved(static_cast<uint8_t>(parkingEntryTargetStation - 1));
-    if (!primaryResolved || !scoutResolved)
+    if (!parkingEntryPrerequisitesResolved())
     {
         parkingEntryTestHold = true;
         Serial.print(
@@ -3287,26 +3337,26 @@ void startParkingEntryPrimaryRetry()
     Serial.println(parkingEntryTargetStation);
 }
 
-// The new CW approach uses the initial ToF seed plus exit odometry. Check the
+// CW uses the initial ToF seed; CCW retains the second-edge reference. Check the
 // whole possible scan/scout before moving, with 5 mm footprint reserve, +/-1
 // degree heading and 8 mm braking allowance. This is an explicit model budget,
 // not a claim that the physical localization error has already been measured.
 bool preflightCwStartArc(const PositionEstimate &start, float travelMm)
 {
-    if (!parkingCwShortStart)
+    if (!parkingShortStart())
         return true;
     constexpr float stepMm = 2.0f;
-    const float curvature = 1.0f / OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM;
+    const float curvature = -routeTurnSign / OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM;
     for (int headingError = -1; headingError <= 1; ++headingError)
     {
         float x = start.x_mm, y = start.y_mm;
         float heading = (start.heading_deg + headingError) * PI / 180.0f;
         for (float travel = 0; travel <= travelMm + 8.0f; travel += stepMm)
         {
-            if (!parking_start_footprint::safe(
-                    x, y, heading * 180.0f / PI, -1, true, 5.0f))
+            if (!parkingStartFootprintSafe(
+                    x, y, heading * 180.0f / PI, routeTurnSign, 5.0f))
                 return false;
-            for (uint8_t seat = 0; seat < 6; seat += 2)
+            for (uint8_t seat = routeTurnSign > 0 ? 1 : 0; seat < 6; seat += 2)
             {
                 ObstacleClearanceSample clearance{};
                 if (!calculateClearanceAtPose(seats[seat], x, y,
@@ -3387,6 +3437,22 @@ bool preflightParkingEntryScout(
 
 void startParkingEntryScout(const PositionEstimate &pose)
 {
+    if (parkingCcwShortStart)
+    {
+        // These two places are already behind the body. Neither an absent
+        // middle observation nor a recorded behind sign blocks the front join.
+        Serial.println("[CCW START] Front observation complete; both behind places deferred to normal approach");
+        if (stationResolved(static_cast<uint8_t>(parkingEntryTargetStation)))
+            armParkingEntryConnectorFromPose(pose);
+        else if (parkingEntryPrimaryRetryUsed)
+            startParkingEntryPrimaryRetry();
+        else
+        {
+            parkingEntryTestHold = true;
+            Serial.println("[CCW START] Front place unresolved - held for valid observation");
+        }
+        return;
+    }
     if (parkingEntryTargetStation <= 0)
     {
         armParkingEntryConnectorFromPose(pose);
@@ -3446,8 +3512,8 @@ void startParkingEntryScout(const PositionEstimate &pose)
 void updateParkingEntryScout(bool newCameraFrame)
 {
     const PositionEstimate pose = get_position_struct();
-    if (parkingCwShortStart && !parking_start_footprint::safe(
-            pose.x_mm, pose.y_mm, pose.heading_deg, -1, true))
+    if (parkingShortStart() && !parkingStartFootprintSafe(
+            pose.x_mm, pose.y_mm, pose.heading_deg, routeTurnSign))
     {
         stop(false);
         parkingEntryScouting = false;
@@ -3623,13 +3689,13 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     }
 
     const PositionEstimate pose = get_position_struct();
-    if (parkingCwShortStart && !parking_start_footprint::safe(
-            pose.x_mm, pose.y_mm, pose.heading_deg, -1, true))
+    if (parkingShortStart() && !parkingStartFootprintSafe(
+            pose.x_mm, pose.y_mm, pose.heading_deg, routeTurnSign))
     {
         stop(false);
         parkingEntryActive = false;
         parkingEntryTestHold = true;
-        Serial.println("[CW START] Scan measured footprint rejected - held");
+        Serial.println("[PARK START] Scan measured footprint rejected - held");
         return;
     }
     if (newCameraFrame)
@@ -3835,10 +3901,10 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         wrap180(pose.heading_deg - finish.headingDeg));
     const bool pathReached =
         entryTravel >=
-            plannedTravel - (parkingCwShortStart ? 3.0f :
+            plannedTravel - (parkingShortStart() ? 3.0f :
                 OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM) &&
         finishError <= OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM &&
-        finishHeadingError <= (parkingCwShortStart ? 2.0f :
+        finishHeadingError <= (parkingShortStart() ? 2.0f :
             OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG);
     const bool travelLimitReached =
         entryTravel >=
@@ -4207,6 +4273,8 @@ void obstacle_path_reset()
     parkingSectionInnerSeatsOnly = false;
     parkingCwShortStart = false;
     parkingCwStoredSeat = -1;
+    parkingCcwShortStart = false;
+    parkingCcwStoredSeatMask = 0;
     memset(parkingGreenTraceCount, 0, sizeof(parkingGreenTraceCount));
     memset(parkingGreenTraceMs, 0, sizeof(parkingGreenTraceMs));
     parkingEntryActive = false;
@@ -4348,6 +4416,11 @@ void obstacle_path_start(
         parkingCwShortStart = OBSTACLE_PARKING_CW_SHORT_START_ENABLED &&
             routeTurnSign < 0 && !runtimeTestMode &&
             sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+        parkingCcwShortStart = OBSTACLE_PARKING_CCW_SHORT_START_ENABLED &&
+            routeTurnSign > 0 && !runtimeTestMode &&
+            sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+        if (parkingCcwShortStart)
+            Serial.println("[CCW START] Short official start: front station=2; behind stations=0/1 stored for later approach");
         parkingEntryTargetStation = routeTurnSign > 0 ? 2 : 1;
         discoveryScanStation = parkingEntryTargetStation;
         const uint8_t targetFirstSeat = static_cast<uint8_t>(
@@ -4361,7 +4434,7 @@ void obstacle_path_start(
             parkingEntryLength = 0;
             parkingEntryTestHold = true;
             stop(false);
-            Serial.println("[CW START] Complete scan/scout footprint preflight rejected - held");
+            Serial.println("[PARK START] Complete scan/scout footprint preflight rejected - held");
         }
         parkingEntryStraightHeadingDeg = measuredEntryPose.heading_deg;
         const float entryStraightMm = parkingEntryLength > 0
@@ -4474,6 +4547,7 @@ void obstacle_path_update(bool new_camera_frame)
     if (!parkingEntryConnectorActive)
     {
         activateCwStoredSeat(baselinePath[progressIndex].distanceMm);
+        activateCcwStoredSeats(baselinePath[progressIndex].distanceMm);
         activateDeferredInjection(baselinePath[progressIndex].distanceMm);
     }
 
@@ -4534,16 +4608,16 @@ void obstacle_path_update(bool new_camera_frame)
                 "[PARK ENTRY CONNECTOR] Validated update - servo writes enabled");
         }
         const PositionEstimate connectorPose = get_position_struct();
-        if (parkingCwShortStart &&
-            (!parking_start_footprint::safe(connectorPose.x_mm,
-                connectorPose.y_mm, connectorPose.heading_deg, -1, true) ||
-             !parking_start_footprint::safe(connectorPose.x_mm,
-                connectorPose.y_mm, connectorPose.heading_deg, 1, true)))
+        if (parkingShortStart() &&
+            (!parkingStartFootprintSafe(connectorPose.x_mm,
+                connectorPose.y_mm, connectorPose.heading_deg, -1) ||
+             !parkingStartFootprintSafe(connectorPose.x_mm,
+                connectorPose.y_mm, connectorPose.heading_deg, 1)))
         {
             stop(false);
             parkingEntryConnectorActive = false;
             parkingEntryTestHold = true;
-            Serial.println("[CW START] Connector measured footprint rejected - held");
+            Serial.println("[PARK START] Connector measured footprint rejected - held");
             return;
         }
         while (parkingEntryConnectorProgress + 1 <
@@ -5097,6 +5171,21 @@ bool storeCwStartSeat(uint8_t seatIndex)
     return true;
 }
 
+bool storeCcwStartSeat(uint8_t seatIndex)
+{
+    if (!parkingCcwShortStart || completedLaps != 0 || seatIndex >= 4 ||
+        seats[seatIndex].injected)
+        return false;
+    // After release, a repeated observation must not re-store an injected
+    // seat. Before release, re-confirmation preserves both station bits.
+    parkingCcwStoredSeatMask |= static_cast<uint8_t>(1U << seatIndex);
+    Serial.print("[CCW START] Stored behind start seat/color=");
+    Serial.print(seatIndex); Serial.print("/");
+    Serial.println(seats[seatIndex].red ? "RED; bypass on later approach" :
+                                        "GREEN; bypass on later approach");
+    return true;
+}
+
 void finalizeConfirmedSeat(ObstacleObservationResult &result)
 {
     const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
@@ -5106,7 +5195,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &result)
     extremeAdjacentReleasePending =
         hasConfirmedExtremeAdjacentPair(seatIndex);
     const int8_t earlier = earlierExtremeAdjacentSeat(seatIndex);
-    if (storeCwStartSeat(seatIndex))
+    if (storeCwStartSeat(seatIndex) || storeCcwStartSeat(seatIndex))
     {
         // Confirmation/map recording below still runs; route injection waits
         // for the normal return to this station, for either colour.
@@ -5691,6 +5780,8 @@ void obstacle_path_clear_observations()
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
     optimizedBuilt = false;
     injectionCount = 0;
+    parkingCwStoredSeat = -1;
+    parkingCcwStoredSeatMask = 0;
     lastConfirmedSeatIndex = -1;
     extremeAdjacentReleasePending = false;
     deferredInjectionSeatIndex = -1;

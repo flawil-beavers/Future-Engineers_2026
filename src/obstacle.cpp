@@ -1599,6 +1599,13 @@ static bool updateParkingExit()
             creepDistance >=
             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM;
         const bool counterClockwiseExit = oc_parking_exit_steering < 0;
+        const bool ccwShortStart = counterClockwiseExit &&
+            OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
+            OBSTACLE_PARKING_CCW_SHORT_START_ENABLED &&
+            obstacle_path_section_layout_mode() == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+        const float ccwContinuationMm = ccwShortStart
+            ? OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM
+            : OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM;
         if (oc_parking_localization_transition_found &&
             counterClockwiseExit &&
             !oc_parking_localization_ccw_continuing)
@@ -1608,8 +1615,10 @@ static bool updateParkingExit()
             Serial.print(
                 "[PARK LOCALIZE] CCW continuing centered reverse to arc start mm=");
             Serial.println(
-                OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM,
+                ccwContinuationMm,
                 1);
+            if (ccwShortStart)
+                Serial.println("[CCW START] Second-edge reference reached; no extra reverse or behind-place scout");
         }
         const float continuationTravel =
             oc_parking_localization_ccw_continuing
@@ -1619,7 +1628,7 @@ static bool updateParkingExit()
         const bool continuationComplete =
             oc_parking_localization_ccw_continuing &&
             continuationTravel >=
-                OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM;
+                ccwContinuationMm;
         if ((!counterClockwiseExit &&
              oc_parking_localization_transition_found) ||
             continuationComplete || distanceLimitReached)

@@ -9201,3 +9201,95 @@ right sign, no pink/pillar contact or holds, measured scout return/braking and
 room-specific recognition. See latest `CONNECTOR_NEXT_TEST.md` and final section
 of `simulation/CW_START_LAYOUT_REVIEW.md`; earlier design-only/RED-right-unresolved
 status is superseded by implementation, not by physical acceptance.
+
+## 2026-10-06: CCW start geometry audit and later surprise parking task
+
+User requested review/calculation of CCW's one ahead/two behind start places,
+using CW learning; no new physical batch. Firmware remains at CW commit
+`f56b610`; no embedded changes, build, upload or agent commit. New reproducible
+host checks are `simulation/review_ccw_start.py` and
+`simulation/study_ccw_start_candidate.py`; CW checker fixture construction is
+exposed for reuse. Results/limitations: `simulation/CCW_START_LAYOUT_REVIEW.md`.
+
+Inputs are tracked complete CCW logs 388/389 under
+`simulation/evidence/parking_exit_diagnostics/` (SHA-256 respectively
+`dd3831acb6c0e5d8683b60948ee97b5308387a46a577d39b681206eacb33c5ec`,
+`8a40df45cdfe819f6ff4f65fdd6e62f3cc42340c2942e047f5cf9e557220c74e`),
+plus tracked older scout fixtures 364/365/369; generated report records all
+source hashes. No new physical acceptance or camera evidence is inferred.
+Explicit colours, five poses x eleven layouts x 27 XY/heading perturbations:
+current front RED passes only 1/5 nominal, 42/135 grid per relevant layout
+because eligible forward projection is usually below the 350 mm merge gate.
+Middle GREEN passes the planner but all 135 cases witness a wrong-side full
+crossing after the backward scout. Left/back view is 83–87 degrees off-axis.
+
+Isolated proposed CCW geometry: localization stop 70 mm earlier, retain 55 mm
+arc, omit 85 mm middle scout/retrace, defer BOTH behind signs, use bounded CW
+connector search and outgoing lookahead for all colours. Translated old-pose
+model passes 1485/1485 joins; separate sampled polygon check reports no pink
+conflicts/no body crossing behind middle, minimum body X=16.3 mm. This is
+not implemented or physical acceptance; complete altered prefix/braking,
+recognition, measured errors, correct-side front passing and later return remain.
+
+Next: implement official CCW short start with two-place release/logging, audit
+full prefix and return timing, M7-only build, then cable-free front RED/GREEN,
+middle RED/GREEN, back RED/GREEN and four end pairs with full evidence logs.
+Keep O3 separate. User's requested possible other-side start parking is saved
+as an open later investigation in `SURPRISE_CHALLENGE_PREPARATION.md`; no
+mirrored parking configuration is implemented. Official Q&A checked today;
+no new initial-passing exemption applies.
+Re-running the CW checker after exposing its fixture builder still passes
+7319/7319. The reproducible candidate audit also confirms 1485/1485 and the
+16.3 mm minimum body-X result. Git whitespace check passes; archived source
+logs and this history are tracked. New review files await the user's commit.
+
+## 2026-10-06: official CCW short start implemented for physical validation
+
+User authorized implementation for all CCW start layouts. Added official-only
+`OBSTACLE_PARKING_CCW_SHORT_START_ENABLED` and zero extra continuation. CCW
+retains the second-edge ToF correction, then uses its settled measured pose
+directly for the 55 mm scan. No extra nominal-X reverse and no 85 mm middle
+scout/retrace. Initial prerequisite is front station 2 only. Two separate
+stored-seat bits preserve back/left and back/middle colours without initial
+route displacement; each injects on normal later approach within 800 mm.
+Repeated confirmations cannot re-store an injected sign; reset/clear drops
+stored records. All confirmed signs still enter optimized laps normally.
+
+Short connector search/shapes/outgoing lookahead are shared with CW for both
+colours, retaining existing swept capsule, 42 degree steering, 500 mm travel
+and 60 mm / 15 degree handoff limits. Physical polygon checks keep CCW body
+ahead of X=0 during initial scan/join and retain CW's X<500 guard. Whole scan
+preflight includes 5 mm body reserve, +/-1 degree and 8 mm braking allowance.
+New `[CCW START]` records identify effective continuation, skipped scout,
+stored seat/colour and later release. Official CCW selection is independent
+of CW; O3/CHECK_ALL remains on its legacy reference/scout. No new physical batch.
+
+Actual extracted C++ verification `simulation/check_ccw_start_planner.py`:
+2970/2970 arc/connector cases including correct-side full front passage in
+ideal continuation, 33/33 ideal behind-section returns, 135/135 sampled
+shortened reference-prefix cases. Source evidence remains the complete tracked
+388/389 and older 364/365/369 logs listed above; report records all hashes.
+Archived corrected reference poses are translated 70 mm east, not new ToF
+measurements. Reference +/-5 mm XY / +/-1 degree, settled scan +/-5 mm XY /
++/-3 degrees tested separately. Normal-return speed caps unrestricted/140/260.
+`simulation/check_cw_start_state.py` verifies actual CCW two-place store/release
+and front-only prerequisite plus 2400 C++/Python polygon cases; CW actual
+planner still passes 7319/7319. Full images/holds/sensor dynamics and complete
+lap accounting are not simulated. One-lap phase-zero stop can precede the
+middle sign's full final crossing; the return calculation explicitly continues
+beyond that boundary. Unchanged unparking segments were not physically retested.
+
+Final IDE-managed M7-only build passes RAM432752/523624, flash473568/786432,
+binary SHA-256
+`84e4f200df84061a8ff7e780498ac15919535da30639e672c5edd0611de5eac6`.
+Existing Serial macro warnings remain. No M4 build/change, upload or commit.
+Generated reports stay ignored under `local_workspace/`; updated review and
+test sequence are `simulation/CCW_START_LAYOUT_REVIEW.md`, `CONNECTOR_NEXT_TEST.md`.
+
+Next: user reviews/uploads M7, cable-free O/official CCW one-lap trials with
+marked inner front/right RED then GREEN, middle RED/GREEN, back/left RED/GREEN,
+four end pairs. One per layout, then three repeats of successful cases; keep
+other sections fixed. Inspect initial body staying ahead of middle, pink/front
+clearance, actual reference/scan/braking and correct-side later passing/release.
+Archive unchanged complete logs, SHA metadata and physical reports. Physical
+acceptance is pending. Opposite-side surprise parking remains a later open task.

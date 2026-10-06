@@ -15,7 +15,7 @@ from review_cw_start_matrix import review
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def main():
+def fixture_source():
     source = (ROOT / 'src/obstacle_path.cpp').read_text()
     header = (ROOT / 'include/obstacle_path.h').read_text()
     def extract(signature):
@@ -28,6 +28,7 @@ def main():
         'float cyclicDistanceForward(', 'void recomputeSpeedProfile(',
         'void smoothRange(', 'uint16_t nearestPathIndex(',
         'float targetLateralForSeat(', 'void displaceForSeat(',
+        'bool parkingShortStart()', 'bool parkingStartFootprintSafe(',
         'float parkingEntryScanArcMm()', 'float parkingEntryScoutArcMm()',
         'void appendParkingEntryPoint(', 'void buildParkingEntryPath(',
         'bool preflightCwStartArc(', 'float connectorRouteHeading(',
@@ -64,6 +65,7 @@ uint16_t pathLength=0;
 float loopLengthMm=0,firstCornerDistanceMm=500;
 int routeTurnSign=-1,parkingEntryTargetStation=1;
 bool parkingCwShortStart=true,parkingEntryConnectorRouteLookahead=false;
+bool parkingCcwShortStart=false;
 PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 uint8_t parkingEntryLength=0,parkingEntryProgress=0;
 PathPoint parkingEntryConnector[OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];
@@ -144,6 +146,11 @@ int main() {
  return failed?1:0;
 }
 '''.replace('@@TYPES@@', types).replace('@@STRUCTS@@', structs).replace('@@CLEARANCE@@', clearance).replace('@@FUNCTIONS@@', '\n'.join(functions))
+    return fixture
+
+
+def main():
+    fixture = fixture_source()
     destination = ROOT / 'local_workspace/cw-start-planner'
     destination.mkdir(parents=True, exist_ok=True)
     cpp = destination / 'check.cpp'
