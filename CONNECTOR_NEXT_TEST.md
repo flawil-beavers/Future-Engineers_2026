@@ -1,5 +1,18 @@
 # Connector diagnostic run and acceptance sequence
 
+## Current three-lap candidate (2026-10-06)
+
+The default flags now run all three laps and stop/save before final parking:
+`OBSTACLE_FIRST_LAP_TEST_ENABLED=false`,
+`OBSTACLE_THREE_LAP_TEST_ENABLED=true`. Optimized laps reuse the first-lap map,
+skip discovery searches and use continuous known-sign corner joins. See
+`simulation/LATER_LAPS_IMPLEMENTATION.md` for geometry, gates, logs and the
+exact physical sequence. M7 upload and physical validation are pending.
+
+For the isolated CW/CCW start acceptance below, set the first-lap flag back to
+`true`. Those start tests remain outstanding; earlier first-lap-only defaults
+and binary identities below describe historical builds.
+
 ## Current CCW short start (2026-10-06)
 
 Implemented for official `O`, controlled by

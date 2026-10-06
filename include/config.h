@@ -19,7 +19,7 @@
 // STARTUP_ROBOT_MODE is compiled into the firmware.
 // To start Obstacle now: leave the selection below as it is, set the enable
 // switch LOW, power on, wait for the BLUE ready light, then switch HIGH.
-// Current Obstacle gates drive the parking exit and stop after the first lap.
+// Current Obstacle gates drive the parking exit, run three laps, then stop.
 #define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
 
 // --- OBSTACLE CHALLENGE: section layout ---
@@ -54,10 +54,18 @@ constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED = true;
 constexpr bool OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY = false;
 
 // --- OBSTACLE CHALLENGE: laps and final parking ---
-// true: stop and save after lap 1 (current validation target).
-// false: run the configured three laps and continue to final parking.
-constexpr bool OBSTACLE_FIRST_LAP_TEST_ENABLED = true;
-// Final parking is reached only after the laps when first-lap test is false.
+// true: stop and save after lap 1. This takes precedence over the three-lap
+// test below. Set it true again for isolated start/first-round validation.
+constexpr bool OBSTACLE_FIRST_LAP_TEST_ENABLED = false;
+// Current validation: false above + true here runs ALL THREE laps and then
+// stops/saves in the start section, before the separate final-parking test.
+// Competition sequence: set BOTH lap-test flags false to continue to parking.
+constexpr bool OBSTACLE_THREE_LAP_TEST_ENABLED = true;
+constexpr unsigned long OBSTACLE_LAP_FINISH_BRAKE_MS = 300UL;
+// Clear the start-section middle sign with the rear body before the final
+// stop/parking handover. This is a short runout, not a fourth counted lap.
+constexpr auto OBSTACLE_LAP_FINISH_RUNOUT_MM = 150.0f;
+// Final parking is reached only when both lap-test flags are false.
 // ENTRY_ARMED=false keeps physical bay entry locked; TEST_ONLY=true stages
 // the manoeuvre and applies TEST_SEGMENT_LIMIT after entry is armed.
 constexpr bool OBSTACLE_FINAL_PARKING_ENABLED = true;
@@ -1100,6 +1108,22 @@ constexpr auto OBSTACLE_PARKING_CCW_GREEN_LAP1_PLATEAU_WAYPOINTS = 1;
 // to equal the adjacent second clearance, so route construction must pass an
 // explicit plateau flag rather than infer the shape from clearance alone.
 constexpr auto OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM = 210.0f;
+// Preserve the learned lap-1 route around the start/lap seam. This prevents
+// a new avoidance shape from jumping sideways under a middle starting sign
+// during the 1 -> 2 handoff. Fade into the later-lap route farther away.
+constexpr auto OBSTACLE_LATER_LAP_SEAM_KEEP_MM = 200.0f;
+constexpr auto OBSTACLE_LATER_LAP_SEAM_BLEND_MM = 200.0f;
+// Known routes use a stable pursuit distance even when a test speed cap is
+// active. Scaling it down with speed created tight, saturated turns in the
+// model. The existing corner multiplier still applies; lap 1 is unchanged.
+constexpr auto OBSTACLE_LATER_LAP_LOOKAHEAD_MM = 330.0f;
+// Official outer bypasses hold for 150 mm on each side so long pursuit does
+// not cut the pass. End pairs are 1000 mm apart; middle signs are solitary.
+// Check-all/adjacent surprise layouts retain their separate shorter policy.
+constexpr auto OBSTACLE_LATER_LAP_OUTER_PLATEAU_WAYPOINTS = 3;
+// Model reserve for a sampled later-lap route; physical acceptance still
+// requires driving logs. Existing pursuit steering limit remains unchanged.
+constexpr auto OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM = 5.0f;
 // The first member of the worst adjacent outer-seat reversal needs more than
 // the former 160 mm reduced value. Log_84 measured -6 mm ToF wheel clearance
 // at 160 mm while about 242 mm remained to the opposite wall. Request 200 mm to

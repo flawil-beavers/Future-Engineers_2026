@@ -26,6 +26,13 @@ for later clarifications.
 
 Links verified on 2026-08-30.
 
+Canonical PDF and official Q&A rechecked on 2026-10-06 for optimized laps 2/3.
+The PDF remains the 55-page January 15, 2026 edition. Rules 9.16 and 9.19 keep
+one direction and RED-right/GREEN-left on all three laps; no mandatory turn
+after lap 2. Rule 9.22 requires the three-lap return; 9.24.4 ends Obstacle on
+a stop in the finish section or parking lot. The project targets parking too;
+the new three-lap stop stages testing before that separate parking task.
+
 On2026-09-26 the canonical PDF was rechecked:55 pages, January15_2026 version.
 Figure8c (printed page15) was rendered and visually inspected. Its36 cards
 contain middle-station pillars only as solitary signs; two-pillar cards occupy

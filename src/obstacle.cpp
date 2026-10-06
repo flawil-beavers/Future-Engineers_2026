@@ -46,6 +46,8 @@ static float oa_last_camera_error = 0.0f;
 static bool oc_was_enabled = false;
 static bool oc_bench_test = false;
 static bool oc_complete = false;
+static bool oc_lap_finish_braking = false;
+static uint32_t oc_lap_finish_brake_ms = 0;
 
 enum ParkingExitState : uint8_t
 {
@@ -226,6 +228,8 @@ static float obstacleSectionDistance()
 
 static void resetParkingExit()
 {
+    oc_lap_finish_braking = false;
+    oc_lap_finish_brake_ms = 0;
     parking_exit_diagnostics_reset();
     oc_parking_exit_state =
         OBSTACLE_PARKING_EXIT_ENABLED &&
@@ -3161,12 +3165,34 @@ void obstacle_challenge_update(
         return;
     }
 
+    // Nonblocking settling after the path removes drive output. Saving and
+    // final-parking handover happen only after this one finish brake.
+    if (!oc_lap_finish_braking)
+    {
+        oc_lap_finish_braking = true;
+        oc_lap_finish_brake_ms = millis();
+        stop(true);
+        Serial.println("[LAPS] Target reached; finish brake");
+    }
+    if (millis() - oc_lap_finish_brake_ms < OBSTACLE_LAP_FINISH_BRAKE_MS)
+        return;
+
     if (OBSTACLE_FIRST_LAP_TEST_ENABLED)
     {
         set_steering(0);
         stop(false);
         oc_complete = true;
         Serial.println("[OC] First-lap test complete - stopped; final parking skipped");
+        robot_logger.write_to_usb();
+        return;
+    }
+
+    if (OBSTACLE_THREE_LAP_TEST_ENABLED)
+    {
+        set_steering(0);
+        stop(false);
+        oc_complete = true;
+        Serial.println("[OC] Three-lap test complete - stopped in start section; final parking skipped");
         robot_logger.write_to_usb();
         return;
     }

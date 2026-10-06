@@ -9293,3 +9293,53 @@ other sections fixed. Inspect initial body staying ahead of middle, pink/front
 clearance, actual reference/scan/braking and correct-side later passing/release.
 Archive unchanged complete logs, SHA metadata and physical reports. Physical
 acceptance is pending. Opposite-side surprise parking remains a later open task.
+
+## 2026-10-06: continuous recorded-map laps 2/3 prepared
+
+User requested full optimized second/third laps and continuous driving; tests
+later, no agent commits. Source base `ff9be2e`, current changes uncommitted.
+Default flags now FIRST_LAP_TEST=false, THREE_LAP_TEST=true: exit, discovery
+lap, two recorded-map laps, then autonomous stop/save before separate parking.
+
+First wrap validates resolved/noncontradictory official or check-all map;
+pending wrap survives a hold/retry without duplicate counting. Repeated route
+is selected in the same control frame, acquisition/manual clearing frozen.
+200 mm learned seam each side plus 200 mm blend preserves middle start signs.
+Same-colour end/first signs join radially around the known corner centre;
+superimposed tapers had produced folded corners and pursuit collisions in
+initial calculations. Official outer plateaus extend to 150 mm each side.
+Repeated pursuit is 330 mm, existing 0.65 corner scale, 42-degree clamp and
+260 mm/s ceiling. No planned search/reverse/stop at valid 1->2/2->3 handovers.
+Sampled route preflight checks all signs/walls and physical pink-piece polygons;
+checked learned-route fallback or explicit hold if both candidates fail.
+Third wrap gets 150 mm runout at <=180 mm/s, no fourth count, 300 ms brake,
+then test stop or existing parking handover. Parking entry locks stay staged.
+
+`simulation/check_later_laps.py` extracts current production C++: final
+2800/2800 ideal continuations pass, including all ten official inner start
+layouts plus empty diagnostic, repeated 28-layout sections at two speed caps,
+and every ordered pair of normal layouts in CW/CCW. Integer steering, 5 mm
+steps, capsule walls/signs, parking polygons and at least two full-body
+correct-side crossing witnesses per sign checked. Matrix minima wall78.4 mm,
+pillar15.8 mm; tight cases remain sensitive to pose/placement errors. Shared
+physical polygons/storage checks pass 2400 independent Python comparisons.
+Reports remain ignored under `local_workspace/later-laps/`. No new physical
+test batch or USB evidence claimed. Images, sensor acceptance, servo/slip/
+braking dynamics, placement tolerances and exhaustive full-field layouts not
+validated. Q&A and canonical Jan15 rules rechecked: same direction throughout,
+no mandatory lap-2 turnaround; 9.22 return, 9.24.4 section/parking stop.
+
+Final IDE-managed M7-only build passes RAM432768/523624, flash476440/786432;
+binary SHA-256
+`7e63b8f4c150bf12754f1517668d7bcbec91ac3e3d8295ca88bd13d0630d534f`.
+Existing Serial macro/unused legacy-function warnings remain. No M4 change/
+build, upload or commit. Documentation/sequence:
+`simulation/LATER_LAPS_IMPLEMENTATION.md`, `CONNECTOR_NEXT_TEST.md`.
+
+Next: user uploads M7; fixed previously successful official marked layout,
+cable-free CW three-lap trial then CCW. Observe both uninterrupted wraps,
+known-sign corners/start returns, correct sides and final stop; preserve complete
+logs and physical reports. Evaluate failures before repeats/speed increases;
+repeat successful cases three times. Separate start-layout physical acceptance
+still outstanding; use FIRST_LAP_TEST=true for those isolated trials. Surprise
+parking on the other side remains the previously recorded later task.
