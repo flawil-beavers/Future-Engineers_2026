@@ -68,6 +68,20 @@ evidence directory, excludes `_excerpt` files, and skips byte-identical complete
 sources. It expands multiple sessions within one source and writes the report,
 plots, `parking_exit_sources.csv` (source hashes, build IDs and plot names), and
 `parking_exit_batch.md` to ignored `local_workspace/parking-exit-analysis-all/`.
+The batch index links separate reports under `by-build/`, grouped by the
+diagnostic build timestamp and all logged configuration values. Compare these
+reports when exit revisions change; the top-level report pools historical runs.
+The source manifest also links each session's build report. The diagnostic
+object's timestamp is not a complete firmware identity: an incremental build
+can retain it after other code changes. Check actual segment targets and the
+evidence README before treating a group as one motion revision.
+Explicit `[CW START] Short scan from initial ToF seed + exit odometry` and
+`[CCW START] Second-edge reference reached; no extra reverse` records select
+separate procedure groups even when that diagnostic header is unchanged. The
+manifest records `observed_procedure`; absent markers mean legacy or unidentified,
+not proof of a specific uploaded mode. Official CW short starts omit the long
+second-edge reverse, while official CCW omits its additional 70 mm continuation;
+O3/CHECK_ALL retains the legacy selection. Preserve the original log markers.
 Re-running refreshes the reports; use the manifest to identify current plots if
 older SVG files remain in that directory. The command never copies logs from a
 USB drive, changes robot control, or edits committed evidence. Archive each new
@@ -122,6 +136,11 @@ ground truth.
 
 ## Physical test handoff
 
+Upload current firmware, perform normal runs and save normally. The offline
+ToF assessment changes no driving or sensor scheduling. Do not launch, implement
+or request a sensing-fan sweep or dedicated ToF test. If contact occurs, report
+its phase and surface when known; do not invent an identification.
+
 The tester runs the unchanged normal `O` procedure and saves the log normally.
 For each run, record only the log number, firmware identity and physical result
 (exit direction, visible contact, unexpected stop or unusual motion). Repeated
@@ -137,3 +156,41 @@ run the analyzer from the tracked copy, and summarize the result in
 part with `_excerpt` in its name and clearly mark the run incomplete. Generated
 reports stay below ignored `local_workspace/`; the committed raw logs are their
 reproducible inputs.
+
+## Offline angle and target assessment
+
+The unchanged batch command also produces `parking_exit_tof_assessment.md`,
+`parking_exit_tof_observations.csv` and `tof-plots/`, both in the batch directory
+and in each configuration/procedure report directory. Existing route, segment,
+braking, reversal, correction and servo-neutral outputs remain unchanged.
+The ToF module uses current `include/config.h` nominal geometry and mounting
+offsets; this assumption must be checked before interpreting historical logs.
+
+Each new sequence counts once per sensor/session. The centre ray and sampled
+22/25-degree horizontal fans classify the known south wall and pink faces as
+single-surface, mixed-surface, edge-sensitive or unidentified. Movable-rail gap
+extremes are +/-5 mm; this is not a full measured geometry uncertainty model.
+Continuous-angle plots separate build/configuration, observed procedure,
+direction, sensor, phase and predicted-distance range. Residuals use only fresh
+(<=50 ms), accepted, in-range observations that remain single-surface under
+both fans. Other observations retain explicit exclusion reasons in the CSV.
+Rear/local-frame pose-seeding data and readings crossing a field rebase or pose
+correction are excluded from field residuals. Geometry uses logged pose without
+acquisition-time interpolation, so sensor age still contributes motion error.
+
+Raw and filtered residuals are separate. Raw/filtered differences and large
+unexpected steps identify filter-lag/target-switch candidates, not proven causes.
+The tuple lacks the full multi-object history, and periodic sampling misses many
+sensor frames; invalid frequencies describe logged observations only. Sigma does
+not cover mounting bias, target association, surface geometry or pose error.
+Agreement with odometry is not absolute accuracy or guaranteed clearance. Keep
+new ToF pose/servo corrections disabled until a separate plan is validated.
+
+Coverage audit: periodic nominal/estimated route records cover rear positioning,
+all five arcs and drive/brake/settle transitions, plus edge localization when
+performed. Official CW finishes diagnostics before the short scan; official CCW
+includes shortened edge localization and finishes before its scan. Subsequent
+scan/connector text logs are not equivalent periodic route coverage. Completion
+and pose seeding need not coincide with a sample. The logged nominal path uses
+command curvature integrated over actual encoder travel; it is not an independent
+time-based planned trajectory. No firmware changes extend coverage in this work.

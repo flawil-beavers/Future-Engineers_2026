@@ -12,6 +12,17 @@ exact physical sequence. M7 upload and physical validation are pending.
 For the isolated CW/CCW start acceptance below, set the first-lap flag back to
 `true`. Those start tests remain outstanding; earlier first-lap-only defaults
 and binary identities below describe historical builds.
+## Logging for the receiving laptop
+
+Upload current firmware and use the normal run/save procedure below. Driving,
+sensor scheduling and saving are unchanged by the laptop ToF assessment. Do not
+launch or implement a dedicated ToF test or sensing-fan sweep; its fan is only
+offline geometry. Preserve complete original logs and report firmware identity,
+log number, direction and physical outcome, including contact phase/surface when
+known. The receiving agent follows the archive/hash/handoff instructions in
+`AGENTS.md` and runs the existing parking-exit batch command.
+The laptop assessment requires no test-flag changes; isolated one-lap acceptance
+above/below is a separate firmware-validation choice, not an analysis requirement.
 
 ## Current CCW short start (2026-10-06)
 

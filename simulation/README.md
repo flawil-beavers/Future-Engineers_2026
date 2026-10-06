@@ -23,6 +23,7 @@ contact testing.
 | `corner_reverse_view_search.py` | Offline straight-reverse view candidates from recorded holds; all 24 legal seats, front/rear capsules, 40 mm margin and 20 mm braking reserve. Dynamic yaw, images and real retrace remain unmodeled. |
 | `corner_forward_view_search.py` | Forward-only first-corner arc candidates from recorded CW approach poses; all 24 legal seats, conservative front/rear envelope and assumed pose/yaw/braking deviations. No firmware control or route-join acceptance. |
 | `PARKING_EXIT_DIAGNOSTIC_LOGGING.md` | Firmware switch, schema, analysis workflow, physical handoff and limitations. |
+| `analyze_parking_exit_tof.py` | Laptop-only angle/target assessment automatically included in the batch command; preserves route outputs and robot driving. |
 | `parking_scan_search.py` | Historical bounded search for a camera scan pose after parking exit. |
 | `parking_entry_scout_sim.py` | Current log-driven replay of the preceding-station scout and its camera/wall/pillar geometry. |
 | `PARKING_ENTRY_GEOMETRY_TOOLS.md` | Usage, inputs, results, limitations, and maintenance for both parking-entry tools. |

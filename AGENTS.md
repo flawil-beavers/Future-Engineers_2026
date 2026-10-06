@@ -26,6 +26,10 @@
   `AGENT_DOCUMENTATION.md` are tracked by Git and contain no machine-specific
   absolute paths. Do not claim the batch is synchronized merely because it
   exists in ignored `local_workspace/` or on removable media.
+- Parking-exit ToF sensing-fan assessment is laptop-only analysis of existing
+  logs. The tester uploads current firmware, performs normal runs and saves
+  normally; do not request a dedicated ToF test/sweep, extra movements or pauses.
+  Preserve the existing route, braking, reversal and pose-correction diagnostics.
 
 ## Temporary files
 

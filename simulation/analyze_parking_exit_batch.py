@@ -6,10 +6,12 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import json
 import re
 from pathlib import Path
 
 import analyze_parking_exit_pose as analyzer
+import analyze_parking_exit_tof as tof_analyzer
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCES = ROOT / "simulation/evidence/parking_exit_diagnostics"
@@ -18,8 +20,26 @@ COMPLETE_NAME = re.compile(r"\d{8}_log_\d{3,}_(?:cw|ccw)\.txt")
 MANIFEST_FIELDS = (
     "source", "sha256", "session", "source_lines", "build", "direction",
     "exit_complete", "overflow", "diagnostic_truncated", "pose_svg",
-    "exit_pose_svg",
+    "exit_pose_svg", "build_report", "observed_procedure",
 )
+
+
+def observed_procedure(session: analyzer.ParsedLog) -> str:
+    lines = session.path.read_text(encoding="utf-8", errors="replace").splitlines()
+    text = "\n".join(lines[session.source_line_start - 1:session.source_line_end])
+    if "[CW START] Short scan from initial ToF seed + exit odometry" in text:
+        return "cw_short_start"
+    if "[CCW START] Second-edge reference reached; no extra reverse" in text:
+        return "ccw_short_start"
+    return "legacy_or_unidentified"
+
+
+def config_signature(session: analyzer.ParsedLog) -> tuple[tuple[str, str], ...]:
+    items = list(session.config.items())
+    procedure = observed_procedure(session)
+    if procedure != "legacy_or_unidentified":
+        items.append(("observed_procedure", procedure))
+    return tuple(sorted(items))
 
 
 def discover_sources(directory: Path) -> tuple[list[Path], list[tuple[str, str]]]:
@@ -51,6 +71,21 @@ def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
     paths, duplicates = discover_sources(source_dir)
     sessions, rows = analyzer.analyze(paths)
     analyzer.write_report(sessions, rows, output_dir)
+    tof_analyzer.write_assessment(sessions, output_dir, observed_procedure)
+    groups: dict[tuple[tuple[str, str], ...], list[analyzer.ParsedLog]] = {}
+    for session in sessions:
+        groups.setdefault(config_signature(session), []).append(session)
+    build_reports = {}
+    for signature, group in sorted(groups.items()):
+        build = group[0].config.get("build", "unknown")
+        safe_build = re.sub(r"[^A-Za-z0-9_-]", "_", build)
+        digest = hashlib.sha256(json.dumps(signature).encode("utf-8")).hexdigest()[:12]
+        directory = Path("by-build") / f"{safe_build}_{digest}"
+        labels = {session.label for session in group}
+        analyzer.write_report(group, [row for row in rows if row["file"] in labels],
+                              output_dir / directory)
+        tof_analyzer.write_assessment(group, output_dir / directory, observed_procedure)
+        build_reports[signature] = directory / "parking_exit_analysis.md"
     with (output_dir / "parking_exit_sources.csv").open(
             "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=MANIFEST_FIELDS)
@@ -72,6 +107,8 @@ def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
                 "diagnostic_truncated": session.truncated,
                 "pose_svg": f"{safe_name}_pose.svg",
                 "exit_pose_svg": f"{safe_name}_exit_pose.svg" if has_exit else "",
+                "build_report": build_reports[config_signature(session)].as_posix(),
+                "observed_procedure": observed_procedure(session),
             })
     with (output_dir / "parking_exit_batch.md").open("w", encoding="utf-8") as handle:
         handle.write("# Parking-exit batch analysis\n\n")
@@ -82,6 +119,27 @@ def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
                      "Plots are onboard rear-axle pose estimates, not measured "
                      "clearance or a proposed robot path. Check physical outcomes "
                      "in the evidence README.\n")
+        handle.write("\nAdded [offline ToF assessment](parking_exit_tof_assessment.md) "
+                     "and [unique observations](parking_exit_tof_observations.csv). "
+                     "Existing route/braking/reversal outputs remain available. "
+                     "Sensing fans are laptop geometry only, not a robot test.\n")
+        handle.write("\n## Results by diagnostic build, configuration and observed procedure\n\n"
+                     "Use these reports to compare revisions. The top-level report "
+                     "pools historical configurations. A diagnostic object's build "
+                     "timestamp may remain unchanged after other firmware changes; "
+                     "verify commanded segment targets and the evidence README "
+                     "before claiming matching motion or installed firmware.\n\n"
+                     "Explicit CW/CCW short-start log markers form separate groups. "
+                     "Without those markers, the procedure is legacy or unidentified.\n\n"
+                     "| Diagnostic build | Observed procedure | Sessions | Completed, untruncated | Report |\n"
+                     "| --- | --- | --- | --- | --- |\n")
+        for signature, group in sorted(groups.items()):
+            completed = sum(session.exit_complete and not session.overflow and
+                            not session.truncated for session in group)
+            report = build_reports[signature].as_posix()
+            handle.write(f"| `{group[0].config.get('build', 'unknown')}` | "
+                         f"{observed_procedure(group[0])} | "
+                         f"{len(group)} | {completed} | [Analysis]({report}) |\n")
         if duplicates:
             handle.write("\nIdentical complete source files skipped:\n\n")
             for duplicate, original in duplicates:

@@ -1,5 +1,141 @@
 # Agent documentation and engineering handoffs
 
+## 2026-10-06: offline ToF assessment, driving unchanged
+
+Added tracked `simulation/analyze_parking_exit_tof.py` to the unchanged batch
+command, with per-observation CSV and continuous-angle quality/residual SVGs in
+each configuration/procedure report directory. Original logs and existing route,
+braking, reversal, correction and neutral outputs are preserved. No firmware,
+movement, pause, acquisition, centre or saving changes. Tester-facing instructions
+and AGENTS explicitly prohibit requesting a dedicated ToF program/fan sweep;
+the tester uploads current firmware, runs/saves normally and reports physical
+outcomes. The fan is only laptop geometry.
+
+Coverage audit: rear positioning and five arcs retain timestamps, encoder/gyro,
+commands, nominal/estimated pose, transitions and brake/settle/direction events.
+CW short-start diagnostics end before scan; CCW includes shortened localization
+and ends before scan. Later scans/connectors lack this periodic route stream.
+Nominal pose integrates command curvature over actual encoder travel, not an
+independently timed planned path. Seeding/completion may fall between samples.
+
+Regenerated 72 complete sources / 73 sessions: 15,814 unique logged ToF tuples,
+2,807 eligible under both nominal 22/25-degree fan models; 282 change geometric
+classification between fans. These are sampled observations, not all acquired
+frames. Current-header CW LEFT arc residual spreads are about 10.4-10.8 mm;
+localization's 110-300 mm subset has median -2.96 mm / SD 4.44 mm across 191
+observations from 28 runs. This broader selection differs from the earlier
+169-reading near-parallel audit. Do not interpret either as absolute accuracy.
+Only known south-wall/pink faces are modeled; current config geometry is assumed
+for history, vertical visibility/optical weighting and pose timing remain unknown.
+
+Freshness <=50 ms, valid/accepted range and unambiguous fans gate residuals;
+seed/local-frame data and cached reads crossing pose corrections are excluded.
+Raw/filtered ranges remain separate; jumps/lag are candidates, not proven target
+switching. Keep diagnostic-only ToF use and gyro/encoder integration. Next: obtain
+normal current CW/CCW logs and complete 455/456 originals, archive unchanged with
+hashes/physical outcomes, then compare procedure-specific route errors and angle
+coverage. No active correction without a separate plan/physical validation.
+
+Validation: seven ToF geometry/provenance tests, seven batch tests (including
+byte-for-byte preservation of all existing route outputs) and 16 pose-analysis
+tests pass. Firmware files are unchanged, so no firmware build/upload is needed.
+During push, integrated incoming `ea40237` (recorded-map laps 2/3) without
+altering its firmware changes. Its current defaults run three laps; laptop
+assessment requires no flag changes. Exit diagnostic coverage remains as above.
+
+## 2026-10-06: incoming update to ff9be2e, diagnostic work preserved
+
+Fetched/fast-forwarded three commits from 6d03c80 and reapplied local diagnostic
+changes without conflicts; backup stash retained. Six complete logs 449-454 and
+two excerpts 455/456 arrived already committed. Regenerated 72 complete sources /
+73 sessions, 62 completed untruncated exits. All 75 archived-file hashes match
+metadata after correcting log 452's hash transcription in README/history to
+`03a22c34b6c3ae7f453dcce506f8159bbc25325ebb65ce4184fa7f8a903162eb`.
+No source telemetry was edited. Full 455/456 logs remain to be obtained.
+
+The Oct 5 diagnostic group now has 30 CW sessions / 28 completed: rear-marker
+median +0.47 mm, spread 2.92, max 6.16, all 30 within uncertainty, only one
+reverse. Centre 81.11, approaches 81.53/80.16, midpoint 80.85; retain 80.
+Edge mean dx/dy +22.6/-5.6 mm, dx spread 5.6. Exact evidence paths, source
+hashes and physical outcomes remain in the evidence README; later connector
+failures must not be counted as exit failures.
+
+Incoming code restores servo writes after successful connector updates; actual
+C++ regression and its negative control pass. It supersedes mechanical-only
+explanations for the later leftward steering despite right commands. Official
+CW now skips second-edge reverse/correction; CCW retains correction but skips
+the extra 70 mm. O3/CHECK_ALL retains legacy selection. Batch grouping/manifest
+now recognize explicit CW/CCW short-start markers even with unchanged diagnostic
+headers. No complete short-start physical evidence yet. Next: follow current
+`CONNECTOR_NEXT_TEST.md`, verify CW scan clearance without old edge correction
+and CCW shortened reference, then re-evaluate pose-control candidates.
+
+Incoming geometry review's 441 overlap uses full-lock envelopes for nonzero
+commands and conservative margins; our earlier 6.3 mm gap uses CAD-interpolated
+wheel angles and physical rectangles. These assumptions differ and neither is
+measured contact truth. Keep both qualifications. Six batch / 16 analyzer tests
+pass; no local firmware edit/build/upload, commit or push in this update.
+
+## 2026-10-06: live exit-feedback and sampled clearance assessment
+
+Owner says pink sizes/flush black-wall placement stayed at repository geometry;
+does not remember log 441's contact surface. Audit uses nominal 200 x 20 mm
+rails, gap 242.5-252.5 mm, prototype body/wheel geometry and CAD wheel angles.
+For the 90/155 mm CW group, completed-run sampled reverse pink gaps are
+11.8-38.8 mm; log 441 has 6.3 mm, versus >=204.1 mm south-black-wall clearance.
+Pink contact is geometrically more plausible, not identified or proven. These
+are odometry-based sampled minima; wheel lag, real geometry and intervening
+motion remain unverified. A hypothetical 10 mm outward pose error consumes most
+of the smallest gaps; this sensitivity is not a measured error bound.
+
+169 fresh accepted, near-parallel LEFT samples whose sampled 22-degree fan
+misses both pink rails give raw-minus-predicted south-wall median -2.82 mm,
+spread 1.86, range -8.40..+3.57. This constrains lateral agreement only during
+reverse, after the sensor-derived start seed; no independently observable full
+XY tolerance or arc clearance follows. Edge dx correction remains about +23 mm.
+Completed effective encoder/gyro radius medians by segment are
+105.2/127.1/106.9/128.4/112.2 mm, so a symmetric 109 mm model is insufficient
+for precise live replanning; attribution to backlash/slip remains unresolved.
+
+Code already regulates reverse steering by gyro; exit arcs use full-lock fixed
+commands and the last stops by gyro heading. Prefer a pose/reference/clearance
+check at existing halts and bounded remaining-path adjustment, with curvature
+separated by travel direction and steering side, before continuous arc steering.
+The old swept footprint treats any nonzero command as full lock; this audit
+interpolates CAD wheel angles for small reverse commands instead. Working helper
+`local_workspace/parking-exit-geometry-audit.py` and report folder
+`local_workspace/parking-exit-geometry-audit/` are ignored, not synced evidence.
+Findings are durable here; original logs/hashes remain in the evidence README.
+Next: shadow-evaluate stop-pose clearance and candidate remaining paths with
+explicit sensor/geometry uncertainty, then validate cable-free CW/CCW physical
+clearance before applying commands. No firmware/controller changes this session.
+
+## 2026-10-06: revised-exit reanalysis at downloaded main 6d03c80
+
+Regenerated 66 committed complete sources / 67 sessions and verified all 67
+evidence README hashes, including the excerpt. Batch analysis now adds reports
+by diagnostic build/configuration and manifest links; use these rather than
+pooling the old 85/150 and new 90/155 mm exits. Diagnostic build timestamps can
+survive other firmware changes; check segment targets and archived metadata.
+
+Current parking header `Oct__5_2026_21_30_53`, logs 425-448 in
+`simulation/evidence/parking_exit_diagnostics/`, has 22 completed CW exits / 24
+sessions. Rear-marker disagreement median -0.07 mm, spread 2.98, max 6.16;
+23/23 moves within uncertainty, none reverse, so no drivetrain backlash estimate.
+Exploratory centre 81.11, approaches 81.68/80.19, midpoint 80.94: retain 80.
+Edge correction mean dx/dy +22.7/-4.5 mm, dx spread 5.6. Physical 446-448
+GREEN-middle success/contact-free reports remain in README with exact hashes.
+
+Log `20261005_log_441_cw.txt`, SHA-256
+`6bc1dc20a965e3d73d233e4c7c9b4dcf28443fc0e1b56cc4a675a0abb0664fea`,
+aligned after 134.1 mm versus completed-run final arcs 139.2-151.4 mm, then
+stalled in reverse with reported wall contact/hanging. No causal or surface
+identification from telemetry alone. Next: reconstruct its body/wheel clearance
+using actual gyro-ended pose, then obtain observed CW/CCW contact-phase/surface
+reports. Keep motion/servo/safety gates unchanged. Updated parking plan and
+evidence summary; generated reports remain ignored. Five batch and 16 analyzer
+tests pass; no firmware edit, build, upload or commit in this session.
+
 ## 2026-09-30: repeatable laptop-side parking-exit batch analysis
 
 `simulation/analyze_parking_exit_batch.py` now regenerates the existing analyzer's
@@ -8939,7 +9075,7 @@ Current single-trial instructions are at the top of `CONNECTOR_NEXT_TEST.md`.
 2026-10-06 GREEN far/left followup physical batch, complete PHILIPP USB log
 `simulation/evidence/parking_exit_diagnostics/20261006_log_452_cw.txt`,
 53,632 bytes, copied unchanged from source; source/archive SHA-256
-`03a22c34b6c3ae7f453dcee506f8159bbc25325eb65ce4184fa7f8a903162eb`.
+`03a22c34b6c3ae7f453dcce506f8159bbc25325ebb65ce4184fa7f8a903162eb`.
 Connector build `Oct 5 2026_23:49:40` is consistent with the prepared M7
 followup candidate; installed binary not read back. User reports correct
 start and GREEN recognition, then leftward bypass and autonomous stop in an

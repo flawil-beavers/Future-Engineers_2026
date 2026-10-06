@@ -32,13 +32,36 @@ complete source cannot be obtained.
 
 ## Received runs
 
+### Revised-exit reanalysis (2026-10-06)
+
+All 75 archived-file metadata hashes (72 complete sources plus three excerpts)
+match their repository copies after correcting a transcription error in log 452's
+hash. Batch analysis expands 73 sessions; 62 completed,
+untruncated exits contribute to the historical aggregate. The batch index now
+links separate diagnostic-build/configuration reports under `by-build/`.
+
+The archived `Oct__5_2026_21_30_53` group (425-454, recorded 90/155 mm targets)
+has 28 completed CW exits of 30 runs. Its 30 observable rear-marker moves have
+encoder-minus-ToF median +0.47 mm, spread 2.92 mm and maximum absolute 6.16 mm,
+all within conservative uncertainty; only one reverses. Exploratory centre is
+81.11 degrees, with increasing/decreasing approach candidates 81.53/80.16;
+keep centre 80. Mean edge correction dx/dy is +22.6/-5.6 mm, dx spread 5.6.
+These are onboard-reference comparisons, not physical clearance or backlash.
+Completed final arcs span 139.2-151.4 mm; failed log 441 aligned at 134.1 mm
+before its reverse stall and reported contact/hanging. Review that actual pose
+and clearance separately; shorter travel alone does not establish causation.
+New official CW/CCW short-start implementations have no complete physical
+validation logs here yet. Explicit procedure markers now separate their future
+batch reports from these legacy reverse-localization results. Excerpts 455/456
+remain excluded from automatic batch analysis until full originals are available.
+
 | Evidence file | SHA-256 | Firmware/build | Direction | Complete | Physical report | Analysis/limitations |
 | --- | --- | --- | --- | --- | --- | --- |
 | `20261006_log_455_cw_excerpt.txt` | `a31feffda832d2f16eea905c3c51e5fb162d1612f046d395a1b24dd4d0323368` | M7 connector revision after logs 453/454; installed binary not read back | CW | No, 1,078-byte selected telemetry excerpt; full 59,883-byte source was queried but removable stick disconnected before unchanged archive copy, so the rest is missing | User: left toward outer wall, stopped autonomously, front wheel about 150 mm away, no contact | GREEN S0/2 inner seat4, connector complete. At followup 605.6 mm: commanded +26 deg right but heading 234.7 deg left, path heading 199.6 deg, modeled wall/pillar 187.4/208.6 mm; true 35.1 deg heading guard stopped motor. Replace with full original when stick returns. |
 | `20261006_log_456_cw_excerpt.txt` | `7f8e247c6bb437e92d155d2734dbb6ed127cb72fcb7a24c24c5afe00866143a3` | same M7 revision | CW | No, 537-byte selected telemetry excerpt; full 67,372-byte source was queried but removable stick disconnected before unchanged archive copy, so the rest is missing | Physical outcome not individually assigned; user reports latest leftward wall approach and autonomous stop | Similar GREEN detection and true 35.1 deg guard stop at followup 630.2 mm; commanded +25.3 deg right, modeled wall/pillar 192.2/214.3 mm. Replace with full original when stick returns. |
 | `20261006_log_453_cw.txt` | `b28b59182c0903054b556ad9ac631925b3955779be32bbbc1359bcb8d6246fda` | M7 connector build `Oct 6 2026_00:03:11`; consistent with live-path heading-guard revision, installed binary not read back | CW | Yes, 57,384 bytes | User: autonomous stop near middle of start section, trial 1/2 | GREEN S0/2 inner seat4 confirmed. Old route-prefix gate rejected retention because GREEN taper changed later points; unnecessary replan to merge143 then steering -42.067 deg exceeded 42 deg and motor locked. |
 | `20261006_log_454_cw.txt` | `917c9c0d1dd8021f138b7139f599dc63877fa5109fe601c6307c2f5e0a3b3506` | same M7 connector build | CW | Yes, 54,919 bytes | User: autonomous stop near middle of start section, trial 2/2 | Same false route-prefix rejection; unnecessary replan to merge144 then finite endpoint steering -42.027 deg exceeded 42 deg and motor locked. |
-| `20261006_log_452_cw.txt` | `03a22c34b6c3ae7f453dcee506f8159bbc25325eb65ce4184fa7f8a903162eb` | M7 connector build `Oct 5 2026_23:49:40`; consistent with far-GREEN followup revision, installed binary not read back | CW | Yes, 53,632 bytes | User: started well, saw sole inner GREEN, steered left and stopped while angled; outer wall visibly not close, roughly consistent with modeled 340 mm reserve | GREEN confirmed S0/2 inner seat4; connector retained and completed at 59.9 mm/13.7 deg. Followup stopped at travel 355.1 mm: cross-track 43.4 mm, modeled wall/pillar 339.7/305.2 mm, baseline heading error 35.1 deg. Outgoing displaced route tangent from adjacent logged targets is about 199.6 deg, giving about 15.5 deg relative error; false heading guard. End-of-run left ToF 125 mm did not correspond to the user's visible outer-wall distance; target feature unknown. No physical contact reported. |
+| `20261006_log_452_cw.txt` | `03a22c34b6c3ae7f453dcce506f8159bbc25325ebb65ce4184fa7f8a903162eb` | M7 connector build `Oct 5 2026_23:49:40`; consistent with far-GREEN followup revision, installed binary not read back | CW | Yes, 53,632 bytes | User: started well, saw sole inner GREEN, steered left and stopped while angled; outer wall visibly not close, roughly consistent with modeled 340 mm reserve | GREEN confirmed S0/2 inner seat4; connector retained and completed at 59.9 mm/13.7 deg. Followup stopped at travel 355.1 mm: cross-track 43.4 mm, modeled wall/pillar 339.7/305.2 mm, baseline heading error 35.1 deg. Outgoing displaced route tangent from adjacent logged targets is about 199.6 deg, giving about 15.5 deg relative error; false heading guard. End-of-run left ToF 125 mm did not correspond to the user's visible outer-wall distance; target feature unknown. No physical contact reported. |
 | `20261005_log_449_cw.txt` | `7e6c2348e7ca1c4d1465cbe4dc3fca56e9edd76a0f92fec14d1ee7aabc6951a9` | M7 connector build `Oct 5 2026_23:19:15`; consistent with far-GREEN revision, installed binary not read back | CW | Yes, 51,604 bytes | Far/left GREEN, trial 1/3; user reports autonomous stop | S0/2 GREEN seat4 confirmed; retained connector, then live steering -42.287 deg exceeded 42 deg at 60.56 mm/14.26 deg endpoint error; motor locked. |
 | `20261005_log_450_cw.txt` | `5ed788dd6887fc11aeb1d4b59baf039677e813ee19ed1f25351b810341a54776` | same M7 connector build | CW | Yes, 49,318 bytes | Far/left GREEN, trial 2/3; long left curve into outer wall before the green pillar | S0/2 GREEN seat4 confirmed; retained connector completed at 60.0 mm/11.4 deg. Later unresolved lap boundary, slip reports and stall. No post-handoff pose/steering trace, so exact steering cause is unmeasured. |
 | `20261005_log_451_cw.txt` | `46b1b4c7a6cc6a635354a78779162495311067d101365bc8a094ce261ba9515a` | same M7 connector build | CW | Yes, 50,486 bytes | Far/left GREEN, trial 3/3; user reports autonomous stop | S0/2 GREEN seat4 confirmed; retained connector, then live steering -42.396 deg exceeded 42 deg at 65.18 mm/15.87 deg endpoint error; motor locked. |

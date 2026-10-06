@@ -101,6 +101,8 @@ backlash, but slip, compliance and sensor geometry must remain alternative cause
 - [x] Write Markdown and CSV reports below
       `local_workspace/parking-exit-analysis/`, including input names, SHA-256
       hashes, firmware/schema identity and excluded evidence.
+- [x] Regenerate the archived batch automatically, with separate reports by
+      diagnostic build/configuration so revised exits can be compared separately.
 - [x] Add a tracked synthetic fixture and tests for completion, braking,
       reversal, duplicate ToF data, missing configuration, abort/overflow and
       diagnostic truncation flags, and a known servo-neutral offset.
@@ -116,45 +118,82 @@ backlash, but slip, compliance and sensor geometry must remain alternative cause
 - [x] Run analyzer tests and build only `giga_r1_m7` with the IDE-managed
       PlatformIO Core in enabled and disabled configurations. Confirm disabled
       behavior/buffer size and enabled RAM use rather than relying on estimates.
-- [ ] After explicit upload authorization, use the first normal run to verify log
-      coverage, control-loop timing and buffer capacity. Then compare repeated
-      exits in both directions.
-- [ ] For each returned batch, copy every complete original log unchanged to
-      `simulation/evidence/parking_exit_diagnostics/`, update that directory's
-      metadata table and append concise hashes, physical reports, findings,
-      limitations and exact next steps to `AGENT_DOCUMENTATION.md`. Commit these
-      tracked sources; keep reproducible analyzer output in `local_workspace/`.
+- [x] Verify returned-log coverage and diagnostic budgets from normal runs.
+      The archived revised exit has 28 completed, untruncated CW sessions.
+      Control-loop timing comparison and revised-exit CCW runs remain pending.
+- [x] Establish the original-log archive and metadata/handoff procedure. Repeat
+      it for every returned batch; keep generated reports in `local_workspace/`.
 
 Do not implement backlash compensation or new pose control until repeated logs
 show a material, consistent error. Any later correction requires its own plan,
 offline safety validation and powered testing.
 
-## Current evidence result (2026-09-30)
+## Current evidence and next steps (2026-10-06)
 
-The 37 committed complete source files contain 38 diagnostic sessions; the
-separate `000` excerpt duplicates complete log 399. Thirty-one sessions have an
-untruncated `unparking_complete` record. Seven aborted or incomplete sessions
-remain available per run but are excluded from the combined motion summaries.
-Review the evidence README for physical setup and outcome before treating any
-completed run as a valid performance trial.
+### Laptop ToF assessment and unchanged physical runs
 
-Across 32 observable rear-marker moves in completed sessions, median
-encoder-minus-ToF motion is +0.45 mm, spread 3.57 mm and maximum absolute
-difference 13.27 mm. All fall within conservative sensor/settling uncertainty;
-only one is a reverse move. Log 414 failed rear stationary verification after
-the range rose while the encoder remained stationary. The interrupted log 406
-has a reverse movement whose 7.39 mm disagreement exceeds its 5.84 mm
-uncertainty, but its exit never completed. These observations warrant rear-ToF
-investigation and do not identify drivetrain backlash on their own.
+The batch command now adds continuous-angle ToF quality/residual plots and a
+unique-observation CSV alongside unchanged route/braking/reversal reports. It
+models nominal wall/rail intersections and 22/25-degree sensing fans offline;
+no dedicated ToF program, sweep, extra movement, pause or save step is required.
+The tester uploads current firmware and runs/saves normally, reporting firmware,
+log number, direction and physical outcome/contact phase/surface when known.
 
-The exploratory completed-run curvature fit gives raw centre 80.97 degrees.
-Increasing/decreasing steering approaches give 81.67/80.08 degrees, midpoint
-80.87 degrees. The 1.59-degree span still prevents a precise centre claim;
-retain `SERVO_CENTER=80` and treat 81 as a controlled physical comparison only.
+Coverage inspection confirms all rear positioning and five-arc diagnostics.
+Official CW now ends before the short scan; CCW includes shortened edge
+localization and ends before its scan. Subsequent scan/connector text logs are
+not periodic nominal/estimated route coverage. Preserve this limitation instead
+of claiming a complete post-exit trajectory. Nominal diagnostic pose follows
+command curvature using measured encoder travel, not independent timed targets.
+New logs remain archived unchanged with hashes and physical reports. Analyse
+current procedures separately; retain gyro/encoder integration and defer active
+ToF correction because residual agreement does not establish absolute accuracy.
 
-Existing edge localization applies CW mean dx +22.5 mm (4.3 mm spread,
-29 completed runs) and CCW mean dx -22.8 mm (0.8 mm spread, only two runs).
-The 14 newly completed CW runs alone average +21.7 mm (4.7 mm spread). This
-supports a repeatable sensor-versus-model offset, not external ground truth.
-Keep the existing correction; obtain more CCW exits and investigate rear-ToF
-settling before changing geometry, steering control or backlash compensation.
+The archive contains 72 complete sources / 73 sessions, with 62 completed,
+untruncated exits. Compare revisions through `parking_exit_batch.md` under
+`local_workspace/parking-exit-analysis-all/`; physical setup/outcome and exact
+source hashes remain in the evidence README.
+
+The archived 90/155 mm exit targets replace 85/150 mm; the last arc still ends by
+gyro alignment. The `Oct__5_2026_21_30_53` diagnostic group contains 30 CW
+sessions (425-454), 28 completed. Completed final arcs span 139.2-151.4 mm.
+Logs 446-448 also physically completed the GREEN-middle connector/lap without
+reported contact or a visibly narrow pink/green gap. This covers those layouts,
+not all placements or CCW. The diagnostic build timestamp may survive later
+firmware changes; cross-check the recorded segment targets and evidence metadata.
+
+In those 28 completed exits, 30 rear-marker moves have encoder-minus-ToF median
++0.47 mm, spread 2.92 mm, maximum absolute 6.16 mm, all within conservative
+uncertainty. Only one reverses, so motor backlash remains unidentified. The servo
+fit gives centre 81.11 degrees, approach candidates 81.53/80.16 (midpoint
+80.85); retain `SERVO_CENTER=80` because the 1.37-degree span remains unresolved.
+Edge correction mean dx/dy is +22.6/-5.6 mm (dx spread 5.6), comparing onboard
+references rather than external pose truth.
+
+Two revised runs failed before completion: 429 failed rear stationary
+verification; 441 aligned after only 134.1 mm and stalled about 68 mm into
+reverse localization, with user-reported wall contact/hanging. Review 441's
+estimated body/wheel clearance against pink rails and wall, using the actual
+gyro-ended pose rather than the ideal 155 mm endpoint. Then obtain cable-free
+CW/CCW observations identifying the contact phase/surface. Keep the existing
+motion and safety gates while investigating; defer centre/backlash compensation.
+
+The subsequent geometry audit gives sampled reverse pink gaps 11.8-38.8 mm in
+completed runs and 6.3 mm in 441; its south-wall gap stays above 200 mm. Selected
+unobstructed reverse wall readings agree laterally with odometry to a few mm,
+but do not establish full XY accuracy or a guaranteed clearance. Effective arc
+radii also differ by steering side/travel direction. Next software investigation:
+shadow-check pose and full-body clearance at existing stops, then evaluate bounded
+remaining-path changes with sensor/geometry uncertainty. Active servo/path control
+needs a separate reviewed implementation and powered CW/CCW validation.
+
+Incoming `ff9be2e` changes the pipeline after the same five arcs: official CW
+uses the initial ToF seed and exit odometry directly for its short scan, omitting
+second-edge reverse/correction. Official CCW keeps the edge correction but omits
+the extra 70 mm continuation. O3/CHECK_ALL keeps its legacy procedure. No complete
+short-start physical logs are archived yet; 455/456 remain excerpts of preceding
+connector trials. Batch reports now separate explicit short-start markers even
+with unchanged diagnostic headers. Validate CW exit-pose/scan clearance without
+the former edge correction, and the shortened CCW reference, before expanding
+live pose control. The incoming connector servo-resume fix is a software cause
+of the later steering failures; it does not measure parking linkage backlash.
