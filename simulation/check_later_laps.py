@@ -38,7 +38,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
     fixture += extra
     fixture += '\n#include "ackermann_kinematics.h"\n'
     signatures = (
-        'float laterLapServoForCurvature(', 'float recordedLapSpeed(',
+        'bool parkingReturnMotionSafe(', 'float laterLapServoForCurvature(', 'float recordedLapSpeed(',
         'uint8_t sectionInferredEmpty(', 'bool stationResolved(', 'bool allStationsResolved(',
         'bool withinCornerGate(', 'bool nearCorner(', 'bool isExtremeAdjacentPair(',
         'bool targetsOuterExtreme(', 'bool hasConfirmedExtremeAdjacentPair(',
@@ -231,6 +231,7 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   if(!std::isfinite(requiredSteering)){failReason=4;return false;}
   const float steering=static_cast<int>(clampFloat(requiredSteering,-OBSTACLE_MAX_PURSUIT_STEERING_DEG,
                                  OBSTACLE_MAX_PURSUIT_STEERING_DEG));
+  if(!parkingReturnMotionSafe(pose,static_cast<int>(steering))){failReason=8;return false;}
   const float curvature=fabsf(steering)<2?0:-1/Ackermann::getTurnRadius(steering);
   // 8 mm/update covers 390 mm/s at roughly 20 ms controller intervals.
   const float ds=8;
@@ -303,6 +304,16 @@ int main(){
         section,station,side=i//6,(i%6)//2,i%2
         reverse[((4-section)%4)*6+(2-station)*2+(side^1)]=c
     cases.append(dict(direction=1,speed_cap=0,colors=reverse))
+    # Exact layoutB observed in477/478; reverse canonical seats for CCW.
+    physical_b=[0]*24
+    for seat,color in ((0,1),(4,2),(7,1),(10,2),(15,1),(19,2),(22,1)):
+        physical_b[seat]=color
+    reverse_b=[0]*24
+    for i,c in enumerate(physical_b):
+        section,station,side=i//6,(i%6)//2,i%2
+        reverse_b[((4-section)%4)*6+(2-station)*2+(side^1)]=c
+    for direction,layout in ((-1,physical_b),(1,reverse_b)):
+        cases.append(dict(direction=direction,speed_cap=0,colors=layout))
     inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
     run=subprocess.run([str(exe)],input=inputs,text=True,capture_output=True,check=True)
     (destination/'output.txt').write_text(run.stdout)

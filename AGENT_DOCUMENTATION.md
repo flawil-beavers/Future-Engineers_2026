@@ -9748,3 +9748,43 @@ Details `simulation/CW_CCW_471_476_REVIEW.md`; scripts/reports relative there.
 Next user uploadM7, unchanged A3fresh CW full3lap trials then2CCW, cable-free.
 Watch S0 GREEN, S3 RED wall/corner and missingseat12; secure complete originals
 first, inspect START_ROI/GREEN_START_CHECK/foot rejects/carry fallback/LATER_TRACK.
+
+### 2026-10-06: layout B477-481, pink return collision and CCW connector margin
+
+Complete originals477/478CW and479-481CCW copied unchanged to
+`simulation/evidence/parking_exit_diagnostics/20261006_log_NNN_DIR.txt`;
+source/archive SHA-256 equal, individual hashes/bytes in evidence README.
+All headers still parkingOct__6_2026_19_54_43/connectorOct6_19:54:26,
+older than prior candidate; installed binary not read back.
+User: both CW returns hit pink bay; three CCW stops after exit, fixed B photo.
+CW map0G4R7G10R15G19R22G, corner3 rounds22->0 then stalls6.0/7.7mm/1000ms.
+Nominal path clears bay: actual collision pose/ToF missing. First-lap radial
+wall model has independently reproduced139.5mm fictitious residual, not proven
+sole contact cause. CCW480/481 lock atprogress0 for-42.077/-42.037deg>42.
+479 accepts75mm lookahead, gyro-poll gap15704ms thenManual disable; no explicit
+automatic rejection, physical stop report retained without invented cause.
+
+Changes: rectangular physical wall reference during ordinary driving all laps;
+exclude parking piece sensor cones at both measured gap extremes. Official CW
+inner GREEN0/2/4 targets200mm, including stored return0. CCW-only planning40deg
+vs42runtime, shared simulation/encoder cap650mm permits ~528mm connector with
+150mm lookahead at three measured poses. Blanket40deg rejected14CW cases;
+restricted toCCW and8943CW cases nowpass. Return full body/wheel guard predicts
+50mm CAD motion with5mm body margin; stops/logs PARK RETURN before unsafe bay
+entry. Existing200LATER_TRACK budget nowincludes lap1return, no USBdrivecable.
+
+Checks:4158CCWstarts/33returns/135prefix;81 measured starts plus27 retained-path
+actual-pose perturbations each;88 official-start/end-pair bay-return cases;
+2805CAD later-lap cases incl exactB bothdirections andruntimebayguard pass.
+Physical-wall/pillar/vertex/grazing/pinkcone gatespass. Analyzer99completefiles/
+100sessions, outputsignored. Known maps and modeled motion; camera, ToFclosed
+loop, servo lag/slip/bay placement needhardwarevalidation. Full arbitrary
+field-layout combinations not exhaustively simulated. No upload/agentcommit.
+Details `simulation/LAYOUT_B_477_481_REVIEW.md`.
+Next useruploadM7, sameB twoCW then twoCCW full3laps cable-free; immediately
+archivefresh originals; inspectfirmwareheaders,150mm connector, PARK RETURN,
+lap1returnToF and latertracking, allpassing sides andcontacts.
+
+Final IDE M7-only build: RAM432776/523624, flash486160/786432;
+firmware SHA-256 `0efe2debc1941a47d02c1e5446b5c9fae5dc833259ff339ae544cbd94251ed2a`. Build successful; existing Serial/unused-function
+warnings, no new compile errors. M4 consumers/interfaces unchanged.

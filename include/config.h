@@ -1087,6 +1087,13 @@ constexpr auto OBSTACLE_LOOKAHEAD_MAX_MM = 330.0f;
 constexpr auto OBSTACLE_LOOKAHEAD_CORNER_SCALE = 0.65f;
 constexpr auto OBSTACLE_PATH_PROGRESS_WINDOW = 12;
 constexpr auto OBSTACLE_MAX_PURSUIT_STEERING_DEG = 42.0f;
+// CCW connector planning reserves2deg for actual pose/steering deviations.
+// Runtime still rejects requests beyond the physical42deg envelope.
+constexpr auto OBSTACLE_PARKING_CONNECTOR_PLAN_STEERING_DEG = 40.0f;
+// CCW front GREEN requires a longer, validated connector (~528mm in logs479-481).
+// Shared by simulated acceptance and the actual encoder travel guard.
+constexpr auto OBSTACLE_PARKING_CCW_CONNECTOR_MAX_TRAVEL_MM = 650.0f;
+
 constexpr auto OBSTACLE_PATH_MIN_SPEED = 135.0f;
 constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
 // Recorded-map laps 2/3 only: multiply the existing curvature speed profile.
@@ -1099,13 +1106,13 @@ constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 // 20 mm in the approach where the green-left rear wheel touched in log_54 and
 // about 27 mm at the peak, while retaining estimated body-to-wall margin.
 constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
-// CW parking-start section, last station, GREEN on the inner seat only:
+// CW parking-start section, every official GREEN on an inner seat:
 // the centre line already passes 100 mm outside that seat. A 200 mm
 // centre-to-pillar aim needs just 100 mm lateral route displacement, versus
 // 160 mm with the general 260 mm clearance. After radius-1 smoothing the
 // planned pillar-point gap is about 192 mm, leaving about 79 mm beyond the
 // 70 mm wheel envelope and 42.5 mm pillar movement radius. This is specific
-// to seat 4 in the official layout; log 54's contact was at outer seat 5.
+// to inner seats0/2/4; log54's contact was at outer seat5.
 constexpr auto OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM = 200.0f;
 // Safe lap-1 outer-extreme route while the following station is unresolved,
 // preserving the option of a rare opposing adjacent pillar. Logs 101-104

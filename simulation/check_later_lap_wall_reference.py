@@ -44,6 +44,10 @@ int main(){
  if(laterLapWallReference(1100,0,1,0,d,nx,ny))return 6;
  seats[0].y=200;
  if(!laterLapWallReference(1100,0,1,0,d,nx,ny))return 7;
+ // Pink pieces must never be treated as the outer wall, in any lap.
+ if(laterLapWallReference(490,-1150,0,-1,d,nx,ny))return 9;
+ if(laterLapWallReference(230,-1150,0,-1,d,nx,ny))return 10;
+ if(!laterLapWallReference(800,-1150,0,-1,d,nx,ny))return 11;
  std::cout<<"RECTANGULAR WALL PASS "<<checked<<" residual signs; cone/vertex/grazing gates PASS\n";
 }
 '''

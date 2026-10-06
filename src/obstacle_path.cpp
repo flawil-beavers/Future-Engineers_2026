@@ -902,7 +902,8 @@ bool connectorRolloutFeasible(
     };
     const ObstacleClearanceSample noClearance{};
     for (float travel = 0.0f;
-         travel <= OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM;
+         travel <= (parkingCcwShortStart ? OBSTACLE_PARKING_CCW_CONNECTOR_MAX_TRAVEL_MM :
+                    OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM);
          travel += stepMm)
     {
         // Check both existing front/rear capsules at every 2 mm of simulated
@@ -946,7 +947,8 @@ bool connectorRolloutFeasible(
             fabsf(wrap180(heading * 180.0f / PI - end.headingDeg)) <=
                 OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG)
             return true;
-        if (travel + stepMm > OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM)
+        if (travel + stepMm > (parkingCcwShortStart ? OBSTACLE_PARKING_CCW_CONNECTOR_MAX_TRAVEL_MM :
+                               OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM))
             return reject("max_travel", travel, -1, noClearance, NAN, NAN);
         while (progress + 1 < parkingEntryConnectorLength &&
                hypotf(x - parkingEntryConnector[progress + 1].x,
@@ -962,7 +964,8 @@ bool connectorRolloutFeasible(
         const float curvature = 2.0f * lateral / fmaxf(1.0f, dx * dx + dy * dy);
         const float steering = -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
         if (!isfinite(forward) || !isfinite(steering) || forward <= 1.0f ||
-            fabsf(steering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG)
+            fabsf(steering) > (parkingCcwShortStart ? OBSTACLE_PARKING_CONNECTOR_PLAN_STEERING_DEG :
+                                 OBSTACLE_MAX_PURSUIT_STEERING_DEG))
             return reject("tracking", travel, -1, noClearance,
                 forward, steering);
         const float nextHeading = heading + curvature * stepMm;
@@ -1189,7 +1192,8 @@ bool tryParkingEntryConnectorMerge(
                 -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
             if (!isfinite(localX) || !isfinite(requiredSteering) ||
                 localX <= 1.0f ||
-                fabsf(requiredSteering) > OBSTACLE_MAX_PURSUIT_STEERING_DEG)
+                fabsf(requiredSteering) > (parkingCcwShortStart ? OBSTACLE_PARKING_CONNECTOR_PLAN_STEERING_DEG :
+                                         OBSTACLE_MAX_PURSUIT_STEERING_DEG))
             {
                 feasible = false;
                 failedSample = sample;
@@ -1910,12 +1914,12 @@ float validatedClearanceForSeat(uint8_t seatIndex)
         return isSecondExtremeAdjacentSeat(seatIndex)
             ? OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM
             : OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
-    // In the official CW parking section, the last inner GREEN sits only
+    // Every official CW inner GREEN, including the stored return seat, sits
     // 100 mm inboard of the normal centre line. The general 260 mm route
     // drives unnecessarily far toward the outer wall (logs 455/456).
     if (routeTurnSign < 0 &&
         sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
-        seatIndex == 4 && !seats[seatIndex].red &&
+        seatIndex < 6 && !seats[seatIndex].red &&
         seats[seatIndex].lateralMm < 0.0f)
         return OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
     if (targetsOuterExtreme(seats[seatIndex]) &&
@@ -1932,7 +1936,7 @@ float optimizedClearanceForSeat(uint8_t seatIndex)
             : OBSTACLE_EXTREME_ADJACENT_CLEARANCE_MM;
     if (routeTurnSign < 0 &&
         sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
-        seatIndex == 4 && !seats[seatIndex].red &&
+        seatIndex < 6 && !seats[seatIndex].red &&
         seats[seatIndex].lateralMm < 0.0f)
         return OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
     if (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
@@ -4424,6 +4428,50 @@ bool laterLapWallReference(float sx, float sy, float rx, float ry,
         if (along > -40.0f && along < distance + 40.0f &&
             across < 40.0f + fmaxf(0.0f, along) * 0.268f) return false;
     }
+    // Both extreme measured bay gaps, including their thickness. Treat any
+    // piece intersecting the sensor cone as an ambiguous wall reference.
+    const float pieceX[] = {490.0f, 227.5f, 237.5f};
+    for (float px : pieceX)
+    {
+        for (float py = -1500.0f; py <= -1300.0f; py += 20.0f)
+        {
+            const float dx = px - sx, dy = py - sy;
+            const float along = dx * rx + dy * ry;
+            const float across = fabsf(dx * ry - dy * rx);
+            if (along > -25.0f && along < distance + 25.0f &&
+                across < 25.0f + fmaxf(0.0f, along) * 0.268f)
+                return false;
+        }
+    }
+    return true;
+}
+
+// Parking pieces stay on the field for all laps. This short prediction is
+// a final collision guard, independent of start-only half-plane restrictions.
+// The route must already provide clearance; rejection never selects a detour.
+bool parkingReturnMotionSafe(const PositionEstimate &pose, int servo)
+{
+    if (pose.y_mm > -1000.0f || pose.x_mm < 50.0f || pose.x_mm > 800.0f)
+        return true;
+    float x = pose.x_mm, y = pose.y_mm;
+    float heading = pose.heading_deg * PI / 180.0f;
+    const float curvature = abs(servo) < 2 ? 0.0f :
+        -1.0f / Ackermann::getTurnRadius(servo);
+    for (uint8_t step = 0; step <= 5; ++step)
+    {
+        if (!parking_start_footprint::safe(x, y, heading * 180.0f / PI,
+                -1, false, 5.0f) ||
+            !parking_start_footprint::safe(x, y, heading * 180.0f / PI,
+                1, false, 5.0f)) return false;
+        const float next = heading + curvature * 10.0f;
+        if (fabsf(curvature) > 1.0e-6f)
+        {
+            x += (sinf(next) - sinf(heading)) / curvature;
+            y += (cosf(heading) - cosf(next)) / curvature;
+        }
+        else { x += 10.0f * cosf(heading); y += 10.0f * sinf(heading); }
+        heading = next;
+    }
     return true;
 }
 
@@ -4452,10 +4500,6 @@ ObstacleTofCorrectionResult applyTofCorrectionAt(
         }
     }
 
-    const PathPoint center = interpolateBaseline(pathDistance);
-    const float pathHeading = center.headingDeg * PI / 180.0f;
-    const float wallNormalX = -sinf(pathHeading);
-    const float wallNormalY = cosf(pathHeading);
     const float robotHeading = pose.heading_deg * PI / 180.0f;
     const float robotCos = cosf(robotHeading);
     const float robotSin = sinf(robotHeading);
@@ -4513,8 +4557,8 @@ ObstacleTofCorrectionResult applyTofCorrectionAt(
         const float sensorSide = left ? 1.0f : -1.0f;
         const float sensorRayHeading =
             robotHeading + sensorSide * PI * 0.5f;
-        if (completedLaps > 0)
         {
+            // All driving laps use physical rectangular walls.
             // Filter lag near a pillar/corner must not move the map. Only use
             // fresh, settled readings whose beam can be assigned to a wall.
             float wallDistance, normalX, normalY;
@@ -4538,46 +4582,7 @@ ObstacleTofCorrectionResult applyTofCorrectionAt(
             ++corrections;
             continue;
         }
-        const float measuredWallX =
-            sensorX + reading * cosf(sensorRayHeading);
-        const float measuredWallY =
-            sensorY + reading * sinf(sensorRayHeading);
-        const float expectedWallX =
-            center.x + sensorSide *
-                           OBSTACLE_CORRIDOR_HALF_WIDTH_MM * wallNormalX;
-        const float expectedWallY =
-            center.y + sensorSide *
-                           OBSTACLE_CORRIDOR_HALF_WIDTH_MM * wallNormalY;
 
-        const float lateralResidual =
-            (expectedWallX - measuredWallX) * wallNormalX +
-            (expectedWallY - measuredWallY) * wallNormalY;
-        if (left)
-            result.leftResidualMm = lateralResidual;
-        else
-            result.rightResidualMm = lateralResidual;
-        if (!isfinite(lateralResidual) ||
-            fabsf(lateralResidual) >
-                OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM)
-        {
-            if (left)
-                result.leftResidualGated = true;
-            else
-                result.rightResidualGated = true;
-            continue;
-        }
-
-        const float lateralError = clampFloat(
-            lateralResidual * OBSTACLE_TOF_CORRECTION_GAIN,
-            -OBSTACLE_TOF_CORRECTION_MAX_STEP_MM,
-            OBSTACLE_TOF_CORRECTION_MAX_STEP_MM);
-        correctionX += wallNormalX * lateralError;
-        correctionY += wallNormalY * lateralError;
-        if (left)
-            result.leftUsed = true;
-        else
-            result.rightUsed = true;
-        ++corrections;
     }
 
     if (corrections > 0)
@@ -5145,7 +5150,8 @@ void obstacle_path_update(bool new_camera_frame)
             Serial.println(endHeadingError, 1);
         }
         else if (
-            connectorTravel > OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM)
+            connectorTravel > (parkingCcwShortStart ? OBSTACLE_PARKING_CCW_CONNECTOR_MAX_TRAVEL_MM :
+                               OBSTACLE_PARKING_ENTRY_RECOVERY_MAX_TRAVEL_MM))
         {
             stop(false);
             parkingEntryConnectorActive = false;
@@ -5386,6 +5392,19 @@ void obstacle_path_update(bool new_camera_frame)
         -OBSTACLE_MAX_PURSUIT_STEERING_DEG,
         OBSTACLE_MAX_PURSUIT_STEERING_DEG);
 
+    const bool returningPastParking = !parkingEntryActive &&
+        !parkingEntryObserving && !parkingEntryJoining &&
+        !parkingEntryConnectorActive &&
+        (completedLaps > 0 || baselinePath[progressIndex].distanceMm > loopLengthMm - 1800.0f);
+    if (returningPastParking && !parkingReturnMotionSafe(pose, static_cast<int>(steering)))
+    {
+        stop(false); set_steering(0); parkingEntryTestHold = true;
+        Serial.print("[PARK RETURN] Footprint guard held pose=");
+        Serial.print(pose.x_mm, 1); Serial.print(",");
+        Serial.print(pose.y_mm, 1); Serial.print(",");
+        Serial.println(pose.heading_deg, 1);
+        return;
+    }
     set_steering(static_cast<int>(steering));
     const char *discoveryTraceReason = nullptr;
     int discoveryTraceStation = -1;
@@ -5464,8 +5483,8 @@ void obstacle_path_update(bool new_camera_frame)
     }
     set_speed(static_cast<int>(safeSpeed));
     // Bounded onboard diagnostics: no driving USB cable required. 200 records
-    // across laps 2/3 fit the existing log buffer (roughly 40 kB maximum).
-    if (completedLaps > 0 && !lapFinishPending &&
+    // across lap1 return and laps2/3 share the existing ~40kB budget.
+    if (returningPastParking && !lapFinishPending &&
         laterTrackingTraceCount < 200 && millis() - laterTrackingTraceMs >= 250)
     {
         laterTrackingTraceMs = millis(); ++laterTrackingTraceCount;

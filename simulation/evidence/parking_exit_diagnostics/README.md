@@ -253,3 +253,20 @@ X correction +21.7 mm (4.7 mm spread); all 29 completed CW exits average +22.5
 mm (4.3 mm spread). The only CCW evidence remains two older exits averaging
 -22.8 mm. This correction compares two onboard pose references, not ground truth.
 The regenerated report is `local_workspace/parking-exit-analysis-all/parking_exit_analysis.md`.
+
+## 2026-10-06 layout B, logs477-481
+
+Raw source and archive SHA-256 matched byte-for-byte before further analysis.
+Direction is verified by PARK_DIAG_CONFIG turn. Header identity for all five:
+parking `Oct__6_2026_19_54_43`, connector `Oct  6 2026_19:54:26`;
+these remain older than the preceding candidate, installed binary not read back.
+User reports fixed photo layout B, CW return collisions with pink bay pieces
+in both runs, and three CCW stops after exiting the bay.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261006_log_477_cw.txt` | `aad0d148dd76c78a65408810912da226b54da58f66898968c18e3833dc4f9e56` | Yes, 75380 | CW trial1: pink parking-boundary contact on return. Stored GREEN seat0 injected and corner3 rounded; stall6.0mm/1000ms. |
+| `20261006_log_478_cw.txt` | `bcc366d4a1c2c158e4ab1cdafa5e3b825ca46a4229cb8dca04a6b1ed4c8b547d` | Yes, 80081 | CW trial2: same contact on return. Same confirmed B map; stall7.7mm/1000ms. |
+| `20261006_log_479_ccw.txt` | `dee4a5afcef80d7e5c31551a3ae329c53a5a848c5d4d555fac1792bcc0dae479` | Yes, 57401 | CCW trial1: user reports stopped after exit. Front GREEN confirmed; connector75mm lookahead accepted after lengthy search; gyro poll gap15704ms, then Manual disable. No explicit automatic hold record; cause not conclusively established. |
+| `20261006_log_480_ccw.txt` | `5e3bc2faa1348b770e60a77100fa93fc3363405302a6b09537621da79d0b2976` | Yes, 83359 | CCW trial2: front GREEN confirmed. Automatic connector steering rejection atprogress0, request-42.077deg exceeds42deg. |
+| `20261006_log_481_ccw.txt` | `062533137a19d5d966c09d1d0684d8378bfb36deb7811d2b854f5267f6c8e399` | Yes, 90796 | CCW trial3: front GREEN confirmed. Automatic connector steering rejection atprogress0, request-42.037deg exceeds42deg. |
