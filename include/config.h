@@ -615,11 +615,24 @@ constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 55.0f;
 // then look back at the right inner place without crossing its x=500 line.
 // O3 / CHECK_ALL retains its established localization and scan.
 constexpr bool OBSTACLE_PARKING_CW_SHORT_START_ENABLED = true;
+// Measured-pose short start: allow small brake settling after the 2-degree
+// alignment target. Swept scan/connector checks still use the actual pose.
+// This does NOT relax the separate 2-degree ToF reference correction gate.
+constexpr float OBSTACLE_PARKING_CW_SHORT_START_HEADING_TOLERANCE_DEG = 3.0f;
 // OFFICIAL O, CCW: only the right/front place is ahead after unparking.
 // Stop at the second-edge reference without the legacy extra 70 mm reverse;
 // observe that front place with the existing 55 mm arc. The middle and left
 // places stay behind the complete body and are checked on the later approach.
 constexpr bool OBSTACLE_PARKING_CCW_SHORT_START_ENABLED = true;
+// Official CCW: reference the FIRST pink piece's exit edge, then reverse only
+// far enough to observe/pass the front start place. Missing/ambiguous first
+// edge retains the established second-edge fallback. O3 retains that fallback.
+constexpr bool OBSTACLE_PARKING_CCW_FIRST_EDGE_REFERENCE_ENABLED = true;
+// Rear axle remains east of the movable pink piece during the longer camera
+// arc; the 84mm arc provides the yaw needed for a front GREEN bypass. Both
+// values were checked together, including the measured batch y/heading spread.
+constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM = 360.0f;
+constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM = 84.0f;
 constexpr auto OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM = 0.0f;
 constexpr auto OBSTACLE_PARKING_CW_SCAN_ARC_MM = 65.0f;
 constexpr auto OBSTACLE_PARKING_CW_SCOUT_ARC_MM = 130.0f;
@@ -1067,6 +1080,10 @@ constexpr auto OBSTACLE_PATH_PROGRESS_WINDOW = 12;
 constexpr auto OBSTACLE_MAX_PURSUIT_STEERING_DEG = 42.0f;
 constexpr auto OBSTACLE_PATH_MIN_SPEED = 135.0f;
 constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
+// Recorded-map laps 2/3 only: multiply the existing curvature speed profile.
+// 1.50 -> maximum target 390 mm/s. Exit, discovery and final runout retain
+// their original speeds. Runtime test caps still have priority.
+constexpr auto OBSTACLE_LATER_LAP_SPEED_FACTOR = 1.50f;
 constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 
 // Radius-1 smoothing reduces the requested displacement. 260 mm adds about
@@ -1116,7 +1133,8 @@ constexpr auto OBSTACLE_LATER_LAP_SEAM_BLEND_MM = 200.0f;
 // Known routes use a stable pursuit distance even when a test speed cap is
 // active. Scaling it down with speed created tight, saturated turns in the
 // model. The existing corner multiplier still applies; lap 1 is unchanged.
-constexpr auto OBSTACLE_LATER_LAP_LOOKAHEAD_MM = 330.0f;
+// Shorter pursuit horizon preserves known bypass clearance in both directions.
+constexpr auto OBSTACLE_LATER_LAP_LOOKAHEAD_MM = 280.0f;
 // Official outer bypasses hold for 150 mm on each side so long pursuit does
 // not cut the pass. End pairs are 1000 mm apart; middle signs are solitary.
 // Check-all/adjacent surprise layouts retain their separate shorter policy.

@@ -1,6 +1,7 @@
 """Extract production map/route/lap functions; verify laps 2/3 without hardware.
 
-Explicit layouts replace images. Ideal pursuit replaces motor/ToF dynamics.
+Explicit layouts replace images. CAD Ackermann steering replaces the ideal bicycle plant.
+ToF, servo delay and image recognition are tested separately or remain limitations.
 Generated fixtures and results remain in local_workspace.
 """
 import itertools
@@ -26,28 +27,32 @@ constexpr int OBSTACLE_SECTION_LAYOUT_OFFICIAL=0,OBSTACLE_SECTION_LAYOUT_CHECK_A
 int sectionLayoutMode=0;
 bool parkingEntryActive=false,parkingEntryObserving=false,parkingEntryScouting=false;
 bool parkingEntryJoining=false,parkingEntryTestHold=false,runtimeTestMode=false;
-bool optimizedBuilt=false,lapBoundaryPending=false,laterLapPlanRejected=false,lapBoundaryHoldLogged=false,lapFinishPending=false;
+bool optimizedBuilt=false,lapBoundaryPending=false,lapCountingArmed=false,laterLapPlanRejected=false,lapBoundaryHoldLogged=false,lapFinishPending=false;
 uint8_t completedLaps=0,runtimeLapTarget=3;bool finished=false;
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
+void roundKnownCornerPairs(PathPoint *, bool injectedOnly = false);
 bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT]={};
 ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
 bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){return false;}
 '''
     fixture += extra
+    fixture += '\n#include "ackermann_kinematics.h"\n'
     signatures = (
+        'float laterLapServoForCurvature(', 'float recordedLapSpeed(',
         'uint8_t sectionInferredEmpty(', 'bool stationResolved(', 'bool allStationsResolved(',
         'bool withinCornerGate(', 'bool nearCorner(', 'bool isExtremeAdjacentPair(',
         'bool targetsOuterExtreme(', 'bool hasConfirmedExtremeAdjacentPair(',
         'bool isSecondExtremeAdjacentSeat(', 'bool upcomingAdjacentStationUnresolved(',
         'float validatedClearanceForSeat(', 'float optimizedClearanceForSeat(',
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
-        'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(', 'void roundKnownCornerPairs(',
+        'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
+        'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
 void resetState(){
- completedLaps=0;finished=false;optimizedBuilt=false;lapBoundaryPending=false;
+ completedLaps=0;finished=false;optimizedBuilt=false;lapBoundaryPending=false;lapCountingArmed=false;
  laterLapPlanRejected=false;lapBoundaryHoldLogged=false;lapFinishPending=false;runtimeTestMode=false;
  runtimeLapTarget=3;progressIndex=0;sectionLayoutMode=0;
  for(auto &d:discoveryStations)d.observedClear=true;
@@ -60,7 +65,74 @@ void learned(){
     fabsf(clearance-OBSTACLE_OUTER_SAFE_CLEARANCE_MM)<.1f);
  }
 }
+float discoveryCornerMinimum(bool rounded){
+ routeTurnSign=1;resetState();baseline();
+ for(auto &seat:seats){seat.confirmed=false;seat.injected=false;}
+ for(int i:{9,12,17,18}){seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=(i==9||i==12);}
+ learned();if(rounded)roundKnownCornerPairs(livePath,true);
+ // Last measured pose before seat18 confirmation in log463. Confirmation
+ // itself was not pose-logged, so this is a nearby geometric replay only.
+ float x=-519.4f,y=730.8f,h=194.49f*PI/180,minimum=1e9f;
+ progressIndex=nearestPathIndex(baselinePath,x,y,0,pathLength);
+ for(int step=0;step<1200;++step){
+  progressIndex=nearestPathIndex(livePath,x,y,progressIndex,OBSTACLE_PATH_PROGRESS_WINDOW);
+  PositionEstimate pose;pose.x_mm=x;pose.y_mm=y;pose.heading_deg=h*180/PI;
+  ObstacleClearanceSample sample{};calculateClearanceAtPose(seats[18],x,y,pose.heading_deg,sample);
+  minimum=fminf(minimum,sample.pillarMm);if(sample.wallMm<=0)return -1;
+  if(y<300)return minimum;
+  float look=adaptiveLookahead(livePath[progressIndex].speedMmS);
+  if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
+  auto target=findLookahead(livePath,pose,look);float dx=target.x-x,dy=target.y-y;
+  float k=2*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1,dx*dx+dy*dy);
+  int steering=static_cast<int>(clampFloat(-atanf(OBSTACLE_WHEELBASE_MM*k)*180/PI,-42,42));
+  k=-tanf(steering*PI/180)/OBSTACLE_WHEELBASE_MM;
+  float next=h+k*2;
+  if(fabsf(k)>1e-6){x+=(sinf(next)-sinf(h))/k;y+=(cosf(h)-cosf(next))/k;}
+  else{x+=2*cosf(h);y+=2*sinf(h);}h=next;
+ }
+ return -1;
+}
 bool stateChecks(){
+ const float oldCorner=discoveryCornerMinimum(false),newCorner=discoveryCornerMinimum(true);
+ if(oldCorner<=0||newCorner<90||newCorner<oldCorner+25)return false;
+ std::cout<<"DISCOVERY corner old/new modeled pillar_mm="<<oldCorner<<"/"<<newCorner<<"\n";
+ // CCW discovery pair: only active injections may round a corner. Stored
+ // behind-start observations must not reshape the initial departure.
+ routeTurnSign=1;resetState();baseline();
+ for(auto &seat:seats){seat.confirmed=false;seat.injected=false;}
+ seats[17].confirmed=seats[17].injected=true;seats[17].red=false;
+ learned();seats[18].confirmed=true;seats[18].red=false;
+ PathPoint original[OBSTACLE_MAX_PATH_WAYPOINTS];
+ memcpy(original,livePath,sizeof(livePath));roundKnownCornerPairs(livePath,true);
+ if(memcmp(original,livePath,sizeof(PathPoint)*pathLength))return false;
+ seats[18].injected=true;displaceForSeat(livePath,18,260,true);
+ memcpy(original,livePath,sizeof(livePath));roundKnownCornerPairs(livePath,true);
+ if(!memcmp(original,livePath,sizeof(PathPoint)*pathLength))return false;
+ routeTurnSign=-1;
+ // Logs 458/459: connector joins the final route indices before the initial
+ // phase-zero crossing. An unexplored map must NOT hold this start as lap 1.
+ resetState();baseline();learned();
+ for(auto &d:discoveryStations)d.observedClear=false;
+ progressIndex=pathLength-2;
+ PositionEstimate seamPose;seamPose.x_mm=livePath[0].x;seamPose.y_mm=livePath[0].y;
+ updateProgress(livePath,seamPose);
+ if(progressIndex!=0||lapBoundaryPending||completedLaps||lapCountingArmed)return false;
+ // Actual mid-course traversal arms counting; the next wrap must still hold
+ // when the map is incomplete, preserving the existing safety gate.
+ progressIndex=pathLength/2;
+ seamPose.x_mm=livePath[progressIndex].x;seamPose.y_mm=livePath[progressIndex].y;
+ updateProgress(livePath,seamPose);
+ if(!lapCountingArmed)return false;
+ progressIndex=pathLength-2;seamPose.x_mm=livePath[0].x;seamPose.y_mm=livePath[0].y;
+ updateProgress(livePath,seamPose);
+ if(!lapBoundaryPending||completedLaps||lapCountingArmed)return false;
+ resetState();
+ if(recordedLapSpeed(260)!=260)return false;
+ completedLaps=1;if(recordedLapSpeed(260)!=390)return false;
+ completedLaps=2;if(recordedLapSpeed(180)!=270)return false;
+ lapFinishPending=true;if(recordedLapSpeed(180)!=180)return false;
+ lapFinishPending=false;runtimeTestMode=true;if(recordedLapSpeed(260)!=260)return false;
  resetState();baseline();learned();lapBoundaryPending=true;
  discoveryStations[7].observedClear=false;
  if(completePendingLap()||completedLaps||!lapBoundaryPending)return false;
@@ -155,15 +227,17 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   const float forward=dx*cosf(heading)+dy*sinf(heading);
   const float lateral=-dx*sinf(heading)+dy*cosf(heading);
   const float requestedCurvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
-  const float requiredSteering=-atanf(OBSTACLE_WHEELBASE_MM*requestedCurvature)*180/PI;
+  const float requiredSteering=laterLapServoForCurvature(requestedCurvature);
   if(!std::isfinite(requiredSteering)){failReason=4;return false;}
   const float steering=static_cast<int>(clampFloat(requiredSteering,-OBSTACLE_MAX_PURSUIT_STEERING_DEG,
                                  OBSTACLE_MAX_PURSUIT_STEERING_DEG));
-  const float curvature=-tanf(steering*PI/180)/OBSTACLE_WHEELBASE_MM;
-  const float next=heading+curvature*5;
+  const float curvature=fabsf(steering)<2?0:-1/Ackermann::getTurnRadius(steering);
+  // 8 mm/update covers 390 mm/s at roughly 20 ms controller intervals.
+  const float ds=8;
+  const float next=heading+curvature*ds;
   if(fabsf(curvature)>1e-6){x+=(sinf(next)-sinf(heading))/curvature;
    y+=(cosf(heading)-cosf(next))/curvature;}
-  else{x+=5*cosf(heading);y+=5*sinf(heading);}
+  else{x+=ds*cosf(heading);y+=ds*sinf(heading);}
   heading=next;
  }
  return false;
@@ -188,11 +262,12 @@ int main(){
     fixture = fixture.replace('anchor.heading_deg=180;', 'anchor.heading_deg=routeTurnSign>0?0:180;')
     destination = ROOT/'local_workspace/later-laps'
     destination.mkdir(parents=True,exist_ok=True)
+    (destination/'Arduino.h').write_text('#pragma once\n#define M_PI 3.14159265358979323846\n#include <cstddef>\n#include <cmath>\ntemplate<class T> T constrain(T v,T lo,T hi){return v<lo?lo:(v>hi?hi:v); }\n')
     cpp=destination/'check.cpp';cpp.write_text(fixture)
     compiler=shutil.which('g++') or shutil.which('clang++')
     if not compiler:raise RuntimeError('Host C++ compiler on PATH required')
     exe=destination/'check.exe'
-    subprocess.run([compiler,'-std=c++17','-O2','-I',str(ROOT/'include'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run([compiler,'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(destination),str(cpp),'-o',str(exe)],check=True)
     # All 28 distinct normal-section layouts: 12 singletons plus 16 end pairs.
     section=[]
     for station,side,color in itertools.product(range(3),range(2),(1,2)):
@@ -216,6 +291,18 @@ int main(){
     # straights, expose different colours and placement sides at each corner.
     for direction,a,b in itertools.product((-1,1),section,section):
         cases.append(dict(direction=direction,speed_cap=0,colors=[0]*6+a+b+a))
+    # Exact heterogeneous physical A map, including the missed S2 GREEN in466.
+    physical=[0]*24
+    for seat,color in ((2,1),(6,2),(11,1),(12,1),(17,2),(20,2)):physical[seat]=color
+    for direction in (-1,1):
+        cases.append(dict(direction=direction,speed_cap=0,colors=physical.copy() if direction<0 else [physical[i^1] for i in range(24)]))
+    # Same physical A field traversed CCW: reverse section order, station
+    # order and local left/right; the start middle remains middle-inner.
+    reverse=[0]*24
+    for i,c in enumerate(physical):
+        section,station,side=i//6,(i%6)//2,i%2
+        reverse[((4-section)%4)*6+(2-station)*2+(side^1)]=c
+    cases.append(dict(direction=1,speed_cap=0,colors=reverse))
     inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
     run=subprocess.run([str(exe)],input=inputs,text=True,capture_output=True,check=True)
     (destination/'output.txt').write_text(run.stdout)
@@ -227,7 +314,7 @@ int main(){
                 failure_seat=int(seat),pose=[float(x),float(y),float(h)])
     failed=[c for c in cases if not c['passed']]
     report=dict(total=len(cases),failed=len(failed),cases=cases,
-                limitations=['Known explicit layouts, ideal pursuit, no images or sensor/motor dynamics',
+                limitations=['Known explicit layouts, calibrated CAD plant, no images, ToF feedback or servo delay',
                              'Repeated sections and all ordered neighbouring layouts, not exhaustive full-field layouts'])
     (destination/'report.json').write_text(json.dumps(report,indent=2)+'\n')
     print('STATE PASS; LATER LAPS',len(cases),'FAILED',len(failed))

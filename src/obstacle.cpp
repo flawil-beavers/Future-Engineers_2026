@@ -136,6 +136,8 @@ static float oc_parking_localization_heading_integral = 0.0f;
 static float oc_parking_localization_max_heading_error = 0.0f;
 static uint32_t oc_parking_localization_control_ms = 0;
 static bool oc_parking_localization_ccw_continuing = false;
+static bool oc_parking_localization_first_edge_reference = false;
+static float oc_parking_localization_first_edge_continue_mm = 0.0f;
 static float oc_parking_localization_continue_start_distance = 0.0f;
 
 static uint8_t oc_current_section = 0;
@@ -276,6 +278,8 @@ static void resetParkingExit()
     oc_parking_localization_max_heading_error = 0.0f;
     oc_parking_localization_control_ms = millis();
     oc_parking_localization_ccw_continuing = false;
+    oc_parking_localization_first_edge_reference = false;
+    oc_parking_localization_first_edge_continue_mm = 0.0f;
     oc_parking_localization_continue_start_distance = 0.0f;
 }
 
@@ -658,6 +662,14 @@ static void completeParkingExit(bool stagedTest)
             : "[PARK EXIT] Complete - normal Obstacle navigation");
 }
 
+static bool cwShortStartPoseUsable(
+    bool initialized, float headingError, const PositionEstimate &pose)
+{
+    return initialized && isfinite(headingError) && headingError >= 0.0f &&
+        headingError <= OBSTACLE_PARKING_CW_SHORT_START_HEADING_TOLERANCE_DEG &&
+        isfinite(pose.x_mm) && isfinite(pose.y_mm) && isfinite(pose.heading_deg);
+}
+
 static void finishParkingExit(bool stagedTest)
 {
     const float finalHeadingError =
@@ -856,12 +868,17 @@ static void finishParkingExit(bool stagedTest)
         // parking edge: doing so creates an unnecessary directional crossing.
         // The path module checks the entire short scan/scout footprint before
         // enabling motion, using this measured pose rather than a nominal reset.
-        if (!oc_parking_field_pose_initialized || !headingUsable ||
-            !isfinite(fieldPose.x_mm) || !isfinite(fieldPose.y_mm))
+        if (!cwShortStartPoseUsable(
+                oc_parking_field_pose_initialized, finalHeadingError, fieldPose))
         {
             parking_exit_diagnostics_finish("cw_short_start_reference_invalid");
             oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
-            Serial.println("[CW START] Missing initial field reference - held");
+            Serial.print("[CW START] Reference rejected initialized/heading_error/limit=");
+            Serial.print(oc_parking_field_pose_initialized ? 1 : 0);
+            Serial.print('/');
+            Serial.print(finalHeadingError, 2);
+            Serial.print('/');
+            Serial.println(OBSTACLE_PARKING_CW_SHORT_START_HEADING_TOLERANCE_DEG, 2);
             robot_logger.write_to_usb();
             return;
         }
@@ -888,6 +905,8 @@ static void finishParkingExit(bool stagedTest)
         oc_parking_localization_max_heading_error = 0.0f;
         oc_parking_localization_control_ms = millis();
         oc_parking_localization_ccw_continuing = false;
+        oc_parking_localization_first_edge_reference = false;
+        oc_parking_localization_first_edge_continue_mm = 0.0f;
         oc_parking_localization_continue_start_distance = 0.0f;
         TofDiagnosticSnapshot snapshot;
         oc_parking_localization_tof_sequence =
@@ -957,8 +976,9 @@ static void finishParkingEdgeLocalization()
             predictedEdgeX = footprint.maximumX;
             knownEdgeX =
                 OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
-                OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM -
-                OBSTACLE_PARKING_LIMIT_THICKNESS_MM;
+                (oc_parking_localization_first_edge_reference ? 0.0f :
+                    OBSTACLE_PARKING_EXIT_PROTOTYPE_GAP_MM +
+                    OBSTACLE_PARKING_LIMIT_THICKNESS_MM);
         }
         else
         {
@@ -1080,6 +1100,10 @@ static void finishParkingEdgeLocalization()
 
 static void processParkingEdgeLocalizationTof()
 {
+    // Freeze this observed edge and wall pose while continuing to the entry
+    // point; do not overwrite it with a later piece or a stale range.
+    if (oc_parking_localization_first_edge_reference)
+        return;
     TofDiagnosticSnapshot snapshot;
     if (
         !get_tof_diagnostic_snapshot(
@@ -1139,13 +1163,50 @@ static void processParkingEdgeLocalizationTof()
     {
         if (markerRange)
         {
+            oc_parking_localization_last_piece_range = rawRange;
+            oc_parking_localization_last_piece_pose = samplePose;
+            oc_parking_localization_piece_seen = true;
             oc_parking_localization_wall_frames = 0;
         }
         else if (wallRangeConsistent)
         {
+            oc_parking_localization_latest_wall_pose = samplePose;
+            oc_parking_localization_wall_range = rawRange;
             if (++oc_parking_localization_wall_frames >=
                 OBSTACLE_PARKING_EXIT_WALL_CONFIRM_FRAMES)
             {
+                const bool firstEdgeEligible =
+                    OBSTACLE_PARKING_CCW_FIRST_EDGE_REFERENCE_ENABLED &&
+                    OBSTACLE_PARKING_CCW_SHORT_START_ENABLED &&
+                    OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
+                    !OBSTACLE_PARKING_EXIT_REVERSE_STRAIGHT_TEST_ONLY &&
+                    oc_parking_exit_steering < 0 &&
+                    oc_parking_field_pose_initialized &&
+                    oc_parking_localization_piece_seen &&
+                    obstacle_path_section_layout_mode() == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+                if (firstEdgeEligible)
+                {
+                    const auto footprint = parkingBeamFootprint(
+                        oc_parking_localization_sensor,
+                        oc_parking_localization_last_piece_range,
+                        oc_parking_localization_last_piece_pose);
+                    const float correction = OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
+                        footprint.maximumX;
+                    const float remaining = samplePose.x_mm + correction -
+                        OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM;
+                    if (isfinite(correction) && isfinite(remaining) &&
+                        fabsf(correction) <= OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM &&
+                        remaining >= 0.0f && remaining <=
+                            OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM)
+                    {
+                        oc_parking_localization_first_edge_reference = true;
+                        oc_parking_localization_first_edge_continue_mm = remaining;
+                        oc_parking_localization_transition_found = true;
+                        Serial.print("[CCW START] First-edge reference accepted; remaining reverse_mm=");
+                        Serial.println(remaining, 1);
+                        return;
+                    }
+                }
                 oc_parking_localization_phase =
                     PARKING_LOCALIZE_BETWEEN_MARKERS;
                 oc_parking_localization_wall_frames = 0;
@@ -1607,9 +1668,10 @@ static bool updateParkingExit()
             OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
             OBSTACLE_PARKING_CCW_SHORT_START_ENABLED &&
             obstacle_path_section_layout_mode() == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
-        const float ccwContinuationMm = ccwShortStart
-            ? OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM
-            : OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM;
+        const float ccwContinuationMm = oc_parking_localization_first_edge_reference
+            ? oc_parking_localization_first_edge_continue_mm
+            : (ccwShortStart ? OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM
+                : OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM);
         if (oc_parking_localization_transition_found &&
             counterClockwiseExit &&
             !oc_parking_localization_ccw_continuing)
@@ -1621,7 +1683,9 @@ static bool updateParkingExit()
             Serial.println(
                 ccwContinuationMm,
                 1);
-            if (ccwShortStart)
+            if (oc_parking_localization_first_edge_reference)
+                Serial.println("[CCW START] First edge + bounded reverse to front-place observation; behind places deferred");
+            else if (ccwShortStart)
                 Serial.println("[CCW START] Second-edge reference reached; no extra reverse or behind-place scout");
         }
         const float continuationTravel =
@@ -3156,7 +3220,8 @@ void obstacle_challenge_update(
             OBSTACLE_FIRST_LAP_TEST_ENABLED ? 1 : 0,
             0.0f,
             OBSTACLE_PARKING_EXIT_ENABLED &&
-                OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED);
+                OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED,
+            oc_parking_localization_first_edge_reference);
     }
 
     if (!obstacle_path_complete())

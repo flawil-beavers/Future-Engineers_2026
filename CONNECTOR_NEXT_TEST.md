@@ -1,4 +1,42 @@
+# CCW priority after logs461-465
+
+New candidate: first-edge reference plus bounded reverse to x360, dedicated
+84mm scan, checked connector. If first reference is ambiguous, retain old
+second-edge/55mm fallback. First departure observes only the front place;
+behind places remain deferred. Known injected same-colour adjacent signs also
+get a continuous discovery corner, not additive straight tapers.
+
+After final M7 validation/upload, repeat unchanged A2-3CCW full runs, fresh
+reset and cable removed. Watch S3 entrance GREEN in lap1, including right wheel.
+Logs461/462 are geometric holds,463/464 contact before completing lap1,
+465 light lap1 contact then3laps. User confirms layout and no later-lap contact.
+New logs must include first-edge marker, final reference/entry pose, connector
+completion, discovery-corner marker and injection pose. This is a test candidate;
+ideal geometry does not establish contact-free driving. CW repeats currently
+underway belong to the previous installed firmware.
+
+# Current priority after logs 458-460
+
+Repeat unchanged layout A (middle inner GREEN at start) in CW on the new M7
+build, two or three fresh runs. Initial connector phase-zero crossing must
+not increment the lap counter; middle-course traversal arms counting. The
+short measured-pose CW exit accepts up to3deg settling, with actual swept
+scan/connector preflight retained and ToF-reference correction still2deg.
+If successful, keep pillars physically fixed and perform two or three CCW
+runs. Logs458/459 stopped on a false lap boundary, log460 on settled2.1deg;
+all three were contact-free. Log457 is another setup, not this validation.
+
 # Connector diagnostic run and acceptance sequence
+
+## Next: six 1.50-speed recorded-map trials (2026-10-06)
+
+User requested laps 2/3 at least 1.5 times the preceding targets. New
+`OBSTACLE_LATER_LAP_SPEED_FACTOR=1.50`: scale the curvature profile only on
+recorded-map driving, round up targets, maximum390 mm/s. Discovery/exit,
+explicit runtime caps, and final180 mm/s runout retain priority. M7-only
+build verified; user upload required. Use the exact A/CW and B/CCW layouts
+in `simulation/SIX_RUN_LATER_LAPS_TEST.md`, three fresh trials each. Actual
+speed/servo tracking at390 remain unaccepted until these logs are evaluated.
 
 ## Current three-lap candidate (2026-10-06)
 

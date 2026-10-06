@@ -6,6 +6,7 @@ This estimates the changed reference, rather than claiming new measurements.
 """
 import itertools
 import json
+import re
 import shutil
 import subprocess
 
@@ -16,6 +17,9 @@ from parking_exit_swept_search import Pose, collision, robot_polygons
 
 
 def main():
+    OBSTACLE_FIRST_EDGE_X = float(re.search(
+        r'OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM\s*=\s*([\d.]+)f',
+        (ROOT/'include/config.h').read_text()).group(1))
     source = (ROOT/'src/obstacle_path.cpp').read_text()
     fixture = fixture_source().split('int main()')[0]
     fixture = fixture.replace('int routeTurnSign=-1,parkingEntryTargetStation=1;',
@@ -148,6 +152,7 @@ int main(){
     displaceForSeat(livePath,5,OBSTACLE_LAP1_CLEARANCE_MM,front==1);}
   }
   PositionEstimate start;start.x_mm=x;start.y_mm=y;start.heading_deg=h;
+  parkingCcwFirstEdgeStart=x>300; // Fixture supplies first-edge candidates explicitly.
   const bool arc=preflightCwStartArc(start,parkingEntryScanArcMm()+parkingEntryScoutArcMm());
   buildParkingEntryPath(start);const auto end=parkingEntryPath[parkingEntryLength-1];
   PositionEstimate join;join.x_mm=end.x+ex;join.y_mm=end.y+ey;join.heading_deg=end.headingDeg+eh;
@@ -228,6 +233,15 @@ int main(){
         else:
             settled = delta
         lines.append(' '.join(map(str,[*start,*c['layout'],*settled])))
+    # First-edge reference candidate: actual y/heading spread in logs461-465,
+    # x240 target plus5mm positioning and8mm braking reserve. The old rejected
+    # second-edge poses are evidence of correct guards, not nominal fixtures.
+    for y,h in [(-1194.8,359.7),(-1221.0,.1),(-1200.6,359.4),(-1189.9,359.8)]:
+        for layout,dx,dy,dh in itertools.product(layouts,(-8,0,5),(-5,0,5),(-1,0,1)):
+            start=[OBSTACLE_FIRST_EDGE_X+dx,y+dy,h+dh]
+            cases.append(dict(source='first-edge candidate; measured batch y/heading',
+                              layout=layout,stage='first_edge',delta=[dx,dy,dh],reference=start))
+            lines.append(' '.join(map(str,[*start,*layout,0,0,0])))
     run = subprocess.run([str(exe)], input='\n'.join(lines)+'\n', text=True,
                          capture_output=True, check=True)
     (destination/'output.txt').write_text(run.stdout)

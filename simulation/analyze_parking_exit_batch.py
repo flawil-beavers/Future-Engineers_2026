@@ -27,6 +27,8 @@ MANIFEST_FIELDS = (
 def observed_procedure(session: analyzer.ParsedLog) -> str:
     lines = session.path.read_text(encoding="utf-8", errors="replace").splitlines()
     text = "\n".join(lines[session.source_line_start - 1:session.source_line_end])
+    if "[CCW START] First-edge reference accepted;" in text:
+        return "ccw_first_edge_start"
     if "[CW START] Short scan from initial ToF seed + exit odometry" in text:
         return "cw_short_start"
     if "[CCW START] Second-edge reference reached; no extra reverse" in text:

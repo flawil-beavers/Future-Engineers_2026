@@ -66,6 +66,7 @@ float loopLengthMm=0,firstCornerDistanceMm=500;
 int routeTurnSign=-1,parkingEntryTargetStation=1;
 bool parkingCwShortStart=true,parkingEntryConnectorRouteLookahead=false;
 bool parkingCcwShortStart=false;
+bool parkingCcwFirstEdgeStart=false;
 PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 uint8_t parkingEntryLength=0,parkingEntryProgress=0;
 PathPoint parkingEntryConnector[OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];
@@ -151,6 +152,21 @@ int main() {
 
 def main():
     fixture = fixture_source()
+    # Execute the production settled-pose gate as well as the actual swept
+    # scanner/connector. Log 460 had a valid seed but brake-settled error 2.1.
+    motion_source = (ROOT/'src/obstacle.cpp').read_text()
+    gate = block(motion_source, motion_source.index('static bool cwShortStartPoseUsable('))
+    fixture = fixture.replace('int main() {', gate + r'''
+int main() {
+ PositionEstimate settled;settled.x_mm=240.9f;settled.y_mm=-1220.6f;settled.heading_deg=182.2f;
+ if(!cwShortStartPoseUsable(true,2.1f,settled) ||
+    !cwShortStartPoseUsable(true,3.0f,settled) ||
+    cwShortStartPoseUsable(true,3.01f,settled) ||
+    cwShortStartPoseUsable(false,2.1f,settled) ||
+    cwShortStartPoseUsable(true,NAN,settled))return 2;
+ settled.heading_deg=NAN;if(cwShortStartPoseUsable(true,2.1f,settled))return 2;
+''')
+    fixture = fixture.replace('#include <cmath>', '#include <cmath>\nusing std::isfinite;')
     destination = ROOT / 'local_workspace/cw-start-planner'
     destination.mkdir(parents=True, exist_ok=True)
     cpp = destination / 'check.cpp'
@@ -171,6 +187,11 @@ def main():
     cases += [(*pose,*layout,dx,dy,dh) for pose in poses
               for layout in layouts for dx in (-5,0,5)
               for dy in (-5,0,5) for dh in (-1,0,1)]
+    # Actual log-460 exit, every official start layout, including measured
+    # position/heading variation through the new settled-heading allowance.
+    cases += [(240.9+dx,-1220.6+dy,182.2+dh,*layout,0,0,0)
+              for dx in (-5,0,5) for dy in (-5,0,5) for dh in (-.8,0,.8)
+              for layout in layouts]
     inputs = '\n'.join(' '.join(map(str,c)) for c in cases)+'\n'
     result = subprocess.run([str(executable)], input=inputs, text=True, capture_output=True)
     (destination/'result.txt').write_text(result.stdout+result.stderr)

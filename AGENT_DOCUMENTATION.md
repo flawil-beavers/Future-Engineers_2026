@@ -9479,3 +9479,215 @@ logs and physical reports. Evaluate failures before repeats/speed increases;
 repeat successful cases three times. Separate start-layout physical acceptance
 still outstanding; use FIRST_LAP_TEST=true for those isolated trials. Surprise
 parking on the other side remains the previously recorded later task.
+
+## 2026-10-06: 1.50-speed laps and six-run test batch prepared
+
+User requested two informative setups, three runs each, and laps2/3 at least
+1.5 times the old target speed before testing. Source base now user-committed
+`d875941`; new changes uncommitted. Added
+`OBSTACLE_LATER_LAP_SPEED_FACTOR=1.50` and production `recordedLapSpeed()`:
+multiply/round up the existing curvature profile only after lap1, maximum
+390 mm/s instead of260. Discovery/exit, hardware acceleration, runtime test
+caps and final180 mm/s runout retain priority. New boundary log records the
+factor/max. No pursuit-distance or route geometry change.
+
+Extracted helper state tests verify lap0 unchanged, laps1/2 factor, runout
+and test-mode exclusions. Geometry checker now uses8 mm updates (390 mm/s
+at roughly20 ms); 2800/2800 continuations pass with integer steering, two
+full-body passing witnesses per sign and pink pieces. Matrix minima wall78.8,
+pillar15.5 mm. This does not model servo dynamics, wheel slip or the achieved
+speed; the1.5 factor is a target, not a measured lap-time guarantee.
+Final M7 build RAM432768/523624, flash476592/786432, binary SHA-256
+`6018c7ec96d7eb7d7abedeea0a54f85d8f55e3c89f40de29f63f1cebf2d5f137`.
+Existing Serial/legacy warnings only. No M4 build, upload or agent commit.
+
+Next physical batch: `simulation/SIX_RUN_LATER_LAPS_TEST.md` specifies A/CW
+(middle GREEN start, two opposite end pairs, GREEN/GREEN corner, inner RED
+singleton), then B/CCW (left RED/right GREEN inner start, two opposite end
+pairs, outer middle GREEN, first GREEN/GREEN corner), three fresh full runs
+each. Ordinary P1/P2/P3 and S1/S2/S3 are defined in that run's direction;
+start left/right are fixed earlier-photo view. User supplies setup photos,
+A1..B3 log identities, contacts/wrong sides/stop location and affected lap.
+Upload M7, cable-free driving, same layout within each group, reset before
+each trial. If contact/danger occurs evaluate before repeating the failing
+case. Preserve all originals and physical reports in the usual tracked USB
+evidence archive when received. No new physical logs/batch received yet.
+
+
+## 2026-10-06: CW middle-inner GREEN batch 458-460 secured
+
+Complete originals 455-460 copied unchanged into
+`simulation/evidence/parking_exit_diagnostics/20261006_log_NNN_cw.txt`.
+Each source/snapshot/evidence SHA-256 matched; exact hashes and byte counts
+are in the evidence README. Full 455/456 now supersede the retained historical
+excerpts. User confirms 457 was another setup; 458/459/460 are the current
+three CW runs, all without contact. First two pass GREEN correctly on its left
+then hold; third holds beside the park. Build strings: 455/456 Oct5 21:30:53,
+457 Oct6 17:25:06, 458-460 Oct6 18:19:03. No binary readback; current prior
+build hash6018c7ec96d7eb7d7abedeea0a54f85d8f55e3c89f40de29f63f1cebf2d5f137
+is consistent with the last timestamp, not proof of installed identity.
+
+458/459 merge at index142 just before cyclic phase0. Old updateProgress
+mistakes the initial seam for completed lap1 and holds on the unexplored map.
+460 has an initialized field reference (240.9/-1220.6/182.2), aligns at1.9deg
+then settles at2.1deg after braking; old2deg check misleadingly reports missing
+reference. Neither fault demonstrates a GREEN colour failure; faster laps2/3
+are not reached. Implement middle-course arming before lap counting and a
+separate3deg measured-pose short-start allowance, retaining2deg ToF correction
+and actual swept scan/connector guards. Next: extracted production regressions,
+M7-only build, then repeat layout A CW before its unchanged-layout CCW trials.
+No upload or agent commit. Physical clearance minima are not measured by these
+reports; ideal geometry cannot establish hardware repeatability.
+
+
+Batch correction verified: production lapCountingArmed resets with each run,
+arms only in the middle half, disarms on each legitimate wrap. Regression
+executes initial final-index ->0 with incomplete map (no hold/count), then
+middle traversal and legitimate wrap (map hold retained). Extracted actual
+cwShortStartPoseUsable accepts initialized finite2.1/3.0deg, rejects3.01deg,
+missing seed and NaN. Actual scanner/connector matrix includes log460's
+240.9/-1220.6/182.2 pose with +/-5mm and +/-0.8deg, all official layouts;
+8102/8102 checks pass. Later-lap state and2800/2800 ideal continuations pass.
+M7-only IDE build succeeds RAM432768/523624, flash476816/786432; binary SHA256
+`9cd74e8b0c7845aeccbdf7d91bc0b4646bbeaa96865612bbe5d485b0be1cb4ed`.
+Legacy Serial redefinition/unused-function warnings remain. No upload or
+agent commit. Evidence files and README are Git-tracked without conversion
+(-text); reports stay ignored. Next exact physical sequence: upload M7 only,
+keep layout A unchanged, reset each trial and disconnect driving cable;
+repeat2-3CW full-three-lap trials. Only after these pass keep the physical
+pillars fixed and perform2-3CCW trials. Actual390mm/s tracking still requires
+physical evidence; prior457 completion was another setup.
+
+Batch analyzer refreshed all78 complete originals/79 sessions under ignored
+`local_workspace/parking-exit-analysis-all/`. New455-460 all have no overflow
+or diagnostic truncation;458/459 identify cw_short_start and completed exit.
+460 marks exit incomplete and procedure legacy_or_unidentified because its
+reference rejection occurs before the short-start completion marker; do not
+interpret that analyzer label as proof of a legacy firmware/physical exit.
+
+
+## 2026-10-06: CCW five-run batch461-465 received
+
+Complete byte-identical originals copied before analysis to
+`simulation/evidence/parking_exit_diagnostics/20261006_log_NNN_ccw.txt`,
+SHA256/byte counts in README. All headers turn=1; diagnostic build18:19:03,
+connector where emitted18:21:00, no installed binary readback. User reports
+first two exit then autonomous stop, next two contact with right wheel at
+S3-entry GREEN, fifth light contact but completes remaining route. Log/order,
+unchanged layout A and contact lap currently awaiting confirmation. CW repeat
+runs underway independently; do not infer they use future CCW changes.
+
+461 connector actual settled scan59.7/-1209.8/29.9 rejected (parking-piece and
+hidden middle-seat guards);462 localized130.5/-1221.0/0.1 fails initial swept
+scan. All five perform330-338mm reverse to second-edge reference, despite0mm
+extra continuation. It is localization, not behind-place colour scouting.
+463/464/465 confirm adjacent GREEN seats17 then18; investigate dynamic lap1
+additive tapers versus existing rounded later-lap corner.465 completes all3
+laps/runout but physical contact prevents acceptance. Next: reproduce measured
+start poses and dynamic corner with actual production functions before edits;
+retain guards, evaluate a shorter unambiguous reference rather than deleting
+localization based only on visibility. No upload or agent commit.
+
+
+User confirms461-465 are unchanged layout A. Contacts463/464 prevent lap1
+completion;465 contacts only lap1, then no problem at the same GREEN in laps2/3.
+First two stops are actual geometric preflight rejections, not colour failures:
+461 measured scan59.7/-1209.8/29.9 violates parking/hidden-middle guards;
+462 measured130.5/-1221.0/0.1 fails complete reverse-arc sweep. Keep guards.
+Batch analyzer refreshed83 complete files/84 sessions, reports ignored.
+
+Discovery corner candidate now uses the existing radial same-colour corner
+join when BOTH signs are injected. Stored/uninjected behind-start observations
+remain excluded. Last measured pre-confirmation pose of463 replayed with actual
+pursuit/clearance functions: old/new modeled seat18 minimum63.9/108.4mm.
+This does NOT reproduce the exact collision: injection pose was not logged,
+perception/dynamics are not modeled, and physical/odometric errors remain.
+New injection-pose and discovery-corner markers make the next batch reviewable.
+
+CCW shorter-reference candidate: observe first-piece exit edge (known field
+x480), fresh marker/wall confirmation, bounded<=50mm correction. If ambiguous,
+retain the second-edge fallback. Freeze accepted first-edge data while continuing
+gyro-held reverse only to rear-axle x360. Pass explicit first-edge identity to
+path start, selecting its dedicated84mm camera arc; fallback retains55mm.
+Do not simply reduce reverse or alter the physical turn radius: x240/55mm
+fails low-y parking clearance; laterx with55mm lacks front-GREEN bypass yaw.
+82mm candidate still rejected9/4158 perturbed GREEN cases; increased84mm
+candidate now under verification. First-edge ToF state tests pass selection,
+target, frozen data, geometry/O3 fallback and freshness. No upload/commit.
+Next: finish CCW matrix and discovery/later-lap regression, final M7 build,
+then physical CCW2-3 runs on unchanged A. CW tests currently underway use the
+preceding installed firmware and must be archived separately before analysis.
+
+
+CCW candidate verification complete:360/84mm passes4158/4158 actual C++
+scan/connector/front-passing cases (2970 legacy+1188 new first-edge),33/33
+behind returns,135/135 legacy localization-prefix checks. New first-edge
+reverse/ToF dynamics are not physically measured; the legacy prefix count is
+not a new first-edge timing test. State/freshness/fallback checker passes.
+CW/CCW stored-seat/prerequisite checks and2400 C++/Python footprint comparisons
+pass. Actual discovery-pair state/replay regression and2800/2800 later-lap
+ideal continuations pass. Final M7-only IDE build succeeds RAM432776/523624,
+flash477952/786432, SHA256`350f865fcb6a23a203596925ff7a0164be3f82b8873dbe4dab0128820cbe542e`. Existing Serial/unused warnings.
+No M4 build needed: path-start interface is M7-local, not RPC/cross-core.
+No upload or agent commit. Complete originals461-465 are Git-tracked unchanged,
+metadata/history portable; analyzer83 complete files/84 sessions, all five new
+exits have no overflow/truncation. Details/limitations and physical next steps
+in`simulation/CCW_FIRST_EDGE_START.md`. Await current CW batch report, secure
+its logs first. Next new-firmware test: M7 upload then unchanged A2-3CCW runs,
+watch first-edge/entry clearance and right-wheel S3 GREEN passage in lap1;
+accept only contact-free full runs. Do not declare all starts physically solved.
+
+
+## 2026-10-06: CW later-lap collision batch466-470 received
+
+Five complete originals copied unchanged and SHA256 verified before analysis,
+`simulation/evidence/parking_exit_diagnostics/20261006_log_NNN_cw.txt`;
+hashes/lengths/physical reports in README. Headers CW turn=-1. User confirms
+same A setup and sequence:466 good full run, occasional hesitant discovery;
+467-470 lap1 good, lap2 collides with inner wall avoiding middle-inner RED at
+CW S3, otherwise unfavorable trajectories. User unavailable for further questions.
+These runs precede the newly prepared CCW first-edge/discovery-corner candidate;
+installed binary identity must come from raw build markers, no readback.
+Next: inspect actual later-route tracking/localization/speed and S3 approach,
+reproduce with production functions, fix both directions/general placements,
+retain CCW candidate, M7-only build, save exact verification and next test.
+No upload or agent commit.
+
+
+CW466-470 investigation complete (candidate, no upload/commit). Same archived
+headers parking `Oct__6_2026_18_43_52`, connector `Oct 6 2026_18:43:32`.
+466 completes3laps but misses physically present S2 first-inner GREEN seat12;
+467-470 have complete map, lap2 inner-wall collision per user;467-469 stall,
+470 manual disable. No later pose/target/ToF traces in old logs, so precise
+impact/causality cannot be reconstructed. CAD-plant replay of old controller
+also clears A: actuator mismatch alone does not explain the collision.
+Production geometry test DOES demonstrate139.5mm fictitious accepted ToF
+residual with perfect pose/readings on offset corner, causing up to12mm
+correction per frame. Later laps now intersect true rectangular walls, correct
+along wall normal, reject vertex/grazing/confirmed-pillar beam obstruction,
+require150ms age and40mm raw/filter agreement; original corner/residual gates
+remain. Later control converts curvature via existing Ackermann inverse LUT
+(127mm effective geometry); physical100mm body/first-lap controller unchanged.
+Later pursuit330->280mm improves modeled A pillar reserve;1.50 speed factor
+retained. Add200 onboard LATER_TRACK records at250ms minimum across laps2/3.
+CCW first-edge360/84mm and injected same-colour discovery join retained.
+
+Verification:2803 production-route CAD-plant cases pass, including exact CW A,
+legal mirrored CCW A and unchanged physical A in CCW. Minimum across matrix:
+wall90.5mm, pillar36.1mm; exact CW A pillar88.3mm, physical CCW A36.7mm.
+Not exhaustive full-field layouts; no ToF closed-loop/servo-delay/perception
+or measured robot motion in this rollout. Pure wall-helper test24 residual
+sign cases, vertex/grazing/pillar-cone gates pass. CCW4158 scan/connector/front
+cases,33returns,135legacy prefixes pass; first-edge selection/freshness/fallback
+pass; CW/CCW storage/prerequisite and2400footprint cases pass. Analyzer88complete
+files/89sessions, output `local_workspace/parking-exit-analysis-all/` (reproducible,
+ignored). Final IDE M7 build succeeds RAM432776/523624, flash480936/786432,
+SHA256 `ed9963c704b7ad0cc411a9dfc93f6c0de51c019a0af13c2a3e1fc95673ace0bb`.
+Existing Serial warnings; no new uninitialized warning after initialization fix.
+M4 unchanged; no cross-core interface/protocol change. Complete466-470 evidence
+hashes/physical reports in tracked README; details/limits in
+`simulation/LATER_LAPS_IMPLEMENTATION.md`. Next: user M7 upload, unchanged A,
+2-3fresh full3lap CW trials then2-3CCW, no driving cable. Watch CW S3 middle-inner
+RED lap2, CCW S3-entry GREEN lap1. Archive logs immediately; assess LATER_TRACK
+and injection poses before expanding layouts; investigate missing seat12 if it
+recurs. Physical reliability remains unproven. No user answers needed this turn.

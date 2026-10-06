@@ -13,6 +13,7 @@
 #include "vision.h"
 #include "logger.h"
 #include "parking_start_footprint.h"
+#include "ackermann_kinematics.h"
 
 #undef Serial
 #define Serial robot_logger
@@ -101,11 +102,16 @@ bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT] = {};
 uint16_t pathLength = 0;
 uint16_t progressIndex = 0;
 uint8_t completedLaps = 0;
+uint32_t laterTrackingTraceMs = 0;
+uint16_t laterTrackingTraceCount = 0;
 int8_t routeTurnSign = 1;
 bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
 bool lapBoundaryPending = false;
+// A start connector may join just BEFORE phase zero. That first seam crossing
+// is not a lap; require progress through the middle half of the course first.
+bool lapCountingArmed = false;
 bool laterLapPlanRejected = false;
 bool lapBoundaryHoldLogged = false;
 bool lapFinishPending = false;
@@ -164,6 +170,7 @@ bool parkingSectionInnerSeatsOnly = false;
 bool parkingCwShortStart = false;
 int8_t parkingCwStoredSeat = -1;
 bool parkingCcwShortStart = false;
+bool parkingCcwFirstEdgeStart = false;
 // Separate station bits: the left/back and middle/back may both be observed
 // even in a surprise diagnostic. One scalar seat would lose the first record.
 uint8_t parkingCcwStoredSeatMask = 0;
@@ -182,6 +189,8 @@ bool parkingStartFootprintSafe(float x, float y, float headingDeg,
 
 float parkingEntryScanArcMm()
 {
+    if (parkingCcwFirstEdgeStart)
+        return OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM;
     return parkingCwShortStart ? OBSTACLE_PARKING_CW_SCAN_ARC_MM
                                : OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM;
 }
@@ -244,6 +253,12 @@ bool parkingEntryStraightControlLogged = false;
 float clampFloat(float value, float minimum, float maximum)
 {
     return value < minimum ? minimum : (value > maximum ? maximum : value);
+}
+
+float recordedLapSpeed(float pathSpeedMmS)
+{
+    return completedLaps > 0 && !runtimeTestMode && !lapFinishPending
+        ? ceilf(pathSpeedMmS * OBSTACLE_LATER_LAP_SPEED_FACTOR) : pathSpeedMmS;
 }
 
 float cappedPathSpeed(float pathSpeedMmS)
@@ -2152,6 +2167,8 @@ bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
     return true;
 }
 
+void roundKnownCornerPairs(PathPoint *route, bool injectedOnly = false);
+
 void rebuildLivePath()
 {
     memcpy(livePath, baselinePath, sizeof(PathPoint) * pathLength);
@@ -2206,6 +2223,10 @@ void rebuildLivePath()
             }
         }
     }
+    // Once both adjoining signs have actually been injected, lap 1 also
+    // needs a continuous corner rather than the sum of two straight tapers.
+    // Stored behind-start observations must not alter this first departure.
+    roundKnownCornerPairs(livePath, true);
     recomputeSpeedProfile(livePath);
 }
 
@@ -2258,6 +2279,12 @@ void injectSeat(uint8_t seatIndex, bool delayed)
         plannedClearanceSnapshotValid[seatIndex] = true;
     }
     printInjectedSeat(seatIndex, delayed);
+    const auto injectionPose = get_position_struct();
+    Serial.print("[PATH INJECT POSE] seat/x/y/heading=");
+    Serial.print(seatIndex); Serial.print('/');
+    Serial.print(injectionPose.x_mm, 1); Serial.print('/');
+    Serial.print(injectionPose.y_mm, 1); Serial.print('/');
+    Serial.println(injectionPose.heading_deg, 2);
 }
 
 void activateDeferredInjection(float currentDistanceMm)
@@ -2405,7 +2432,7 @@ bool laterLapRouteSafe(const PathPoint *route)
     return true;
 }
 
-void roundKnownCornerPairs(PathPoint *route)
+void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)
 {
     // Two signs with the same passing colour at adjoining section ends need
     // one continuous corner. Summing two straight avoidance tapers can fold
@@ -2418,8 +2445,12 @@ void roundKnownCornerPairs(PathPoint *route)
         int endSeat = -1, nextSeat = -1;
         for (uint8_t side = 0; side < 2; ++side)
         {
-            if (seats[endFirst + side].confirmed) endSeat = endFirst + side;
-            if (seats[nextFirst + side].confirmed) nextSeat = nextFirst + side;
+            if (seats[endFirst + side].confirmed &&
+                (!injectedOnly || seats[endFirst + side].injected))
+                endSeat = endFirst + side;
+            if (seats[nextFirst + side].confirmed &&
+                (!injectedOnly || seats[nextFirst + side].injected))
+                nextSeat = nextFirst + side;
         }
         if (endSeat < 0 || nextSeat < 0 ||
             seats[endSeat].red != seats[nextSeat].red)
@@ -2433,6 +2464,13 @@ void roundKnownCornerPairs(PathPoint *route)
                 last = i;
         }
         if (last <= first) continue;
+        if (injectedOnly)
+        {
+            Serial.print("[PATH] Discovery corner rounded corner/end/next=");
+            Serial.print(corner); Serial.print('/');
+            Serial.print(endSeat); Serial.print('/');
+            Serial.println(nextSeat);
+        }
         const float heading = baselinePath[first].headingDeg * PI / 180.0f;
         const float centreX = baselinePath[first].x -
             routeTurnSign * OBSTACLE_CORNER_RADIUS_MM * sinf(heading);
@@ -2533,6 +2571,13 @@ bool completePendingLap()
     lapBoundaryPending = false;
     lapBoundaryHoldLogged = false;
     ++completedLaps;
+    if (completedLaps == 1 && optimizedBuilt)
+    {
+        Serial.print("[LAPS] Recorded speed factor/max_mm_s=");
+        Serial.print(OBSTACLE_LATER_LAP_SPEED_FACTOR, 2);
+        Serial.print("/");
+        Serial.println(OBSTACLE_PATH_MAX_SPEED * OBSTACLE_LATER_LAP_SPEED_FACTOR, 0);
+    }
     Serial.print("[PATH] Completed lap "); Serial.println(completedLaps);
     Serial.print("[LAPS] stage=");
     Serial.println(completedLaps >= runtimeLapTarget ? "FINAL_RUNOUT" :
@@ -2567,9 +2612,14 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
         return; // Never count a fourth lap during the final runout.
     }
 
-    if (previous > pathLength * 3 / 4 &&
+    if (progressIndex >= pathLength / 4 &&
+        progressIndex <= pathLength * 3 / 4)
+        lapCountingArmed = true;
+
+    if (lapCountingArmed && previous > pathLength * 3 / 4 &&
         progressIndex < pathLength / 4)
     {
+        lapCountingArmed = false;
         lapBoundaryPending = true;
         completePendingLap();
     }
@@ -4204,6 +4254,53 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
 }
 
+// Later laps use actual rectangular wall intersections. A rounded baseline
+// plus a fixed corridor offset is not a physical wall in a corner.
+bool laterLapWallReference(float sx, float sy, float rx, float ry,
+                           float &distance, float &nx, float &ny)
+{
+    distance = 1.0e9f;
+    nx = ny = 0.0f;
+    for (const WallSegment &wall : FIELD_WALLS)
+    {
+        const float wx = wall.bx - wall.ax, wy = wall.by - wall.ay;
+        const float determinant = rx * wy - ry * wx;
+        if (fabsf(determinant) < 1.0e-5f) continue;
+        const float ax = wall.ax - sx, ay = wall.ay - sy;
+        const float t = (ax * wy - ay * wx) / determinant;
+        const float u = (ax * ry - ay * rx) / determinant;
+        if (t <= 0.0f || u < 0.0f || u > 1.0f || t >= distance) continue;
+        // Near a vertex or grazing incidence the finite sensor cone may hit
+        // either wall. Reject rather than fabricate a localization offset.
+        const float length = hypotf(wx, wy);
+        const float normalX = -wy / length, normalY = wx / length;
+        const float incidence = fabsf(rx * normalX + ry * normalY);
+        distance = t;
+        nx = normalX; ny = normalY;
+        if (incidence < 0.8f || fminf(u, 1.0f-u) * length < 80.0f)
+            nx = ny = 0.0f;
+    }
+    if (distance > OBSTACLE_TOF_CORRECTION_MAX_RANGE_MM ||
+        nx * nx + ny * ny < 0.5f) return false;
+    for (const CandidateSeat &seat : seats)
+    {
+        if (!seat.confirmed) continue;
+        const float dx = seat.x - sx, dy = seat.y - sy;
+        const float along = dx * rx + dy * ry;
+        const float across = fabsf(dx * ry - dy * rx);
+        // Pillar half diagonal plus a conservative 15 degree half-cone.
+        if (along > -40.0f && along < distance + 40.0f &&
+            across < 40.0f + fmaxf(0.0f, along) * 0.268f) return false;
+    }
+    return true;
+}
+
+float laterLapServoForCurvature(float curvature)
+{
+    if (fabsf(curvature) < 1.0e-6f) return 0.0f;
+    return Ackermann::getServoAngleForRadius(-1.0f / curvature);
+}
+
 ObstacleTofCorrectionResult applyTofCorrectionAt(
     const PositionEstimate &pose,
     float pathDistance)
@@ -4284,6 +4381,31 @@ ObstacleTofCorrectionResult applyTofCorrectionAt(
         const float sensorSide = left ? 1.0f : -1.0f;
         const float sensorRayHeading =
             robotHeading + sensorSide * PI * 0.5f;
+        if (completedLaps > 0)
+        {
+            // Filter lag near a pillar/corner must not move the map. Only use
+            // fresh, settled readings whose beam can be assigned to a wall.
+            float wallDistance, normalX, normalY;
+            const float rayX = cosf(sensorRayHeading), rayY = sinf(sensorRayHeading);
+            if (millis() - snapshot.sampled_ms > 150 ||
+                !isfinite(snapshot.selected_raw_distance_mm) ||
+                fabsf(snapshot.selected_raw_distance_mm - reading) > 40.0f ||
+                !laterLapWallReference(sensorX, sensorY, rayX, rayY,
+                                       wallDistance, normalX, normalY)) continue;
+            const float residual = (wallDistance - reading) *
+                (rayX * normalX + rayY * normalY);
+            if (left) result.leftResidualMm = residual;
+            else result.rightResidualMm = residual;
+            if (!isfinite(residual) ||
+                fabsf(residual) > OBSTACLE_TOF_CORRECTION_MAX_RESIDUAL_MM) continue;
+            const float step = clampFloat(residual * OBSTACLE_TOF_CORRECTION_GAIN,
+                -OBSTACLE_TOF_CORRECTION_MAX_STEP_MM,
+                 OBSTACLE_TOF_CORRECTION_MAX_STEP_MM);
+            correctionX += normalX * step; correctionY += normalY * step;
+            if (left) result.leftUsed = true; else result.rightUsed = true;
+            ++corrections;
+            continue;
+        }
         const float measuredWallX =
             sensorX + reading * cosf(sensorRayHeading);
         const float measuredWallY =
@@ -4426,11 +4548,14 @@ void obstacle_path_reset()
     pathLength = 0;
     progressIndex = 0;
     completedLaps = 0;
+    laterTrackingTraceMs = 0;
+    laterTrackingTraceCount = 0;
     routeTurnSign = 1;
     running = false;
     finished = false;
     optimizedBuilt = false;
     lapBoundaryPending = false;
+    lapCountingArmed = false;
     laterLapPlanRejected = false;
     lapBoundaryHoldLogged = false;
     lapFinishPending = false;
@@ -4470,6 +4595,7 @@ void obstacle_path_reset()
     parkingCwShortStart = false;
     parkingCwStoredSeat = -1;
     parkingCcwShortStart = false;
+    parkingCcwFirstEdgeStart = false;
     parkingCcwStoredSeatMask = 0;
     memset(parkingGreenTraceCount, 0, sizeof(parkingGreenTraceCount));
     memset(parkingGreenTraceMs, 0, sizeof(parkingGreenTraceMs));
@@ -4534,7 +4660,8 @@ void obstacle_path_start(
     float first_corner_distance_mm,
     uint8_t lap_target,
     float speed_cap_mm_s,
-    bool parking_entry_discovery)
+    bool parking_entry_discovery,
+    bool ccw_first_edge_reference)
 {
     obstacle_path_reset();
     Serial.print("[PATH LAYOUT] mode=");
@@ -4615,6 +4742,7 @@ void obstacle_path_start(
         parkingCcwShortStart = OBSTACLE_PARKING_CCW_SHORT_START_ENABLED &&
             routeTurnSign > 0 && !runtimeTestMode &&
             sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL;
+        parkingCcwFirstEdgeStart = parkingCcwShortStart && ccw_first_edge_reference;
         if (parkingCcwShortStart)
             Serial.println("[CCW START] Short official start: front station=2; behind stations=0/1 stored for later approach");
         parkingEntryTargetStation = routeTurnSign > 0 ? 2 : 1;
@@ -4775,7 +4903,7 @@ void obstacle_path_update(bool new_camera_frame)
         const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
             pose,
             baselinePath[progressIndex].distanceMm);
-        if (correction.leftReadingMm > 0.0f ||
+        if (completedLaps > 0 || correction.leftReadingMm > 0.0f ||
             correction.rightReadingMm > 0.0f)
             lastTofCorrectionResult = correction;
     }
@@ -4909,7 +5037,7 @@ void obstacle_path_update(bool new_camera_frame)
         : path[progressIndex];
     const float commandedSpeed = cappedPathSpeed(lapFinishPending
         ? fminf(progress.speedMmS, OBSTACLE_LATER_LAP_CORNER_SPEED)
-        : progress.speedMmS);
+        : recordedLapSpeed(progress.speedMmS));
     bool parkingEntryGreenJoin = false;
     if (parkingEntryJoining && parkingEntryTargetStation >= 0)
     {
@@ -4972,8 +5100,9 @@ void obstacle_path_update(bool new_camera_frame)
     const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
     const float curvature = 2.0f * localY / targetDistanceSquared;
     // Positive geometric curvature is left; positive servo command is right.
-    const float requiredSteering =
-        -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
+    const float requiredSteering = completedLaps > 0 && !parkingEntryConnectorActive
+        ? laterLapServoForCurvature(curvature)
+        : -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
     if (parkingEntryFarGreenFollowup && !parkingEntryConnectorActive)
     {
         constexpr float followupTravelMm = 1000.0f;
@@ -5201,6 +5330,24 @@ void obstacle_path_update(bool new_camera_frame)
         }
     }
     set_speed(static_cast<int>(safeSpeed));
+    // Bounded onboard diagnostics: no driving USB cable required. 200 records
+    // across laps 2/3 fit the existing log buffer (roughly 40 kB maximum).
+    if (completedLaps > 0 && !lapFinishPending &&
+        laterTrackingTraceCount < 200 && millis() - laterTrackingTraceMs >= 250)
+    {
+        laterTrackingTraceMs = millis(); ++laterTrackingTraceCount;
+        Serial.print("[LATER_TRACK] t="); Serial.print(laterTrackingTraceMs);
+        Serial.print(" lap="); Serial.print(completedLaps + 1);
+        Serial.print(" idx="); Serial.print(progressIndex);
+        Serial.print(" pose="); Serial.print(pose.x_mm,1); Serial.print(",");
+        Serial.print(pose.y_mm,1); Serial.print(","); Serial.print(pose.heading_deg,1);
+        Serial.print(" target="); Serial.print(target.x,1); Serial.print(","); Serial.print(target.y,1);
+        Serial.print(" speed/servo="); Serial.print(safeSpeed,1); Serial.print("/"); Serial.print(steering,1);
+        Serial.print(" tof_used="); Serial.print(lastTofCorrectionResult.leftUsed);
+        Serial.print(","); Serial.print(lastTofCorrectionResult.rightUsed);
+        Serial.print(" correction="); Serial.print(lastTofCorrectionResult.correctionXmm,1);
+        Serial.print(","); Serial.println(lastTofCorrectionResult.correctionYmm,1);
+    }
     // Recovery is only for unresolved section entry after the stationary
     // observation grace. Holds at middle/end stations never request reverse.
     if (discoveryTraceReason != nullptr &&
