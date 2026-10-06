@@ -1,0 +1,1187 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=165.0 parking_length_mm=247.5
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=102 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=29.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK_DIAG_CONFIG] v=2 build=Oct__5_2026_21_30_53 turn=-1 center=80 mm_per_count=0.1154054 period_ms=200 sample_limit=150 byte_limit=65536 buffer=196608 sample_bytes=57000 event_bytes=8192 line_capacity=512 segments=5 exit_speed=80 brake_ms=150 rear_target=65.0 localize_max=430.0
+[PARK_DIAG] v=2 type=state t=4548 detail=rear_settle enc=0 emm=0.00 gyro=-0.02 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=4548 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=-0.02 pose=0.0,0.0,359.97 nominal=0.0,0.0,359.97 ref=rear_marker s0=80,18,102.0,102.0,18.625,1.2,1,1 s1=81,22,688.0,9999.0,0.336,14.5,1,1 s2=21,36,29.0,29.0,67.320,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=4749 state=rear_settle seg=1 turn=-1 target=20.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=-0.08 pose=0.0,0.0,359.91 nominal=0.0,0.0,359.97 ref=rear_marker s0=87,19,102.0,102.0,19.148,1.2,1,1 s1=88,23,685.0,9999.0,0.367,13.9,1,1 s2=23,48,30.0,30.0,33.008,1.2,1,1
+[PARK REAR] One-shot correction start_range_mm=30.7 target_range_mm=65.0 direction=forward planned_mm=34.3
+[PARK_DIAG] v=2 type=state t=4890 detail=rear_drive enc=0 emm=0.00 gyro=-0.08 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=4890 state=rear_drive seg=1 turn=-1 target=34.3 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=-0.08 pose=0.0,0.0,359.91 nominal=0.0,0.0,359.97 ref=rear_marker s0=92,15,102.0,102.0,18.930,1.2,1,1 s1=93,21,699.0,9999.0,0.336,16.3,1,1 s2=25,0,30.0,30.0,22.133,1.2,1,1
+[PARK_DIAG] v=2 type=direction t=4890 detail=0_to_1 enc=0 emm=0.00 gyro=-0.08 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=5090 state=rear_drive seg=1 turn=-1 target=34.3 enc=50 emm=5.77 cmd=60 speed=41.86 steer=0 dc=1 gyro=0.01 pose=5.8,-0.0,360.00 nominal=5.8,-0.0,359.97 ref=rear_marker s0=99,12,101.0,101.0,19.047,1.2,1,1 s1=100,21,688.0,9999.0,0.359,14.8,1,1 s2=27,10,30.0,30.0,21.836,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=5290 state=rear_drive seg=1 turn=-1 target=34.3 enc=138 emm=15.93 cmd=60 speed=47.69 steer=0 dc=1 gyro=0.22 pose=15.8,0.0,0.19 nominal=15.9,-0.0,359.97 ref=rear_marker s0=106,9,101.0,101.0,19.344,1.1,1,1 s1=107,21,714.0,9999.0,0.328,16.8,1,1 s2=29,21,30.0,30.0,31.422,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=5490 state=rear_drive seg=1 turn=-1 target=34.3 enc=267 emm=30.81 cmd=60 speed=63.88 steer=0 dc=1 gyro=0.51 pose=30.8,0.1,0.45 nominal=30.8,-0.0,359.97 ref=rear_marker s0=113,5,101.0,101.0,19.031,1.2,1,1 s1=114,21,672.0,9999.0,0.383,12.1,1,1 s2=31,31,33.0,33.0,21.641,1.3,1,1
+[PARK_DIAG] v=2 type=state t=5535 detail=rear_brake enc=298 emm=34.39 gyro=0.62 steer=0 cmd=60
+[PARK_DIAG] v=2 type=sample t=5535 state=rear_brake seg=1 turn=-1 target=20.0 enc=298 emm=34.39 cmd=60 speed=86.47 steer=0 dc=2 gyro=0.62 pose=34.4,0.1,0.55 nominal=34.4,-0.0,359.97 ref=rear_marker s0=114,21,101.0,101.0,19.242,1.2,1,1 s1=116,9,679.0,9999.0,0.391,12.3,1,1 s2=same
+[PARK_DIAG] v=2 type=state t=5689 detail=rear_settle enc=324 emm=37.39 gyro=0.89 steer=0 cmd=0
+[PARK_DIAG] v=2 type=direction t=5689 detail=1_to_0 enc=324 emm=37.39 gyro=0.89 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=5689 state=rear_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=29.63 steer=0 dc=0 gyro=0.89 pose=37.4,0.2,0.82 nominal=37.4,-0.0,359.97 ref=rear_marker s0=120,1,102.0,102.0,18.703,1.2,1,1 s1=121,20,716.0,9999.0,0.336,16.4,1,1 s2=33,41,40.0,40.0,17.195,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=5891 state=rear_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.76 steer=0 dc=0 gyro=0.89 pose=37.4,0.2,0.82 nominal=37.4,-0.0,359.97 ref=rear_marker s0=127,0,100.0,100.0,18.602,1.2,1,1 s1=128,22,694.0,9999.0,0.391,13.3,1,1 s2=35,50,45.0,45.0,17.375,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6091 state=rear_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.02 steer=0 dc=0 gyro=0.88 pose=37.4,0.2,0.82 nominal=37.4,-0.0,359.97 ref=rear_marker s0=133,25,101.0,101.0,18.852,1.2,1,1 s1=135,21,731.0,9999.0,0.312,17.3,1,1 s2=37,64,52.0,52.0,17.336,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6291 state=rear_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.88 pose=37.4,0.2,0.82 nominal=37.4,-0.0,359.97 ref=rear_marker s0=140,22,101.0,101.0,18.734,1.2,1,1 s1=142,18,708.0,9999.0,0.359,14.5,1,1 s2=39,74,57.0,57.0,13.695,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6491 state=rear_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.88 pose=37.4,0.2,0.82 nominal=37.4,-0.0,359.97 ref=rear_marker s0=147,18,99.0,99.0,19.023,1.2,1,1 s1=149,21,715.0,9999.0,0.352,15.5,1,1 s2=41,85,62.0,62.0,11.734,1.2,1,1
+[PARK REAR VERIFY] final_range_mm=63.3 target_error_mm=1.7 measured/expected_change_mm=32.7/34.4 accepted=yes
+Position initialized: (391.67, -1365.00), heading=180.00°
+[PARK_DIAG] v=2 type=rebase t=6503 detail=field_start enc=324 emm=37.39 gyro=0.88 steer=0 cmd=0
+[PARK FIELD START] turn=CW fixed_line_x=500.0 rear_axle_x_y_heading=391.7/-1365.0/180.0 start_y_source=outer_wall_tof range_mm=100.0 start_x_source=rear_tof rear_range/clearance_mm=63.3/48.3
+[PARK REAR RESULT] start/final_range_mm=30.7/63.3 start/final_clearance_mm=15.7/48.3 correction_travel_mm=34.4
+[PARK_DIAG] v=2 type=state t=6503 detail=segment_settle enc=324 emm=37.39 gyro=0.88 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=6503 state=segment_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.00 steer=0 dc=0 gyro=0.88 pose=391.7,-1365.0,180.00 nominal=391.7,-1365.0,180.00 ref=none s0=148,1,100.0,100.0,18.992,1.2,1,1 s1=150,5,667.0,9999.0,0.352,12.1,1,1 s2=42,1,66.0,66.0,10.602,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=6706 state=segment_settle seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.00 steer=-50 dc=0 gyro=0.71 pose=391.7,-1365.0,179.83 nominal=391.7,-1365.0,180.00 ref=none s0=155,2,100.0,100.0,18.797,1.2,1,1 s1=157,8,690.0,9999.0,0.375,14.0,1,1 s2=44,16,69.0,69.0,10.625,1.2,1,1
+[PARK EXIT] Segment 1 direction=reverse steering=-50 target_mm=20.0
+[PARK_DIAG] v=2 type=state t=6706 detail=segment_drive enc=324 emm=37.39 gyro=0.71 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=6706 state=segment_drive seg=1 turn=-1 target=20.0 enc=324 emm=37.39 cmd=0 speed=0.00 steer=-50 dc=0 gyro=0.71 pose=391.7,-1365.0,179.83 nominal=391.7,-1365.0,180.00 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=6706 detail=0_to_-1 enc=324 emm=37.39 gyro=0.71 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=6908 state=segment_drive seg=1 turn=-1 target=20.0 enc=265 emm=30.58 cmd=-80 speed=-38.30 steer=-50 dc=1 gyro=-1.10 pose=398.2,-1365.1,178.02 nominal=398.5,-1365.2,176.41 ref=none s0=162,0,102.0,102.0,18.867,1.2,1,1 s1=164,9,685.0,9999.0,0.352,13.7,1,1 s2=46,29,70.0,70.0,10.469,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=7111 state=segment_drive seg=1 turn=-1 target=20.0 enc=178 emm=20.54 cmd=-80 speed=-49.14 steer=-50 dc=1 gyro=-6.29 pose=408.3,-1365.8,172.83 nominal=408.4,-1366.3,171.12 ref=none s0=169,1,102.0,102.0,18.195,1.2,1,1 s1=171,12,681.0,9999.0,0.320,15.7,1,1 s2=48,41,70.0,70.0,10.805,1.2,1,1
+[PARK_DIAG] v=2 type=state t=7177 detail=segment_brake enc=150 emm=17.31 gyro=-7.62 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=7177 state=segment_brake seg=1 turn=-1 target=20.0 enc=150 emm=17.31 cmd=-80 speed=-48.73 steer=-50 dc=2 gyro=-7.62 pose=411.7,-1366.3,171.50 nominal=411.6,-1366.9,169.42 ref=none s0=171,9,103.0,103.0,17.945,1.2,1,1 s1=173,21,666.0,9999.0,0.312,15.9,1,1 s2=49,13,67.0,67.0,10.781,1.3,1,1
+[PARK EXIT] Segment 1 stopped target_mm=20.0 actual_mm=20.1 heading_delta_deg=-10.4
+[PARK_DIAG] v=2 type=state t=7330 detail=segment_settle enc=150 emm=17.31 gyro=-9.48 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=direction t=7330 detail=-1_to_0 enc=150 emm=17.31 gyro=-9.48 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=7330 state=segment_settle seg=2 turn=-1 target=25.0 enc=150 emm=17.31 cmd=0 speed=-5.76 steer=-50 dc=0 gyro=-9.48 pose=411.7,-1366.3,169.63 nominal=411.6,-1366.9,169.42 ref=none s0=176,18,108.0,108.0,16.125,1.2,1,1 s1=179,3,-1.0,9999.0,-1.000,-1.0,0,0 s2=50,71,67.0,67.0,11.227,1.2,1,1
+[PARK EXIT] Segment 2 direction=forward steering=50 target_mm=25.0
+[PARK_DIAG] v=2 type=state t=7529 detail=segment_drive enc=150 emm=17.31 gyro=-9.48 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=7529 state=segment_drive seg=2 turn=-1 target=25.0 enc=150 emm=17.31 cmd=0 speed=-0.06 steer=50 dc=0 gyro=-9.48 pose=411.7,-1366.3,169.61 nominal=411.6,-1366.9,169.42 ref=none s0=183,17,107.0,107.0,15.586,1.3,1,1 s1=186,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=52,81,64.0,64.0,11.875,1.2,1,1
+[PARK_DIAG] v=2 type=direction t=7529 detail=0_to_1 enc=150 emm=17.31 gyro=-9.48 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=7729 state=segment_drive seg=2 turn=-1 target=25.0 enc=206 emm=23.77 cmd=80 speed=34.03 steer=50 dc=1 gyro=-10.83 pose=405.3,-1365.1,168.25 nominal=405.3,-1365.5,166.01 ref=none s0=190,16,110.0,110.0,14.836,1.2,1,1 s1=193,2,-1.0,9999.0,-1.000,-1.0,0,0 s2=54,92,61.0,61.0,12.508,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=7929 state=segment_drive seg=2 turn=-1 target=25.0 enc=273 emm=31.51 cmd=80 speed=34.03 steer=50 dc=1 gyro=-14.19 pose=397.8,-1363.3,164.89 nominal=397.9,-1363.3,161.93 ref=none s0=197,16,112.0,112.0,11.828,1.4,1,1 s1=200,1,-1.0,9999.0,-1.000,-1.0,0,0 s2=57,7,58.0,58.0,12.609,1.2,1,1
+[PARK_DIAG] v=2 type=state t=8081 detail=segment_brake enc=367 emm=42.35 gyro=-18.83 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=8081 state=segment_brake seg=2 turn=-1 target=25.0 enc=367 emm=42.35 cmd=80 speed=69.13 steer=50 dc=2 gyro=-18.83 pose=387.5,-1360.1,160.24 nominal=387.8,-1359.5,156.22 ref=none s0=202,24,117.0,117.0,8.688,1.4,1,1 s1=205,11,-1.0,9999.0,-1.000,-1.0,0,0 s2=58,65,57.0,57.0,12.828,1.2,1,1
+[PARK EXIT] Segment 2 stopped target_mm=25.0 actual_mm=25.3 heading_delta_deg=-22.1
+[PARK_DIAG] v=2 type=state t=8231 detail=segment_settle enc=369 emm=42.58 gyro=-21.23 steer=50 cmd=0
+[PARK_DIAG] v=2 type=direction t=8231 detail=1_to_0 enc=369 emm=42.58 gyro=-21.23 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=8231 state=segment_settle seg=3 turn=-1 target=20.0 enc=369 emm=42.58 cmd=0 speed=5.45 steer=50 dc=0 gyro=-21.23 pose=387.2,-1360.0,157.84 nominal=387.5,-1359.4,156.09 ref=none s0=208,3,126.0,126.0,5.648,1.6,1,1 s1=210,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=60,25,58.0,58.0,11.906,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=8432 state=segment_settle seg=3 turn=-1 target=20.0 enc=369 emm=42.58 cmd=0 speed=0.14 steer=-50 dc=0 gyro=-21.06 pose=387.2,-1360.0,158.01 nominal=387.5,-1359.4,156.09 ref=none s0=215,3,134.0,134.0,4.133,2.1,1,1 s1=217,19,-1.0,9999.0,-1.000,-1.0,0,0 s2=62,37,63.0,63.0,12.117,1.2,1,1
+[PARK EXIT] Segment 3 direction=reverse steering=-50 target_mm=20.0
+[PARK_DIAG] v=2 type=state t=8433 detail=segment_drive enc=369 emm=42.58 gyro=-21.06 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=8433 state=segment_drive seg=3 turn=-1 target=20.0 enc=369 emm=42.58 cmd=0 speed=0.14 steer=-50 dc=0 gyro=-21.06 pose=387.2,-1360.0,158.01 nominal=387.5,-1359.4,156.09 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=8433 detail=0_to_-1 enc=369 emm=42.58 gyro=-21.06 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=8633 state=segment_drive seg=3 turn=-1 target=20.0 enc=318 emm=36.70 cmd=-80 speed=-29.29 steer=-50 dc=1 gyro=-22.67 pose=392.7,-1362.2,156.38 nominal=392.9,-1361.9,152.99 ref=none s0=222,3,136.0,136.0,4.188,1.8,1,1 s1=224,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=64,49,69.0,69.0,12.547,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=8833 state=segment_drive seg=3 turn=-1 target=20.0 enc=259 emm=29.89 cmd=-80 speed=-35.41 steer=-50 dc=1 gyro=-25.97 pose=398.7,-1365.1,153.08 nominal=398.8,-1365.2,149.40 ref=none s0=229,3,137.0,137.0,3.617,2.1,1,1 s1=231,19,-1.0,9999.0,-1.000,-1.0,0,0 s2=66,58,75.0,75.0,13.125,1.2,1,1
+[PARK_DIAG] v=2 type=state t=8995 detail=segment_brake enc=195 emm=22.50 gyro=-29.37 steer=-50 cmd=-80
+[PARK_DIAG] v=2 type=sample t=8995 state=segment_brake seg=3 turn=-1 target=20.0 enc=195 emm=22.50 cmd=-80 speed=-43.74 steer=-50 dc=2 gyro=-29.37 pose=405.3,-1368.7,149.68 nominal=405.1,-1369.2,145.51 ref=none s0=234,22,141.0,141.0,3.125,2.0,1,1 s1=237,10,-1.0,9999.0,-1.000,-1.0,0,0 s2=68,31,79.0,79.0,13.945,1.2,1,1
+[PARK EXIT] Segment 3 stopped target_mm=20.0 actual_mm=20.5 heading_delta_deg=-33.0
+[PARK_DIAG] v=2 type=state t=9146 detail=segment_settle enc=191 emm=22.04 gyro=-32.08 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=direction t=9146 detail=-1_to_0 enc=191 emm=22.04 gyro=-32.08 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=9146 state=segment_settle seg=4 turn=-1 target=90.0 enc=191 emm=22.04 cmd=0 speed=-6.79 steer=-50 dc=0 gyro=-32.08 pose=405.7,-1368.9,146.97 nominal=405.4,-1369.4,145.27 ref=none s0=240,1,150.0,150.0,2.711,2.1,1,1 s1=242,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=69,87,78.0,78.0,15.367,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=9346 state=segment_settle seg=4 turn=-1 target=90.0 enc=191 emm=22.04 cmd=0 speed=-0.17 steer=50 dc=0 gyro=-31.78 pose=405.7,-1368.9,147.27 nominal=405.4,-1369.4,145.27 ref=none s0=247,0,156.0,156.0,2.492,2.3,1,1 s1=249,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=72,0,77.0,77.0,17.656,1.1,1,1
+[PARK EXIT] Segment 4 direction=forward steering=50 target_mm=90.0
+[PARK_DIAG] v=2 type=state t=9347 detail=segment_drive enc=191 emm=22.04 gyro=-31.78 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=9347 state=segment_drive seg=4 turn=-1 target=90.0 enc=191 emm=22.04 cmd=0 speed=-0.17 steer=50 dc=0 gyro=-31.78 pose=405.7,-1368.9,147.27 nominal=405.4,-1369.4,145.27 ref=none s0=same s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=9347 detail=0_to_1 enc=191 emm=22.04 gyro=-31.78 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=9547 state=segment_drive seg=4 turn=-1 target=90.0 enc=250 emm=28.85 cmd=80 speed=40.66 steer=50 dc=1 gyro=-33.31 pose=400.0,-1365.2,145.76 nominal=400.0,-1365.4,141.68 ref=none s0=254,1,161.0,161.0,2.570,2.0,1,1 s1=256,19,-1.0,9999.0,-1.000,-1.0,0,0 s2=74,15,75.0,75.0,18.383,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=9748 state=segment_drive seg=4 turn=-1 target=90.0 enc=324 emm=37.39 cmd=80 speed=45.75 steer=50 dc=1 gyro=-36.98 pose=393.1,-1360.1,142.09 nominal=393.5,-1359.8,137.18 ref=none s0=261,2,171.0,171.0,4.930,1.7,1,1 s1=263,20,-1.0,9999.0,-1.000,-1.0,0,0 s2=76,26,75.0,75.0,18.211,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=9948 state=segment_drive seg=4 turn=-1 target=90.0 enc=436 emm=50.32 cmd=80 speed=62.68 steer=50 dc=1 gyro=-41.93 pose=383.5,-1352.0,137.14 nominal=384.5,-1350.5,130.36 ref=none s0=268,0,165.0,165.0,16.594,1.2,1,1 s1=270,20,-1.0,9999.0,-1.000,-1.0,0,0 s2=78,37,75.0,75.0,17.250,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=10148 state=segment_drive seg=4 turn=-1 target=90.0 enc=562 emm=64.86 cmd=80 speed=62.70 steer=50 dc=1 gyro=-48.50 pose=373.3,-1341.2,130.57 nominal=375.9,-1338.8,122.70 ref=none s0=274,24,150.0,150.0,23.359,1.2,1,1 s1=277,20,-1.0,9999.0,-1.000,-1.0,0,0 s2=80,48,79.0,79.0,16.125,1.1,1,1
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/59.3 deficit_mm_s=20.7 compensation_dc=0.3 output_dc=91.8
+[PARK_DIAG] v=2 type=sample t=10348 state=segment_drive seg=4 turn=-1 target=90.0 enc=674 emm=77.78 cmd=80 speed=67.52 steer=50 dc=1 gyro=-54.61 pose=365.4,-1331.0,124.46 nominal=369.6,-1327.5,115.89 ref=none s0=281,22,124.0,124.0,18.977,1.2,1,1 s1=284,18,-1.0,9999.0,-1.000,-1.0,0,0 s2=82,58,88.0,88.0,14.609,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=10548 state=segment_drive seg=4 turn=-1 target=90.0 enc=794 emm=91.63 cmd=80 speed=68.18 steer=50 dc=1 gyro=-61.07 pose=358.2,-1319.2,118.00 nominal=364.3,-1314.7,108.59 ref=none s0=288,15,108.0,108.0,18.820,1.2,1,1 s1=291,19,-1.0,9999.0,-1.000,-1.0,0,0 s2=84,68,100.0,100.0,12.922,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=10748 state=segment_drive seg=4 turn=-1 target=90.0 enc=910 emm=105.02 cmd=80 speed=62.24 steer=50 dc=1 gyro=-66.84 pose=352.5,-1307.1,112.23 nominal=360.9,-1301.8,101.53 ref=none s0=295,15,93.0,93.0,18.086,1.2,1,1 s1=298,19,-1.0,9999.0,-1.000,-1.0,0,0 s2=86,77,116.0,116.0,10.578,1.3,1,1
+[PARK_DIAG] v=2 type=state t=10871 detail=segment_brake enc=972 emm=112.17 gyro=-70.31 steer=50 cmd=80
+[PARK_DIAG] v=2 type=sample t=10871 state=segment_brake seg=4 turn=-1 target=90.0 enc=972 emm=112.17 cmd=80 speed=57.97 steer=50 dc=2 gyro=-70.31 pose=350.0,-1300.4,108.76 nominal=359.7,-1294.8,97.76 ref=none s0=299,23,88.0,88.0,17.375,1.2,1,1 s1=303,0,-1.0,9999.0,-1.000,-1.0,0,0 s2=88,13,202.0,202.0,2.617,3.8,1,1
+[PARK EXIT] Segment 4 stopped target_mm=90.0 actual_mm=90.5 heading_delta_deg=-73.6
+[PARK_DIAG] v=2 type=state t=11024 detail=segment_settle enc=975 emm=112.52 gyro=-72.73 steer=50 cmd=0
+[PARK_DIAG] v=2 type=direction t=11024 detail=1_to_0 enc=975 emm=112.52 gyro=-72.73 steer=50 cmd=0
+[PARK_DIAG] v=2 type=sample t=11024 state=segment_settle seg=5 turn=-1 target=155.0 enc=975 emm=112.52 cmd=0 speed=5.26 steer=50 dc=0 gyro=-72.73 pose=349.9,-1300.0,106.35 nominal=359.6,-1294.4,97.57 ref=none s0=305,1,85.0,85.0,15.367,1.2,1,1 s1=308,10,-1.0,9999.0,-1.000,-1.0,0,0 s2=89,67,185.0,185.0,2.758,4.6,1,1
+[PARK_DIAG] v=2 type=sample t=11224 state=segment_settle seg=5 turn=-1 target=155.0 enc=975 emm=112.52 cmd=0 speed=0.13 steer=-50 dc=0 gyro=-72.62 pose=349.9,-1300.0,106.44 nominal=359.6,-1294.4,97.57 ref=none s0=311,28,86.0,86.0,17.047,1.2,1,1 s1=315,9,-1.0,9999.0,-1.000,-1.0,0,0 s2=91,81,183.0,183.0,3.258,4.2,1,1
+[PARK EXIT] Segment 5 direction=forward steering=-50 target_mm=155.0
+[PARK_DIAG] v=2 type=state t=11228 detail=segment_drive enc=975 emm=112.52 gyro=-72.62 steer=-50 cmd=0
+[PARK_DIAG] v=2 type=sample t=11228 state=segment_drive seg=5 turn=-1 target=155.0 enc=975 emm=112.52 cmd=0 speed=0.13 steer=-50 dc=0 gyro=-72.62 pose=349.9,-1300.0,106.44 nominal=359.6,-1294.4,97.57 ref=none s0=312,0,87.0,87.0,16.312,1.2,1,1 s1=same s2=same
+[PARK_DIAG] v=2 type=direction t=11228 detail=0_to_1 enc=975 emm=112.52 gyro=-72.62 steer=-50 cmd=80
+[PARK_DIAG] v=2 type=sample t=11429 state=segment_drive seg=5 turn=-1 target=155.0 enc=1039 emm=119.91 cmd=80 speed=32.90 steer=-50 dc=1 gyro=-70.88 pose=347.7,-1293.0,108.17 nominal=358.4,-1287.1,101.47 ref=none s0=319,0,85.0,85.0,16.477,1.2,1,1 s1=322,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=94,0,184.0,184.0,3.656,3.6,1,1
+[PARK_DIAG] v=2 type=sample t=11629 state=segment_drive seg=5 turn=-1 target=155.0 enc=1126 emm=129.95 cmd=80 speed=46.87 steer=-50 dc=1 gyro=-65.85 pose=344.2,-1283.6,113.20 nominal=355.9,-1277.4,106.76 ref=none s0=325,26,84.0,84.0,13.891,1.2,1,1 s1=329,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=96,13,190.0,190.0,3.242,2.7,1,1
+[PARK_DIAG] v=2 type=sample t=11829 state=segment_drive seg=5 turn=-1 target=155.0 enc=1244 emm=143.56 cmd=80 speed=71.90 steer=-50 dc=1 gyro=-58.87 pose=338.2,-1271.4,120.19 nominal=351.2,-1264.6,113.94 ref=none s0=332,23,83.0,83.0,14.930,1.2,1,1 s1=336,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=98,23,196.0,196.0,2.883,2.4,1,1
+[PARK_DIAG] v=2 type=sample t=12029 state=segment_drive seg=5 turn=-1 target=155.0 enc=1390 emm=160.41 cmd=80 speed=74.86 steer=-50 dc=1 gyro=-50.79 pose=328.8,-1257.5,128.26 nominal=343.2,-1249.8,122.82 ref=none s0=339,19,77.0,77.0,18.008,1.2,1,1 s1=343,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=100,34,214.0,214.0,3.602,1.9,1,1
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/57.7 deficit_mm_s=22.3 compensation_dc=1.2 output_dc=96.7
+[PARK_DIAG] v=2 type=sample t=12229 state=segment_drive seg=5 turn=-1 target=155.0 enc=1513 emm=174.61 cmd=80 speed=69.31 steer=-50 dc=1 gyro=-42.83 pose=319.2,-1247.0,136.22 nominal=334.8,-1238.4,130.30 ref=none s0=346,16,74.0,74.0,18.703,1.1,1,1 s1=350,12,-1.0,9999.0,-1.000,-1.0,0,0 s2=102,41,216.0,216.0,6.117,1.5,1,1
+[PARK_DIAG] v=2 type=sample t=12429 state=segment_drive seg=5 turn=-1 target=155.0 enc=1631 emm=188.23 cmd=80 speed=57.79 steer=-50 dc=1 gyro=-35.92 pose=308.8,-1238.2,143.13 nominal=325.3,-1228.6,137.48 ref=none s0=353,10,70.0,70.0,17.398,1.2,1,1 s1=357,14,-1.0,9999.0,-1.000,-1.0,0,0 s2=104,55,210.0,210.0,8.773,1.3,1,1
+[PARK_DIAG] v=2 type=sample t=12630 state=segment_drive seg=5 turn=-1 target=155.0 enc=1754 emm=202.42 cmd=80 speed=65.97 steer=-50 dc=1 gyro=-28.86 pose=297.1,-1230.4,150.19 nominal=314.3,-1219.8,144.96 ref=none s0=360,10,65.0,65.0,19.336,1.1,1,1 s1=364,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=106,67,207.0,207.0,12.227,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=12830 state=segment_drive seg=5 turn=-1 target=155.0 enc=1859 emm=214.54 cmd=80 speed=52.92 steer=-50 dc=1 gyro=-22.81 pose=286.1,-1224.9,156.24 nominal=304.0,-1213.4,151.35 ref=none s0=367,8,62.0,62.0,17.609,1.2,1,1 s1=371,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=108,77,203.0,203.0,15.352,1.2,1,1
+[PARK_DIAG] v=2 type=sample t=13030 state=segment_drive seg=5 turn=-1 target=155.0 enc=1960 emm=226.19 cmd=80 speed=54.32 steer=-50 dc=1 gyro=-16.98 pose=275.2,-1220.7,162.07 nominal=293.5,-1208.3,157.49 ref=none s0=374,5,60.0,60.0,13.180,1.2,1,1 s1=378,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=110,88,201.0,201.0,18.117,1.1,1,1
+[PARK_DIAG] v=2 type=sample t=13230 state=segment_drive seg=5 turn=-1 target=155.0 enc=2093 emm=241.54 cmd=80 speed=77.75 steer=-50 dc=1 gyro=-9.42 pose=260.7,-1217.0,169.63 nominal=278.9,-1203.5,165.59 ref=none s0=381,2,58.0,58.0,9.664,1.3,1,1 s1=385,15,-1.0,9999.0,-1.000,-1.0,0,0 s2=113,2,198.0,198.0,17.602,1.2,1,1
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.0, actual_arc=0.0, radius=108.7 mm
+[PARK EXIT] Final alignment distance_mm=144.7 heading_error_deg=1.8 aligned=yes
+[PARK_DIAG] v=2 type=state t=13404 detail=segment_brake enc=2229 emm=257.24 gyro=-0.93 steer=0 cmd=80
+[PARK_DIAG] v=2 type=sample t=13404 state=segment_brake seg=5 turn=-1 target=155.0 enc=2229 emm=257.24 cmd=80 speed=86.92 steer=0 dc=2 gyro=-0.93 pose=244.8,-1215.3,178.12 nominal=263.5,-1200.7,173.86 ref=none s0=387,2,55.0,55.0,11.969,1.2,1,1 s1=391,18,621.0,9999.0,0.398,8.6,1,1 s2=114,83,240.0,240.0,2.375,3.7,1,1
+[PARK EXIT] Segment 5 stopped target_mm=155.0 actual_mm=146.2 heading_delta_deg=1.4
+[PARK EXIT RESULT] completed_segments=5/5 travel_mm=221.3 heading_error_deg=1.4 tof_start_left_right_mm=102/9999 tof_end_left_right_mm=73/9999
+[PARK_DIAG] v=2 type=correction t=13559 source=parking_end_y before=243.3,-1215.4,181.35 after=243.3,-1191.0,181.35 delta=0.0,24.3,0.00
+[PARK EXIT TOF REF] sensor=L filtered/raw_mm=73.0/73.0 signal_mcps=10.92 sigma_mm=1.2 rear_beyond_parking_end_mm=109.0 remaining_to_centerline_mm=191.0 beam_x_mm=205.8 beam_footprint_x_mm=191.9..219.7 expected_piece_x_mm=212.5..232.5 beam_over_piece=yes usable=yes localization_seed=yes apply_y=yes
+[PARK EXIT FIELD POSE] x_y_heading=243.3/-1191.0/181.4 tof_y_correction_mm=24.3
+[PARK LOCALIZE] Armed sensor=L initial_range_mm=73.0 direction=reverse approach/detection_speed_mm_s=100/60 max_travel_mm=430.0
+[PARK_DIAG] v=2 type=state t=13559 detail=localize_drive enc=2242 emm=258.74 gyro=2.30 steer=0 cmd=0
+[PARK_DIAG] v=2 type=direction t=13559 detail=1_to_0 enc=2242 emm=258.74 gyro=2.30 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=13559 state=localize_drive seg=6 turn=-1 target=430.0 enc=2242 emm=258.74 cmd=0 speed=21.66 steer=0 dc=0 gyro=2.30 pose=243.3,-1191.0,181.35 nominal=262.0,-1200.5,173.86 ref=parking_edges s0=392,11,73.0,73.0,10.922,1.2,1,1 s1=397,1,626.0,9999.0,0.430,7.8,1,1 s2=116,48,282.0,282.0,0.492,11.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK_DIAG] v=2 type=direction t=13559 detail=0_to_-1 enc=2242 emm=258.74 gyro=2.30 steer=0 cmd=-100
+[PARK LOCALIZE] First marker present at search start
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/0
+[PARK_DIAG] v=2 type=sample t=13759 state=localize_drive seg=6 turn=-1 target=430.0 enc=2208 emm=254.82 cmd=-100 speed=-25.17 steer=0 dc=1 gyro=2.31 pose=247.2,-1190.9,181.38 nominal=265.9,-1200.9,173.86 ref=parking_edges s0=399,11,86.0,86.0,20.625,1.2,1,1 s1=404,1,628.0,9999.0,0.430,6.7,1,1 s2=118,58,291.0,291.0,0.430,14.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.02/0
+[PARK_DIAG] v=2 type=sample t=13959 state=localize_drive seg=6 turn=-1 target=430.0 enc=2149 emm=248.01 cmd=-100 speed=-39.96 steer=0 dc=1 gyro=2.34 pose=254.0,-1190.8,181.39 nominal=272.7,-1201.7,173.86 ref=parking_edges s0=406,8,58.0,58.0,30.688,1.1,1,1 s1=411,1,622.0,9999.0,0.406,8.0,1,1 s2=120,70,286.0,286.0,0.445,12.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.06/0
+[PARK_DIAG] v=2 type=sample t=14159 state=localize_drive seg=6 turn=-1 target=430.0 enc=2032 emm=234.50 cmd=-100 speed=-71.19 steer=-1 dc=1 gyro=2.43 pose=267.0,-1190.5,181.48 nominal=286.1,-1203.1,173.86 ref=parking_edges s0=413,4,46.0,46.0,18.281,1.2,1,1 s1=418,0,623.0,9999.0,0.453,6.5,1,1 s2=122,80,286.0,286.0,0.414,14.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/-1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/0
+[PARK_DIAG] v=2 type=sample t=14361 state=localize_drive seg=6 turn=-1 target=430.0 enc=1869 emm=215.69 cmd=-100 speed=-88.17 steer=0 dc=1 gyro=2.22 pose=285.4,-1190.0,181.28 nominal=304.8,-1205.1,173.86 ref=parking_edges s0=420,4,244.0,244.0,6.680,2.4,1,1 s1=425,0,628.0,9999.0,0.430,7.1,1,1 s2=124,86,291.0,291.0,0.422,10.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.08/0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-100/-100.0/-63.0 deficit_mm_s=37.0 compensation_dc=-8.5 output_dc=-98.3
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.24/1
+[PARK_DIAG] v=2 type=sample t=14563 state=localize_drive seg=6 turn=-1 target=430.0 enc=1733 emm=200.00 cmd=-100 speed=-70.39 steer=2 dc=1 gyro=1.86 pose=301.8,-1189.7,180.93 nominal=320.4,-1206.8,173.93 ref=parking_edges s0=427,1,246.0,246.0,6.031,2.1,1,1 s1=432,5,610.0,9999.0,0.469,6.8,1,1 s2=127,10,317.0,317.0,0.406,12.1,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.44/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.65/3
+[PARK_DIAG] v=2 type=sample t=14764 state=localize_drive seg=6 turn=-1 target=430.0 enc=1570 emm=181.19 cmd=-100 speed=-93.44 steer=4 dc=1 gyro=1.62 pose=320.6,-1189.4,180.69 nominal=339.1,-1208.7,174.41 ref=parking_edges s0=434,5,249.0,249.0,5.719,1.4,1,1 s1=439,1,631.0,9999.0,0.430,7.2,1,1 s2=129,22,312.0,312.0,0.398,10.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.68/4
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.67/4
+[PARK_DIAG] v=2 type=sample t=14964 state=localize_drive seg=6 turn=-1 target=430.0 enc=1421 emm=163.99 cmd=-100 speed=-103.16 steer=4 dc=1 gyro=1.71 pose=338.0,-1189.2,180.78 nominal=356.2,-1210.3,174.94 ref=parking_edges s0=441,2,248.0,248.0,5.242,1.5,1,1 s1=446,6,623.0,9999.0,0.430,6.2,1,1 s2=131,30,308.0,308.0,0.391,9.3,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.59/4
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.43/3
+[PARK_DIAG] v=2 type=sample t=15164 state=localize_drive seg=6 turn=-1 target=430.0 enc=1237 emm=142.76 cmd=-100 speed=-118.40 steer=2 dc=1 gyro=2.03 pose=359.2,-1188.9,181.07 nominal=377.4,-1212.1,175.38 ref=parking_edges s0=448,2,251.0,251.0,5.031,1.4,1,1 s1=453,6,637.0,9999.0,0.453,6.8,1,1 s2=133,43,309.0,309.0,0.375,8.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.12/2
+[PARK LOCALIZE] First marker passed; searching second
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/1
+[PARK_DIAG] v=2 type=sample t=15364 state=localize_drive seg=6 turn=-1 target=430.0 enc=1005 emm=115.98 cmd=-100 speed=-122.72 steer=1 dc=1 gyro=2.34 pose=386.0,-1188.3,181.34 nominal=404.1,-1214.2,175.61 ref=parking_edges s0=455,1,251.0,251.0,4.922,1.6,1,1 s1=460,5,625.0,9999.0,0.484,5.9,1,1 s2=135,54,303.0,303.0,0.383,8.1,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK_DIAG] v=2 type=sample t=15565 state=localize_drive seg=6 turn=-1 target=430.0 enc=838 emm=96.71 cmd=-100 speed=-102.56 steer=0 dc=1 gyro=2.43 pose=404.9,-1187.8,181.40 nominal=423.3,-1215.6,175.61 ref=parking_edges s0=462,2,252.0,252.0,5.055,1.4,1,1 s1=467,6,629.0,9999.0,0.453,6.6,1,1 s2=137,63,299.0,299.0,0.383,7.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK_DIAG] v=2 type=sample t=15765 state=localize_drive seg=6 turn=-1 target=430.0 enc=730 emm=84.25 cmd=-100 speed=-57.30 steer=0 dc=1 gyro=2.47 pose=417.7,-1187.5,181.42 nominal=435.7,-1216.6,175.61 ref=parking_edges s0=469,2,249.0,249.0,5.203,1.5,1,1 s1=474,6,627.0,9999.0,0.477,6.3,1,1 s2=139,76,391.0,9999.0,0.516,12.5,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.16/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.17/0
+[PARK_DIAG] v=2 type=sample t=15965 state=localize_drive seg=6 turn=-1 target=430.0 enc=605 emm=69.82 cmd=-100 speed=-71.63 steer=0 dc=1 gyro=2.43 pose=432.2,-1187.2,181.39 nominal=450.1,-1217.7,175.61 ref=parking_edges s0=476,2,252.0,252.0,5.016,1.4,1,1 s1=481,6,634.0,9999.0,0.438,7.0,1,1 s2=141,86,398.0,9999.0,0.531,11.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.07/0
+[PARK_DIAG] v=2 type=sample t=16166 state=localize_drive seg=6 turn=-1 target=430.0 enc=399 emm=46.05 cmd=-100 speed=-113.35 steer=0 dc=1 gyro=2.39 pose=455.8,-1186.6,181.35 nominal=473.8,-1219.5,175.61 ref=parking_edges s0=483,3,252.0,252.0,4.656,1.6,1,1 s1=488,7,626.0,9999.0,0.445,6.2,1,1 s2=144,3,402.0,9999.0,0.586,9.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.09/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK_DIAG] v=2 type=sample t=16366 state=localize_drive seg=6 turn=-1 target=430.0 enc=142 emm=16.39 cmd=-100 speed=-148.13 steer=0 dc=1 gyro=2.49 pose=485.6,-1185.9,181.43 nominal=503.4,-1221.8,175.61 ref=parking_edges s0=490,3,255.0,255.0,4.992,1.5,1,1 s1=495,7,617.0,9999.0,0.445,7.0,1,1 s2=146,14,405.0,9999.0,0.586,9.8,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.19/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.23/-1
+[PARK_DIAG] v=2 type=sample t=16566 state=localize_drive seg=6 turn=-1 target=430.0 enc=-33 emm=-3.81 cmd=-100 speed=-120.57 steer=-1 dc=1 gyro=2.55 pose=505.8,-1185.4,181.47 nominal=523.5,-1223.3,175.61 ref=parking_edges s0=497,3,246.0,246.0,6.039,1.5,1,1 s1=502,7,617.0,9999.0,0.406,7.3,1,1 s2=148,24,402.0,9999.0,0.594,9.7,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.25/-1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.22/-1
+[PARK LOCALIZE] Second marker acquired; slowing for edge
+[PARK_DIAG] v=2 type=sample t=16766 state=localize_drive seg=6 turn=-1 target=430.0 enc=-156 emm=-18.00 cmd=-60 speed=-66.84 steer=-1 dc=1 gyro=2.56 pose=520.0,-1185.0,181.48 nominal=537.6,-1224.4,175.61 ref=parking_edges s0=504,2,45.0,45.0,107.336,1.1,1,1 s1=509,7,607.0,9999.0,0.383,9.0,1,1 s2=150,31,410.0,9999.0,0.609,9.4,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.26/-1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.18/-1
+[PARK_DIAG] v=2 type=sample t=16968 state=localize_drive seg=6 turn=-1 target=430.0 enc=-281 emm=-32.43 cmd=-60 speed=-73.70 steer=-1 dc=1 gyro=2.44 pose=534.3,-1184.7,181.38 nominal=552.0,-1225.5,175.61 ref=parking_edges s0=511,1,53.0,53.0,15.688,1.8,1,1 s1=516,9,580.0,580.0,0.383,8.7,1,1 s2=152,47,419.0,9999.0,0.609,9.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.14/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.08/0
+[PARK_DIAG] v=2 type=sample t=17172 state=localize_drive seg=6 turn=-1 target=430.0 enc=-411 emm=-47.43 cmd=-60 speed=-74.25 steer=0 dc=1 gyro=2.35 pose=548.9,-1184.3,181.29 nominal=567.0,-1226.6,175.61 ref=parking_edges s0=518,2,176.0,176.0,3.250,4.2,1,1 s1=523,13,-1.0,9999.0,-1.000,-1.0,0,0 s2=154,58,427.0,9999.0,0.625,9.5,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.05/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/0
+[PARK_DIAG] v=2 type=sample t=17372 state=localize_drive seg=6 turn=-1 target=430.0 enc=-537 emm=-61.97 cmd=-60 speed=-76.03 steer=0 dc=1 gyro=2.28 pose=563.6,-1184.0,181.25 nominal=581.5,-1227.7,175.61 ref=parking_edges s0=525,2,259.0,259.0,5.688,3.1,1,1 s1=530,13,-1.0,9999.0,-1.000,-1.0,0,0 s2=156,70,432.0,9999.0,0.625,9.6,1,1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.02/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.09/1
+[PARK_DIAG] v=2 type=state t=17544 detail=localize_brake enc=-610 emm=-70.40 gyro=2.13 steer=1 cmd=-60
+[PARK_DIAG] v=2 type=sample t=17544 state=localize_brake seg=6 turn=-1 target=430.0 enc=-610 emm=-70.40 cmd=-60 speed=-58.46 steer=1 dc=2 gyro=2.13 pose=572.3,-1183.8,181.12 nominal=589.9,-1228.4,175.61 ref=parking_edges s0=531,2,256.0,256.0,5.414,1.7,1,1 s1=536,13,-1.0,9999.0,-1.000,-1.0,0,0 s2=158,55,433.0,9999.0,0.641,9.7,1,1
+[PARK_DIAG] v=2 type=correction t=17692 source=edge_localization before=572.3,-1183.8,181.12 after=592.3,-1207.3,181.12 delta=20.0,-23.4,0.00
+[PARK LOCALIZE RESULT] transition=yes creep_mm=329.1 piece_range_mm=176.0 piece_seen=yes wall_range_mm=257.0 expected_wall_range_mm=280.5 wall_residual_mm=-23.5 predicted/known_edge_x_mm=480.0/500.0 x_correction_mm=20.0 apply_x=yes wall_y_correction_mm=-23.4 apply_y=yes max_heading_error_deg=0.7
+[PARK LOCALIZE POSE] x_y_heading=592.3/-1207.3/181.1
+[PARK_DIAG] v=2 type=finish t=17692 detail=unparking_complete_bytes_27700_samples_75 enc=-610 emm=-70.40 gyro=2.13 steer=1 cmd=0
+[PARK EXIT] Complete - parking-entry discovery next
+
+======================
+VISION
+======================
+Processing: 2.72 ms
+
+RED:
+X: 39
+Y: 130
+Width: 81
+Height: 103
+Bottom Y: 182
+Area: 8176
+
+GREEN:
+X: 167
+Y: 85
+Width: 61
+Height: 13
+Bottom Y: 92
+Area: 412
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[PATH LAYOUT] mode=OFFICIAL_2026
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=180.0
+[PARK ENTRY] Localization reached arc start; steering preload=-50
+[PARK ENTRY] Pure Pursuit discovery armed turn=CW target=S0 station=1 points=7 reverse_mm=55.0 start_x_y_heading=592.3/-1207.3/181.1
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=0.0 steering=-50 arc_mm/radius_mm=55.0/109.0
+[RED SEAT] t=18140 decision=outside_snap pose=597,-1207,179.7 image_x/foot=37/182 bearing/range=27.3/191 sighting=302,-1293 nearest/error=1/277 accepted=-1
+
+======================
+VISION
+======================
+Processing: 2.61 ms
+
+RED:
+X: 36
+Y: 131
+Width: 75
+Height: 103
+Bottom Y: 182
+Area: 7540
+
+GREEN:
+X: 167
+Y: 85
+Width: 67
+Height: 11
+Bottom Y: 90
+Area: 400
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 166
+Y: 89
+Width: 91
+Height: 25
+Bottom Y: 104
+Area: 712
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-60/-60.0/-37.5 deficit_mm_s=22.5 compensation_dc=-1.3 output_dc=-89.1
+[PARK ENTRY] Scan pose reached error_mm=6.4 heading_error_deg=4.9 travel/planned_mm=49.2/55.0 target_station=1
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 122
+Y: 92
+Width: 23
+Height: 23
+Bottom Y: 104
+Area: 344
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[MAP] Clear S0 station=1
+[PARK ENTRY RESULT] resolved=yes station=1 result=CLEAR pose_x_y_heading=640.6/-1215.8/155.2 target_inner_seat=2 bearing_range_deg_mm=-1.8/589.3
+[PARK ENTRY SCOUT] Preflight PASS station/seat=0/0 arc/wall/pillar_mm=85.0/153.4/193.8
+[PARK ENTRY SCOUT] Armed station/seat steering=0/0 -50
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+
+GREEN:
+X: 121
+Y: 92
+Width: 21
+Height: 27
+Bottom Y: 106
+Area: 348
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[PARK ENTRY SCOUT] Steering settled; reverse scan
+
+======================
+VISION
+======================
+Processing: 1.32 ms
+
+GREEN:
+X: 112
+Y: 92
+Width: 21
+Height: 23
+Bottom Y: 104
+Area: 340
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 155
+Y: 95
+Width: 83
+Height: 25
+Bottom Y: 106
+Area: 536
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[MAP] Clear S0 station=0
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+
+GREEN:
+X: 160
+Y: 104
+Width: 55
+Height: 15
+Bottom Y: 110
+Area: 328
+BLUE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[PARK ENTRY SCOUT] Scan pose reached travel_mm=85.1
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+RED:
+X: 305
+Y: 87
+Width: 9
+Height: 17
+Bottom Y: 96
+Area: 164
+
+GREEN:
+X: 151
+Y: 102
+Width: 75
+Height: 23
+Bottom Y: 110
+Area: 664
+BLUE debug area: 344
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[PARK ENTRY SCOUT] Resolved station/result=0CLEAR
+
+======================
+VISION
+======================
+Processing: 1.50 ms
+
+RED:
+X: 305
+Y: 87
+Width: 9
+Height: 17
+Bottom Y: 96
+Area: 168
+
+GREEN:
+X: 147
+Y: 104
+Width: 81
+Height: 17
+Bottom Y: 112
+Area: 544
+BLUE debug area: 432
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 172
+Y: 105
+Width: 95
+Height: 21
+Bottom Y: 114
+Area: 608
+BLUE debug area: 236
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.31 ms
+
+GREEN:
+X: 145
+Y: 95
+Width: 79
+Height: 21
+Bottom Y: 106
+Area: 616
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[SLIP] deviation=-100.0%, angle=-50, expected_arc=1.1, actual_arc=0.0, radius=108.7 mm
+[PARK ENTRY SCOUT] Return complete travel_mm=85.1
+[PARK ENTRY SCOUT] Returned pose_error/heading_deg=6.0/0.6
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=1/141/150
+[PARK ENTRY CONNECTOR] Preflight PASS merge_index=141 merge/seat_distance_mm=6992/0 pillar_seat=-1 hidden_guard_seat=-1 merge_forward/lateral/before_pillar_mm=537/10/150 path_mm=548 lookahead_mm=150.0 route_lookahead=no points=23
+[PARK ENTRY CONNECTOR] Tangent baseline/actual_deg=-180.00/-180.00
+[CONNECTOR_CONFIG] v=1 build=Oct  6 2026_00:03:11
+[CONNECTOR_POINT] kind=connector index=0 x=644.09 y=-1210.95 h=155.85
+[CONNECTOR_POINT] kind=connector index=1 x=617.33 y=-1198.30 h=153.54
+[CONNECTOR_POINT] kind=connector index=2 x=592.60 y=-1185.39 h=151.33
+[CONNECTOR_POINT] kind=connector index=3 x=569.65 y=-1172.30 h=149.29
+[CONNECTOR_POINT] kind=connector index=4 x=548.24 y=-1159.12 h=147.49
+[CONNECTOR_POINT] kind=connector index=5 x=528.13 y=-1145.93 h=146.01
+[CONNECTOR_POINT] kind=connector index=6 x=509.08 y=-1132.80 h=144.93
+[CONNECTOR_POINT] kind=connector index=7 x=490.85 y=-1119.83 h=144.31
+[CONNECTOR_POINT] kind=connector index=8 x=473.18 y=-1107.09 h=144.21
+[CONNECTOR_POINT] kind=connector index=9 x=455.84 y=-1094.67 h=144.67
+[CONNECTOR_POINT] kind=connector index=10 x=438.59 y=-1082.66 h=145.72
+[CONNECTOR_POINT] kind=connector index=11 x=421.18 y=-1071.13 h=147.34
+[CONNECTOR_POINT] kind=connector index=12 x=403.37 y=-1060.17 h=149.51
+[CONNECTOR_POINT] kind=connector index=13 x=384.93 y=-1049.85 h=152.15
+[CONNECTOR_POINT] kind=connector index=14 x=365.59 y=-1040.27 h=155.18
+[CONNECTOR_POINT] kind=connector index=15 x=345.13 y=-1031.51 h=158.47
+[CONNECTOR_POINT] kind=connector index=16 x=323.31 y=-1023.65 h=161.90
+[CONNECTOR_POINT] kind=connector index=17 x=299.87 y=-1016.77 h=165.34
+[CONNECTOR_POINT] kind=connector index=18 x=274.57 y=-1010.95 h=168.70
+[CONNECTOR_POINT] kind=connector index=19 x=247.18 y=-1006.29 h=171.89
+[CONNECTOR_POINT] kind=connector index=20 x=217.45 y=-1002.85 h=174.85
+[CONNECTOR_POINT] kind=connector index=21 x=185.14 y=-1000.73 h=177.56
+[CONNECTOR_POINT] kind=connector index=22 x=150.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=0 x=150.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=1 x=100.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=2 x=50.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=3 x=0.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=4 x=0.00 y=-1000.00 h=180.00
+[CONNECTOR_POINT] kind=route index=5 x=-50.00 y=-1000.00 h=180.00
+[PARK ENTRY CONNECTOR] Armed merge_index=141 points=23
+
+======================
+VISION
+======================
+Processing: 1.34 ms
+
+GREEN:
+X: 123
+Y: 89
+Width: 47
+Height: 25
+Bottom Y: 104
+Area: 508
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/49.7 deficit_mm_s=30.3 compensation_dc=5.1 output_dc=87.5
+
+======================
+VISION
+======================
+Processing: 1.29 ms
+
+GREEN:
+X: 118
+Y: 91
+Width: 17
+Height: 25
+Bottom Y: 104
+Area: 328
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 176
+Y: 88
+Width: 89
+Height: 21
+Bottom Y: 102
+Area: 480
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.30 ms
+
+GREEN:
+X: 162
+Y: 88
+Width: 99
+Height: 21
+Bottom Y: 102
+Area: 508
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 76
+Y: 93
+Width: 19
+Height: 27
+Bottom Y: 106
+Area: 388
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 163
+Y: 90
+Width: 95
+Height: 27
+Bottom Y: 106
+Area: 652
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.33 ms
+
+GREEN:
+X: 159
+Y: 89
+Width: 57
+Height: 23
+Bottom Y: 102
+Area: 380
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 163
+Y: 91
+Width: 99
+Height: 29
+Bottom Y: 108
+Area: 768
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 53
+Y: 94
+Width: 21
+Height: 35
+Bottom Y: 114
+Area: 504
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[PATH] Live avoidance injected seat=4 color=GREEN clearance_mm=260
+[MAP] Confirmed S0 station=2 side=RIGHT color=GREEN
+[PATH LAYOUT] section=0 mode=OFFICIAL_2026 inferred_empty_station_mask=0
+[PARK ENTRY CONNECTOR] Far GREEN route prefix changed
+[PARK ENTRY CONNECTOR] Candidate attempt/merge/phase_mm=1/144/0
+[PARK ENTRY CONNECTOR] Preflight PASS merge_index=144 merge/seat_distance_mm=7142/0 pillar_seat=-1 hidden_guard_seat=-1 merge_forward/lateral/before_pillar_mm=361/144/0 path_mm=400 lookahead_mm=150.0 route_lookahead=no points=17
+[PARK ENTRY CONNECTOR] Tangent baseline/actual_deg=-180.00/-173.24
+[CONNECTOR_CONFIG] v=1 build=Oct  6 2026_00:03:11
+[CONNECTOR_POINT] kind=connector index=0 x=384.96 y=-1057.41 h=149.76
+[CONNECTOR_POINT] kind=connector index=1 x=359.67 y=-1043.05 h=151.16
+[CONNECTOR_POINT] kind=connector index=2 x=336.12 y=-1030.55 h=153.02
+[CONNECTOR_POINT] kind=connector index=3 x=313.97 y=-1019.81 h=155.38
+[CONNECTOR_POINT] kind=connector index=4 x=292.88 y=-1010.76 h=158.24
+[CONNECTOR_POINT] kind=connector index=5 x=272.52 y=-1003.28 h=161.55
+[CONNECTOR_POINT] kind=connector index=6 x=252.55 y=-997.31 h=165.19
+[CONNECTOR_POINT] kind=connector index=7 x=232.62 y=-992.74 h=168.98
+[CONNECTOR_POINT] kind=connector index=8 x=212.41 y=-989.49 h=172.69
+[CONNECTOR_POINT] kind=connector index=9 x=191.58 y=-987.46 h=176.11
+[CONNECTOR_POINT] kind=connector index=10 x=169.79 y=-986.56 h=179.09
+[CONNECTOR_POINT] kind=connector index=11 x=146.70 y=-986.72 h=-178.45
+[CONNECTOR_POINT] kind=connector index=12 x=121.98 y=-987.82 h=-176.53
+[CONNECTOR_POINT] kind=connector index=13 x=95.29 y=-989.80 h=-175.12
+[CONNECTOR_POINT] kind=connector index=14 x=66.28 y=-992.54 h=-174.14
+[CONNECTOR_POINT] kind=connector index=15 x=34.63 y=-995.98 h=-173.54
+[CONNECTOR_POINT] kind=connector index=16 x=0.00 y=-1000.00 h=-173.24
+[CONNECTOR_POINT] kind=route index=0 x=0.00 y=-1000.00 h=-180.00
+[CONNECTOR_POINT] kind=route index=1 x=0.00 y=-1000.00 h=180.00
+[CONNECTOR_POINT] kind=route index=2 x=-50.00 y=-1005.93 h=180.00
+[CONNECTOR_POINT] kind=route index=3 x=-100.00 y=-1017.78 h=180.00
+[CONNECTOR_POINT] kind=route index=4 x=-150.00 y=-1035.56 h=180.00
+[CONNECTOR_POINT] kind=route index=5 x=-200.00 y=-1053.33 h=180.00
+[PARK ENTRY CONNECTOR] Replanned merge_index=144
+
+======================
+VISION
+======================
+Processing: 1.35 ms
+
+GREEN:
+X: 64
+Y: 95
+Width: 23
+Height: 35
+Bottom Y: 114
+Area: 540
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/51.8 deficit_mm_s=28.2 compensation_dc=4.1 output_dc=94.1
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 73
+Y: 95
+Width: 19
+Height: 35
+Bottom Y: 114
+Area: 588
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.36 ms
+
+GREEN:
+X: 92
+Y: 96
+Width: 21
+Height: 35
+Bottom Y: 114
+Area: 564
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 104
+Y: 96
+Width: 21
+Height: 37
+Bottom Y: 116
+Area: 700
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.41 ms
+
+GREEN:
+X: 139
+Y: 94
+Width: 105
+Height: 39
+Bottom Y: 118
+Area: 1208
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.37 ms
+
+GREEN:
+X: 140
+Y: 98
+Width: 27
+Height: 41
+Bottom Y: 120
+Area: 836
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.38 ms
+
+GREEN:
+X: 152
+Y: 98
+Width: 61
+Height: 43
+Bottom Y: 122
+Area: 1036
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.45 ms
+
+GREEN:
+X: 177
+Y: 100
+Width: 67
+Height: 47
+Bottom Y: 126
+Area: 1360
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[CONNECTOR_TRACK] t=31992 progress=13 x=107.50 y=-973.82 h=176.74 tx=0.00 ty=-1000.00 forward=105.84 lateral=32.25 steering=-27.784 end_distance=110.64 end_heading=10.02 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=32092 progress=13 x=100.93 y=-973.49 h=177.45 tx=0.00 ty=-1000.00 forward=99.65 lateral=30.98 steering=-29.636 end_distance=104.35 end_heading=9.31 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=32192 progress=13 x=92.86 y=-973.20 h=178.25 tx=0.00 ty=-1000.00 forward=91.99 lateral=29.63 steering=-32.391 end_distance=96.65 end_heading=8.51 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 207
+Y: 104
+Width: 31
+Height: 53
+Bottom Y: 132
+Area: 1452
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[CONNECTOR_TRACK] t=32292 progress=13 x=88.25 y=-973.07 h=178.57 tx=0.00 ty=-1000.00 forward=87.54 lateral=29.13 steering=-34.385 end_distance=92.26 end_heading=8.19 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=32392 progress=13 x=82.82 y=-972.97 h=179.17 tx=0.00 ty=-1000.00 forward=82.42 lateral=28.23 steering=-36.645 end_distance=87.12 end_heading=7.59 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=32492 progress=14 x=75.21 y=-972.90 h=179.88 tx=0.00 ty=-1000.00 forward=75.15 lateral=27.26 steering=-40.470 end_distance=79.94 end_heading=6.88 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=0
+[CONNECTOR_TRACK] t=32525 progress=14 x=72.44 y=-972.90 h=180.11 tx=0.00 ty=-1000.00 forward=72.49 lateral=26.95 steering=-42.027 end_distance=77.34 end_heading=6.64 lookahead=150.00 wheelbase=100.00 limit=42.00 gate_distance=60.00 gate_heading=15.00 rejected=1
+[PARK ENTRY CONNECTOR] Forward tracking rejected - drive motor locked off forward_mm=72.5 steering_deg=-42.0 progress=14/16
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1748
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1744
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.59 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 35
+Height: 55
+Bottom Y: 134
+Area: 1792
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.57 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1760
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1688
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 35
+Height: 55
+Bottom Y: 134
+Area: 1760
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.56 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1764
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1704
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1712
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1680
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.58 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1772
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.56 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1696
+ORANGE debug area: 40
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1736
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.56 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1708
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1736
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1732
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.55 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1744
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.52 ms
+
+GREEN:
+X: 228
+Y: 107
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1664
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.53 ms
+
+GREEN:
+X: 228
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1684
+ORANGE debug area: 36
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 1.54 ms
+
+GREEN:
+X: 227
+Y: 106
+Width: 33
+Height: 55
+Bottom Y: 134
+Area: 1740
+ORANGE debug area: 32
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 5.70 ms
+
+RED:
+X: 147
+Y: 131
+Width: 313
+Height: 135
+Bottom Y: 214
+Area: 24492
+ORANGE debug area: 96
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+
+======================
+VISION
+======================
+Processing: 9.03 ms
+
+RED:
+X: 146
+Y: 156
+Width: 319
+Height: 159
+Bottom Y: 238
+Area: 41172
+ORANGE debug area: 1732
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: -0.02
+[STATE CHANGE] Manual disable -> IDLE
+  LEFT:  Dist: 490 mm (Raw: 490) | Sig: 1.57 | Sigma: 2.98
+  RIGHT: Dist: 454 mm (Raw: 454) | Sig: 0.91 | Sigma: 2.93
+  Current angle: 2.7°
+  Distance since last state: 513 mm
+Navigation controller disabled
+Paused. Pending mode: OBSTACLE_CHALLENGE
+SYSTEM DISABLED

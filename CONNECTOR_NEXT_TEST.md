@@ -1,6 +1,190 @@
 # Connector diagnostic run and acceptance sequence
 
-## Prepared next test: GREEN at the far/left start seat (2026-10-05)
+## Current CW start candidate (2026-10-06)
+
+All ten official CW parking-section layouts are now implemented for review;
+no upload or commit. See `simulation/CW_START_LAYOUT_REVIEW.md`, last section,
+for the complete change list, limits, binary identity and acceptance matrix.
+The old unresolved RED-right status below is historical.
+
+`O` / OFFICIAL uses the short CW start: 65 mm middle scan, optional 130 mm
+right-place scout/retrace, checked short connector. Right RED/GREEN are
+stored initially and their bypass is activated on the later normal approach.
+CCW and `O3` retain their existing scan/localization selection.
+
+Actual C++ checks pass 7319 planner/late-detection cases and both-colour
+stored-seat timing; 1200 footprint comparisons agree. M7-only build passes
+RAM432744/523624, flash472480/786432; binary SHA-256
+`f585d0ee5c2d35cdf4106c09cfda4d53d79311ad56ad10c0384045c94941c130`.
+Model acceptance uses +/-5 mm XY and +/-1 degree return perturbations.
+Physical accuracy/recognition has not yet been accepted for this build.
+
+Next, after review/commit/upload: cable-free `O`, existing CW parking start,
+one-lap gate. One initial run each for right GREEN, right RED, middle GREEN,
+middle RED, left GREEN, left RED, then end pairs GG/GR/RG/RR; repeat successes
+before acceptance. Keep other sections unchanged and archive full logs.
+Check correct-side later encounter of the stored right sign, actual scout
+return/braking, and pink clearance. No new full driving logs were received
+in this implementation session; 455/456 still have only archived excerpts.
+
+## Current candidate: steering resume and bounded inner GREEN path (2026-10-06)
+
+This section supersedes the earlier mechanical-response suspicion below.
+`stop(false)` disables servo writes. The successful retained/replanned
+connector branch restarted the motor without restoring servo writes, so the
+last physical left steering could remain fixed despite right commands in
+455/456. M7 now restores `servo_disabled=false` only after a successful swept
+check. Failed replans remain stopped. The actual extracted C++ branches and
+motor functions pass `simulation/check_connector_servo_resume.py`; removing
+the restoration reproduces the failure. Followup logs include `servo_enabled`.
+
+The official CW inner seat4 GREEN clearance is 200 mm rather than 260 mm.
+`simulation/check_start_geometry.py` estimates about 79 mm minimum sampled
+capsule/pillar clearance on the nominal isolated path. This is not measured
+physical tracking accuracy. Existing followup speed and safety gates remain.
+
+M7-only IDE-managed build passed: RAM 432720/523624, flash 467400/786432.
+Binary SHA-256:
+`cf1ee7866c91b64acd23dc2bfb9d14fe3dea9ea5cfec1ef6dcc8c5f2b39c9923`.
+No upload or physical validation of this candidate yet.
+
+Evening sequence:
+
+1. Owner uploads `giga_r1_m7`, keeps automatic official O mode, and removes
+   the laptop cable before driving. M4 is unchanged.
+2. Keep only the inner last/left GREEN in the start section and the other
+   sections unchanged. One supervised CW run: require correct GREEN side,
+   no contact, connector completion and the normal first-lap stop.
+3. Preserve the complete log. Verify `Validated update - servo writes enabled`,
+   followup `servo_enabled=1`, right steering response and actual clearances.
+   Analyze this run before repeating or moving the start pillar.
+4. If accepted, repeat twice with documented normal start-position variation.
+   Then regress GREEN middle and RED middle/last, which previously completed.
+5. RED first/right is still unresolved: a longer/shorter-tangent connector
+   can pass collision checks while passing RED on the wrong side. Do not
+   enable that candidate. A new approach must validate the correct side as
+   well as the complete swept footprint and handoff before a drive test.
+
+Log441's reverse-localization poses give about 5 mm modeled pink overlap,
+versus 4--17 mm positive minimum open-end margins in 439/440/442. A hypothetical
+10 mm inward shift leaves only about 5 mm, whereas 20 mm leaves about 15 mm.
+These are approximate sample calculations, not an implemented parking change.
+Avoid changing the accepted exit arc blindly; verify any revised complete
+exit/localization path first. See `simulation/START_CASE_GEOMETRY_REVIEW.md`.
+
+## Current single trial: GREEN inner, last start station after logs 455/456 (2026-10-06)
+
+Historical plan: superseded by the steering-resume candidate above.
+
+Logs 455/456 reached the connector handoff and correctly confirmed GREEN
+seat 4. Both stopped on the actual 35-degree live-route heading gate after
+about 606/630 mm of followup. At the stop the commanded steering was already
++26/+25 degrees (right), but measured heading had continued left to about
+235 degrees; estimated outer-wall margin was 187/192 mm. The user observed
+about 150 mm to the outer wall at the front wheel, with no contact. Do not
+raise the safety thresholds to hide this deviation.
+
+The only new route change is the official CW inner GREEN at seat 4: request
+200 mm rather than 260 mm centre-to-pillar clearance, on the first and later
+laps. The existing radius-1 smoothing places the path about 192 mm from the
+pillar centre at its peak, giving about 79 mm calculated wheel/pillar margin
+with the 70 mm wheel envelope and 42.5 mm placement circle. The route moves
+about 55 mm inward there and asks for corrective right steering around 90 mm
+earlier on the recorded poses. The older log 54 wheel touch was outer GREEN
+seat 5, which retains 260 mm and its existing plateau. Other seats and the
+35-degree/100 mm/80 mm wall/40 mm pillar followup gates are unchanged.
+
+This calculation does not prove steering response: in both latest runs the
+robot kept rotating left after right steering was requested. After uploading
+the M7 candidate, keep only the GREEN at this inner last start station and
+make one supervised CW run with the cable removed from the drive path.
+Observe whether the front wheels visibly turn right as the robot approaches
+the pillar; stop manually if it again heads toward the outer wall. Preserve
+the complete USB log and report the closest wall and pillar distances. If
+the right turn is still absent, inspect the servo/linkage and commanded versus
+physical wheel direction before making the path narrower again.
+
+## Previous single trial: GREEN far/left after logs 453/454 (2026-10-06)
+
+Both new runs confirmed the sole inner GREEN but stopped because the old
+connector-retention check compared the start of the intentional bypass
+against the route before GREEN was known. An unnecessary replan then reached
+the 42-degree live steering guard. The new M7 candidate checks only the
+unchanged connector merge point and tangent, then reruns the swept rollout
+from the current pose with GREEN and the current outgoing route. The
+post-handoff 175 mm/s cap, live-path heading check, cross-track and modeled
+wall/pillar guards remain active. Offline replay of the two recorded
+replan-start poses passes, but physical GREEN passage remains unverified.
+
+After uploading this M7, keep the same CW parking start, only GREEN at the
+inner far/left start station, and the other layout unchanged. Remove the
+laptop cable from the drive path. Make **one supervised run** and switch off
+if it approaches the outer wall unsafely. The log should show `Retained after
+far GREEN seat=4`, connector `Complete`, then `[FAR GREEN FOLLOWUP]` through
+the GREEN pass. If it stops, preserve the complete log and report exactly
+where; do not repeat until that log is analyzed. If it completes the lap,
+review the measured path/clearance before a repeat.
+
+## Previous single trial: GREEN far/left after log 452 (2026-10-06)
+
+Historical plan only. Logs 453/454 invalidated its route-prefix check; use
+the current plan above.
+
+Log 452 reached the GREEN connector handoff. The followup then stopped at
+355 mm because the 35-degree heading guard compared the chassis with the
+straight baseline, although the validated GREEN bypass already bends left.
+Adjacent logged route targets imply about 199.6 degrees path tangent there;
+the measured 215.1-degree chassis heading differs by about 15.5 degrees.
+The logged cross-track was 43.4 mm and modeled wall/pillar margins were
+339.7/305.2 mm. The new M7 candidate compares heading with the current
+displaced route tangent and prints `path_heading=`. It keeps all other
+post-handoff gates, the 260 mm GREEN bypass clearance and 175 mm/s cap.
+The prior outer-wall contact in log 450 is still a real risk to check; this
+one corrected false stop does not prove the full maneuver reliable.
+
+After uploading this M7, keep exactly the same single inner GREEN at the
+far/left start station and the otherwise unchanged CW setup. Disconnect the
+laptop cable for driving and make **one supervised run**. Stop manually if
+it approaches the outer wall unsafely. Preserve the complete USB log and
+report any contact or halt location. We need connector `Complete` and then
+`[FAR GREEN FOLLOWUP]` records with measured `path_heading`, cross-track and
+wall clearance through the pillar pass. Review that log before any repeats.
+
+## Previous correction after failed GREEN far/left trials 449-451 (2026-10-05)
+
+Historical plan only. Log 452 invalidated its baseline-heading guard; use
+the current single-trial plan above.
+
+The previous far-GREEN retention firmware is **not validated**: 449/451 stopped
+at the 42-degree tracking gate just before connector handoff, and 450 touched
+the outer wall before the GREEN pillar after the connector completed. Do not
+repeat a drive with that earlier firmware. Logs 449-451 are archived unchanged
+in `simulation/evidence/parking_exit_diagnostics/`.
+
+The new uncommitted M7 candidate uses an outgoing-route lookahead after far
+GREEN confirmation, after checking it with the same swept connector rollout.
+At the recorded stop poses, this changes nominal steering from about -42.3/
+-42.4 degrees to -17.8/-18.9 degrees; closed-loop physical behavior remains
+unverified. For the first 1000 mm after handoff it also caps speed at 175 mm/s,
+logs `[FAR GREEN FOLLOWUP]` pose/target/steering, and locks the motor if the
+estimated route deviation or wall/pillar clearance becomes unsafe. This is a
+bounded diagnostic safety gate, not proof that the wall-curve cause is fixed.
+The actual post-handoff steering in 450 was not logged.
+
+Before a new trial, upload the candidate M7. Put only GREEN at the same
+far/left start station, leave the remaining layout unchanged, start CW from
+the usual parking pose, and remove the laptop cable from the drive path.
+Run **one** supervised trial. Be ready to switch off on a visibly unsafe turn.
+The log should show `Retained after far GREEN`, connector `Complete`, then
+regular `[FAR GREEN FOLLOWUP]` records with `unsafe=0`. If it stops, preserve
+the complete log and report the location; do not repeat until the new records
+are analyzed. If it reaches the first-lap stop without contact, review that
+log before repeating. The RED near/right case remains separate.
+
+## Previous candidate: GREEN at the far/left start seat (2026-10-05)
+
+Historical plan only. Logs 449-451 invalidated this candidate; use the
+single-trial plan above.
 
 Logs 433–435 show the first two start stations CLEAR, then GREEN at S0
 station2 inner seat4 confirmed while the already preflighted parking connector

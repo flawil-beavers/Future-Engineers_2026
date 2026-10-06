@@ -843,6 +843,29 @@ static void finishParkingExit(bool stagedTest)
         return;
     }
 
+    if (!stagedTest && OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED &&
+        OBSTACLE_PARKING_CW_SHORT_START_ENABLED && !counterClockwiseExit &&
+        obstacle_path_section_layout_mode() == OBSTACLE_SECTION_LAYOUT_OFFICIAL)
+    {
+        // The initial rear/outer-wall reference already seeds this field pose.
+        // Do not reverse past the right start pillar solely to find another
+        // parking edge: doing so creates an unnecessary directional crossing.
+        // The path module checks the entire short scan/scout footprint before
+        // enabling motion, using this measured pose rather than a nominal reset.
+        if (!oc_parking_field_pose_initialized || !headingUsable ||
+            !isfinite(fieldPose.x_mm) || !isfinite(fieldPose.y_mm))
+        {
+            parking_exit_diagnostics_finish("cw_short_start_reference_invalid");
+            oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+            Serial.println("[CW START] Missing initial field reference - held");
+            robot_logger.write_to_usb();
+            return;
+        }
+        Serial.println("[CW START] Short scan from initial ToF seed + exit odometry; no second-edge reverse");
+        completeParkingExit(stagedTest);
+        return;
+    }
+
     if (!stagedTest && OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_ENABLED)
     {
         oc_parking_localization_sensor = referenceSensor;

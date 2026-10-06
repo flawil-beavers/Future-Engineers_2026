@@ -603,6 +603,27 @@ constexpr auto OBSTACLE_PARKING_ENTRY_CCW_LOCALIZE_CONTINUE_MM = 70.0f;
 // 15 mm at the measured radius rotates the camera about 7.9 degrees farther
 // while retaining the same settled full-lock controller.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCAN_ARC_MM = 55.0f;
+// OFFICIAL O, CW start only: observe the middle from the measured exit pose,
+// then look back at the right inner place without crossing its x=500 line.
+// O3 / CHECK_ALL and CCW retain their established localization and scan.
+constexpr bool OBSTACLE_PARKING_CW_SHORT_START_ENABLED = true;
+constexpr auto OBSTACLE_PARKING_CW_SCAN_ARC_MM = 65.0f;
+constexpr auto OBSTACLE_PARKING_CW_SCOUT_ARC_MM = 130.0f;
+constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_MIN_FORWARD_MM = 100.0f;
+// The short scan can join 50 mm before the middle pillar. Acceptance still
+// requires the complete body/steering rollout; this is only a search bound.
+constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_MIN_BEFORE_PILLAR_MM = 50.0f;
+// Short connector Hermite tangents: gentler initial turn than the long-start
+// 1.25/1.5 shape. The outgoing tangent follows the displaced live route.
+constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_START_TANGENT_SCALE = 0.65f;
+constexpr auto OBSTACLE_PARKING_CW_CONNECTOR_END_TANGENT_SCALE = 1.25f;
+// Activate the stored right-place bypass only on the later normal approach.
+constexpr auto OBSTACLE_PARKING_CW_STORED_SEAT_APPROACH_MM = 800.0f;
+static_assert(OBSTACLE_PARKING_CW_SCAN_ARC_MM > 0 &&
+              OBSTACLE_PARKING_CW_SCOUT_ARC_MM > 0 &&
+              OBSTACLE_PARKING_CW_SCAN_ARC_MM +
+                  OBSTACLE_PARKING_CW_SCOUT_ARC_MM <= 200,
+              "CW short start scan/scout must stay in the checked envelope");
 // This is the measured full-lock rear-axle radius. The entry controller stops
 // at the arc start, settles the steering at full lock, and then traverses the
 // modeled arc so servo lag cannot erase this short heading change.
@@ -1028,6 +1049,14 @@ constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 // 20 mm in the approach where the green-left rear wheel touched in log_54 and
 // about 27 mm at the peak, while retaining estimated body-to-wall margin.
 constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
+// CW parking-start section, last station, GREEN on the inner seat only:
+// the centre line already passes 100 mm outside that seat. A 200 mm
+// centre-to-pillar aim needs just 100 mm lateral route displacement, versus
+// 160 mm with the general 260 mm clearance. After radius-1 smoothing the
+// planned pillar-point gap is about 192 mm, leaving about 79 mm beyond the
+// 70 mm wheel envelope and 42.5 mm pillar movement radius. This is specific
+// to seat 4 in the official layout; log 54's contact was at outer seat 5.
+constexpr auto OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM = 200.0f;
 // Safe lap-1 outer-extreme route while the following station is unresolved,
 // preserving the option of a rare opposing adjacent pillar. Logs 101-104
 // validated its 230 mm short plateau.

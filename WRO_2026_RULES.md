@@ -35,3 +35,20 @@ the official card layouts; it is not measured camera evidence and does not apply
 to arbitrary practice arrangements. Official Q&A was rechecked on the same date;
 current Future Engineers clarifications concern parking measurements/direction
 and constant vehicle size, with no amendment to this card-layout inference.
+
+2026-10-06 recheck: a fresh download from the canonical PDF URL matches the
+local copy byte-for-byte, SHA-256
+`c23ba063c548e74812ffd9ed580931b2d4264541261b5f8eaff643a1e3201043`,
+55 pages, January15_2026 version. Official Future Engineers Q&A was checked
+again; no starting-sign passing exception is listed. Figure4/page8 and
+Figure8c/page15 were visually inspected. Figure8e/page16 moves all parking-
+section signs to the inner row. The 36 cards therefore collapse to six
+single-sign and four end-pair inner-row arrangements in that section.
+Rule9.19/page18 and AppendixA.5/pages39--40 apply the passing side when the
+vehicle completely crosses a sign's transverse line in the driving direction.
+A sign already behind the starting vehicle need not be approached just to
+pass it initially. This is a geometric distinction, not an exemption allowing
+a fresh wrong-side crossing caused by an observation/localization manoeuvre.
+AppendixA/page41's relaxed passing side concerns only travel to parking after
+the three official laps. Any different national clarification must be checked
+against the applicable organizer's rules before using it.
