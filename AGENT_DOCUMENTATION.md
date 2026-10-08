@@ -10039,3 +10039,30 @@ real sensor errors; prior pre-scan pose/gyro limitations remain unresolved.
 Next: user uploads M7, B2CW+C2CCW allthree laps+parking, observe transitions
 and margins particularly lap2/3. Archive complete originals first, normal
 runs/log saving only. Compare smoothing acceptance record with observations.
+
+## 2026-10-08: Robot Run Inspector offline application
+
+User requested a separate competition diagnostic program with an English name.
+Added `tools/robot-run-inspector/Robot Run Inspector.html`, a self-contained
+German-language offline browser application, with a Windows double-click launcher
+and README. No Python, server, network assets or firmware changes. TXT import
+preserves source bytes; SHA-256 uses local Web Crypto when available. Explicit
+OC run markers isolate sessions; missing metadata/results remain unknown.
+Includes gyro timeout/restart vs loop-pause counts, holds/aborts, discovery expiry,
+connector rejection, explicit pose-correction maxima, v2 ToF observations,
+separate estimated trace sources/laps, original-line search/context, physical
+notes, and standalone HTML/all-session JSON export. No camera images or physical
+collision/containment proof; total-log completeness cannot be established solely
+from text. Source archive remains separate from generated reports.
+
+Parser regression checks cover all 125 complete archived logs; 506 has seven
+sensor timeouts/no park result and 507 has three completed laps plus explicit
+dual-marker scan abort. DOM-adapter checks exercise import, search, context,
+session isolation, escaping, SHA-256, exports and invalid/empty input. Native
+Computer Use pipe and browser connection unavailable, so actual browser visual
+QA and double-click behavior remain unverified. No firmware build/upload needed.
+Next: double-click the launcher on the competition laptop with Wi-Fi off, open
+an original TXT log, verify trace display and save/reopen an HTML report. Keep
+working reports under `local_workspace/robot-run-inspector/` for repo work;
+preserve original logs using existing evidence requirements. Physical firmware
+validation next steps from the previous entry remain unchanged.
