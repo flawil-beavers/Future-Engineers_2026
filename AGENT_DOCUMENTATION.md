@@ -9788,3 +9788,220 @@ lap1returnToF and latertracking, allpassing sides andcontacts.
 Final IDE M7-only build: RAM432776/523624, flash486160/786432;
 firmware SHA-256 `0efe2debc1941a47d02c1e5446b5c9fae5dc833259ff339ae544cbd94251ed2a`. Build successful; existing Serial/unused-function
 warnings, no new compile errors. M4 consumers/interfaces unchanged.
+
+### 2026-10-06: A/C482-492, B493-499 and automatic final parking
+
+18 complete unchanged originals are tracked under
+`simulation/evidence/parking_exit_diagnostics/20261006_log_NNN_DIR.txt`;
+individual SHA-256/bytes/physical reports and identities are in its README.
+A482-485:2CW+2CCW3laps, user reports no contact. C starts with far-inner RED,
+not GREEN;487/488CW hit second S1 outer GREEN.489-492CCW hold.486 is an extra
+exit interruption; exact association with one physically short exit uncertain.
+Do not blindly lengthen the gyro-ended exit arcs. A/C headers20:56:49/21:04:51
+are older. B493/494/496CW3laps contact-free;495 corner hold before S2 middle.
+B497-499CCW pass GREEN without contact, then hold. Headers21:24:58/21:24:45
+match preceding candidate build markers, not a read-back binary identity.
+
+C488 confirms GREEN11 at-1325,-320.6,64.32deg/range717mm before collision:
+independent tapers return inward between same-colour ends. Join confirmed
+same-colour ends continuously in live/optimized official routes; O3 unchanged.
+Official PDF/Q&A verified, rendered Figure8c inspected: either end excludes
+middle while other end remains UNKNOWN. Contradictions infer nothing.
+C489 passes finite connector endpoint with valid outgoing tangent: bounded
+outgoing projection handover added. C492/B497-499 late other-section detections
+retain unchanged merge only after full remaining swept rollout and hidden guards.
+B495 one first-seat side already CLEAR; recovery must not reacquire that side.
+Logged hold pose permits60mm reverse plus20mm brake reserve,40mm gates retained.
+Confirmed occupancy overrides old CLEAR; unknown seats remain potential guards.
+Broad distant rejected GREEN can stop blocking near EMPTY evidence only behind
+ground-foot projection; local unknown silhouette/FOV/range/fresh frames remain.
+Valid observations cannot be bypassed. B498/499 far RED falsely snap to inner11
+instead of outer10; >700mm projections within70mm of rail midpoint now remain
+UNKNOWN until clearer sighting, both colours/directions. No raw images: optical
+cause not proven. Details `simulation/LAYOUT_B_C_482_499_REVIEW.md`.
+
+User explicitly requests automatic final parking. Both lap-test flags false;
+parking enabled/armed, TEST_ONLY=false. Learned bypass toward+X (CW reverse,
+CCW forward), choose swept-checked outward shift500/550/600/650; blanket650
+failed81 modeled next-pillar cases. Restore servo after finish brake. Full
+approach/entry preflight, current gyro/pose and predicted clearance gates,
+fresh dual-marker localization, measured gap, seven segments, stopped parallel
+containment, completion before save. Scan limit covers late alignment beyond900.
+
+Verification:8943CW;4158CCW/33returns/135prefix;2807later CAD A/B/C and layouts;
+107focused C/B endpoint/replan/recovery/ambiguity/background/card checks;
+archived/synthetic vision and actual connector-servo state pass. Final approach
+2970 start/next-pillar/pose cases pass;162 capture/gap perturbations144accepted,
+18 conservatively rejected, all nominal captures pass. Actual final module44
+sequences pass across both directions/11start cards at30/100ms ideal ToF.
+Models omit real camera voting, slip, servo delay/braking and reflections;
+automatic parking has no physical acceptance yet. Successful older A runs do
+not establish acceptance of this candidate. Generated outputs remain ignored.
+Analyzer now covers117complete files/118sessions;18new indexed raw blobs match
+their originals byte-for-byte and README hashes. Evidence/history portable.
+
+Final IDE M7-only build SUCCESS, RAM432848/523624, flash496504/786432;
+SHA-256 `c2b208c39bfdf16a12f03f6081eab686570e275e5a2a56839f91bd780f214a75`.
+Existing warnings only; M4 consumers/protocol unchanged. No agent upload/commit.
+Next: user uploadM7, disconnect USB; unchanged B2CCW then2CW, all3laps plus
+automatic parking. Check REDouter classification/start join, S2 recovery/pink
+clearance and FINAL PARK scan/segments/result. Then C2CW+2CCW if B passes.
+Immediately archive originals first and obtain physical contact/hold reports.
+
+
+## 2026-10-06 B CW 500-501: laps accepted, final parking revised
+
+Archived complete originals first in
+`simulation/evidence/parking_exit_diagnostics/20261006_log_500_cw.txt`
+(154226 bytes, SHA-256
+`3846f82c283b7b2e5f1747270d9c9e4eb77ffcc72e2b7ab70b546462da86e5d9`)
+and `20261006_log_501_cw.txt` in the same directory (158223 bytes, SHA-256
+`6e6204fe5521a3c7b0ffe98a967a11af510a49079d104481fe0ed173e70a4744`).
+Indexed bytes verified equal originals. Firmware headers parking
+Oct__6_2026_22_37_23 / connector Oct6_2026_22:40:15 match prior candidate
+markers; no binary readback. Both three-lap drives physically contact-free.
+500 aborts dual_marker_scan_incomplete before entry;501 scan starts, no armed
+scan/capture/entry record, eventual Manual disable. User reports pink graze
+during return and sticking on subsequent forward movement in501. Missing
+parking pose/raw-ToF prevents precise contact/scan-cause reconstruction.
+
+Canonical PDF/Q&A rechecked; scoring1.2/page21 completes three laps after
+whole vehicle leaves last corner, without another full starting straight.
+Middle-seam counter retained; extra runout150->90mm now checks actual pose
+projection too. Scan-start lower bound900->680mm still requires safe alignment.
+Whole seven-segment entry translated20mm inward: scan/capture y294.6, final
+y120, nominal tip reserve32.1mm instead12.1 and open-bay-edge reserve17.5mm.
+Two fresh consistent wall frames before scan correct bounded lateral error
+and re-align if necessary. Fresh wall-only scan/capture updates bounded5mm;
+marker edges do not apply wall corrections. Parking now picks nearest
+hardware-valid/filter-accepted object, avoiding general navigation's furthest
+return suppressing pink when wall is also visible. This code issue is proven;
+its role in500 remains unproven. Actual-steering15mm scan/capture prediction,
+existing full entry/containment gates retained. Bounded FINAL_PARK_TRACE logs
+pose, state/phase, steering, speed/encoder, nearest/selected ToF/age/expected
+wall and last correction; suppress only vision chatter while parking active.
+Details `simulation/LAYOUT_B_FINAL_PARKING_500_501_REVIEW.md`.
+
+Production CAD:2807later cases pass;2970parking approaches pass;162capture/gap
+perturbations156accepted,6conservative rejects, all nominal entry passes.
+Whole final state machine132cases pass:11legal start cards, both directions,
+30/100ms ToF and -40/0/+40mm independent estimated-vs-physical lateral bias;
+mixed wall/marker objects favor nearest accepted marker. Actual physical
+footprint collision and final containment checks pass throughout.
+IDE M7-only final build SUCCESS:RAM432872/523624, flash498544/786432;
+SHA-256 `5fdf50511aa8de778e4dd475be174a04c4a5d96e8ff7a36473958d2290840558`.
+Existing warnings; M4 unaffected. No agent upload/commit. Models omit slip,
+servo/braking delays and real reflections; parking not physically accepted.
+Next:user uploadM7, driveUSB removed, unchanged B2CW including all3laps and
+automatic parking; require no pink contact, complete scan/seven entry segments
+and contained=yes/stopped=yes. Then B2CCW if CW parking passes; then C repeats.
+Archive raw logs first; inspect fresh traces/nearest-vs-selected returns.
+
+Offline exit analyzer regenerated119complete files/120sessions; reports stay
+ignored under local_workspace/parking-exit-analysis-all. New raw logs/indexed
+metadata and current history verified tracked and portable. No agent commit.
+
+
+## 2026-10-06 B CCW holds502/503, successful B/C CW504/505
+
+Captured complete original502-505 unchanged before analysis, verified source
+bytes/hash at capture; source removed later, archived evidence preserved.
+Evidence paths under `simulation/evidence/parking_exit_diagnostics/`:
+- `20261006_log_502_ccw.txt`: 102547 bytes, SHA-256
+  `16c7f5d7ba0e3abcd9b69e1e4277048039e9c9dd860a0d134a0e2a309a8464f4`.
+- `20261006_log_503_ccw.txt`: 80878 bytes, SHA-256
+  `0010d0b95b10ff78e1f9440cafa31ce188c79c9a27b28d7020d4a13d31f8da64`.
+- `20261006_log_504_cw.txt`: 157322 bytes, SHA-256
+  `f9ec504f3dd860c4cb5fd034dc8236d9ffe6e974e9519a4adff7e6c5cea3230d`.
+- `20261006_log_505_cw.txt`: 153392 bytes, SHA-256
+  `2d4c6fceefd3d82884493d0679b4fcf138fd3cec3f35db578b711e2fd1eb84d4`.
+
+ParkingOct__6_2026_22_37_23 / connector/cornerOct6_2026_22:40:15; finaltarget
+y100 and missingFINAL_PARK_TRACE establish older parking logic, not latest
+revision acceptance. No binary readback. Layouts assigned from user sequence,
+directions from turn headers; user confirms no contact at bothCCW holds.
+502 reaches fourth/start corner: stoppedRED127-133px height rejects cap120;
+extra parallax RED99-101px width rejects cap80; return locks at-3.01degrees
+with encoder still-30.5mm fromorigin. Unresolved seat also remains.
+503 thirdcorner: reverse80, stoppedRED75x123 rejectsheight120; returned
+unresolved, heading-0.74/cross-0.7. No CCWlap1 completed.
+504B/505C CW allthree laps physically successful; oldparking504scanincomplete,
+505approach_outer_gate, neither entrysegment reached. No precise505parking
+pose; retain latest parking candidate rather than invent a detour fromoldlogs.
+Details `simulation/LAYOUT_B_C_502_505_REVIEW.md`.
+
+Closeupright rejected RED/GREEN requests300mm modelled viewrange, preserving
+strictcolour/shape/snap/votes/CLEAR. Keep230ordinary,220mm reversecap and
+allpotentialoccupiedseat/wall sweeps. Retainrequest acrosssettleframes; once
+extend same straight reverse ifstoppednear silhouette appearslate. Logged
+poses select160mm(502),150mm(503), B495remains60. Mainstraight reverse/return
+now regulatesoriginheading/cross-track withsteeringcap8 and15mmCADcommand
+forecast; hard3deg/15mm/20mmreturn gates retained. Twobounded CORNER VIEW OBS
+records perattempt bypass exhaustedgeneraltrace budget; noextrasensorreads.
+
+Productionfocused173checks pass:loggedrecoveries,54poseperturbations
++/-5mm/+/-2deg,close/ordinaryviewselection,feedbacksteeringsign/cap andsafe
+commandforecasts, priorC/B/inference/ambiguity regressions. These aregeometry
+andcontrollerchecks, not opticalconfirmation orfullphysicalacceptance.
+IDE M7-only final buildSUCCESS RAM432872/523624,flash500176/786432;SHA-256
+`e9d3a630aaaf721c973669a7423521529252b0b6cdb99e6d993a9723820bf0f3`.
+M4unchanged; noagentupload/commit. Existingmodelsomit slip,braking/servodelay
+and realimages. Next:useruploadM7,remove driveUSB,B2CCW all3laps+parking;
+inspectformerlyblockedcorner3/4, CORNER VIEW OBS andFINAL_PARK_TRACE.
+ThenB1CW+C1CW includingparkingonsamefirmware. Archiveoriginalsfirst.
+
+## 2026-10-08: finish CW parking investigation, logs 506--507
+
+Complete originals captured on 2026-10-07 before analysis:
+`simulation/evidence/parking_exit_diagnostics/20261007_log_506_cw.txt`
+(150564 bytes, SHA-256
+`2bad3c0f62f139db45830406250f5ad0282a829b9129ef1e368bcd613d2f8446`),
+and `20261007_log_507_cw.txt` in the same directory (161409 bytes, SHA-256
+`e5b798e7e8a1b7327cc78064b2b607fcf286768bf268df673f219f51d4032fd1`).
+Individual metadata is in that directory's README. Both CW by telemetry;
+C/B assignment follows user's order. Connector Oct 6 2026_23:10:00,
+FINAL_PARK_TRACE and y120 entry revision present; no installed-binary readback.
+User reports three good laps, failed parking in both, good lateral return
+clearance in B. Evidence and engineering review are tracked; no agent commit.
+
+507 sees the first pink piece at estimated x709/693 before old x560 arm;
+the second near x433 is miscounted as first, causing incomplete-scan abort
+at x120. Geometry suggests 170--180 mm longitudinal offset, not independently
+measured drift. Mixed edge returns may explain old lateral correction jumps.
+506 remains in approach state 1 and has repeated gyro timeouts/restarts;
+manual disable follows. Gyro failure remains unresolved, with bounded explicit
+FINAL PARK SENSOR HOLD records added; the existing stop gate is retained.
+
+Final handover now occurs when all body/wheel envelopes clear the last corner,
+with 10 mm padding and 250 mm longitudinal reserve. Canonical rules scoring
+1.2/page21 and official parking-direction Q&A verified 2026-10-07: no extra
+full start-straight traversal required. Laps 1/2 unchanged. Learned start
+bypass retained; beyond x500 continue straight instead of the next corner.
+Swept-safe shift candidates remain 500/550/600/650; approach capped at x1100.
+Fresh paired wall reference can register Y on the straight approach. Following
+final wall registration, align on the westbound return rather than driving
+farther east. Marker search waits for scan-line readiness, then begins without
+old X arm. Require both pieces/gap/wall; X correction bounded250, Y25, gap15.
+Live wall correction residual10, gain0.2, step1 mm. Entry/end containment gates
+and existing unparking route/braking/reversal diagnostics retained.
+
+Source-backed checks: 2807 later-lap/state cases pass, 2970 approaches pass;
+162 entry preflights include six safe off-nominal rejections, all nominal pass.
+Five paired-registration positive/negative checks pass. Full state machine:
+396 cases, 394 contained completions, two safe stress-case aborts, zero failures.
+All 132 zero-X-injection cases park with +/-40 mm initial Y bias. Additional
++/-180 mm X error is injected only at scan start. Injecting it before the whole
+approach exposed model collisions in experimental variants; scan registration
+does not establish that much pre-scan pose accuracy. Do not claim that resolved.
+Tests omit slip, servo/braking lag, real reflections and gyro hardware faults.
+
+Final IDE-managed M7-only build SUCCESS: RAM432880/523624, flash500920/786432;
+SHA-256 `70b1197ce1e8e0fa161e4ead2d0825395f20fe7e84d7a603fceaf88b6957cabd`.
+M4 unchanged; no upload/commit. Review:
+`simulation/LAYOUT_B_C_FINAL_PARKING_506_507_REVIEW.md`.
+Next: user uploads M7, removes driving USB, runs B twice CW through three laps
+and final parking, then C CW and CCW on the same firmware. Inspect complete
+containment, pink clearance, FINAL PARK SCAN/RESULT and SENSOR HOLD if stopped.
+Archive complete originals first. Normal runs/log saving only; no dedicated
+ToF sweep, extra movements or pauses. If gyro holds recur, investigate those
+as a separate health failure rather than weakening parking clearance gates.

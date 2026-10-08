@@ -12,6 +12,7 @@
 #include "obstacle.h"
 #include "calibration.h"
 #include "position_estimator.h"
+#include "final_parking.h"
 #include "mode_manager.h"
 #include "logger.h"
 #include "tof_diagnostic_test.h"
@@ -60,6 +61,7 @@ void loop()
     if (!gyro_is_healthy())
     {
         stop(false);
+        final_parking_sensor_hold();
         robot_logger.update();
         return;
     }

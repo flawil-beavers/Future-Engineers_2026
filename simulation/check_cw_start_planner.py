@@ -33,7 +33,7 @@ def fixture_source():
         'void appendParkingEntryPoint(', 'void buildParkingEntryPath(',
         'bool preflightCwStartArc(', 'float connectorRouteHeading(',
         'PathPoint connectorLookaheadFrom(\n    uint8_t index, float lookaheadMm, const PathPoint *route,\n    uint16_t mergeIndex, bool continueIntoRoute,\n    uint16_t *targetIndex)\n{',
-        'bool connectorRolloutFeasible(', 'bool tryParkingEntryConnectorMerge(',
+        'bool connectorJoinReached(', 'bool connectorRolloutFeasible(', 'bool tryParkingEntryConnectorMerge(',
         'bool buildParkingEntryConnector(', 'bool parkingConnectorMergeUnchanged(',
         'bool retainParkingConnectorForFarGreen(')]
     # Only PathPoint and CandidateSeat; terminate at the next declaration.

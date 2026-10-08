@@ -18,3 +18,6 @@ bool final_parking_update(int8_t turn_sign);
 
 bool final_parking_complete();
 bool final_parking_aborted();
+bool final_parking_active();
+// Record the main-loop gyro hold without changing its existing stop/recovery.
+void final_parking_sensor_hold();

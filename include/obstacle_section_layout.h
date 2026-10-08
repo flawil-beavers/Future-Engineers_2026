@@ -11,13 +11,18 @@ constexpr uint8_t obstacle_section_inferred_empty(uint8_t confirmedSeats)
     const uint8_t first = confirmedSeats & 3;
     const uint8_t middle = confirmedSeats & 12;
     const uint8_t last = confirmedSeats & 48;
-    return (middle == 0 && (first == 1 || first == 2) &&
-            (last == 16 || last == 32)) ? 2 : 0;
+    // A middle pillar is solitary on every official card. Either end alone
+    // therefore excludes the middle; the other end remains unknown.
+    const bool validFirst = first == 0 || first == 1 || first == 2;
+    const bool validLast = last == 0 || last == 16 || last == 32;
+    return (middle == 0 && validFirst && validLast && (first || last)) ? 2 : 0;
 }
 static_assert(obstacle_section_inferred_empty(0) == 0, "Unknown remains unknown");
 static_assert(obstacle_section_inferred_empty(4) == 5, "Middle seat0 is solitary");
 static_assert(obstacle_section_inferred_empty(8) == 5, "Middle seat1 is solitary");
-static_assert(obstacle_section_inferred_empty(1) == 0, "One end alone proves nothing");
+static_assert(obstacle_section_inferred_empty(1) == 2, "One end excludes only the middle");
+static_assert(obstacle_section_inferred_empty(32) == 2, "Last end also excludes middle");
+static_assert(obstacle_section_inferred_empty(3) == 0, "Two seats at one end are contradictory");
 static_assert(obstacle_section_inferred_empty(17) == 2, "Two end pillars exclude middle");
 static_assert(obstacle_section_inferred_empty(34) == 2, "Opposite side also works");
 static_assert(obstacle_section_inferred_empty(5) == 0, "End plus middle is contradictory");

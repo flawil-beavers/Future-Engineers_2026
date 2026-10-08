@@ -59,3 +59,12 @@ a fresh wrong-side crossing caused by an observation/localization manoeuvre.
 AppendixA/page41's relaxed passing side concerns only travel to parking after
 the three official laps. Any different national clarification must be checked
 against the applicable organizer's rules before using it.
+
+2026-10-07 parking completion recheck: the canonical January 15 PDF,
+scoring item 1.2 (printed page 21), completes a lap when the whole vehicle has
+left the last corner section. It does not require another full traversal of
+the start straight. The official Future Engineers Q&A explicitly permits
+opposite-direction travel while parking after the three laps. Production now
+checks all body/wheel polygons inside the start straight before the final
+handover, including a 250 mm longitudinal localization reserve. This reserve
+is an engineering assumption, not a rule or an independent position measurement.

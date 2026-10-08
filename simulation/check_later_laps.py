@@ -46,8 +46,9 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'float validatedClearanceForSeat(', 'float optimizedClearanceForSeat(',
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
+        'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)\n{',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
-        'void carryKnownInnerLaneToMiddle(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'void updateProgress(',
+        'void carryKnownInnerLaneToMiddle(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
@@ -144,6 +145,24 @@ bool stateChecks(){
  PositionEstimate finishPose;finishPose.x_mm=livePath[3].x;finishPose.y_mm=livePath[3].y;
  updateProgress(livePath,finishPose);
  if(!finished||lapFinishPending||completedLaps!=3)return false;
+ // Final handover must use the complete vehicle and only the third lap.
+ for(int dir:{-1,1}){
+  routeTurnSign=dir;resetState();baseline();learned();
+  if(!buildOptimizedPath())return false;
+  int index=-1;
+  for(int i=0;i<pathLength;++i)if(baselinePath[i].distanceMm>=corners[3].pathEndMm &&
+    finalCornerVehicleClear(PositionEstimate{optimizedPath[i].x,optimizedPath[i].y,connectorRouteHeading(optimizedPath,i)})){index=i;break;}
+  if(index<0)return false;
+  PositionEstimate p{optimizedPath[index].x,optimizedPath[index].y,connectorRouteHeading(optimizedPath,index)};
+  PositionEstimate cornerPose{dir<0?350.f:-350.f,-1000.f,dir<0?180.f:0.f};
+  if(finalCornerVehicleClear(cornerPose))return false;
+  completedLaps=1;lapCountingArmed=true;progressIndex=index;
+  updateProgress(optimizedPath,p);if(finished||completedLaps!=1)return false;
+  completedLaps=2;runtimeTestMode=true;progressIndex=index;
+  updateProgress(optimizedPath,p);if(finished||completedLaps!=2)return false;
+  runtimeTestMode=false;progressIndex=index;
+  updateProgress(optimizedPath,p);if(!finished||completedLaps!=3||lapFinishPending)return false;
+ }
  resetState();baseline();learned();runtimeLapTarget=1;lapBoundaryPending=true;
  if(!completePendingLap()||completedLaps!=1||!finished||optimizedBuilt)return false;
  resetState();baseline();
@@ -252,7 +271,7 @@ int main(){
   routeTurnSign=direction;resetState();baseline();
   for(int i=0;i<24;++i){seats[i].confirmed=colors[i]!=0;
    seats[i].red=colors[i]==2;seats[i].injected=colors[i]!=0;}
-  learned();float wall,pillar;
+  learned();joinSameColourStraightEnds(livePath,true);float wall,pillar;
   const bool pass=driveTwoLaps(cap,wall,pillar);
   std::cout<<"CASE "<<id++<<" "<<pass<<" "<<wall<<" "<<pillar<<" "
     <<failReason<<" "<<failSeat<<" "<<failX<<" "<<failY<<" "<<failH<<"\n";
@@ -313,6 +332,16 @@ int main(){
         section,station,side=i//6,(i%6)//2,i%2
         reverse_b[((4-section)%4)*6+(2-station)*2+(side^1)]=c
     for direction,layout in ((-1,physical_b),(1,reverse_b)):
+        cases.append(dict(direction=direction,speed_cap=0,colors=layout))
+    # C: start far-inner RED; two outer GREEN ends in the next straight.
+    physical_c=[0]*24
+    for seat,color in ((4,2),(7,1),(11,1),(17,2),(22,1)):
+        physical_c[seat]=color
+    reverse_c=[0]*24
+    for i,c in enumerate(physical_c):
+        section,station,side=i//6,(i%6)//2,i%2
+        reverse_c[((4-section)%4)*6+(2-station)*2+(side^1)]=c
+    for direction,layout in ((-1,physical_c),(1,reverse_c)):
         cases.append(dict(direction=direction,speed_cap=0,colors=layout))
     inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
     run=subprocess.run([str(exe)],input=inputs,text=True,capture_output=True,check=True)

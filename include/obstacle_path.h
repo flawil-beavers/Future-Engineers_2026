@@ -225,3 +225,9 @@ ObstacleTofCorrectionResult obstacle_path_last_tof_correction();
 
 /** Deterministic checks for the currently generated direction. */
 bool obstacle_path_geometry_preflight();
+
+/** Motor-independent target on the learned start route, travelling toward
+ * canonical +X. CW traverses this route backwards; CCW forwards. Final
+ * parking uses this until the whole body has passed the last start pillar. */
+bool obstacle_path_parking_approach_target(
+    float x_mm, float y_mm, float &target_x_mm, float &target_y_mm);

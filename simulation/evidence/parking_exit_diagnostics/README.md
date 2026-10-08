@@ -270,3 +270,88 @@ in both runs, and three CCW stops after exiting the bay.
 | `20261006_log_479_ccw.txt` | `dee4a5afcef80d7e5c31551a3ae329c53a5a848c5d4d555fac1792bcc0dae479` | Yes, 57401 | CCW trial1: user reports stopped after exit. Front GREEN confirmed; connector75mm lookahead accepted after lengthy search; gyro poll gap15704ms, then Manual disable. No explicit automatic hold record; cause not conclusively established. |
 | `20261006_log_480_ccw.txt` | `5e3bc2faa1348b770e60a77100fa93fc3363405302a6b09537621da79d0b2976` | Yes, 83359 | CCW trial2: front GREEN confirmed. Automatic connector steering rejection atprogress0, request-42.077deg exceeds42deg. |
 | `20261006_log_481_ccw.txt` | `062533137a19d5d966c09d1d0684d8378bfb36deb7811d2b854f5267f6c8e399` | Yes, 90796 | CCW trial3: front GREEN confirmed. Automatic connector steering rejection atprogress0, request-42.037deg exceeds42deg. |
+
+## 2026-10-06 A/C, logs 482-492
+
+Parking Oct__6_2026_20_56_49; connector Oct 6 2026 21:04:51, older than prior candidate.
+Complete unchanged originals archived before analysis; source/archive SHA-256 matched at capture.
+User confirms C start far-inner RED, correcting the initial GREEN description. No exact physical attribution is claimed for extra log486.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261006_log_482_cw.txt` | `ed92bdc4ee774f3f5466580e07e24db74d15396a95479cbdf3cd1763c1ed5dcf` | Yes, 118668 | A CW1: user reports three laps, no contact. |
+| `20261006_log_483_cw.txt` | `c301f7a0397a52f22b8cf421d4eae2cfca27eb2c2a76ddd695ba6728b44d3638` | Yes, 121992 | A CW2: user reports three laps, no contact. |
+| `20261006_log_484_ccw.txt` | `48119c70629c6932cf3643dcf55eb856715e61e546cdbe569ebdb71c49704971` | Yes, 132043 | A CCW1: user reports three laps, no contact. |
+| `20261006_log_485_ccw.txt` | `b39693bff2f7c528255b42aa49c026deae7236dfaa57f5b163a3e7c81161ef85` | Yes, 142115 | A CCW2: user reports three laps, no contact. |
+| `20261006_log_486_cw.txt` | `8273080c3563b1f070690aeae07c1d2250859a95fb0e04e08ae2f8a46fc0b7ef` | Yes, 35453 | Additional CW exit trial: manual disable after exit5/5. Exact association with the reported short exit is not confirmed. |
+| `20261006_log_487_cw.txt` | `972458d8c309ec2ced5ea1b2d17e26c3baa8bee03557b3990b3b42a594701f78` | Yes, 75829 | C CW1: contact with second outer GREEN in S1 after returning inward between two GREEN ends. |
+| `20261006_log_488_cw.txt` | `11241cf9fd727fe657f7017541699599e8d336bf22f756928c0194e4afbe5615` | Yes, 79364 | C CW2: same contact. Seat11 confirmed at pose -1325,-320.6,64.32deg, range717mm before collision. |
+| `20261006_log_489_ccw.txt` | `7099254e026ad7991d94d3d36b41d88e731253dbee1e115e254b3e9c79c4610f` | Yes, 62480 | C CCW: automatic connector travel hold after passing its finite endpoint; outgoing tangent alignment was already reached. |
+| `20261006_log_490_ccw.txt` | `49d94afbf38b835fc59cd76e86badf1e3a10cdfbf99e2854d5959bf1025dd3f7` | Yes, 66850 | C CCW: passes GREEN then stops at S1 middle. Previous inference required both end signs to exclude middle. |
+| `20261006_log_491_ccw.txt` | `749341d7e1eac34141614355f5d55d7addbf6e5434dd911c6ba8f08efe94e433` | Yes, 46924 | C CCW: initial front seat unresolved; rejected broad GREEN component behind its ground projection. No raw RGB capture. |
+| `20261006_log_492_ccw.txt` | `0ad232f03971e81601e60939c3996af53ba8938009ed5cc967815a01154916f8` | Yes, 62282 | C CCW: GREEN7 confirmed during connector; fresh replan rejected although original merge can remain valid. |
+
+## 2026-10-06 B repeat, logs 493-499
+
+Parking Oct__6_2026_21_24_58; connector Oct 6 2026 21:24:45, consistent with prior candidate build markers. Installed binary not read back.
+Complete unchanged originals archived before analysis; source/archive SHA-256 matched at capture.
+User reports unchanged B: CW1/2/4 contact-free; CW3 and all three CCW automatic stops without contact.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261006_log_493_cw.txt` | `0dc51a9be38a26bb1c8f2fe4ac2869f27bb7f3206158b0a9608b65233914d202` | Yes, 139287 | B CW1: user reports all three laps excellent, no contact. |
+| `20261006_log_494_cw.txt` | `8f404fc400309a5c90a34114efea790d044f85a4c9dea18d439fb75800e055a4` | Yes, 148289 | B CW2: same successful physical report. |
+| `20261006_log_495_cw.txt` | `bbbd912e043e1b3ca8682333304be636f49ce9108c50589dd103bbc08d302bf8` | Yes, 84444 | B CW3: no contact; automatic hold before S2 solitary middle GREEN. One first-station side already CLEAR, other too near/out of view; broad GREEN blocks empty evidence. |
+| `20261006_log_496_cw.txt` | `110f1602ef076a7b4ad9c9892359a8bb3873e20359ac923d46c457931bdda91a` | Yes, 146003 | B CW4: user reports all three laps excellent, no contact. |
+| `20261006_log_497_ccw.txt` | `cabda2988c6357eda9eeee9e25837e5bc1c0bc889312138c78b08bf113738676` | Yes, 62834 | B CCW1: passes GREEN, no contact, stops. RED10 confirmation during start connector triggers rejected replan. |
+| `20261006_log_498_ccw.txt` | `63263a299ca8645dac68e5abe65d09300717471ca372ecebc51b43e9cd07af65` | Yes, 65400 | B CCW2: same physical report; distant RED projected to seat11 (inner) rather than physical seat10 (outer), then rejected replan. |
+| `20261006_log_499_ccw.txt` | `96b8e9eeab316c91cc396042d91bac0910f332d901a8a0fbe1fd79cb162a28e0` | Yes, 58490 | B CCW3: same physical report; distant RED11 confirmation then rejected replan. |
+
+
+## 2026-10-06 B CW laps accepted, final parking fails (500-501)
+
+Complete unchanged originals copied before analysis; capture SHA-256 verified against source.
+Parking build Oct__6_2026_22_37_23; connector Oct 6 2026_22:40:15, consistent with prior candidate. No installed-binary readback.
+User reports both CW three-lap drives perfect/contact-free; failures occur during final parking.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261006_log_500_cw.txt` | `3846f82c283b7b2e5f1747270d9c9e4eb77ffcc72e2b7ab70b546462da86e5d9` | Yes, 154226 | CW1: overshoots bay and stops, no entry. Three laps complete; scan armed, then dual_marker_scan_incomplete; no entry segment reached. |
+| `20261006_log_501_cw.txt` | `6e6204fe5521a3c7b0ffe98a967a11af510a49079d104481fe0ed173e70a4744` | Yes, 158223 | CW2: grazes pink during return, stuck during subsequent forward motion. Three laps complete; scan starts, no armed/completed scan or entry segment logged; later Manual disable. Physical contact not independently measurable from this log. |
+
+Final-parking pose/raw-ToF periodic trace is absent in this firmware; exact scan path, wall residual and mixed-object selection are not recoverable. Legacy navigation Target heading is not the parking heading. See `simulation/LAYOUT_B_FINAL_PARKING_500_501_REVIEW.md`.
+
+
+## 2026-10-06 B CCW discovery stops and B/C CW, logs 502-505
+
+Complete originals captured unchanged before analysis; individual SHA-256 checked against source at capture. Source removed later; saved originals remain available.
+Parking Oct__6_2026_22_37_23; connector/corner Oct 6 2026_22:40:15. Same older markers as 500/501; no FINAL_PARK_TRACE, final target y100. Latest parking revision not tested. No installed-binary readback.
+Layouts assigned from user sequence; directions verified from turn headers. User reports no contact at either CCW halt.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261006_log_502_ccw.txt` | `16c7f5d7ba0e3abcd9b69e1e4277048039e9c9dd860a0d134a0e2a309a8464f4` | Yes, 102547 | B CCW1: successful exit, halt at fourth corner, no contact. S3 RED18 acquired; S0 reverse90 then parallax; return locks at heading_error=-3.01, origin_encoder_delta=-30.5 before completing return. No completed lap. |
+| `20261006_log_503_ccw.txt` | `0010d0b95b10ff78e1f9440cafa31ce188c79c9a27b28d7020d4a13d31f8da64` | Yes, 80878 | B CCW2: successful exit, halt at third corner, no contact. S3 reverse80, stopped RED remains123px tall (cap120); station unresolved on return, heading_error=-0.74/cross_track=-0.7. No completed lap. |
+| `20261006_log_504_cw.txt` | `f9ec504f3dd860c4cb5fd034dc8236d9ffe6e974e9519a4adff7e6c5cea3230d` | Yes, 157322 | B CW: user reports perfect drive; all three laps complete. Older parking abort dual_marker_scan_incomplete before entry. |
+| `20261006_log_505_cw.txt` | `2d4c6fceefd3d82884493d0679b4fcf138fd3cec3f35db578b711e2fd1eb84d4` | Yes, 153392 | C CW: user reports successful drive, straight/reverse/stop during parking. Three laps complete; older parking abort approach_outer_gate before scan or entry. |
+
+See `simulation/LAYOUT_B_C_502_505_REVIEW.md`. Bounding-box vision telemetry is available; raw RGB and final-parking pose/ToF traces are absent.
+
+## 2026-10-07: layouts C/B, CW final parking (506--507)
+
+Both complete originals were copied unchanged before analysis and checked
+byte-for-byte by SHA-256 against the source. Direction is CW in both logs;
+layout names follow the user's reported order (the user was unsure of 506's
+direction). Connector identity: `Oct 6 2026_23:10:00`. Both contain
+`FINAL_PARK_TRACE` and the y=120 entry revision; installed binary was not read
+back. User reports three successful laps in both, unsuccessful final parking,
+and good lateral clearance in 507's return past the bay.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261007_log_506_cw.txt` | `2bad3c0f62f139db45830406250f5ad0282a829b9129ef1e368bcd613d2f8446` | Yes, 150564 | C CW: three laps complete. Parking remains in approach state 1, ending near x449/y-999. Repeated gyro timeouts/restarts interrupt motion; manual disable follows. No marker scan or entry. |
+| `20261007_log_507_cw.txt` | `e5b798e7e8a1b7327cc78064b2b607fcf286768bf268df673f219f51d4032fd1` | Yes, 161409 | B CW: three laps complete. First pink returns at x709/693 precede old x560 scan arm; later marker at x433 is counted as first. Aborts at x120 with dual_marker_scan_incomplete, never reaches entry. |
+
+See `simulation/LAYOUT_B_C_FINAL_PARKING_506_507_REVIEW.md`. Final parking
+diagnostics are sampled, not a full-rate sensor or independent ground-truth
+pose recording. No new dedicated sensing test was requested.

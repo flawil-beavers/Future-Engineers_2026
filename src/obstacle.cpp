@@ -2140,6 +2140,7 @@ static void updateCourseProgress()
 
 void printVisionDebug()
 {
+    if (final_parking_active()) return;
     static uint32_t lastPrint = 0;
 
     if (

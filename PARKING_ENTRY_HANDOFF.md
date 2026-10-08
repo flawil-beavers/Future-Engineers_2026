@@ -2,6 +2,15 @@
 
 Continue development from the repository root.
 
+Current2026-10-06: read the newest `AGENT_DOCUMENTATION.md` entry and
+`simulation/LAYOUT_B_C_502_505_REVIEW.md` before the historical notes below.
+The requested complete-sequence candidate now enables automatic final parking
+after three laps. Entry is armed, with swept approach/entry checks and measured
+gap localization; physical parking acceptance is still pending. The exact next
+test is unchanged B twice CCW first, then B CW and C CW,
+after user M7 upload. Read `simulation/LAYOUT_B_C_502_505_REVIEW.md`: older
+CCW holds required deeper acquisition views and regulated return; then read `simulation/LAYOUT_B_FINAL_PARKING_500_501_REVIEW.md`: latest two CW drives passed all three laps but final parking failed. Historical locked-entry settings below no longer describe this candidate.
+
 Read first, in order:
 
 1. `AGENTS.md`

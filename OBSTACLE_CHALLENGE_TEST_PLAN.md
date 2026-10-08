@@ -11,6 +11,32 @@ new safety limit, or reusable engineering finding.
 
 ## Safety for every powered run
 
+### Current ordered validation: B/C corrections and final parking (2026-10-06)
+
+This sequence supersedes older startup gates below; they remain history.
+See `simulation/LAYOUT_B_C_502_505_REVIEW.md`,
+`simulation/LAYOUT_B_FINAL_PARKING_500_501_REVIEW.md`, the prior
+`simulation/LAYOUT_B_C_482_499_REVIEW.md`, and newest agent documentation.
+The current config runs exit, three laps, then automatic final parking in O.
+
+1. User uploads M7 only; remove drive USB cable. Keep layout B unchanged.
+2. Two CCW runs first: B corner3/4 must resolve via the checked deeper view
+   if a close silhouette is rejected; inspect CORNER VIEW OBS. All three laps
+   and automatic parking must complete without contact.
+3. Then one B CW and one C CW on the same firmware, checking shorter parking
+   approach, no pink contact, dual-marker scan, all seven entry segments and
+   FINAL PARK RESULT contained=yes / stopped=yes.
+4. Archive complete logs immediately, with firmware identity and physical
+   contact/stop observations. Inspect retained join, distant-side ambiguity,
+   corner recovery and every FINAL PARK result/abort reason.
+5. If B passes, repeat C twice CW and twice CCW; two outer GREEN signs must
+   have a continuous bypass. Confirm final parking in both directions.
+
+For isolated lap regression, set `OBSTACLE_THREE_LAP_TEST_ENABLED=true`.
+For this requested complete-sequence candidate it is false; parking entry is
+armed and `OBSTACLE_FINAL_PARKING_TEST_ONLY=false`. Software/model checks
+passed; final parking still needs the above physical validation.
+
 ### Current first-lap gate (2026-09-28)
 
 The photographed CW layout is unsuitable for `O`: the starting section had
