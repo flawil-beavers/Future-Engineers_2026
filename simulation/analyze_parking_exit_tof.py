@@ -332,7 +332,8 @@ def write_assessment(sessions, output, procedure_for):
              "Oblique angle coverage must be inspected per group; missing coverage is not sensor success.", "",
              "Firmware diagnostics cover rear positioning, five exit arcs and their drive/brake/settle "
              "states, and edge localization when performed. Official CW finishes before its short scan; "
-             "CCW covers the shortened edge localization and finishes before its scan. "
+             "CCW covers first-edge/bounded reverse localization when accepted, or its "
+             "second-edge fallback, and finishes before its scan. "
              "Subsequent scans/connectors lack this periodic nominal/estimated route stream; normal "
              "text logs are retained but are not equivalent coverage. Initial pose seeding and final "
              "completion need not coincide with a periodic sample. Nominal pose is command-curvature "

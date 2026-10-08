@@ -119,6 +119,7 @@ class ParkingExitBatchTests(unittest.TestCase):
         shutil.copyfile(original, self.sources / original.name)
         text = original.read_text(encoding="utf-8")
         for number, marker in (
+                (997, "[CCW START] First-edge reference accepted; remaining reverse_mm=49.7"),
                 (998, "[CW START] Short scan from initial ToF seed + exit odometry; no second-edge reverse"),
                 (999, "[CCW START] Second-edge reference reached; no extra reverse or behind-place scout")):
             (self.sources / f"20260926_log_{number}_cw.txt").write_text(
@@ -129,9 +130,9 @@ class ParkingExitBatchTests(unittest.TestCase):
                 encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual(len({row["build"] for row in rows}), 1)
-        self.assertEqual(len({row["build_report"] for row in rows}), 3)
+        self.assertEqual(len({row["build_report"] for row in rows}), 4)
         self.assertEqual({row["observed_procedure"] for row in rows},
-                         {"legacy_or_unidentified", "cw_short_start", "ccw_short_start"})
+                         {"legacy_or_unidentified", "cw_short_start", "ccw_short_start", "ccw_first_edge_start"})
 
 
 if __name__ == "__main__":

@@ -128,7 +128,14 @@ Do not implement backlash compensation or new pose control until repeated logs
 show a material, consistent error. Any later correction requires its own plan,
 offline safety validation and powered testing.
 
-## Current evidence and next steps (2026-10-06)
+## Evidence snapshot and next steps (2026-10-06)
+
+This section records the analysis through `718d310` (logs through 481).
+The 2026-10-08 pull to `45e173d` adds logs 482-507 and newer final-parking
+and route-smoothing work. See `AGENT_DOCUMENTATION.md` and the corresponding
+`simulation/LAYOUT_B_C_FINAL_PARKING_506_507_REVIEW.md` and
+`simulation/LATER_LAP_SMOOTHING_REVIEW.md` for the newer validation status.
+The snapshot counts below have not been recomputed for those incoming logs.
 
 ### Laptop ToF assessment and unchanged physical runs
 
@@ -140,8 +147,9 @@ The tester uploads current firmware and runs/saves normally, reporting firmware,
 log number, direction and physical outcome/contact phase/surface when known.
 
 Coverage inspection confirms all rear positioning and five-arc diagnostics.
-Official CW now ends before the short scan; CCW includes shortened edge
-localization and ends before its scan. Subsequent scan/connector text logs are
+Official CW now ends before the short scan; CCW includes first-edge/bounded
+reverse localization or its second-edge fallback and ends before its scan.
+Subsequent scan/connector text logs are
 not periodic nominal/estimated route coverage. Preserve this limitation instead
 of claiming a complete post-exit trajectory. Nominal diagnostic pose follows
 command curvature using measured encoder travel, not independent timed targets.
@@ -149,10 +157,19 @@ New logs remain archived unchanged with hashes and physical reports. Analyse
 current procedures separately; retain gyro/encoder integration and defer active
 ToF correction because residual agreement does not establish absolute accuracy.
 
-The archive contains 72 complete sources / 73 sessions, with 62 completed,
+The analyzed snapshot contains 99 complete sources / 100 sessions, with 87 completed,
 untruncated exits. Compare revisions through `parking_exit_batch.md` under
 `local_workspace/parking-exit-analysis-all/`; physical setup/outcome and exact
 source hashes remain in the evidence README.
+
+The incoming `718d310` snapshot has complete logs 455-481 (the full 455/456 sources
+now replace excerpt-only availability). Procedure coverage: 13 CW short starts,
+five CCW second-edge short starts and five accepted CCW first-edge starts, all
+with completed untruncated exit records. This does not prove later contact-free
+driving: layout-B CW 477/478 contacted pink on return; CCW 480/481 rejected
+connector steering. Current firmware changes wall references/return guards and
+CCW connector planning; do not mix those failures with five-arc exit failures.
+The numerical findings below are the historical Oct-5 group, not this new batch.
 
 The archived 90/155 mm exit targets replace 85/150 mm; the last arc still ends by
 gyro alignment. The `Oct__5_2026_21_30_53` diagnostic group contains 30 CW
@@ -190,9 +207,10 @@ needs a separate reviewed implementation and powered CW/CCW validation.
 Incoming `ff9be2e` changes the pipeline after the same five arcs: official CW
 uses the initial ToF seed and exit odometry directly for its short scan, omitting
 second-edge reverse/correction. Official CCW keeps the edge correction but omits
-the extra 70 mm continuation. O3/CHECK_ALL keeps its legacy procedure. No complete
-short-start physical logs are archived yet; 455/456 remain excerpts of preceding
-connector trials. Batch reports now separate explicit short-start markers even
+the extra 70 mm continuation. O3/CHECK_ALL keeps its legacy procedure. Complete
+short-start logs and full originals 455/456 have since arrived in `718d310`.
+Official CCW additionally supports the accepted first-edge/bounded reverse route
+with second-edge fallback. Batch reports separate these procedure markers even
 with unchanged diagnostic headers. Validate CW exit-pose/scan clearance without
 the former edge correction, and the shortened CCW reference, before expanding
 live pose control. The incoming connector servo-resume fix is a software cause

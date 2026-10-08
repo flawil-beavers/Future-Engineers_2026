@@ -78,7 +78,9 @@ evidence README before treating a group as one motion revision.
 Explicit `[CW START] Short scan from initial ToF seed + exit odometry` and
 `[CCW START] Second-edge reference reached; no extra reverse` records select
 separate procedure groups even when that diagnostic header is unchanged. The
-manifest records `observed_procedure`; absent markers mean legacy or unidentified,
+manifest records `observed_procedure`; an accepted first-edge marker identifies
+`ccw_first_edge_start` separately from the CCW second-edge short-start fallback.
+Absent markers mean legacy or unidentified,
 not proof of a specific uploaded mode. Official CW short starts omit the long
 second-edge reverse, while official CCW omits its additional 70 mm continuation;
 O3/CHECK_ALL retains the legacy selection. Preserve the original log markers.
@@ -189,7 +191,8 @@ new ToF pose/servo corrections disabled until a separate plan is validated.
 Coverage audit: periodic nominal/estimated route records cover rear positioning,
 all five arcs and drive/brake/settle transitions, plus edge localization when
 performed. Official CW finishes diagnostics before the short scan; official CCW
-includes shortened edge localization and finishes before its scan. Subsequent
+includes accepted first-edge/bounded reverse localization or its second-edge
+fallback and finishes before its scan. Subsequent
 scan/connector text logs are not equivalent periodic route coverage. Completion
 and pose seeding need not coincide with a sample. The logged nominal path uses
 command curvature integrated over actual encoder travel; it is not an independent

@@ -10,6 +10,7 @@ contact testing.
 
 | File | Description |
 |------|-------------|
+| `visualize_robot_run.py` | Whole-run SVG/PNG images with logged pillar maps, field context and parking/merge detail; usage in `ROBOT_RUN_VISUALIZATION.md`. |
 | `corner_extra_view_check.py` | Additional90 mm reverse arc: both log398 scan poses,486 perturbed geometric cases, coast reserve, full-seat clearance and ideal reciprocal return; no camera or controller acceptance. |
 | `parking_exit_swept_search.py` | Standard-library swept-footprint search and validation for the parking-exit manoeuvre. |
 | `parking_exit_path.svg` | Generated top-down visualization of the selected parking-exit and localization path. |

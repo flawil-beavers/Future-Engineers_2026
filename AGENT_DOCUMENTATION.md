@@ -1,5 +1,37 @@
 # Agent documentation and engineering handoffs
 
+## 2026-10-06: refreshed incoming diagnostics at 718d310
+
+Checkout already contained three incoming commits and matched origin/main after
+fetch. Complete originals 455-481 are tracked under
+`simulation/evidence/parking_exit_diagnostics/`; individual SHA-256 identities,
+firmware headers and physical reports remain in its README. All 102 archived
+files/excerpts pass hash/tracking verification; full 455/456 are now available.
+No original telemetry or firmware changed in this refresh.
+Latest 477-481 headers identify parking `Oct__6_2026_19_54_43` / connector
+`Oct 6 2026_19:54:26`, not proof of the newly built candidate. Log 481 SHA-256:
+`062533137a19d5d966c09d1d0684d8378bfb36deb7811d2b854f5267f6c8e399`.
+
+Regenerated 99 complete sources / 100 sessions, 87 completed/untruncated exits.
+Explicit procedure groups contain 13 CW short starts, five CCW second-edge
+short starts and five CCW accepted first-edge starts, all exit-complete. Updated
+offline coverage wording and regression for the first-edge group. Current ToF
+assessment: 20,918 unique logged tuples, 3,863 eligible under both fan models;
+383 classification changes. These are nominal-model eligibility counts, not
+absolute accuracy or all acquired sensor frames. Route outputs remain intact.
+
+Latest physical reports: layout-B CW 477/478 pink contact occurred on return;
+CCW 480/481 connector steering rejected, 479 stop cause remains unidentified.
+Do not label these later failures as five-arc exit failures. Incoming firmware
+adds rectangular wall references/return guard and CCW planning reserve; new
+powered logs are needed to assess those changes. Next follow current
+`CONNECTOR_NEXT_TEST.md`/`simulation/LAYOUT_B_477_481_REVIEW.md`, preserve normal
+run/save and archive originals immediately, then compare procedure-specific
+exit errors and later tracking separately. No ToF sweep/test requested.
+
+Seven ToF, seven batch and 16 pose tests pass; 102 hashes verified. No local
+firmware change/build/upload, commit or push in this refresh.
+
 ## 2026-10-06: offline ToF assessment, driving unchanged
 
 Added tracked `simulation/analyze_parking_exit_tof.py` to the unchanged batch
@@ -10066,3 +10098,82 @@ an original TXT log, verify trace display and save/reopen an HTML report. Keep
 working reports under `local_workspace/robot-run-inspector/` for repo work;
 preserve original logs using existing evidence requirements. Physical firmware
 validation next steps from the previous entry remain unchanged.
+
+## 2026-10-06: log481 complete-recorded-run image
+
+Created ignored `local_workspace/parking-exit-analysis-all/20261006_log_481_ccw_txt_whole_run.png`
+and matching SVG using `local_workspace/visualize_log_481.py`; visually checked PNG.
+Source is unchanged archived log481, SHA-256
+`062533137a19d5d966c09d1d0684d8378bfb36deb7811d2b854f5267f6c8e399`.
+Single image includes field context, exit/localization estimates, correction,
+scan endpoints and untraveled accepted connector. Log stops at first connector
+command (-42.037deg vs42deg); no completed lap. Scan intermediate trajectory
+is unavailable; dotted endpoint link is explicitly not reconstructed travel.
+Rear positioning stays in a separate local frame, summarized as47.8mm forward.
+No firmware/source telemetry changed. Next: use fresh normal full-run logs for
+later-field visualization; do not extend log481 with simulated traveled laps.
+
+## 2026-10-06: newest successful-run visualization (476)
+
+Selected latest archived successful run476 CCW (layoutA): connector completion
+and three-lap finish recorded; batch physical report contact-free. Source SHA256
+`3afa8b91c000c15b9f44d5fd9c81ef090c6a028b31b14bf2dfe8a5596eebef2f` verified.
+Generated/visually checked ignored `local_workspace/parking-exit-analysis-all/20261006_log_476_ccw_txt_whole_run.png`
+and SVG via `local_workspace/visualize_log_476.py`. Overview has51 sparse lap1
+pose records and88 tracking samples each in laps2/3, plus detailed exit/scan/
+connector view. Scan intermediate path is unavailable; endpoint link marked.
+Latest successful evidence is not validation of current candidate or layoutB.
+No firmware/log edits. Next: regenerate from fresh successful normal-run logs
+when available; preserve sampling gaps and distinguish plan from traveled pose.
+
+## 2026-10-06: reusable whole-run images with mapped pillars
+
+Added `simulation/visualize_robot_run.py`, usage in
+`simulation/ROBOT_RUN_VISUALIZATION.md`, and optional batch `--whole-run-images`.
+Generates per-session SVG/PNG under ignored working output; parses only accepted
+map/avoidance/stored-start colors, uses nominal CW/CCW seats, labels seat IDs.
+Log476 has6 mapped pillars;481 has1. Regenerated both views and visually checked.
+Source SHA256 remains476 `3afa8b91c000c15b9f44d5fd9c81ef090c6a028b31b14bf2dfe8a5596eebef2f`,
+481 `062533137a19d5d966c09d1d0684d8378bfb36deb7811d2b854f5267f6c8e399`.
+Five visualization tests cover mirrored geometry, rejected projections, maps,
+session isolation and batch artifact/source preservation; seven batch tests pass.
+Matplotlib required only for these optional views. Maps are not physical truth;
+symbols are not scaled footprints, scan links are endpoints only and lap1 stays
+sparse. No firmware changes/build. Next: run documented command for fresh logs;
+version the offline seat geometry if future firmware changes it. Pre-existing
+unrelated working changes are preserved separately from the visualization commit.
+
+## 2026-10-06: owner clarifies commit workflow
+
+Owner requests prepared changes only, with future upstream updates pulled before
+committing. Removed agent-created local visualization commit55819d3 using mixed
+reset; all visualization files and pre-existing edits remain in the working tree,
+unstaged. HEAD restored to718d310. No push occurred. Do not commit these changes
+without a new explicit owner instruction; preserve them during the future pull.
+
+## 2026-10-08: upstream pull with prepared changes preserved
+
+Fetched and fast-forwarded718d310 to45e173d (three commits: final parking,
+later-lap smoothing, offline Robot Run Inspector). Incoming archive adds complete
+logs482-507; evidence metadata and physical validation details remain upstream.
+Restored all prepared diagnostics/visualization work and untracked files; resolved
+only AGENT_DOCUMENTATION append conflict by retaining both histories. Changes
+remain unstaged/uncommitted; backup stash retained. HEAD matches origin/main.
+Five visualization tests and seven batch tests pass after integration. No local
+firmware build/upload, new commit or push. Existing ignored images were preserved,
+not regenerated against new logs. Next: inspect new run reviews/current firmware
+coverage before regenerating images or analyzing final parking. Commit only on
+new explicit owner instruction.
+
+## 2026-10-08: prepared offline visualization/diagnostic commit
+
+Reviewed the restored changes against45e173d. Commit scope: whole-run SVG/PNG
+program with accepted pillar maps, optional batch generation, visualization tests,
+first-edge grouping regression, coverage documentation and durable history.
+Marked the parking-plan99-source counts as the Oct6 snapshot; incoming482-507
+are not claimed analyzed by those counts. Five visualization/seven batch tests
+passed after integration; no source changes since that validation (documentation
+clarification only). Generated outputs stay ignored; firmware is unchanged.
+Staged these prepared files and saved proposed message under
+`local_workspace/prepared-commit-message.txt`. Owner asked to prepare only:
+no commit/push. Next: inspect staged diff, then commit only on explicit instruction.

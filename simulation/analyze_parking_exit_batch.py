@@ -65,7 +65,8 @@ def discover_sources(directory: Path) -> tuple[list[Path], list[tuple[str, str]]
     return selected, duplicates
 
 
-def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
+def generate(source_dir: Path, output_dir: Path,
+             whole_run_images: bool = False) -> tuple[int, int, int]:
     source_dir = source_dir.resolve()
     output_dir = output_dir.resolve()
     if output_dir == source_dir or source_dir in output_dir.parents:
@@ -73,6 +74,10 @@ def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
     paths, duplicates = discover_sources(source_dir)
     sessions, rows = analyzer.analyze(paths)
     analyzer.write_report(sessions, rows, output_dir)
+    if whole_run_images:
+        from visualize_robot_run import render
+        for session in sessions:
+            render(session, output_dir)
     tof_analyzer.write_assessment(sessions, output_dir, observed_procedure)
     groups: dict[tuple[tuple[str, str], ...], list[analyzer.ParsedLog]] = {}
     for session in sessions:
@@ -121,6 +126,12 @@ def generate(source_dir: Path, output_dir: Path) -> tuple[int, int, int]:
                      "Plots are onboard rear-axle pose estimates, not measured "
                      "clearance or a proposed robot path. Check physical outcomes "
                      "in the evidence README.\n")
+        if whole_run_images:
+            handle.write("\n## Whole-run images with recorded pillars\n\n")
+            for session in sessions:
+                safe_name = ''.join(c if c.isalnum() else '_' for c in session.label)
+                handle.write(f"- `{session.label}`: [SVG]({safe_name}_whole_run.svg) "
+                             f"/ [PNG]({safe_name}_whole_run.png)\n")
         handle.write("\nAdded [offline ToF assessment](parking_exit_tof_assessment.md) "
                      "and [unique observations](parking_exit_tof_observations.csv). "
                      "Existing route/braking/reversal outputs remain available. "
@@ -153,9 +164,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCES)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--whole-run-images", action="store_true",
+                        help="Also create SVG/PNG full-run views with mapped pillars (requires matplotlib)")
     args = parser.parse_args()
     try:
-        files, sessions, duplicates = generate(args.source_dir, args.output_dir)
+        files, sessions, duplicates = generate(args.source_dir, args.output_dir,
+                                               args.whole_run_images)
     except (OSError, ValueError, KeyError) as error:
         parser.exit(1, f"Parking-exit batch analysis failed: {error}\n")
     print(f"Analyzed {files} complete files ({sessions} sessions); "
