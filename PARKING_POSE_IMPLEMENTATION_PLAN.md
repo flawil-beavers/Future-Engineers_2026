@@ -157,10 +157,21 @@ New logs remain archived unchanged with hashes and physical reports. Analyse
 current procedures separately; retain gyro/encoder integration and defer active
 ToF correction because residual agreement does not establish absolute accuracy.
 
-The analyzed snapshot contains 99 complete sources / 100 sessions, with 87 completed,
+The refreshed Oct8 snapshot contains 125 complete sources / 126 sessions, with 113 completed,
 untruncated exits. Compare revisions through `parking_exit_batch.md` under
 `local_workspace/parking-exit-analysis-all/`; physical setup/outcome and exact
 source hashes remain in the evidence README.
+
+New complete logs 482-507 all record completed/untruncated exits (15 CW short,
+11 CCW first-edge starts). Later route/discovery/final-parking outcomes are
+separate. New rear-motion agreement remains insufficient to identify backlash
+or justify changing centre80. Latest 506/507 contain sampled final-parking traces:
+506 stays in approach with gyro interruptions; 507 misses the early first-piece
+return and aborts marker scanning. These pre-fix logs do not validate current
+firmware. See the evidence README and
+`simulation/LAYOUT_B_C_FINAL_PARKING_506_507_REVIEW.md`; preserve normal runs/save.
+Whole-run overviews currently omit FINAL_PARK_TRACE; use the separate sampled
+final-parking plots rather than treating the overview as complete travel.
 
 The incoming `718d310` snapshot has complete logs 455-481 (the full 455/456 sources
 now replace excerpt-only availability). Procedure coverage: 13 CW short starts,

@@ -1,5 +1,86 @@
 # Agent documentation and engineering handoffs
 
+## 2026-10-08: three-way exit accuracy comparison, runs482-507
+
+Follow-up common-stage CCW comparison: before/after localization vs nearest
+prior nominal XY mean19.34/22.03 mm, SD5.08/2.72; signed X/Y changes from
++14.43/-12.55 to-3.63/-20.60 mm. Nominal sample149-153ms earlier, with0.1-2.6mm
+odometry movement: approximate endpoint comparison. Larger nominal disagreement
+after correction is not evidence of worse physical accuracy. Working JSON
+localization_vs_nominal.json records per-run values; no firmware/control change.
+
+15 CW/11 CCW: raw odometry endpoint SD X/Y3.24/10.69 and2.63/9.37 mm;
+settled heading mean/SD+1.27/1.22 and-0.44/0.74deg. Initial pose remains
+ToF-seeded; these are estimator repeatability, not physical absolute accuracy.
+CW exits skip edge-X localization; ten applied pink-end Y corrections span
+-4.5..+11.8 mm. CCW edge/wall corrections after short reverse mean X-18.05
+(SD5.54), Y-8.05(SD2.37), XY19.98(SD5.29) mm. They include reverse motion,
+not just the arcs. Individual source/build identities and hashes remain in the
+tracked evidence README; latest originals506/507 hashes in the entry below.
+
+Last exit sample vs logged nominal XY mean28.43/18.06 mm, SD8.77/6.61,
+range11.06-45.68/7.78-28.44 (CW/CCW). Nominal integrates command curvature
+over actual encoder travel; it is not an independent fixed-target trajectory.
+Last sample need not be settled. Fifth actual travel mean142.78/162.60 vs155 mm
+target is compatible with gyro termination, not automatically distance error.
+
+Working comparison/CSV/JSON under local_workspace/parking-exit-new-runs-482-507;
+helper compare-exit-accuracy.py ignored. Next prioritize side/direction-specific
+curvature model and passive endpoint reference checks, keeping gyro alignment,
+centre80 and unchanged movement/save. CW Y alone cannot confirm XY; physical
+accuracy and backlash remain unidentified. No firmware edit, commit or push.
+
+## 2026-10-08: reanalysis of new runs 482-507 at ab58250
+
+All 26 new complete sources have untruncated exit-complete diagnostics: 15 CW
+short starts, 11 CCW first-edge starts. Current archive: 125 complete sources /
+126 sessions, 113 completed untruncated exits; 128 originals/excerpts verified
+against README SHA-256 and Git tracking. New-run build markers span parking
+Oct6_20:56:49 to23:10:22; 506/507 connector Oct6_23:10:00. They do not validate
+current ab58250 firmware. Per-source identities/physical reports remain in
+`simulation/evidence/parking_exit_diagnostics/README.md`; original logs unchanged.
+
+New CW rear-motion median encoder-minus-ToF +1.51 mm / SD1.81 / max5.34
+(17 moves, one reverse); CCW +0.51 / SD3.42 / max11.35 (12 moves, no reverse).
+Backlash remains unidentified; keep servo centre80. Pooled exploratory centre
+80.87 with approach candidates79.78/81.60 is not a new calibration. Post-exit
+contact/discovery/connector failures must not be counted as exit failures.
+
+New-run ToF tuples: 5,207 logged, 1,102 nominal-model eligible. Black-wall-only
+raw residual SD: CW arcs11.28 mm (278 samples, incidence0.1-31.3deg), CCW
+arcs64.44 mm (306,0-63.1deg), CCW localization2.29 mm (14,0.2-2.3deg).
+Configurations/distances vary; these pooled figures are not pure angle effects
+or sensor accuracy. Large CCW arc discrepancies despite clear predicted fans
+show geometry eligibility is insufficient for active corrections; pose/target
+association errors remain possible. No automatic ToF localization change.
+Example502 right sensor: raw142 mm vs predicted589.6 at63.1deg, reported sigma
+2.2 mm. Low sigma alone does not establish that the observed target is the wall.
+
+Latest CW506/507 physically report three good laps, failed final parking.
+507 missed first piece before old scan arm, then aborted dual-marker scan;
+170-180 mm longitudinal offset is geometry inference, not external pose truth.
+506 remains approach-only with seven gyro timeouts (whole-log count); no entry.
+Both include sampled FINAL_PARK_TRACE (45/125 records), lacking full quality/
+target association. Large raw/expected differences include markers/obliquity,
+not sensor-noise statistics. Existing upstream fixes still need fresh powered
+validation; do not weaken gyro/clearance gates or add a ToF sweep.
+
+Latest originals: `20261007_log_506_cw.txt` SHA-256
+`2bad3c0f62f139db45830406250f5ad0282a829b9129ef1e368bcd613d2f8446`;
+`20261007_log_507_cw.txt` SHA-256
+`e5b798e7e8a1b7327cc78064b2b607fcf286768bf268df673f219f51d4032fd1`.
+Ignored refreshed batch/ToF reports are under parking-exit-analysis-all; new-run
+summary and sampled final-parking plots under parking-exit-new-runs-482-507,
+all below local_workspace. Working helper analyze-new-runs-482-507.py is ignored.
+Current whole-run viewer omits FINAL_PARK_TRACE, so its overview does not show
+final parking; separate sampled plots explicitly retain that distinction.
+
+16 pose, seven ToF, seven batch and five visualization tests pass. No firmware
+edit/build/upload, commit or push. Next: current M7 normal B CW twice through
+parking, then C CW/CCW as upstream review specifies; archive complete originals
+and physical containment/contact/hold reports before interpretation. Compare
+exit procedures separately; investigate repeated gyro holds independently.
+
 ## 2026-10-06: refreshed incoming diagnostics at 718d310
 
 Checkout already contained three incoming commits and matched origin/main after
