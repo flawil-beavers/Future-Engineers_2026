@@ -2454,8 +2454,11 @@ void preserveLaterLapSeam(PathPoint *route)
     }
 }
 
-bool laterLapRouteSafe(const PathPoint *route)
+bool laterLapRouteSafe(const PathPoint *route,
+                       float *minimumWall = nullptr, float *minimumPillar = nullptr)
 {
+    if (minimumWall) *minimumWall=INFINITY;
+    if (minimumPillar) *minimumPillar=INFINITY;
     if (pathLength < 3)
         return false;
     // Check the physical pose implied by each route tangent, including the
@@ -2499,6 +2502,9 @@ bool laterLapRouteSafe(const PathPoint *route)
                 Serial.print("/"); Serial.println(sample.pillarMm, 1);
                 return false;
             }
+            if (minimumWall) *minimumWall=fminf(*minimumWall,sample.wallMm);
+            if (minimumPillar && seats[seatIndex].confirmed)
+                *minimumPillar=fminf(*minimumPillar,sample.pillarMm);
         }
     }
     return true;
@@ -2666,6 +2672,100 @@ void carryKnownInnerLaneToMiddle(PathPoint *route)
     }
 }
 
+float laterLapBending(const PathPoint *route, float &length, float &peak)
+{
+    length=peak=0.0f;
+    float bending=0.0f;
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        const uint16_t p=(i+pathLength-1)%pathLength,n=(i+1)%pathLength;
+        const float a=hypotf(route[i].x-route[p].x,route[i].y-route[p].y);
+        const float b=hypotf(route[n].x-route[i].x,route[n].y-route[i].y);
+        length+=b;
+        if(a<1.0f || b<1.0f)continue; // coincident lap-seam point
+        const float h1=atan2f(route[i].y-route[p].y,route[i].x-route[p].x);
+        const float h2=atan2f(route[n].y-route[i].y,route[n].x-route[i].x);
+        const float turn=wrap180((h2-h1)*180.0f/PI)*PI/180.0f;
+        const float ds=0.5f*(a+b);
+        bending+=turn*turn/ds;
+        peak=fmaxf(peak,fabsf(turn)/ds);
+    }
+    return bending;
+}
+
+// Small shape changes after the map is complete. Keep pillar passing policy,
+// lap seam and metadata intact; reject any shortcut losing useful reserve.
+void smoothKnownLaterLapRoute(PathPoint *route, PathPoint *rollback,
+                             float oldWall, float oldPillar)
+{
+    memcpy(rollback,route,sizeof(PathPoint)*pathLength);
+    float oldLength,oldPeak;
+    const float oldBending=laterLapBending(route,oldLength,oldPeak);
+    constexpr float weights[]={1,4,6,4,1};
+    for(uint8_t pass=0;pass<4;++pass)
+    {
+        memcpy(smoothingBuffer,route,sizeof(PathPoint)*pathLength);
+        for(uint16_t i=0;i<pathLength;++i)
+        {
+            const float seam=fminf(baselinePath[i].distanceMm,
+                loopLengthMm-baselinePath[i].distanceMm);
+            const float keep=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
+            if(seam<=keep)continue;
+            // Fade the refinement in over 150 mm; avoid a new kink at the
+            // protected seam boundary. Symmetric stencil has no directional bias.
+            float fade=clampFloat((seam-keep)/150.0f,0.0f,1.0f);
+            fade=fade*fade*(3.0f-2.0f*fade);
+            // Leave the actual pillar-passing plateau intact. Refine its
+            // approach/exit only, with a gradual transition outside 150 mm.
+            for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+            {
+                if(!seats[seat].confirmed)continue;
+                const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,
+                    baselinePath[i].distanceMm);
+                const float distance=fminf(ahead,loopLengthMm-ahead);
+                float retain=clampFloat((distance-150.0f)/150.0f,0.0f,1.0f);
+                retain=retain*retain*(3.0f-2.0f*retain);
+                fade=fminf(fade,retain);
+            }
+            float x=0,y=0;
+            for(int k=-2;k<=2;++k)
+            {
+                const uint16_t j=(i+pathLength+k)%pathLength;
+                x+=weights[k+2]*smoothingBuffer[j].x/16.0f;
+                y+=weights[k+2]*smoothingBuffer[j].y/16.0f;
+            }
+            x=smoothingBuffer[i].x+0.5f*fade*(x-smoothingBuffer[i].x);
+            y=smoothingBuffer[i].y+0.5f*fade*(y-smoothingBuffer[i].y);
+            const float dx=x-rollback[i].x,dy=y-rollback[i].y;
+            const float shift=hypotf(dx,dy);
+            // Smooth saturation avoids a new kink where the displacement
+            // limit becomes active; shift*scale is always below that limit.
+            const float relative=shift/OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM;
+            const float scale=1.0f/sqrtf(1.0f+relative*relative);
+            route[i].x=rollback[i].x+scale*dx;
+            route[i].y=rollback[i].y+scale*dy;
+        }
+    }
+    float length,peak,wall,pillar;
+    const float bending=laterLapBending(route,length,peak);
+    const bool accept=length<=oldLength+0.1f && bending<oldBending*0.98f &&
+        peak<=oldPeak+1e-7f && laterLapRouteSafe(route,&wall,&pillar) &&
+        wall>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
+        pillar>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
+        wall>=oldWall-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM &&
+        pillar>=oldPillar-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM;
+    if(!accept)
+    {
+        memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+        Serial.println("[LAPS] Smoothing rejected; checked prior shape retained");
+        return;
+    }
+    Serial.print("[LAPS] Smooth route length_before_after_mm=");
+    Serial.print(oldLength,1);Serial.print('/');Serial.print(length,1);
+    Serial.print(" bending_reduction_pct=");
+    Serial.println(100.0f*(oldBending-bending)/fmaxf(oldBending,1e-9f),1);
+}
+
 bool buildOptimizedPath()
 {
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
@@ -2696,19 +2796,20 @@ bool buildOptimizedPath()
     PathPoint beforeLaneCarry[OBSTACLE_MAX_PATH_WAYPOINTS];
     memcpy(beforeLaneCarry, optimizedPath, sizeof(PathPoint)*pathLength);
     carryKnownInnerLaneToMiddle(optimizedPath);
-    bool routeSafe = laterLapRouteSafe(optimizedPath);
+    float routeWall=INFINITY,routePillar=INFINITY;
+    bool routeSafe = laterLapRouteSafe(optimizedPath,&routeWall,&routePillar);
     if (!routeSafe)
     {
         memcpy(optimizedPath, beforeLaneCarry, sizeof(PathPoint)*pathLength);
         Serial.println("[LAPS] Inner-lane shortcut rejected; prior optimized route retained");
-        routeSafe = laterLapRouteSafe(optimizedPath);
+        routeSafe = laterLapRouteSafe(optimizedPath,&routeWall,&routePillar);
     }
     if (!routeSafe)
     {
         // A complete map does not automatically establish a safe new shape.
         // Keep the learned route only if the same geometric gates accept it.
         memcpy(optimizedPath, livePath, sizeof(PathPoint) * pathLength);
-        if (!laterLapRouteSafe(optimizedPath))
+        if (!laterLapRouteSafe(optimizedPath,&routeWall,&routePillar))
         {
             laterLapPlanRejected = true;
             Serial.println("[LAPS] Both later-lap and learned routes rejected - held");
@@ -2716,6 +2817,8 @@ bool buildOptimizedPath()
         }
         Serial.println("[LAPS] Later-lap shape rejected; using checked learned route");
     }
+    if(sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL)
+        smoothKnownLaterLapRoute(optimizedPath,beforeLaneCarry,routeWall,routePillar);
     recomputeSpeedProfile(optimizedPath);
     optimizedBuilt = true;
     // Lap-1 passage reports have already consumed their injection snapshots.

@@ -10005,3 +10005,37 @@ containment, pink clearance, FINAL PARK SCAN/RESULT and SENSOR HOLD if stopped.
 Archive complete originals first. Normal runs/log saving only; no dedicated
 ToF sweep, extra movements or pauses. If gyro holds recur, investigate those
 as a separate health failure rather than weakening parking clearance gates.
+
+## 2026-10-08: conservative smoothing of learned laps 2/3
+
+User requested rounder learned routes with reliability prioritized. Added
+`smoothKnownLaterLapRoute` after existing optimized-map construction/preflight,
+official mode only. Four symmetric passes, smooth saturation below6 mm total
+shift, unchanged400 mm seam region and150 mm pillar plateaus, with gradual
+fades. Reuse existing scratch/rollback buffers; no new array/RAM allocation.
+Candidate must shorten/nonlengthen, reduce discrete bending>=2%, not increase
+peak curvature, pass full footprints, keep>=30 mm sampled geometry reserve
+and lose<=1 mm of original wall/pillar minima. Otherwise restore the checked
+old route; no new hold state. Speed/acceleration limits and first-lap discovery
+are unchanged. Same selected route is used for both later laps.
+
+Production comparison helper `simulation/measure_later_lap_smoothing.py`
+rebuilds the baseline by disabling only the new refinement. Working reports
+stay ignored. Final 2807 state/CAD pursuit cases pass (counts include repeated
+speed labels, not all possible complete fields); simulated minimum wall80.281,
+pillar36.306 mm. 1406 cases improve: mean20.21 mm/lap shorter, bending measure
+5.90% lower, no peak-curvature increase. Physical-map predictions: A_CCW
+22.25 mm/3.27%; B_CW19.11 mm/7.68%; C_CCW22.20 mm/5.84%. A_CW/B_CCW/C_CW
+retain previous routes. Bending is path geometry, not measured steering jerk.
+Parking regressions:2970 approaches pass,162 entry checks include six safe
+off-nominal rejections/allnominal pass;396 complete sequences all contained,
+no collisions/false finishes;five registration checks pass. No new robot logs.
+
+Final IDE M7-only SUCCESS RAM432880/523624,flash502680/786432; SHA-256
+`30b47894838f0e0a425d87a2e81214b781bacde8bd2bcb4b7fe56d54b344ccb4`.
+No M4 change, upload or agent commit. Review:
+`simulation/LATER_LAP_SMOOTHING_REVIEW.md`. Model omits slip, servo/braking lag,
+real sensor errors; prior pre-scan pose/gyro limitations remain unresolved.
+Next: user uploads M7, B2CW+C2CCW allthree laps+parking, observe transitions
+and margins particularly lap2/3. Archive complete originals first, normal
+runs/log saving only. Compare smoothing acceptance record with observations.

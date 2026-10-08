@@ -1176,6 +1176,11 @@ constexpr auto OBSTACLE_LATER_LAP_OUTER_PLATEAU_WAYPOINTS = 3;
 // Model reserve for a sampled later-lap route; physical acceptance still
 // requires driving logs. Existing pursuit steering limit remains unchanged.
 constexpr auto OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM = 5.0f;
+// Optional lap-2/3 shape refinement: small changes only; protect the entire
+// seam blend and keep the measured geometric reserve within 1 mm of before.
+constexpr auto OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM = 6.0f;
+constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM = 30.0f;
+constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM = 1.0f;
 // The first member of the worst adjacent outer-seat reversal needs more than
 // the former 160 mm reduced value. Log_84 measured -6 mm ToF wheel clearance
 // at 160 mm while about 242 mm remained to the opposite wall. Request 200 mm to

@@ -48,7 +48,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
         'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)\n{',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
-        'void carryKnownInnerLaneToMiddle(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
+        'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
