@@ -10258,3 +10258,37 @@ clarification only). Generated outputs stay ignored; firmware is unchanged.
 Staged these prepared files and saved proposed message under
 `local_workspace/prepared-commit-message.txt`. Owner asked to prepare only:
 no commit/push. Next: inspect staged diff, then commit only on explicit instruction.
+
+## 2026-10-08: whole-run visualization integrated into Inspector
+
+Inspector1.1 now renders field and parking/connector/final-parking detail inside
+the self-contained offline HTML, with accepted nominal pillar seats and separate
+phase/lap traces. Browser-native SVG needs no Python/Matplotlib/network. SVG
+save and standalone HTML export include the selected session's view. Missing
+scan travel stays dotted, discovery poses stay points, local rear poses excluded;
+time gaps/resets and explicit parking corrections split physical trace lines.
+Unknown/ambiguous direction omits pillars. Symbols are not scaled footprints.
+14 parser/visualization regressions pass, including all125 archived complete
+logs; DOM tests cover import/session isolation/SVG and HTML export. Headless
+Chrome rendering of actual log476 combined SVG visually checked. Full native
+app interaction unavailable (Computer Use runtime failure); existing launch
+workflow unchanged. No firmware change/build, commit or push. Updated prepared
+commit scope/staging and message to include Inspector integration. Next owner
+review staged changes, open HTML and import chosen original, then commit only
+on explicit instruction. Preserve generated previews under local_workspace.
+
+## 2026-10-08: switchable Inspector field underlay
+
+Inspector1.2 adds default-on schematic SVG field layer: outer/inner field,
+corner regions, section boundaries, numbered station centers, south-frame
+parking bay and logged-direction arrows. Direction-dependent section labels
+follow CW/CCW; unknown direction omits arrows. Telemetry/pillars remain separate
+when hidden. SVG and HTML exports honor the toggle. Rules PDF January15_2026
+and official Q&A rechecked from canonical links; underlay uses project geometry,
+not an exact mat artwork or independently surveyed physical layout.
+15 parser/visualization regressions pass (125 original logs); DOM checks cover
+toggle/pillar persistence and both export settings. Browser-rendered log476
+underlay visually checked; adjusted outer border and shortened start label.
+No firmware/build, commit or push. Updated staged Inspector changes only.
+Next owner opens updated HTML, imports original and reviews field toggle before
+committing on explicit instruction. Generated QA previews stay ignored.

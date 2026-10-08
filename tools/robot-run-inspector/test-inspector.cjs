@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '../..');
 const html = fs.readFileSync(path.join(__dirname, 'Robot Run Inspector.html'), 'utf8');
 const box = {module: {exports: {}}};
 vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], box);
-const {analyzeLog, plotSvg, escapeHtml} = box.module.exports;
+const {analyzeLog, plotSvg, escapeHtml, seatPosition, runGeometry, wholeRunSvg} = box.module.exports;
 let checks = 0;
 function test(label, fn) {fn(); checks++; console.log('PASS ' + label);}
 function fixture(name) {return fs.readFileSync(path.join(root, 'simulation/evidence/parking_exit_diagnostics', name), 'utf8');}
@@ -74,7 +74,40 @@ test('all archived complete logs parse and render', () => {
  const folder = path.join(root, 'simulation/evidence/parking_exit_diagnostics');
  const logs = fs.readdirSync(folder).filter(n => /^\d{8}_log_\d+_(cw|ccw)\.txt$/.test(n));
  assert.ok(logs.length > 100);
- for(const name of logs){const r=analyzeLog(fixture(name),name);for(const s of r.sessions)for(const points of Object.values(s.tracks))assert.ok(!/NaN|Infinity/.test(plotSvg(points)), name);}
+ for(const name of logs){const r=analyzeLog(fixture(name),name);for(const s of r.sessions){for(const points of Object.values(s.tracks))assert.ok(!/NaN|Infinity/.test(plotSvg(points)), name);assert.ok(!/NaN|Infinity/.test(wholeRunSvg(s)),name);}}
  console.log('Archived logs verified: '+logs.length);
+});
+test('combined view matches CW/CCW geometry and accepted maps',()=>{
+ assert.equal(seatPosition(5,1).x,500);assert.equal(seatPosition(5,1).y,-900);
+ assert.equal(seatPosition(11,-1).x,-1100);assert.equal(seatPosition(11,-1).y,500);
+ const a=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
+ assert.equal(runGeometry(a).pillars.length,6);assert.ok(wholeRunSvg(a).includes('G17'));
+ const b=analyzeLog(fixture('20261006_log_481_ccw.txt')).sessions[0];
+ assert.equal(runGeometry(b).pillars.length,1);assert.equal(runGeometry(b).pillars[0].seat,5);
+});
+test('combined view isolates runs, rejects sightings and keeps local rear poses out',()=>{
+ const r=analyzeLog('[OC] New obstacle run\n[PARK_DIAG_CONFIG] turn=1\n[PARK_DIAG] type=sample state=rear_drive pose=0,0,0\n[RED SEAT] decision=outside_snap nearest/error=9/151 accepted=-1\n[MAP] Confirmed S0 station=2 side=LEFT color=GREEN\n[OC] New obstacle run\n[PARK_DIAG_CONFIG] turn=-1');
+ assert.equal(runGeometry(r.sessions[0]).pillars.length,1);assert.equal(runGeometry(r.sessions[0]).series.length,0);
+ assert.equal(runGeometry(r.sessions[1]).pillars.length,0);
+ const unknown=analyzeLog('[MAP] Confirmed S0 station=2 side=LEFT color=GREEN').sessions[0];
+ assert.equal(runGeometry(unknown).pillars.length,0);
+});
+test('whole-run corrections and time gaps are not solid travel connections',()=>{
+ const r=analyzeLog('[PARK_DIAG_CONFIG] turn=1\n[PARK_DIAG] type=sample state=segment_drive t=10 pose=300,-1300,0\n[PARK_DIAG] type=correction t=15 before=300,-1300,0 after=310,-1300,0\n[PARK_DIAG] type=sample state=segment_drive t=20 pose=310,-1300,0\n[PARK_DIAG] type=sample state=segment_drive t=5000 pose=320,-1300,0').sessions[0];
+ const g=runGeometry(r);assert.equal(g.corrections.length,1);
+ const svg=wholeRunSvg(r);assert.equal((svg.match(/stroke="#1769aa" stroke-width="2.3"/g)||[]).length,6);
+ assert.ok(svg.includes('stroke-dasharray="2 4"'));
+});
+test('field layer toggles independently and respects logged direction',()=>{
+ const r=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
+ const shown=wholeRunSvg(r),hidden=wholeRunSvg(r,{fieldLayer:false});
+ assert.ok(shown.includes('data-layer="field"'));assert.ok(shown.includes('Parkbucht'));
+ assert.equal((shown.match(/data-station=/g)||[]).length,24);
+ assert.ok(shown.includes('data-direction="CCW"'));assert.ok(!shown.includes('data-direction="CW"'));
+ assert.ok(!hidden.includes('data-layer="field"'));assert.ok(hidden.includes('data-seat="17"'));
+ const cw=wholeRunSvg(analyzeLog(fixture('20261007_log_507_cw.txt')).sessions[0]);
+ assert.ok(cw.includes('data-direction="CW"'));assert.ok(!cw.includes('data-direction="CCW"'));
+ const unknown=wholeRunSvg(analyzeLog('[CONNECTOR_TRACK] t=10 x=2 y=3 h=4').sessions[0]);
+ assert.ok(!unknown.includes('data-direction='));
 });
 console.log(`${checks} regression checks passed.`);
