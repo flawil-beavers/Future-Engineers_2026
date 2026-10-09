@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #include "motor_control.h"
 #include "obstacle_path.h"
 #include "position_estimator.h"
@@ -325,6 +326,7 @@ void abortParking(const char *reason)
     aborted = true;
     Serial.print("[FINAL PARK ABORT] ");
     Serial.println(reason);
+    run_telemetry_finish("aborted",reason);
     robot_logger.write_to_usb();
 }
 
@@ -1214,6 +1216,7 @@ bool final_parking_update(int8_t turn_sign)
         completed = true;
         state = FP_HOLD;
         Serial.println("[FINAL PARK] Complete; motor hold active");
+        run_telemetry_finish("completed","final_parking_stop");
         robot_logger.write_to_usb();
         return true;
     }
@@ -1242,4 +1245,10 @@ void final_parking_sensor_hold()
     ++sensorHoldTraceCount;
     Serial.println("[FINAL PARK SENSOR HOLD] main gyro unhealthy; drive stopped");
     traceParking(true);
+}
+
+const char *final_parking_trace_phase() {
+    static char phase[32];
+    snprintf(phase,sizeof(phase),"final_park_%u",static_cast<unsigned>(state));
+    return phase;
 }

@@ -5,6 +5,7 @@ PDF:
 
 - [Official WRO 2026 season page](https://wro-association.org/competition/2026-season/)
 - [Future Engineers General & Game Rules PDF](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf)
+- [Official Future Engineers Game Mat PDF](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf)
 - [Official WRO Questions & Answers](https://wro-association.org/competition/questions-answers/)
 
 Agents may download the PDF without asking for additional permission whenever
@@ -68,3 +69,11 @@ opposite-direction travel while parking after the three laps. Production now
 checks all body/wheel polygons inside the start straight before the final
 handover, including a 250 mm longitudinal localization reserve. This reserve
 is an engineering assumption, not a rule or an independent position measurement.
+
+2026-10-09 Inspector mat recheck: the official2026 season page links the
+one-page FutureEngineers_Playfield PDF above (legacy internal title retained).
+Source SHA-256 is recorded in tools/robot-run-inspector/assets/fe-2026-mat.json.
+The PDF MediaBox includes5mm bleed per side; its TrimBox is the3200mm square
+mat. Inspector uses the trimmed official artwork with separately drawn nominal
+walls and logged objects. Official Q&A was rechecked; physical placement and
+national adaptations still require their own verification.

@@ -231,3 +231,5 @@ bool obstacle_path_geometry_preflight();
  * parking uses this until the whole body has passed the last start pillar. */
 bool obstacle_path_parking_approach_target(
     float x_mm, float y_mm, float &target_x_mm, float &target_y_mm);
+
+void obstacle_path_log_run_telemetry();

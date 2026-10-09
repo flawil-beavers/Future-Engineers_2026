@@ -47,6 +47,8 @@ def fixture_source():
 #include <iostream>
 constexpr int A0=0,A1=1,A2=2;
 constexpr float PI=3.14159265358979323846f;
+#include "run_telemetry.h"
+bool telemetryRouteDirty=false;
 #include "config.h"
 #include "parking_start_footprint.h"
 @@TYPES@@

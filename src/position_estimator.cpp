@@ -25,6 +25,7 @@
 #include "motor_control.h"
 #include "sensors.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #define Serial robot_logger
 
 // ==========================================
@@ -82,6 +83,7 @@ static float wrap_to_360(float angle)
 
 void position_init(float x, float y, float heading)
 {
+    run_telemetry_pose_change("rebase",pos.x_mm,pos.y_mm,pos.heading_deg,x,y,heading);
     pos.x_mm = x;
     pos.y_mm = y;
     pos.heading_deg = heading;
@@ -222,6 +224,7 @@ void position_apply_xy_correction(float dx_mm, float dy_mm)
     if (!pos_initialized || !isfinite(dx_mm) || !isfinite(dy_mm))
         return;
 
+    if(dx_mm!=0.0f||dy_mm!=0.0f)run_telemetry_pose_change("correction",pos.x_mm,pos.y_mm,pos.heading_deg,pos.x_mm+dx_mm,pos.y_mm+dy_mm,pos.heading_deg);
     pos.x_mm += dx_mm;
     pos.y_mm += dy_mm;
 

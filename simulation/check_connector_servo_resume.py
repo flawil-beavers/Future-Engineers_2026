@@ -34,6 +34,8 @@ def main():
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+void run_telemetry_motion(const char *){}
+bool telemetryRouteDirty=false;
 struct FakeServo { int angle=0, writes=0; void write(int a){angle=a; ++writes;} } servo;
 struct FakeSerial { template<class T> void print(T){} template<class T> void println(T){} } Serial;
 enum {DC_DISABLED, DC_ENABLED, DC_HOLDING, DRIVE_CRUISING,

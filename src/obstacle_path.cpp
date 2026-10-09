@@ -12,6 +12,7 @@
 #include "sensors.h"
 #include "vision.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #include "parking_start_footprint.h"
 #include "ackermann_kinematics.h"
 
@@ -102,6 +103,7 @@ bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT] = {};
 uint16_t pathLength = 0;
 uint16_t progressIndex = 0;
 uint8_t completedLaps = 0;
+bool telemetryRouteDirty = true;
 uint32_t laterTrackingTraceMs = 0;
 uint16_t laterTrackingTraceCount = 0;
 bool parkingStartRoiLogged = false;
@@ -2300,6 +2302,7 @@ void rebuildLivePath()
     joinSameColourStraightEnds(livePath, true);
     roundKnownCornerPairs(livePath, true);
     recomputeSpeedProfile(livePath);
+    telemetryRouteDirty=true;
 }
 
 int8_t earlierExtremeAdjacentSeat(uint8_t seatIndex)
@@ -2860,6 +2863,8 @@ bool completePendingLap()
     lapBoundaryPending = false;
     lapBoundaryHoldLogged = false;
     ++completedLaps;
+    run_telemetry_lap(completedLaps);
+    telemetryRouteDirty=true;
     if (completedLaps == 1 && optimizedBuilt)
     {
         Serial.print("[LAPS] Recorded speed factor/max_mm_s=");
@@ -2919,6 +2924,7 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
     {
         lapCountingArmed=lapBoundaryPending=lapFinishPending=false;
         completedLaps=3; finished=true;
+        run_telemetry_lap(3);
         Serial.println("[PATH] Completed lap 3");
         Serial.println("[LAPS] stage=FINISH; complete vehicle clear of last corner; direct parking");
         return;
@@ -5066,6 +5072,7 @@ ObstacleSectionLayoutMode obstacle_path_section_layout_mode()
 
 void obstacle_path_reset()
 {
+    telemetryRouteDirty=true;
     pathLength = 0;
     progressIndex = 0;
     completedLaps = 0;
@@ -5458,6 +5465,7 @@ void obstacle_path_update(bool new_camera_frame)
                         "[PARK ENTRY CONNECTOR] Replan rejected - drive motor locked off");
                     return;
                 }
+                telemetryRouteDirty = true;
                 parkingEntryConnectorMergeIndex = mergeIndex;
                 parkingEntryConnectorProgress = 0;
                 parkingEntryConnectorReplanPending = false;
@@ -5921,6 +5929,31 @@ void obstacle_path_update(bool new_camera_frame)
         const int station = nearestUpcomingUnresolvedStation(forward);
         if (station >= 0 && forward <= OBSTACLE_DISCOVERY_SLOW_DISTANCE_MM)
             logDiscoveryTrace(station, "approach", false);
+    }
+}
+
+
+void obstacle_path_log_run_telemetry()
+{
+    static const PathPoint *previous=nullptr;
+    static const char *previousKind="none";
+    const PathPoint *points=optimizedBuilt?optimizedPath:livePath;
+    unsigned count=pathLength;const char *kind=optimizedBuilt?"learned":"discovery";
+    const char *phase=finished?"finish_brake":discoveryHolding?"discovery_hold":"driving";
+    bool closed=true;
+    if(parkingEntryConnectorActive){points=parkingEntryConnector;count=parkingEntryConnectorLength;kind="connector";phase="connector";closed=false;}
+    else if(parkingEntryActive){points=parkingEntryPath;count=parkingEntryLength;kind="scan";phase="scan";closed=false;}
+    else if(parkingEntryScouting){phase="scout";count=0;kind="scout_control";closed=false;}
+    else if(parkingEntryObserving||parkingEntryTestHold){phase="scan_hold";count=0;kind="scan_hold_control";closed=false;}
+    else if(cornerViewPhase!=CORNER_VIEW_IDLE){phase="corner_view";count=0;kind="corner_control";closed=false;}
+    char detailedPhase[40];
+    if(parkingEntryActive){snprintf(detailedPhase,sizeof(detailedPhase),"scan_%u",static_cast<unsigned>(parkingEntryDrivePhase));phase=detailedPhase;}
+    else if(parkingEntryScouting){snprintf(detailedPhase,sizeof(detailedPhase),"scout_%u",static_cast<unsigned>(parkingEntryScoutPhase));phase=detailedPhase;}
+    else if(cornerViewPhase!=CORNER_VIEW_IDLE){snprintf(detailedPhase,sizeof(detailedPhase),"corner_%u",static_cast<unsigned>(cornerViewPhase));phase=detailedPhase;}
+    run_telemetry_phase(phase,completedLaps<3?completedLaps+1:3);
+    if(previous!=points||strcmp(previousKind,kind)!=0||telemetryRouteDirty){
+        run_telemetry_route(kind,points,count,sizeof(PathPoint),closed);
+        previous=points;previousKind=kind;telemetryRouteDirty=false;
     }
 }
 

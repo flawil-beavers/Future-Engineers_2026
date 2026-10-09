@@ -106,3 +106,10 @@ coordinates, or validation logs change:
 6. Accept a manoeuvre only after physical testing confirms no prohibited
    contact.
 
+
+## Full-run telemetry
+
+See [RUN_TELEMETRY.md](RUN_TELEMETRY.md) for the bounded M7 telemetry format,
+accepted route revisions, elapsed/lap timing, offline checks and normal CW/CCW
+validation. `check_run_telemetry.py` compiles the actual telemetry writer against
+a cached pose and bounded logger; generated fixtures stay in local_workspace.

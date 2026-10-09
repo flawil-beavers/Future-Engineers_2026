@@ -125,6 +125,7 @@ void obstacle_challenge_update(
 bool obstacle_challenge_active();
 bool obstacle_challenge_complete();
 bool obstacle_parking_exit_active();
+const char *obstacle_parking_exit_trace_phase();
 
 /**
  * @brief Enable/disable a stationary camera/steering test.

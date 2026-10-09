@@ -15,6 +15,7 @@
 #include "final_parking.h"
 #include "mode_manager.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #include "tof_diagnostic_test.h"
 #include "tof_pose_diagnostic.h"
 #define Serial robot_logger
@@ -62,6 +63,8 @@ void loop()
     {
         stop(false);
         final_parking_sensor_hold();
+        run_telemetry_phase("gyro_hold");
+        run_telemetry_tick();
         robot_logger.update();
         return;
     }
@@ -70,6 +73,7 @@ void loop()
     check_stalling();
 
     mode_update();
+    run_telemetry_tick();
     general_debug_print();
     robot_logger.update();
 }

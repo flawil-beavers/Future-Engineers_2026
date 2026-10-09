@@ -48,8 +48,11 @@ public:
      * @brief Clear the RAM log buffer (call on each new run via system_enable()).
      */
     void clear();
+    size_t remaining() const { return LOG_BUFFER_SIZE - 1 - buffer_head; }
+    void reserve_tail(size_t bytes) { tail_reserve = bytes; }
 
 private:
+    size_t tail_reserve = 0;
     static constexpr size_t TERMINAL_TX_BUFFER_SIZE = 4096;
 
     enum LoggerState {

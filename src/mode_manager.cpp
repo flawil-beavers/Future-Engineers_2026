@@ -12,6 +12,8 @@
 #include "motor_min_calibration.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path.h"
+#include "final_parking.h"
 #include "obstacle_path_test.h"
 #include "obstacle_live_test.h"
 #include "obstacle_seat_test.h"
@@ -19,6 +21,7 @@
 #include "position_estimator.h"
 #include "camera_distance_calibration.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #include "reverse_gyro_test.h"
 #define Serial robot_logger
 
@@ -78,6 +81,7 @@ static void stop_mode(RobotMode mode)
         break;
 
     case MODE_OBSTACLE_CHALLENGE:
+        run_telemetry_finish("stopped","mode_exit");
         obstacle_challenge_update(false, false);
         navigation_disable();
         navigation_set_obstacle_mode(false);
@@ -346,6 +350,13 @@ static ModeResult update_active_mode()
     case MODE_OBSTACLE_CHALLENGE: {
         const bool new_camera_frame = updateCameraVision();
         obstacle_challenge_update(system_enabled, new_camera_frame);
+        if(final_parking_active()) {
+            run_telemetry_phase(final_parking_trace_phase(),obstacle_path_lap());
+            run_telemetry_route("final_parking_control",nullptr,0,3*sizeof(float),false);
+        }
+        else if(obstacle_parking_exit_active())
+            run_telemetry_phase(obstacle_parking_exit_trace_phase());
+        else obstacle_path_log_run_telemetry();
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
@@ -465,6 +476,7 @@ void mode_update()
     const bool wait_for_right_turn_cal =
         updated_mode == MODE_TURN_RADIUS_CAL &&
         turn_radius_cal_waiting_for_right();
+    if(updated_mode==MODE_OBSTACLE_CHALLENGE)run_telemetry_finish(result==MODE_RESULT_COMPLETED?"completed":"failed","mode_result");
     stop_mode(updated_mode);
     current_mode = MODE_NONE;
     pending_mode = wait_for_right_turn_cal ? MODE_TURN_RADIUS_CAL : MODE_NONE;
@@ -474,6 +486,7 @@ void mode_pause()
 {
     if (current_mode != MODE_NONE) {
         const RobotMode paused_mode = current_mode;
+        if(paused_mode==MODE_OBSTACLE_CHALLENGE)run_telemetry_finish("stopped","mode_pause");
         // A camera-distance calibration can only start while the pillar is
         // touching the configured robot-front plane. After any movement, a
         // generic resume would establish a false distance origin.

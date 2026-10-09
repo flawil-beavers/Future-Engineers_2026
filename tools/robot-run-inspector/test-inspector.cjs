@@ -1,3 +1,4 @@
+function hasPlan(svg){return /<polyline\b[^>]*stroke="#888"[^>]*stroke-dasharray="6 5"/.test(svg);}
 // Node.js regression tests for the parser delivered inside the offline app.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,9 +8,10 @@ const root = path.resolve(__dirname, '../..');
 const html = fs.readFileSync(path.join(__dirname, 'Robot Run Inspector.html'), 'utf8');
 const box = {module: {exports: {}}};
 vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], box);
-const {analyzeLog, plotSvg, escapeHtml, seatPosition, runGeometry, wholeRunSvg} = box.module.exports;
+const {analyzeLog, plotSvg, escapeHtml, seatPosition, runGeometry, wholeRunSvg, runTimingHtml} = box.module.exports;
 let checks = 0;
 function test(label, fn) {fn(); checks++; console.log('PASS ' + label);}
+function markup(svg){return svg.replace(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g,'embedded-mat');}
 function fixture(name) {return fs.readFileSync(path.join(root, 'simulation/evidence/parking_exit_diagnostics', name), 'utf8');}
 test('507: CW, three laps, gyro failures and exact park abort', () => {
  const r = analyzeLog(fixture('20261007_log_507_cw.txt')).sessions[0];
@@ -74,14 +76,14 @@ test('all archived complete logs parse and render', () => {
  const folder = path.join(root, 'simulation/evidence/parking_exit_diagnostics');
  const logs = fs.readdirSync(folder).filter(n => /^\d{8}_log_\d+_(cw|ccw)\.txt$/.test(n));
  assert.ok(logs.length > 100);
- for(const name of logs){const r=analyzeLog(fixture(name),name);for(const s of r.sessions){for(const points of Object.values(s.tracks))assert.ok(!/NaN|Infinity/.test(plotSvg(points)), name);assert.ok(!/NaN|Infinity/.test(wholeRunSvg(s)),name);}}
+ for(const name of logs){const r=analyzeLog(fixture(name),name);for(const s of r.sessions){for(const points of Object.values(s.tracks))assert.ok(!/NaN|Infinity/.test(plotSvg(points)), name);assert.ok(!/NaN|Infinity/.test(markup(wholeRunSvg(s))),name);}}
  console.log('Archived logs verified: '+logs.length);
 });
 test('combined view matches CW/CCW geometry and accepted maps',()=>{
  assert.equal(seatPosition(5,1).x,500);assert.equal(seatPosition(5,1).y,-900);
  assert.equal(seatPosition(11,-1).x,-1100);assert.equal(seatPosition(11,-1).y,500);
  const a=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
- assert.equal(runGeometry(a).pillars.length,6);assert.ok(wholeRunSvg(a).includes('G17'));
+ assert.equal(runGeometry(a).pillars.length,6);assert.ok(wholeRunSvg(a).includes('>G17</text>'));
  const b=analyzeLog(fixture('20261006_log_481_ccw.txt')).sessions[0];
  assert.equal(runGeometry(b).pillars.length,1);assert.equal(runGeometry(b).pillars[0].seat,5);
 });
@@ -98,16 +100,115 @@ test('whole-run corrections and time gaps are not solid travel connections',()=>
  const svg=wholeRunSvg(r);assert.equal((svg.match(/stroke="#1769aa" stroke-width="2.3"/g)||[]).length,6);
  assert.ok(svg.includes('stroke-dasharray="2 4"'));
 });
-test('field layer toggles independently and respects logged direction',()=>{
- const r=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
- const shown=wholeRunSvg(r),hidden=wholeRunSvg(r,{fieldLayer:false});
- assert.ok(shown.includes('data-layer="field"'));assert.ok(shown.includes('Parkbucht'));
- assert.equal((shown.match(/data-station=/g)||[]).length,24);
- assert.ok(shown.includes('data-direction="CCW"'));assert.ok(!shown.includes('data-direction="CW"'));
- assert.ok(!hidden.includes('data-layer="field"'));assert.ok(hidden.includes('data-seat="17"'));
+test('official mat is shared by both panels with a fixed coordinate transform',()=>{
+ const ccw=wholeRunSvg(analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0]);
  const cw=wholeRunSvg(analyzeLog(fixture('20261007_log_507_cw.txt')).sessions[0]);
- assert.ok(cw.includes('data-direction="CW"'));assert.ok(!cw.includes('data-direction="CCW"'));
- const unknown=wholeRunSvg(analyzeLog('[CONNECTOR_TRACK] t=10 x=2 y=3 h=4').sessions[0]);
- assert.ok(!unknown.includes('data-direction='));
+ for(const svg of [ccw,cw]){
+  assert.equal((svg.match(/data-layer="official-mat"/g)||[]).length,2);
+  assert.equal((svg.match(/data:image\/svg\+xml;base64,/g)||[]).length,1);
+  assert.ok(svg.includes('transform="translate(45 45) scale(0.15625)"'));
+  assert.ok(!svg.includes('data-direction='));assert.ok(!svg.includes('data-station='));
+  assert.ok(svg.includes('data-layer="nominal-walls"'));
+ }
+ assert.ok(!html.includes('fieldLayer'));assert.ok(!html.includes('Spielfeld anzeigen'));
+});
+test('mat remains visible for local-only and missing trajectories without inventing objects',()=>{
+ const r=analyzeLog('[PARK_DIAG] type=sample state=rear_drive t=10 pose=0,0,0').sessions[0];
+ const svg=wholeRunSvg(r);assert.ok(svg.includes('data-layer="official-mat"'));
+ assert.ok(svg.includes('Keine Feldpositionsdaten'));assert.equal(runGeometry(r).series.length,0);
+ assert.ok(!svg.includes('data-layer="parking-barriers"'));assert.ok(!svg.includes('data-seat='));
+});
+test('parking barriers require both placement and gap from this session',()=>{
+ const gap='[PARK EXIT] Prototype footprint length/front/rear/width_mm=165/125/40/135 gap_mm=247.5';
+ const placement='[PARK FIELD START] turn=CW fixed_line_x=500 rear_axle_x_y_heading=393/-1360/180';
+ for(const incomplete of [gap,placement])assert.ok(!wholeRunSvg(analyzeLog(incomplete).sessions[0]).includes('data-layer="parking-barriers"'));
+ const r=analyzeLog(gap+'\n'+placement).sessions[0];assert.equal(runGeometry(r).gap,247.5);assert.equal(runGeometry(r).fixedLine,500);
+ assert.ok(wholeRunSvg(r).includes('data-fixed-line-mm="500" data-gap-mm="247.5"'));
+});
+const telemetryLog=`[OC] New obstacle run
+[PARK_DIAG_CONFIG] turn=1
+[RUN_START] v=1 t=1000 period_ms=250
+[RUN_ROUTE] v=1 t=1000 route=1 base=0 kind=connector count=2 closed=0
+[RUN_ROUTE_POINT] v=1 route=1 index=0 pose=0,-1200,0
+[RUN_ROUTE_POINT] v=1 route=1 index=1 pose=100,-1200,0
+[RUN_ROUTE_END] v=1 route=1
+[RUN_POSE] v=1 t=1000 elapsed_ms=0 phase=connector lap=1 route=1 frame=0 space=local pose=0,0,0
+[RUN_POSE] v=1 t=1250 elapsed_ms=250 phase=connector lap=1 route=1 frame=1 space=field pose=0,-1200,0
+[RUN_ROUTE] v=1 t=1300 route=2 base=1 kind=connector count=2 closed=0
+[RUN_ROUTE_POINT] v=1 route=2 index=1 pose=200,-1200,0
+[RUN_ROUTE_END] v=1 route=2
+[RUN_POSE] v=1 t=1500 elapsed_ms=500 phase=connector lap=1 route=2 frame=1 space=field pose=200,-1200,0
+[RUN_LAP] v=1 t=7000 elapsed_ms=6000 lap=1 lap_ms=6000
+[RUN_END] v=1 t=8000 elapsed_ms=7000 outcome=completed reason=final_parking_stop truncated=0`;
+test('new telemetry separates local coordinates and reconstructs changed route points',()=>{
+ const r=analyzeLog(telemetryLog).sessions[0],t=r.telemetry;
+ assert.equal(t.routes.length,2);assert.equal(t.routes[1].points[0].x,0);assert.equal(t.routes[1].points[1].x,200);
+ assert.equal(runGeometry(r).series[0].points.length,2);
+ assert.ok(Object.keys(r.tracks).some(k=>k.includes('local')));
+ assert.ok(hasPlan(wholeRunSvg(r,{route:'1'})));
+ assert.ok(!hasPlan(wholeRunSvg(r,{route:'none'})));
+});
+test('completion and lap durations include the entire elapsed interval',()=>{
+ const r=analyzeLog(telemetryLog).sessions[0];
+ assert.ok(runTimingHtml(r).includes('7.000 s'));assert.ok(runTimingHtml(r).includes('6.000 s'));
+ assert.ok(runTimingHtml(r).includes('Gesamtzeit'));
+ const partial=analyzeLog(telemetryLog.split('[RUN_END]')[0]).sessions[0];
+ assert.ok(runTimingHtml(partial).includes('unbekannt'));assert.ok(!runTimingHtml(partial).includes('Gesamtzeit'));
+ const stopped=analyzeLog(telemetryLog.replace('outcome=completed','outcome=stopped')).sessions[0];
+ assert.ok(runTimingHtml(stopped).includes('unbekannt'));assert.ok(runTimingHtml(stopped).includes('stopped'));
+});
+test('missing route bases and unfinished route transactions are never drawn',()=>{
+ const missing=analyzeLog(telemetryLog.replace('[RUN_ROUTE_END] v=1 route=1','')).sessions[0];
+ assert.equal(missing.telemetry.routes.length,0);
+ const incomplete=analyzeLog(telemetryLog.replace('[RUN_ROUTE_END] v=1 route=2','')).sessions[0];
+ assert.equal(incomplete.telemetry.routes.length,1);
+ assert.ok(!hasPlan(wholeRunSvg(incomplete)));
+});
+test('truncated telemetry, old logs and excerpts preserve unknown completion',()=>{
+ const truncated=analyzeLog(telemetryLog.replace('truncated=0','truncated=1')).sessions[0];
+ assert.ok(runTimingHtml(truncated).includes('Telemetrie begrenzt'));
+ const old=analyzeLog('[CONNECTOR_TRACK] t=1000 x=1 y=2 h=3\n[CONNECTOR_TRACK] t=2500 x=2 y=3 h=4').sessions[0];
+ assert.ok(runTimingHtml(old).includes('1.500 s'));assert.ok(runTimingHtml(old).includes('unbekannt'));
+ const excerpt=analyzeLog(telemetryLog,'log_excerpt.txt').sessions[0];
+ assert.ok(!runTimingHtml(excerpt).includes('Gesamtzeit'));
+ const footer=analyzeLog('[RUN_END] v=1 t=8000 elapsed_ms=7000 outcome=completed').sessions[0];
+ assert.ok(!runTimingHtml(footer).includes('Gesamtzeit'));
+});
+test('malformed new pose metadata is safely omitted',()=>{
+ const r=analyzeLog('[RUN_POSE] v=1 t=1000 pose=1,2,3\n[RUN_POSE] v=1 t=1250 phase=driving lap=1 route=1 frame=NaN space=field pose=1,2,3').sessions[0];
+ assert.equal(r.telemetry.poses.length,0);assert.doesNotThrow(()=>wholeRunSvg(r));
+});
+test('log 476 correction uses exact recorded endpoints in field coordinates',()=>{
+ const r=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0],g=runGeometry(r);
+ assert.equal(g.corrections.length,1);
+ assert.equal(g.corrections[0].before.join(','),'380.3,-1184.9,358.01');
+ assert.equal(g.corrections[0].after.join(','),'357.6,-1199.7,358.01');
+ const groups=[...wholeRunSvg(r).matchAll(/<g data-correction-line="\d+">([\s\S]*?)<\/g>/g)];
+ assert.equal(groups.length,2);
+ assert.ok(groups[0][1].includes('points="354.42,480.14 350.88,482.45"'));
+ assert.ok(groups.every(g=>g[1].includes('stroke="#a34ab5" stroke-width="2.3" stroke-dasharray="2 4"')));
+});
+const pose=(t,frame,space='field')=>`[RUN_POSE] v=1 t=${t} phase=driving lap=1 route=1 frame=${frame} space=${space} pose=300,-1300,0`;
+const correction='[RUN_EVENT] v=1 t=15 kind=correction frame=2 before=300,-1300,0 after=310,-1300,0';
+const legacyCorrection='[PARK_DIAG] v=2 type=correction t=17 before=300,-1300,0 after=310,-1300,0';
+test('local or unknown-frame corrections are excluded; rebases never become travel',()=>{
+ const r=analyzeLog('[RUN_START] v=1 t=0\n'+pose(10,0,'local')+'\n'+correction+'\n[RUN_EVENT] v=1 t=18 kind=rebase frame=3 before=300,-1300,0 after=1000,1000,0\n'+pose(20,3)).sessions[0];
+ assert.equal(r.telemetry.corrections[0].space,'local');assert.equal(runGeometry(r).corrections.length,0);
+ assert.ok(!wholeRunSvg(r).includes('data-correction-line='));
+ assert.equal(runGeometry(analyzeLog(correction).sessions[0]).corrections.length,0);
+});
+test('field correction events render without periodic poses and mixed streams deduplicate',()=>{
+ const rebase='[RUN_EVENT] v=1 t=1 kind=rebase frame=1 before=0,0,0 after=300,-1300,0';
+ assert.equal(runGeometry(analyzeLog(rebase+'\n'+correction).sessions[0]).corrections.length,1);
+ const r=analyzeLog(pose(10,1)+'\n'+correction+'\n'+legacyCorrection+'\n'+pose(20,2)).sessions[0];
+ assert.equal(runGeometry(r).corrections.length,1);
+ assert.equal((wholeRunSvg(r).match(/data-correction-line=/g)||[]).length,2);
+});
+test('legacy correction survives missing new events and splits the new solid trajectory',()=>{
+ const r=analyzeLog(pose(10,1)+'\n'+legacyCorrection+'\n'+pose(20,1)).sessions[0];
+ assert.equal(runGeometry(r).corrections.length,1);
+ const svg=wholeRunSvg(r);
+ assert.equal((svg.match(/stroke="#1769aa" stroke-width="2.3"/g)||[]).length,4);
+ assert.ok(/stroke="#a34ab5" stroke-width="3" stroke-dasharray="2 4"/.test(svg));
 });
 console.log(`${checks} regression checks passed.`);

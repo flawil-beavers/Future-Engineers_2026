@@ -10292,3 +10292,92 @@ underlay visually checked; adjusted outer border and shortened start label.
 No firmware/build, commit or push. Updated staged Inspector changes only.
 Next owner opens updated HTML, imports original and reviews field toggle before
 committing on explicit instruction. Generated QA previews stay ignored.
+
+## 2026-10-08: full-run telemetry and Inspector timing
+
+Prepared uncommitted M7 telemetry v1: cached pose every250ms plus phase/motor
+transitions, correction/rebase frames, accepted waypoint route revisions with
+deltas and transaction end markers, lap durations and idempotent run footer.
+Total time includes holds and settling through final stop/parking verification.
+Mode pause cancels the existing challenge and records stopped, not completion.
+No new sensor reads or motion/control changes. Existing diagnostics preserved.
+Logger size unchanged; new sample/route/event budgets64/24/8KiB, ordinary free
+reserve8KiB and protected footer768bytes; truncation explicitly marked. Primitive
+scout/corner/final-park controls clear waypoint overlays rather than inventing
+a plan. Inspector1.3 draws continuous measured estimates across route handovers,
+splits frame changes/gaps, offers accepted revision selection and elapsed/lap
+timing. Legacy/excerpt/missing-start/missing-end/stopped/aborted completion stays
+unknown. Unknown route bases or incomplete transactions are never substituted.
+
+Checks: real telemetry writer host regression PASS (cadence, cached pose, deltas,
+holds, timing, limits, footer and millis wrap); connector/servo regression PASS;
+later-lap model2807 cases/0 failures; final-parking model396 parked/0 failures,
+registration5/0 failures. Inspector20 regressions cover125 complete originals
+and new synthetic records; DOM import/export checks PASS. Chrome-rendered new
+schema timing/SVG visually checked. IDE-managed giga_r1_m7 build PASS; M4 not
+affected/built. RAM433864/523624, flash507168/786432. Firmware SHA256
+DEEF12C7639C87F4C081DFE0053F4EF6A68767758C9FFECE049F9095F061D2E4
+(uncommitted working tree; build artifact remains ignored). No upload, physical
+validation, new evidence batch, commit or push. Details: simulation/RUN_TELEMETRY.md.
+Next owner uploads prepared M7 firmware and performs normal CW/CCW runs; check
+coverage/route transactions/elapsed/lap/end outcomes/truncation against physical
+report. Archive unchanged complete originals and README hashes under
+simulation/evidence/parking_exit_diagnostics/, then append measured findings.
+No dedicated ToF sweep, extra movements or pauses.
+
+## 2026-10-09: official mat replaces schematic Inspector background
+
+Owner requested removal of the earlier Inspector1.2 schematic. Inspector1.4
+removes its hand-drawn field, added stations/labels/arrows and field toggle,
+including old export/toggle tests and documentation. Whole-run plots, logged
+pillars, accepted route selection, full-run telemetry/timing and prepared M7
+changes are preserved. The historical1.2 entry above is superseded by this
+replacement, not erased. No firmware edits/build/upload in this session.
+
+Official2026-season Game Mat PDF is the source; season page/Q&A rechecked.
+Source SHA25672687af113d0af0ec66dc86618449f5dc31e2fd67e58ebd019b89d5d4143744f.
+PDF stays ignored under local_workspace. Tracked SVG/metadata live under
+tools/robot-run-inspector/assets/; build-field-asset.py converts with Poppler,
+checks the source hash, crops PDF TrimBox (5mm bleed removed per side), embeds
+the asset into the offline HTML and records hashes/boxes. Source MediaBox is
+3210mm, trimmed mat3200mm. Full mat maps to +/-1600mm; nominal walls +/-1500
+and +/-500mm. Same artwork/transform in both views; no CW/CCW mirroring.
+Printed seat centres match24 nominal positions within0.6mm. Walls stay nominal;
+parking barriers require this session's fixed_line_x and gap_mm, otherwise
+unknown. Field remains visible without estimates; local poses stay separate.
+White contrast outlines preserve solid estimates/dashed plans above the mat.
+Asset is embedded once per SVG and reused across panels; reports/SVG downloads
+are standalone. Git pins asset SVG line endings to LF for portable byte hashes. HTML is approximately8.6MB due to full official artwork.
+
+Validation: check-field-asset.py PASS (crop, origin, track bounds,24 source-seat
+centres, hashes, offline resources);22 parser/render regressions PASS across125
+complete archived logs; DOM import/session/export/route-choice regressions PASS.
+Chrome-rendered log476 full-field/parking detail, standalone exported SVG and
+exported HTML report panel visually checked (ignored QA copies isolate panel
+to avoid headless scrolling repaint limitation). Report top/timing also checked.
+All generated previews stay ignored. No new robot evidence/physical validation.
+Changes prepared/staged; no commit or push. Next owner opens Inspector1.4 and
+imports normal CW/CCW originals to review actual mat/overlays. Existing normal
+CW/CCW firmware telemetry validation from the previous entry remains pending.
+
+## 2026-10-09: pose-correction plotting audit
+
+Owner requested recheck of "Posekorrektur (keine Fahrt)". Log476's source
+before(380.3,-1184.9) -> after(357.6,-1199.7)mm is plotted correctly:27.1mm
+jump, about4.2pixels in the500px/3200mm whole-field panel. Numeric test asserts
+actual SVG endpoints354.42,480.14 ->350.88,482.45; detail shares same transform.
+Audited140 archived PARK_DIAG correction records; all had prior field evidence.
+Found/fixed new-format edges: local/unknown RUN corrections must not appear on
+the field; legacy correction fallback must survive new poses without new
+events. Merge field events, deduplicate cross-stream copies within10ms and
+0.15mm X/Y rounding, split new solid traces at explicit legacy corrections too.
+Rebases remain frame changes, never drawn travel. Event-only field corrections
+now render. Corrected legend to match dotted correction/dashed plan styles;
+added correction endpoint SVG titles. Legacy scan-endpoint dotted bridge uses
+only preceding corrections; never synthesizes one for full RUN trajectories.
+26 Inspector regressions PASS across125 complete originals plus focused
+coordinate/frame/mixed-stream checks; DOM exports and mat-asset checks PASS.
+Browser-rendered log476 checked. No firmware edits/build/upload, new evidence,
+commit or push. Prepared/staged app/docs/tests only; prior staged work retained.
+Next owner reviews normal CW/CCW imports; physical telemetry validation from
+previous session remains pending.

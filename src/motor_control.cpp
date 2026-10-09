@@ -1,3 +1,4 @@
+#include "run_telemetry.h"
 /**
  * @file motor_control.cpp
  * @brief Motor control subsystem implementation
@@ -757,6 +758,7 @@ void set_acceleration(int acceleration)
 
 void stop(bool hold)
 {
+  run_telemetry_motion(hold ? "hold" : "stop");
   last_speed = current_speed;
   if (!hold)
   {
@@ -805,6 +807,7 @@ void set_speed(int speed)
     cruise_candidate_start_us = 0;
     low_speed_load_compensation_logged = false;
   }
+  run_telemetry_motion(speed == 0 ? "brake" : "drive");
   dc_state = DC_ENABLED;
   target_speed = speed;
   last_speed = speed;

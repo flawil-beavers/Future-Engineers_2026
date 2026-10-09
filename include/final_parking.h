@@ -21,3 +21,5 @@ bool final_parking_aborted();
 bool final_parking_active();
 // Record the main-loop gyro hold without changing its existing stop/recovery.
 void final_parking_sensor_hold();
+
+const char *final_parking_trace_phase();

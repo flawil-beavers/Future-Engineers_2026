@@ -7,6 +7,7 @@
 #include "course_map.h"
 #include "obstacle_path.h"
 #include "logger.h"
+#include "run_telemetry.h"
 #include "position_estimator.h"
 #include "final_parking.h"
 #include "parking_exit_diagnostics.h"
@@ -1307,6 +1308,7 @@ static const char *parkingExitDiagnosticReference()
 
 static bool updateParkingExit()
 {
+    run_telemetry_phase(obstacle_parking_exit_trace_phase());
     if (oc_parking_exit_state != PARKING_EXIT_IDLE &&
         oc_parking_exit_state != PARKING_EXIT_DONE &&
         oc_parking_exit_state != PARKING_EXIT_TEST_HOLD)
@@ -3174,6 +3176,7 @@ void obstacle_challenge_update(
 
         Serial.println(
             "[OC] New obstacle run");
+        run_telemetry_start();
         if (OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED)
         {
             final_parking_start_practice(
@@ -3249,6 +3252,7 @@ void obstacle_challenge_update(
         stop(false);
         oc_complete = true;
         Serial.println("[OC] First-lap test complete - stopped; final parking skipped");
+        run_telemetry_finish("completed","first_lap_stop");
         robot_logger.write_to_usb();
         return;
     }
@@ -3259,6 +3263,7 @@ void obstacle_challenge_update(
         stop(false);
         oc_complete = true;
         Serial.println("[OC] Three-lap test complete - stopped in start section; final parking skipped");
+        run_telemetry_finish("completed","three_lap_stop");
         robot_logger.write_to_usb();
         return;
     }
@@ -3277,6 +3282,14 @@ void obstacle_challenge_update(
     set_steering(0);
     stop(false);
     oc_complete = true;
+    run_telemetry_finish("completed","parking_disabled_stop");
     robot_logger.write_to_usb();
     Serial.println("[OC] Final parking disabled; stopped after three laps");
+}
+
+const char *obstacle_parking_exit_trace_phase()
+{
+    static char phase[32];
+    snprintf(phase,sizeof(phase),"exit_%u",static_cast<unsigned>(oc_parking_exit_state));
+    return phase;
 }

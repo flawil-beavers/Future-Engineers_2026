@@ -124,7 +124,7 @@ size_t USBLogger::write(const uint8_t *buffer, size_t size)
 
 void USBLogger::buffer_char(char c)
 {
-    if (buffer_head < LOG_BUFFER_SIZE - 1) {
+    if (buffer_head < LOG_BUFFER_SIZE - 1 - tail_reserve) {
         log_buffer[buffer_head++] = c;
         log_buffer[buffer_head] = '\0';
     } else {
@@ -138,6 +138,7 @@ void USBLogger::clear()
         return;
 
     buffer_head = 0;
+    tail_reserve = 0;
     buffer_overflow = false;
     log_buffer[0] = '\0';
     session_file_num = -1;

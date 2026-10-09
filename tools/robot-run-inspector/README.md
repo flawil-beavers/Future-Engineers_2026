@@ -90,20 +90,90 @@ Lücken; eine volle Runde wird nicht aus einer Zeichnung behauptet.
 HTML-Bericht enthält sie ebenfalls. Alles wird direkt im Browser erzeugt;
 Python, Matplotlib, Server und Internet sind weiterhin nicht erforderlich.
 
-## Spielfeld-Ebene (Version 1.2)
+## Offizielle FE-Spielmatte (Version 1.4)
 
-`Spielfeld anzeigen` schaltet die schematische SVG-Unterlage ein/aus, ohne
-Pfosten oder Telemetrie auszublenden. Innen-/Außenbereich, Eckabschnitte,
-Abschnittsgrenzen, Stationszentren0/1/2, Parkbucht und Pfeile der protokollierten
-CW/CCW-Richtung liegen im selben Millimeter-Koordinatensystem. Der Startabschnitt
-ist im kanonischen Roboterrahmen immer unten (S0); die übrigen Abschnittsnummern
-folgen der Fahrtrichtung. Bei unbekannter Richtung gibt es keine Richtungspfeile.
-Stationskreise sind Orientierungspunkte, keine zusätzlichen Hindernisse.
-SVG-Download und HTML-Bericht übernehmen die aktuelle Ebeneneinstellung.
+Der Hintergrund verwendet die offizielle Spielmatte, einschließlich der
+blauen/orangen Linien, gedruckten Startfelder, Pfostensitze und Mittelgrafik.
+Die frühere schematische Ebene, Stationsbeschriftungen, Richtungspfeile und
+`Spielfeld anzeigen` wurden entfernt. Der Hintergrund ist immer sichtbar,
+auch ohne Feldpositionsdaten. Lokale Positionen bleiben in der Einzelspur.
 
-Dies ist eine maßhaltige schematische Unterlage der verwendeten Projektgeometrie,
-keine fotografische/identische Wiedergabe der bedruckten Matte und kein Beleg
-für eine vermessene physische Feldplatzierung. Referenzen: `WRO_2026_RULES.md`,
-[offizielle WRO-Regeln](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf)
-(January15_2026) und [offizielle Q&A](https://wro-association.org/competition/questions-answers/),
-am2026-10-08 erneut geprüft. Variable Pfosten bleiben eine getrennte Log-Ebene.
+Quelle: [WRO 2026 FE Game Mat](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf),
+verlinkt auf der [offiziellen Saisonseite](https://wro-association.org/competition/2026-season/).
+Saisonseite und [Q&A](https://wro-association.org/competition/questions-answers/)
+am 2026-10-09 geprüft. Artwork und Marken gehören ihren jeweiligen Eigentümern;
+die Umwandlung macht daraus kein eigenes Matten-Design.
+
+`assets/fe-2026-mat.svg` ist aus der offiziellen PDF mit `pdftocairo -svg`
+abgeleitet; `assets/fe-2026-mat.json` enthält Quellen-/Asset-Hashes und PDF-Boxen.
+Die MediaBox umfasst 3210 mm einschließlich Beschnitt. Die TrimBox schneidet
+5 mm pro Seite ab und ergibt 3200 × 3200 mm (PDF-Rundungsabweichung <0,01 mm).
+Die vollständige TrimBox liegt bei X/Y −1600…+1600 mm, Mittelpunkt (0,0),
++X nach rechts und +Y nach oben. Außenwände liegen nominal bei ±1500 mm,
+Innenwände bei ±500 mm. Der Startabschnitt ist unten; CW/CCW spiegelt die
+Matte nicht. Beide Ansichten nutzen denselben Maßstab/Transform wie die Spuren.
+Die gedruckten 24 Pfostensitze stimmen innerhalb 0,6 mm mit den nominalen
+Roboterkoordinaten überein; keine unabhängige Vermessung des echten Tisches.
+
+Wände sind eine getrennte nominale Overlay-Ebene. Magenta-Parkbegrenzungen
+werden nur bei protokolliertem `fixed_line_x` und `gap_mm` gezeichnet; fehlende
+Geometrie wird als unbekannt bezeichnet. Gedruckte Pfostensitze bedeuten keine
+vorhandenen Pfosten. Nur bestätigte Log-Sitze erscheinen als farbige Objekte.
+Spuren/Pläne liegen darüber und haben einen dünnen weißen Kontrastrand.
+
+Das SVG ist in die HTML eingebettet und wird in beiden Ansichten wiederverwendet.
+SVG-Download und HTML-Bericht enthalten die Grafik ebenfalls; keine externen
+Dateien/Fonts/Netzwerkzugriffe zur Laufzeit. Wegen des vollständigen Artworks
+ist die HTML etwa 8,6 MB groß. Planwahl, Zeitdaten und bestehende Log-Trennung
+bleiben erhalten.
+
+Prüfen (ohne Zusatzbibliotheken):
+
+```text
+python tools/robot-run-inspector/check-field-asset.py
+node tools/robot-run-inspector/test-inspector.cjs
+node tools/robot-run-inspector/test-app.cjs
+```
+
+Nur zur Regeneration sind Python und Popplers `pdftocairo` auf PATH nötig:
+
+```text
+python tools/robot-run-inspector/build-field-asset.py
+```
+
+Das Programm lädt eine fehlende Quellen-PDF nach `local_workspace/`, überprüft
+SHA-256, erzeugt SVG/Metadaten und aktualisiert die markierte Einbettung in der
+HTML. Bei geänderter Quelle stoppt es zur Prüfung von Beschnitt/Ausrichtung.
+Die PDF und rohe Konvertierung bleiben ignoriert. SVG-Bytes können zwischen
+Poppler-Versionen variieren; Asset-Metadaten und HTML werden zusammen erzeugt.
+
+## Lauftelemetrie und Zeit (Version 1.3)
+
+`RUN_POSE` v1 zeichnet die geschätzte Spur über den ganzen Lauf. Lokale
+Positionen sind in der Einzelspur verfügbar, Feldpositionen im Gesamtlauf.
+Fortlaufende Messpunkte verbinden auch Anschluss und Runde; Korrekturen,
+Rahmenwechsel und Zeitlücken bleiben getrennt. Der Planselektor zeigt die zuletzt
+aktive Route, eine gewählte protokollierte Version oder blendet Pläne aus.
+Gestrichelte Linien sind akzeptierte Pläne, keine gefahrenen Positionen. Fehlende
+Basisversionen und unvollständige Routenblöcke werden nicht gezeichnet.
+
+Gesamtzeit und Rundenzeiten kommen aus `RUN_START`, `RUN_LAP` und `RUN_END`.
+Halte, Sensorpausen, Bremsen und abschließendes Parken zählen zur Gesamtzeit.
+Ohne Start und bestätigten Abschluss, bei Abbruch/Stopp oder Excerpt bleibt
+die Abschlusszeit unbekannt; die beobachtete Zeitspanne wird separat angezeigt.
+Alte Logs erhalten keine nachträglich erfundene erfolgreiche Abschlusszeit.
+Begrenzte Telemetrie wird sichtbar gemeldet. SVG/HTML-Exporte übernehmen die
+Planwahl, HTML enthält auch die Zeiten. Details und normale CW/CCW-Prüfung:
+[`simulation/RUN_TELEMETRY.md`](../../simulation/RUN_TELEMETRY.md).
+
+### Darstellung von Posekorrekturen
+
+Violett punktiert verbindet ausschließlich die protokollierten Vorher-/Nachher-
+X/Y-Positionen einer Korrektur im Feldrahmen, nicht eine gefahrene Strecke.
+Die Legende verwendet dasselbe Punktmuster; der SVG-Titel nennt die Endpunkte.
+Lokale/unbekannte Korrekturrahmen und Rebases werden nicht als Feldsprung
+gezeichnet. Explizite Korrekturen unterbrechen die durchgezogene Fahrspur.
+Bei gemischten Formaten bleiben PARK_DIAG-Korrekturen erhalten, wenn neue
+RUN_EVENT-Daten fehlen; doppelte Meldungen desselben Sprungs werden einmal
+gezeichnet (Zeitabstand maximal10ms, X/Y-Rundungsabweichung maximal0,15mm).
+Kleine Korrekturen sind im Gesamtlauf entsprechend kurz; z.B. log476:27,1mm.
