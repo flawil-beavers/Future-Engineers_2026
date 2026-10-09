@@ -31,8 +31,8 @@ enum DriveControlPhase {
 extern Servo servo;
 
 // Encoder position tracking
-extern long encoder_pos;
-extern int encoder_dir;
+extern volatile long encoder_pos;
+extern volatile int encoder_dir;
 
 // Motor state
 extern DCState dc_state;
@@ -139,7 +139,11 @@ void set_dc(float dc, bool rate_limit = true);
  * @param encoder_pos Encoder position in counts (defaults to global encoder_pos)
  * @return Distance in millimeters
  */
-float get_distance(long encoder_pos = encoder_pos);
+struct EncoderSnapshot { long count; int direction; };
+EncoderSnapshot get_encoder_snapshot();
+long get_encoder_count();
+float get_distance(long encoder_counts);
+float get_distance();
 
 /**
  * @brief Estimate DC value needed for a given speed

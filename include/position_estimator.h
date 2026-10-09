@@ -24,7 +24,7 @@ struct PositionEstimate {
     float x_mm;             ///< X coordinate from origin (mm)
     float y_mm;             ///< Y coordinate from origin (mm)
     float heading_deg;      ///< Heading in degrees (0 = +X, 90 = +Y)
-    float confidence_mm;    ///< Uncertainty radius (0 = perfect, grows with travel)
+    float confidence_mm;    ///< Heuristic drift indicator, not a guaranteed uncertainty bound
 };
 
 // ==========================================
@@ -64,8 +64,8 @@ void get_position(float &x, float &y, float &heading);
 PositionEstimate get_position_struct();
 
 /**
- * @brief Get the position uncertainty radius
- * @return Confidence radius in mm (0 = perfect, grows ~1% of distance traveled)
+ * @brief Get the heuristic position drift indicator
+ * @return Heuristic in mm (starts at zero, grows with travel; not absolute accuracy)
  */
 float get_position_confidence();
 

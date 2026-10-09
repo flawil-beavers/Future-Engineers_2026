@@ -10180,6 +10180,103 @@ working reports under `local_workspace/robot-run-inspector/` for repo work;
 preserve original logs using existing evidence requirements. Physical firmware
 validation next steps from the previous entry remain unchanged.
 
+## 2026-10-09: Robot Run Inspector 1.1, offline Soll/Ist comparison
+
+Inspector now overlays PARK_DIAG v2 nominal/estimated poses and finite
+CONNECTOR_POINT snapshots against their matching tracking records. Per-source
+mean/RMS/max distance, wrapped nominal heading error, top20 line-linked
+deviations and full comparison CSV are available in addition to HTML/JSON.
+Lookahead targets remain separately labelled, never counted as pose errors.
+Local rear frames, field rebases and connector replans are separate tracks;
+explicit corrections, invalid poses and time gaps interrupt polylines. Empty
+numeric fields are rejected; diagnostic limits and whole-log overflow are
+separate findings. JSON observations can be restored only after opening the
+matching original, with SHA-256/bytes/session-bound checks. Source imports commit
+only after hashing completes. Static reports have no inactive point controls.
+
+No firmware, logger frequency/budgets, sensor reads, motion or save changes.
+No new robot runs/evidence, build or upload. Nominal integrates actual encoder
+travel rather than an independent timed plan; connector snapshots are partial,
+nearest geometric segment may be ambiguous on loops. Later-lap pursuit targets
+and FINAL_PARK_TRACE do not establish a complete nominal route or physical truth.
+125 archived complete logs parse/render; 17 parser checks and expanded DOM-adapter
+checks pass, including comparisons, CSV/HTML, point navigation and notes restore.
+Tests executed through the available Node runtime VM because standalone node
+was absent from PATH. Git diff whitespace checks pass. Browser inventory empty;
+visual browser/double-click QA remains unverified.
+Next: on competition laptop offline, open an original, select field/connector
+tracks, inspect overlay and line links, export/reopen HTML and CSV, and round-trip
+observations via original+JSON. Physical firmware validation from Oct8 stays
+unchanged; do not request extra robot logging or dedicated ToF movements.
+
+
+## 2026-10-09: selected runtime safety fixes and Inspector 1.2
+
+User authorized items1-4,9,11,14,15,17. Immediate falling-switch acceptance /
+stable100ms HIGH; checked serial framing/numbers/ranges; fresh valid gyro health
+independent of INT; preserve bounded parking fault trace before transport reset.
+An active mode is cancelled on real gyro transport reset (heading zero may
+change); re-arm only from known physical start. Initial pending startup retained.
+Successful parking transitions to existing HOLD without releasing/reseeding its
+target. Volatile encoder count/direction use interrupt-mask-preserving snapshots.
+ToF scalar freshness accommodates300ms budget; stale/bus failure=-1, freshgap9999.
+Clear old raw selections on empty frames; reset side/rear slew baseline after
+fault/gap; M4 read error survives successful restart. RPC layout unchanged.
+Tiny pose increments accumulate; XY correction no longer claims reduced drift
+uncertainty. Invalid camera frames clear detections; sparse ROI diagnostics only
+extend existing CAM CAL, with optical thresholds/votes/exposure unchanged.
+Inspector distinguishes cs identities, counts accepted scan/initial-wall fixes,
+interrupts trace correctly and warns about legacy identical-value ambiguity.
+No new periodic records, sensor reads, motion or larger buffer. cs adds<=6160
+bytes at combined record limits; RAM+32. Detailed review and source-backed host
+regressions: simulation/RUNTIME_SAFETY_REVIEW.md / check_runtime_safety.py.
+
+Final IDE builds M7/M4 SUCCESS. M7 RAM432912/523624,flash504464/786432;
+SHA-256 491c0f44e9f84b3a32a4e21fdd886a1d3b2f5aaf6e58548a48c892d46d77aadb.
+M4 RAM59768/294248,flash155224/1048576;SHA-256
+ d85930eef24188e1f28e61cfa3edef32d1f090292d89e9efcb42e29d2e79a21e.
+Twelve host regression groups pass; archived/synthetic Vision passes;2807path,
+2970approach,162entry(6existing conservative rejects),5registration and396park
+sequences pass. Inspector21checks/125archivedlogs/DOM-adapter pass. Outputs
+ignored under local_workspace; diff whitespace passes. No upload/commit/new
+physical evidence. Hardware gyro faults, lag/slip/reflections, pre-scan drift,
+optical mounting/focus and actual timing remain unverified; USBblocking unchanged.
+Next:user uploads both cores; existing normal B CW/C CCW3laps+parking cable-free,
+normal save; observe clearance/stop/hold and immediately archive originals with
+identity+physical reports. After gyro reset return to known start before re-arm.
+No dedicated ToF sweep, additional movements or pauses. Cache artifact from
+preceding read-only review is retained; cleanup item23 was not selected.
+
+Conservative archived cs-byte projection: largest non-overflow165959bytes
+(log507),30649bytes below192KiB; observed-log estimate, not future-run guarantee.
+
+## 2026-10-09: gyro reset continuation correction
+
+User rejected automatic permanent run cancellation. This entry supersedes the
+known-start/re-arm requirement introduced in the preceding runtime-fix entry.
+Gyro transport recovery now retains active mode/controllers/route/continuous
+angle. First fresh restarted yaw seeds a raw baseline; sensor-zero changes do
+not jump navigation angle. Existing temporary motor stop during missing valid
+reports remains; healthy reports automatically continue the same mode. Final
+parking gyro health gate now holds instead of aborting; sensor-pause elapsed
+time is excluded from the current state timeout, including after log cap six.
+No additional periodic logs, sensor reads, buffer allocation or route changes.
+
+Thirteen source-backed runtime groups PASS (reset yaw offset/wrap/repeated
+retries, transport failure state retention, parking timer wrap/log cap). Final
+parking production-module simulation injects1500ms gyro pause during first entry
+drive:396/396 contained parks,0failures;5registration checks pass. Simulator
+adapter retains production declarations excluded by its header slicing.
+M7-only IDE incremental build SUCCESS RAM432912/523624,flash504456/786432;
+SHA-256 8d10fcddcc46ea615ad6820c436c66da1291d57acafccf85f7375858b8b63b14.
+M4 unchanged in this correction; prior M4 build identity remains applicable.
+Diff whitespace PASS; no upload/commit/new physical evidence. Unobserved chassis
+rotation during braking/reset cannot be reconstructed by yaw continuity, so
+physical heading error/recovery remains unverified. Persistent missing reports
+still pause motion; uninterrupted sensorless driving is not implemented.
+Next: existing normal cable-free B CW/C CCW three-lap+parking runs and normal
+save; report recovery/trajectory if faults occur and archive unchanged originals
+with identity/physical findings. No dedicated sweep, extra movements or pauses.
 ## 2026-10-06: log481 complete-recorded-run image
 
 Created ignored `local_workspace/parking-exit-analysis-all/20261006_log_481_ccw_txt_whole_run.png`
@@ -10430,3 +10527,44 @@ Both selectors reset on import/session change and persist in SVG/HTML exports.
 30 parser/render checks across125 archived originals plus DOM visibility,
 independent selectors, resets and exports PASS. Prepared/staged, no commit/push
 or firmware build. Next owner reviews controls with single- and multi-run files.
+
+## 2026-10-09: selective upstream integration and one authorized commit
+
+User explicitly authorized fetching/reviewing other contributor changes and
+creating exactly one new commit for this integration; no push/upload. Fetched
+origin/main0d091f4 (five commits since45e173d). Retained upstream history plus
+local Inspector comparisons/runtime fixes/gyro continuation. Ignored backup in
+local_workspace/integration-review; existing cache artifact deliberately excluded.
+Review simulation/UPSTREAM_INTEGRATION_REVIEW.md: original overall6/10, offline
+views8/10, original telemetry4/10. Whole-field/round/layer/route-version controls,
+offline mat, optional batch images and timing accepted. Original96KiB default
+extra allowances not accepted: production defaults compact start/lap/end only,
+2KiB event cap plus bounded marker/footer; normal timing host output<1KiB.
+Detailed poses/routes/events remain opt-in with24KiB combined limit; synchronous
+route bursts not physically timing-validated. No larger log buffer or new normal
+periodic pose/sensor acquisitions. Guarded phase formatting too.
+Fixed plan-selector visibility to actual revisions, clamped logger reservation,
+copied strided point arrays safely; preserved Soll/Ist CSV/hash-bound notes,
+scan/cs correction breaks and parking hold/gyro resume. Whole SVG honors these
+breaks. Python preview revealed false chord between connector replans: versions
+and missing indices now split, with regression. Raw evidence unchanged.
+
+Final M7 IDE incremental SUCCESS RAM433024/523624,flash505816/786432;SHA-256
+25264f426b368002dd98e8dca53f20d08e2091fc823f7e2c5ca69d15d8e36af2.
+M4 IDE SUCCESS RAM59768/294248,flash155224/1048576;SHA-256
+d85930eef24188e1f28e61cfa3edef32d1f090292d89e9efcb42e29d2e79a21e.
+Both affected because local M4 ToF fix is included; final follow-up onlyM7.
+Default cache reused, no clean; existing compiler warnings remain.
+Thirteen runtime groups PASS; optional+compact telemetry writer PASS;41Inspector
+checks/125archivedlogs/DOM import-export-notes-multi-plan PASS; mat identity/crop
+/24seat alignment PASS;6Python visualization tests and7batch tests PASS;
+2807later path cases/connector servo tests/2970approach cases PASS;162entry
+checks retain6existing conservative rejections;5registration+396parking with
+1500ms gyro pause PASS. Matplotlib installed only in ignored review work folder
+for tests; no IDE Python environment mutation. Python476PNG visually checked;
+actual native browser/double-click and physical timing still unverified.
+No new physical batch; built hashes are not installed firmware proof.
+Next: existing normal cable-free B CW/C CCW three laps+parking and normal save;
+archive originals with identity/physical report. Check timing footer, hold,
+automatic gyro recovery and real clearance. No dedicated sweep/movements/pauses.
+The one-time commit authorization is consumed by this integration only.

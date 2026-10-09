@@ -677,28 +677,21 @@ bool Vision::update(
     uint16_t width,
     uint16_t height)
 {
-    if (buffer == nullptr)
-    {
-        return false;
-    }
-
-    const uint16_t sampleWidth =
-        width / PIXEL_STEP;
-
-    const uint16_t sampleHeight =
-        height / PIXEL_STEP;
-
-    if (
-        sampleWidth > MAX_SAMPLE_WIDTH ||
-        sampleHeight > MAX_SAMPLE_HEIGHT)
-    {
-        return false;
-    }
+    // Invalid/empty frames must not preserve previous detections or overrun
+    // the fixed map when the supplied image is shorter than the active ROI.
+    result.clear();
+    if (!buffer || width < PIXEL_STEP || height <= OBSTACLE_Y_MIN ||
+        width > MAX_SAMPLE_WIDTH * PIXEL_STEP ||
+        height > MAX_SAMPLE_HEIGHT * PIXEL_STEP ||
+        width % PIXEL_STEP || height % PIXEL_STEP) return false;
+    const uint16_t sampleWidth = width / PIXEL_STEP;
+    const uint16_t sampleHeight = height / PIXEL_STEP;
 
     const uint32_t startTime =
         micros();
 
-    result.clear();
+    uint32_t qualityValueSum = 0;
+    result.minValue = 255;
 
     const uint16_t firstActiveGridY =
         OBSTACLE_Y_MIN / PIXEL_STEP;
@@ -750,8 +743,23 @@ bool Vision::update(
                     width +
                 sourceX;
 
-            ColorType color = static_cast<ColorType>(
-                colorLookup[readRGB565Raw(buffer, pixelIndex)]);
+            const uint16_t raw = readRGB565Raw(buffer, pixelIndex);
+            ColorType color = static_cast<ColorType>(colorLookup[raw]);
+            // Reuse an already-read pixel every 16 pixels in each direction.
+            // No HSV conversion, extra image pass, automatic gain or extra log.
+            if ((gridX & 7U) == 0 && (gridY & 7U) == 0) {
+                const uint8_t r5 = (raw >> 11) & 31, g6 = (raw >> 5) & 63, b5 = raw & 31;
+                const uint8_t r = (r5 << 3) | (r5 >> 2);
+                const uint8_t g = (g6 << 2) | (g6 >> 4);
+                const uint8_t b = (b5 << 3) | (b5 >> 2);
+                const uint8_t v = r > g ? (r > b ? r : b) : (g > b ? g : b);
+                ++result.qualitySamples;
+                qualityValueSum += v;
+                if (v < result.minValue) result.minValue = v;
+                if (v > result.maxValue) result.maxValue = v;
+                if (v < 20) ++result.darkSamples;
+                if (r >= 250 && g >= 250 && b >= 250) ++result.clippedSamples;
+            }
 
             // ============================================================
             // Apply Regions of Interest
@@ -807,6 +815,9 @@ bool Vision::update(
         sampleWidth,
         sampleHeight);
 
+    result.meanValue = result.qualitySamples
+        ? qualityValueSum / result.qualitySamples : 0;
+    if (!result.qualitySamples) result.minValue = 0;
     result.processingTimeUs =
         micros() - startTime;
 

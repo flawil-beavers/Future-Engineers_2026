@@ -350,6 +350,7 @@ static ModeResult update_active_mode()
     case MODE_OBSTACLE_CHALLENGE: {
         const bool new_camera_frame = updateCameraVision();
         obstacle_challenge_update(system_enabled, new_camera_frame);
+        if (RUN_TELEMETRY_DETAILED) {
         if(final_parking_active()) {
             run_telemetry_phase(final_parking_trace_phase(),obstacle_path_lap());
             run_telemetry_route("final_parking_control",nullptr,0,3*sizeof(float),false);
@@ -357,6 +358,7 @@ static ModeResult update_active_mode()
         else if(obstacle_parking_exit_active())
             run_telemetry_phase(obstacle_parking_exit_trace_phase());
         else obstacle_path_log_run_telemetry();
+        }
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
@@ -476,6 +478,14 @@ void mode_update()
     const bool wait_for_right_turn_cal =
         updated_mode == MODE_TURN_RADIUS_CAL &&
         turn_radius_cal_waiting_for_right();
+    if (updated_mode == MODE_OBSTACLE_CHALLENGE &&
+        result == MODE_RESULT_COMPLETED && final_parking_complete()) {
+        // Keep the verified parking target and motor hold. MODE_HOLD still
+        // services drive_loop; an explicit pause/stop/mode change can release it.
+        current_mode = MODE_HOLD;
+        pending_mode = MODE_NONE;
+        return;
+    }
     if(updated_mode==MODE_OBSTACLE_CHALLENGE)run_telemetry_finish(result==MODE_RESULT_COMPLETED?"completed":"failed","mode_result");
     stop_mode(updated_mode);
     current_mode = MODE_NONE;

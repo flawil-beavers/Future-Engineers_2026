@@ -25,7 +25,7 @@
 #define Serial robot_logger
 
 
-extern long encoder_pos;
+// Encoder access is provided by motor_control.h.
 extern float current_distance;
 extern void sensors_set_tof_timing_budget(uint32_t budget_us);
 extern uint32_t sensors_initial_tof_timing_budget;

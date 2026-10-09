@@ -99,8 +99,11 @@ uint32_t wallSequence = 0, finalTraceMs = 0;
 uint16_t finalTraceCount = 0;
 uint8_t initialWallFrames = 0;
 uint8_t sensorHoldTraceCount = 0;
+bool sensorHoldPending = false;
+uint32_t sensorHoldStartMs = 0;
 float initialWallCorrection = 0.0f;
 float lastWallCorrection = 0.0f;
+uint32_t wallCorrectionSequence = 0;
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -256,6 +259,7 @@ bool updateOuterWallReference(bool initial)
         : clampFloat(residual*0.2f,-1.0f,1.0f));
     position_apply_xy_correction(0.0f,correction);
     lastWallCorrection = correction;
+    if (correction != 0.0f) ++wallCorrectionSequence;
     if (initial)
     {
         initialWallFrames = 2;
@@ -288,6 +292,7 @@ void traceParking(bool force = false)
     Serial.print("/"); Serial.print(parkingOuterRange(snapshot),1);
     Serial.print("/"); Serial.print(expectedOuterWallRange(outerSensor,pose),1);
     Serial.print(" selected_raw="); Serial.print(snapshot.selected_raw_distance_mm,1);
+    Serial.print(" cs="); Serial.print(wallCorrectionSequence);
     Serial.print(" wall_correction="); Serial.println(lastWallCorrection,1);
 }
 
@@ -334,7 +339,8 @@ bool checkMotionHealth(const PositionEstimate &pose)
 {
     if (!gyro_is_healthy())
     {
-        abortParking("gyro_unhealthy");
+        stop(false);
+        final_parking_sensor_hold();
         return false;
     }
     if (!isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
@@ -780,7 +786,10 @@ void final_parking_reset()
     finalTraceCount = initialWallFrames = 0;
     initialWallCorrection = 0.0f;
     lastWallCorrection = 0.0f;
+    wallCorrectionSequence = 0;
     sensorHoldTraceCount = 0;
+    sensorHoldPending = false;
+    sensorHoldStartMs = 0;
 }
 
 void final_parking_start_practice(int8_t turn_sign)
@@ -1241,10 +1250,23 @@ bool final_parking_active()
 
 void final_parking_sensor_hold()
 {
-    if (!final_parking_active() || sensorHoldTraceCount>=6) return;
+    if (!final_parking_active()) return;
+    if (!sensorHoldPending) {
+        sensorHoldPending = true;
+        sensorHoldStartMs = millis();
+    }
+    if (sensorHoldTraceCount>=6) return;
     ++sensorHoldTraceCount;
     Serial.println("[FINAL PARK SENSOR HOLD] main gyro unhealthy; drive stopped");
     traceParking(true);
+}
+
+void final_parking_sensor_resume()
+{
+    if (!sensorHoldPending) return;
+    // A sensor pause is not time spent attempting the current parking motion.
+    stateStartMs += uint32_t(millis() - sensorHoldStartMs);
+    sensorHoldPending = false;
 }
 
 const char *final_parking_trace_phase() {

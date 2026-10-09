@@ -8,7 +8,9 @@
 #include "position_estimator.h"
 
 namespace {
-constexpr size_t SAMPLE_BUDGET=64*1024, ROUTE_BUDGET=24*1024, EVENT_BUDGET=8*1024;
+constexpr size_t SAMPLE_BUDGET=64*1024, ROUTE_BUDGET=24*1024;
+constexpr size_t EVENT_BUDGET=RUN_TELEMETRY_DETAILED ? 8*1024 : 2*1024;
+constexpr size_t TOTAL_BUDGET=RUN_TELEMETRY_DETAILED ? 24*1024 : 2*1024;
 constexpr unsigned MAX_POINTS=192;
 bool active=false, truncated=false, field=false;
 uint32_t started=0,lastSample=0,lastLap=0,revision=0;
@@ -30,7 +32,7 @@ void markTruncated() {
 }
 bool emit(const char *line,size_t &used,size_t budget) {
     const size_t length=strlen(line);
-    if(used+length>budget || robot_logger.remaining()<length+ORDINARY_RESERVE) {
+    if(used+length>budget || sampleBytes+routeBytes+eventBytes+length>TOTAL_BUDGET || robot_logger.remaining()<length+ORDINARY_RESERVE) {
         markTruncated(); return false;
     }
     robot_logger.write(reinterpret_cast<const uint8_t *>(line),length);
@@ -41,16 +43,22 @@ uint32_t hashPoint(const float *p) {
     for(unsigned i=0;i<3;++i) {uint32_t v;memcpy(&v,p+i,sizeof(v));h=(h^v)*16777619u;}
     return h;
 }
+uint32_t hashPointAt(const void *data,size_t stride,unsigned index) {
+    float point[3];
+    memcpy(point,static_cast<const uint8_t *>(data)+index*stride,sizeof(point));
+    return hashPoint(point);
+}
 }
 void run_telemetry_start() {
     active=true;truncated=false;field=false;frame=revision=routeCount=lapNumber=0;
     sampleBytes=routeBytes=eventBytes=0;started=lastSample=lastLap=millis();
-    strcpy(phase,"start");strcpy(routeKind,"none");strcpy(motion,"unknown");memset(hashes,0,sizeof(hashes));
+    strcpy(phase,"start");strcpy(routeKind,"none");strcpy(motion,"unknown");if(RUN_TELEMETRY_DETAILED)memset(hashes,0,sizeof(hashes));
     robot_logger.reserve_tail(FOOTER_RESERVE);
-    char line[160];snprintf(line,sizeof(line),"[RUN_START] v=1 t=%lu period_ms=250 sample_bytes=65536 route_bytes=24576 event_bytes=8192\r\n",(unsigned long)started);
+    char line[180];snprintf(line,sizeof(line),"[RUN_START] v=1 t=%lu period_ms=%u detailed=%u total_bytes=%u\r\n",(unsigned long)started,RUN_TELEMETRY_DETAILED?250U:0U,unsigned(RUN_TELEMETRY_DETAILED),unsigned(TOTAL_BUDGET));
     emit(line,eventBytes,EVENT_BUDGET);
 }
 void run_telemetry_phase(const char *value,unsigned lap) {
+    if(!RUN_TELEMETRY_DETAILED)return;
     if(!active)return;
     if(strcmp(value,phase)==0&&lap==lapNumber)return;
     strncpy(phase,value,sizeof(phase)-1);phase[sizeof(phase)-1]=0;lapNumber=lap;
@@ -59,6 +67,7 @@ void run_telemetry_phase(const char *value,unsigned lap) {
     lastSample=millis()-250; // The next cached sample captures this transition.
 }
 void run_telemetry_tick() {
+    if(!RUN_TELEMETRY_DETAILED)return;
     if(!active||millis()-lastSample<250)return;
     lastSample=millis();const PositionEstimate p=get_position_struct();
     if(!isfinite(p.x_mm)||!isfinite(p.y_mm)||!isfinite(p.heading_deg))return;
@@ -72,6 +81,7 @@ void run_telemetry_lap(unsigned lap) {
     emit(line,eventBytes,EVENT_BUDGET);lastLap=now;
 }
 void run_telemetry_motion(const char *state) {
+    if(!RUN_TELEMETRY_DETAILED)return;
     if(!active||strcmp(state,motion)==0)return;
     strncpy(motion,state,sizeof(motion)-1);motion[sizeof(motion)-1]=0;
     const PositionEstimate p=get_position_struct();char line[220];
@@ -80,24 +90,26 @@ void run_telemetry_motion(const char *state) {
     lastSample=millis()-250;
 }
 void run_telemetry_pose_change(const char *kind,float bx,float by,float bh,float ax,float ay,float ah) {
+    if(!RUN_TELEMETRY_DETAILED)return;
     if(!active)return;
     ++frame;if(strcmp(kind,"rebase")==0)field=true;
     char line[260];snprintf(line,sizeof(line),"[RUN_EVENT] v=1 t=%lu kind=%s frame=%u before=%.1f,%.1f,%.1f after=%.1f,%.1f,%.1f\r\n",(unsigned long)millis(),kind,frame,bx,by,bh,ax,ay,ah);
     emit(line,eventBytes,EVENT_BUDGET);
 }
 void run_telemetry_route(const char *kind,const void *data,unsigned count,size_t stride,bool closed) {
+    if(!RUN_TELEMETRY_DETAILED)return;
     if(!active)return;
     if(count>MAX_POINTS||stride<3*sizeof(float)||(count&&!data)){markTruncated();return;}
-    for(unsigned i=0;i<count;++i){const float *p=reinterpret_cast<const float *>(static_cast<const uint8_t *>(data)+i*stride);if(!isfinite(p[0])||!isfinite(p[1])||!isfinite(p[2])){markTruncated();return;}}
+    for(unsigned i=0;i<count;++i){float p[3];memcpy(p,static_cast<const uint8_t *>(data)+i*stride,sizeof(p));if(!isfinite(p[0])||!isfinite(p[1])||!isfinite(p[2])){markTruncated();return;}}
     const bool full=strcmp(kind,routeKind)!=0||routeClosed!=closed||routeCount!=count;
     bool changed=full;
-    for(unsigned i=0;i<count;++i)changed|=hashPoint(reinterpret_cast<const float *>(static_cast<const uint8_t *>(data)+i*stride))!=hashes[i];
+    for(unsigned i=0;i<count;++i)changed|=hashPointAt(data,stride,i)!=hashes[i];
     if(!changed)return;
     const uint32_t next=revision+1;
     char line[240];size_t required=0;
     // Preflight the complete transaction so partial route versions cannot be drawn.
     for(unsigned i=0;i<count;++i) {
-        const float *p=reinterpret_cast<const float *>(static_cast<const uint8_t *>(data)+i*stride);
+        float p[3];memcpy(p,static_cast<const uint8_t *>(data)+i*stride,sizeof(p));
         if(full||hashPoint(p)!=hashes[i])required+=snprintf(line,sizeof(line),"[RUN_ROUTE_POINT] v=1 route=%lu index=%u pose=%.1f,%.1f,%.1f\r\n",(unsigned long)next,i,p[0],p[1],p[2]);
     }
     required+=snprintf(line,sizeof(line),"[RUN_ROUTE] v=1 t=%lu route=%lu base=%lu kind=%s count=%u closed=%u\r\n",(unsigned long)millis(),(unsigned long)next,(unsigned long)(full?0:revision),kind,count,closed?1:0);
@@ -105,7 +117,7 @@ void run_telemetry_route(const char *kind,const void *data,unsigned count,size_t
     revision=next; // Samples refer to actual route even if its dump is unavailable.
     if(routeBytes+required>ROUTE_BUDGET||robot_logger.remaining()<required+ORDINARY_RESERVE){markTruncated();routeCount=0;strcpy(routeKind,"unlogged");return;}
     snprintf(line,sizeof(line),"[RUN_ROUTE] v=1 t=%lu route=%lu base=%lu kind=%s count=%u closed=%u\r\n",(unsigned long)millis(),(unsigned long)next,(unsigned long)(full?0:next-1),kind,count,closed?1:0);emit(line,routeBytes,ROUTE_BUDGET);
-    for(unsigned i=0;i<count;++i){const float *p=reinterpret_cast<const float *>(static_cast<const uint8_t *>(data)+i*stride);const uint32_t h=hashPoint(p);if(full||h!=hashes[i]){snprintf(line,sizeof(line),"[RUN_ROUTE_POINT] v=1 route=%lu index=%u pose=%.1f,%.1f,%.1f\r\n",(unsigned long)next,i,p[0],p[1],p[2]);emit(line,routeBytes,ROUTE_BUDGET);}hashes[i]=h;}
+    for(unsigned i=0;i<count;++i){float p[3];memcpy(p,static_cast<const uint8_t *>(data)+i*stride,sizeof(p));const uint32_t h=hashPoint(p);if(full||h!=hashes[i]){snprintf(line,sizeof(line),"[RUN_ROUTE_POINT] v=1 route=%lu index=%u pose=%.1f,%.1f,%.1f\r\n",(unsigned long)next,i,p[0],p[1],p[2]);emit(line,routeBytes,ROUTE_BUDGET);}hashes[i]=h;}
     snprintf(line,sizeof(line),"[RUN_ROUTE_END] v=1 route=%lu\r\n",(unsigned long)next);emit(line,routeBytes,ROUTE_BUDGET);
     routeCount=count;routeClosed=closed;strncpy(routeKind,kind,sizeof(routeKind)-1);
 }

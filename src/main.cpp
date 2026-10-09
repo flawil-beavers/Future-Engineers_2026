@@ -68,6 +68,7 @@ void loop()
         robot_logger.update();
         return;
     }
+    final_parking_sensor_resume();
     update_position();
     tof_pose_diagnostic_update();
     check_stalling();

@@ -168,6 +168,7 @@ PositionEstimate cornerViewExtraOrigin, cornerViewExtraReturnPose;
 float cornerViewExtraStartEncoder = 0, cornerViewExtraReturnEncoder = 0;
 float cornerViewExtraMeasuredMm = 0;
 ObstacleTofCorrectionResult lastTofCorrectionResult;
+uint32_t tofCorrectionSequence = 0;
 CornerGeometry corners[4];
 uint32_t lastTofCorrectionSequence[TOF_COUNT] = {};
 uint8_t parkingEntryLength = 0;
@@ -5170,6 +5171,7 @@ void obstacle_path_reset()
     parkingEntryStraightControlLogged = false;
     memset(lastTofCorrectionSequence, 0, sizeof(lastTofCorrectionSequence));
     lastTofCorrectionResult = ObstacleTofCorrectionResult{};
+    tofCorrectionSequence = 0;
     memset(seats, 0, sizeof(seats));
     memset(discoveryStations, 0, sizeof(discoveryStations));
     cornerViewPhase = CORNER_VIEW_IDLE;
@@ -5432,6 +5434,8 @@ void obstacle_path_update(bool new_camera_frame)
         const ObstacleTofCorrectionResult correction = applyTofCorrectionAt(
             pose,
             baselinePath[progressIndex].distanceMm);
+        if (correction.correctionXmm != 0.0f || correction.correctionYmm != 0.0f)
+            ++tofCorrectionSequence;
         if (completedLaps > 0 || correction.leftReadingMm > 0.0f ||
             correction.rightReadingMm > 0.0f)
             lastTofCorrectionResult = correction;
@@ -5891,6 +5895,7 @@ void obstacle_path_update(bool new_camera_frame)
         Serial.print(" speed/servo="); Serial.print(safeSpeed,1); Serial.print("/"); Serial.print(steering,1);
         Serial.print(" tof_used="); Serial.print(lastTofCorrectionResult.leftUsed);
         Serial.print(","); Serial.print(lastTofCorrectionResult.rightUsed);
+        Serial.print(" cs="); Serial.print(tofCorrectionSequence);
         Serial.print(" correction="); Serial.print(lastTofCorrectionResult.correctionXmm,1);
         Serial.print(","); Serial.println(lastTofCorrectionResult.correctionYmm,1);
     }
@@ -5935,6 +5940,7 @@ void obstacle_path_update(bool new_camera_frame)
 
 void obstacle_path_log_run_telemetry()
 {
+    if (!RUN_TELEMETRY_DETAILED) return;
     static const PathPoint *previous=nullptr;
     static const char *previousKind="none";
     const PathPoint *points=optimizedBuilt?optimizedPath:livePath;

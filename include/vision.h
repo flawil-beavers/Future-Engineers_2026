@@ -87,6 +87,13 @@ struct VisionResult
     Blob orange;
     Blob blue;
 
+    // Sparse samples of the obstacle ROI, diagnostic only (not detection gates).
+    uint16_t qualitySamples = 0;
+    uint16_t darkSamples = 0;
+    uint16_t clippedSamples = 0;
+    uint8_t meanValue = 0;
+    uint8_t minValue = 0;
+    uint8_t maxValue = 0;
     uint32_t processingTimeUs = 0;
 
     void clear()
@@ -96,6 +103,8 @@ struct VisionResult
         orange.reset(ColorType::ORANGE);
         blue.reset(ColorType::BLUE);
 
+        qualitySamples = darkSamples = clippedSamples = 0;
+        meanValue = minValue = maxValue = 0;
         processingTimeUs = 0;
     }
 };

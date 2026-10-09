@@ -1,9 +1,14 @@
 # Full-run telemetry v1
 
-M7 records the obstacle challenge from `[RUN_START]` until `[RUN_END]`.
+M7 records compact challenge timing from `[RUN_START]` until `[RUN_END]`.
+Production defaults to `RUN_TELEMETRY_DETAILED=0`: start, lap boundaries and
+finish only. There are no new periodic poses, route dumps, phase/motor events
+or estimator reads in this default. Existing parking/connector/later tracking
+diagnostics remain unchanged. The paragraphs below about pose/route/events
+apply only to an explicitly enabled detailed diagnostic build (`=1`).
 The writer uses only `get_position_struct()` (cached dead reckoning); it adds
 no sensor acquisitions, movement, delays or changes to control decisions.
-Regular `[RUN_POSE]` records occur every 250 ms, with extra cached samples on
+In detailed builds, regular `[RUN_POSE]` records occur every 250 ms, with extra cached samples on
 phase/motor transitions and final stop. Records carry `t` (unsigned millis),
 `elapsed_ms`, phase, lap, active route version, pose frame and `space`.
 Local coordinates remain separate until the existing field rebase. Correction
@@ -49,7 +54,10 @@ contact-free driving.
 ## Bounded output
 
 The existing logger size is unchanged (192 KiB with parking diagnostics,
-128 KiB without). New pose/route/event byte budgets are 64/24/8 KiB. Samples
+128 KiB without). Compact event output is capped at2KiB, plus the bounded truncation marker and
+completion footer. A normal start+three-laps+finish host test stays below1KiB.
+Detailed pose/route/event sub-budgets are64/24/8KiB, additionally sharing a hard
+24KiB combined ceiling; these are not additive96KiB allowances. Samples
 and route transactions stop before the last 8 KiB of free logger capacity.
 A 768-byte tail reserve prevents ordinary diagnostics from consuming the
 completion footer. A bounded `[RUN_TRUNCATED]` marker and the end record's
@@ -82,8 +90,10 @@ Inspector checks historical originals and synthetic new-schema edge cases.
 Build only `giga_r1_m7` with the IDE-managed PlatformIO installation.
 
 After the owner uploads this firmware, validate through normal CW/CCW runs:
-check original logs for start/end outcomes, route bases/end markers, 250 ms
-coverage including lap 1 and parking, lap/end durations and truncation warnings.
+check original logs for start/end outcomes, lap/end durations and truncation
+warnings. Route bases/end markers and250ms samples apply only to detailed
+builds. Detailed route bursts and physical timing still need measured validation;
+do not enable them by default on the competition robot.
 Compare software results with the physical report. Preserve each complete
 original under `simulation/evidence/parking_exit_diagnostics/`, add metadata
 and hashes, and append findings to `AGENT_DOCUMENTATION.md`. No dedicated

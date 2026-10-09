@@ -35,7 +35,7 @@ async function open(text,name='run.txt'){
 (async()=>{
  await open('[OC] New obstacle run\n[GYRO] Sensor report timeout; restarting SPI/SH2...\n[FINAL PARK ABORT] <img onerror="evil">\n[OC] New obstacle run\n[FINAL PARK RESULT] contained=yes stopped=yes');
  assert.equal(elements.get('workspace').hidden,false);
- assert.equal(elements.get('planVersionControl').hidden,false);
+ assert.equal(elements.get('planVersionControl').hidden,true);
  assert.ok(elements.get('cards').innerHTML.includes('Unbekannt'));
  assert.ok(elements.get('summary').innerHTML.includes('Parkabbruch protokolliert'));
  assert.ok(!elements.get('summary').innerHTML.includes('<img'));
@@ -55,8 +55,27 @@ async function open(text,name='run.txt'){
  await elements.get('json').fire('click');
  const json=JSON.parse(await downloads.at(-1).blob.text());
  assert.equal(json.sessions.length,2);assert.equal(json.sessions[0].physicalObservation,'<script>user observation</script>');assert.equal(json.sha256.length,64);
+ // Restore user observations only against the currently opened original hash.
+ elements.get('notes').value='changed';await elements.get('notes').fire('input');
+ await elements.get('noteFile').fire('change',{target:{files:[{size:100,text:async()=>JSON.stringify(json)}]}});
+ assert.equal(elements.get('notes').value,'');
+ elements.get('session').value='0';await elements.get('session').fire('change');
+ assert.equal(elements.get('notes').value,'<script>user observation</script>');
+ const mismatched={...json,sha256:'0'.repeat(64)};
+ await elements.get('noteFile').fire('change',{target:{files:[{size:100,text:async()=>JSON.stringify(mismatched)}]}});
+ assert.ok(elements.get('noteStatus').textContent.includes('SHA-256'));
+ assert.equal(elements.get('notes').value,'<script>user observation</script>');
+ await open('[OC] New obstacle run\n[PARK_DIAG] v=2 type=sample t=10 pose=3,4,1 nominal=0,0,359');
+ assert.ok(elements.get('deviations').innerHTML.includes('5.0 mm'));
+ assert.ok(elements.get('plot').innerHTML.includes('Violett'));
+ await elements.get('csv').fire('click');
+ const csv=await downloads.at(-1).blob.text();assert.ok(csv.includes('distance_mm'));assert.ok(csv.includes('"5"'));
+ await elements.get('export').fire('click');const comparisonReport=await downloads.at(-1).blob.text();assert.ok(comparisonReport.includes('5.0 mm'));assert.ok(comparisonReport.includes('Violett'));
+ await elements.get('workspace').fire('click',{target:{closest:()=>({dataset:{line:'2'}})}});assert.ok(elements.get('raw').innerHTML.includes('selected'));
+ await elements.get('workspace').fire('keydown',{key:'Enter',preventDefault(){},target:{closest:()=>({dataset:{line:'2'}})}});
  await open('binary\0data');assert.ok(elements.get('loadStatus').textContent.includes('Binärdaten'));
  await open('');assert.ok(elements.get('summary').innerHTML.includes('Kein Endergebnis'));
+ console.log('PASS app import, search, line context, session isolation, HTML/JSON exports, hash, nominal comparison, CSV, point context, hash-bound notes restore and binary/empty input checks.');
  const fixture=fs.readFileSync(path.join(__dirname,'../../simulation/evidence/parking_exit_diagnostics/20261006_log_476_ccw.txt'),'utf8');
  await open(fixture,'476.txt');
  assert.equal(elements.get('planVersionControl').hidden,true);
@@ -103,9 +122,11 @@ async function open(text,name='run.txt'){
  await elements.get('export').fire('click');
  assert.ok((await downloads.at(-1).blob.text()).includes('data-layers="plan" data-field="hide"'));
  await open('[OC] New obstacle run\n[OC] New obstacle run');
- assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,false);
+ assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,true);
  elements.get('roundFilter').value='2';elements.get('fieldBackground').value='hide';
  elements.get('session').value='1';await elements.get('session').fire('change');
- assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,false);
+ assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,true);
+ await open('[RUN_ROUTE] v=1 t=1 route=1 base=0 kind=connector count=0 closed=0\n[RUN_ROUTE_END] v=1 route=1\n[RUN_ROUTE] v=1 t=2 route=2 base=0 kind=learned count=0 closed=1\n[RUN_ROUTE_END] v=1 route=2');
+ assert.equal(elements.get('planVersionControl').hidden,false);
  console.log('PASS app import, search, line context, session isolation, HTML/JSON exports, hash and binary/empty input checks.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

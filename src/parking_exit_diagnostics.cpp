@@ -112,7 +112,7 @@ void emitEvent(const char *type, const char *detail, bool terminal = false)
              "[PARK_DIAG] v=%lu type=%s t=%lu detail=%s enc=%ld emm=%.2f gyro=%.2f steer=%d cmd=%d",
              static_cast<unsigned long>(SCHEMA_VERSION), type,
              static_cast<unsigned long>(millis()), detail,
-             encoder_pos, get_distance(), get_angle(), set_degree, target_speed);
+             get_encoder_count(), get_distance(), get_angle(), set_degree, target_speed);
     if (!emitLine(line, true, terminal))
         markTruncated("event_budget");
 }
@@ -250,7 +250,7 @@ void parking_exit_diagnostics_update(const char *state, uint8_t segment,
         line, sizeof(line),
         "[PARK_DIAG] v=2 type=sample t=%lu state=%s seg=%u turn=%d target=%.1f enc=%ld emm=%.2f cmd=%d speed=%.2f steer=%d dc=%d gyro=%.2f pose=%.1f,%.1f,%.2f nominal=%.1f,%.1f,%.2f ref=%s",
         static_cast<unsigned long>(now), state, segment, turnSign,
-        segmentTargetMm, encoder_pos, get_distance(), target_speed,
+        segmentTargetMm, get_encoder_count(), get_distance(), target_speed,
         measured_speed, set_degree, static_cast<int>(dc_state), get_angle(),
         pose.x_mm, pose.y_mm, pose.heading_deg,
         nominal.x_mm, nominal.y_mm, nominal.heading_deg, expectedReference);

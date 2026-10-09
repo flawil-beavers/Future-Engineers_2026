@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../..');
 const html = fs.readFileSync(path.join(__dirname, 'Robot Run Inspector.html'), 'utf8');
 const box = {module: {exports: {}}};
 vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], box);
-const {analyzeLog, plotSvg, escapeHtml, seatPosition, runGeometry, wholeRunSvg, runTimingHtml} = box.module.exports;
+const {analyzeLog, plotSvg, escapeHtml, numbers, comparisons, deviationCsv, seatPosition, runGeometry, wholeRunSvg, runTimingHtml} = box.module.exports;
 let checks = 0;
 function test(label, fn) {fn(); checks++; console.log('PASS ' + label);}
 function markup(svg){return svg.replace(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+/g,'embedded-mat');}
@@ -78,6 +78,56 @@ test('all archived complete logs parse and render', () => {
  assert.ok(logs.length > 100);
  for(const name of logs){const r=analyzeLog(fixture(name),name);for(const s of r.sessions){for(const points of Object.values(s.tracks))assert.ok(!/NaN|Infinity/.test(plotSvg(points)), name);assert.ok(!/NaN|Infinity/.test(markup(wholeRunSvg(s))),name);}}
  console.log('Archived logs verified: '+logs.length);
+});
+
+test('empty numeric fields are rejected, malformed nominal cannot create errors',()=>{
+ assert.equal(numbers('1,,3'),null);assert.equal(numbers('1, ,3'),null);
+ const r=analyzeLog('[PARK_DIAG] v=2 type=sample pose=1,,3 nominal=0,0,0\n[PARK_DIAG] v=2 type=sample pose=1,2,3 nominal=0,,0').sessions[0];
+ assert.equal(r.health.malformed,2);assert.equal(comparisons(r.tracks['PARK_DIAG · lokaler Start']).length,0);
+});
+test('paired nominal errors and wrapped heading, targets are not errors',()=>{
+ const points=analyzeLog('[PARK_DIAG] v=2 type=sample t=1 pose=3,4,1 nominal=0,0,359').sessions[0].tracks['PARK_DIAG · lokaler Start'];
+ const e=comparisons(points)[0];assert.equal(e.distance,5);assert.equal(e.heading,2);
+ assert.ok(plotSvg(points).includes('#b59aff'));assert.ok(deviationCsv(points).includes('heading_error_deg'));
+ assert.equal(comparisons([{x:0,y:0,h:0,target:[100,100]}]).length,0);
+});
+test('local/global frames, correction records and invalid gaps never bridge',()=>{
+ const r=analyzeLog('[PARK_DIAG] v=2 type=sample t=1 pose=0,0,0 nominal=0,0,0\n[PARK_DIAG] v=2 type=rebase t=2 detail=field_start\n[PARK_DIAG] v=2 type=sample t=3 pose=500,500,0 nominal=500,500,0\n[PARK_DIAG] v=2 type=correction t=4 before=500,500,0 after=510,510,0 delta=10,10,0\n[PARK_DIAG] v=2 type=sample t=5 pose=510,510,0 nominal=510,510,0\n[PARK_DIAG] v=2 type=sample t=6 pose=1,,3\n[PARK_DIAG] v=2 type=sample t=7 pose=511,510,0 nominal=511,510,0').sessions[0];
+ assert.equal(Object.keys(r.tracks).length,2);const p=r.tracks['PARK_DIAG · Feld 1'];assert.equal(p.length,3);
+ assert.equal((plotSvg(p).match(/<polyline/g)||[]).length,6);
+});
+test('connector finite snapshot coverage and replan isolation',()=>{
+ const text='[CONNECTOR_POINT] kind=connector index=0 x=0 y=0 h=0\n[CONNECTOR_POINT] kind=connector index=1 x=10 y=0 h=0\n[CONNECTOR_TRACK] t=1 x=5 y=3 h=0 tx=100 ty=0\n[CONNECTOR_TRACK] t=2 x=20 y=3 h=0\n[CONNECTOR_POINT] kind=connector index=0 x=100 y=100 h=0\n[CONNECTOR_POINT] kind=connector index=1 x=110 y=100 h=0\n[CONNECTOR_TRACK] t=3 x=105 y=104 h=0';
+ const r=analyzeLog(text).sessions[0];assert.equal(Object.keys(r.tracks).length,2);
+ assert.equal(comparisons(r.tracks.CONNECTOR_TRACK).length,1);assert.equal(comparisons(r.tracks.CONNECTOR_TRACK)[0].distance,3);
+ assert.equal(comparisons(r.tracks['CONNECTOR_TRACK · Plan 2'])[0].distance,4);
+ const gapped=[{x:5,y:3,reference:[{x:0,y:0,index:0,kind:'connector'},{x:10,y:0,index:2,kind:'connector'}]}];assert.equal(comparisons(gapped).length,0);
+});
+test('diagnostic limit is separate from complete-log overflow',()=>{
+ const r=analyzeLog('[PARK_DIAG] v=2 type=truncated\nLOG BUFFER OVERFLOW').sessions[0];assert.equal(r.health.loggerOverflow,1);assert.equal(r.health.diagnosticLimit,1);
+ assert.equal(r.findings.find(f=>f.id==='diagnostic-limit').severity,'warning');
+});
+test('CSV text cannot begin spreadsheet formulas',()=>{
+ const csv=deviationCsv([{x:0,y:0,h:0,line:1,t:0,state:'=EVIL()',nominal:[0,0,0]}]);assert.ok(csv.includes("'=EVIL()"));
+});
+test('accepted scan registration breaks the actual track and is counted',()=>{
+ const r=analyzeLog('[FINAL_PARK_TRACE] t=1 xyh=0/0/0 wall_correction=0 cs=0\n[FINAL PARK SCAN] correction_x_y_mm=180/4 valid=yes\n[FINAL_PARK_TRACE] t=2 xyh=180/4/0 wall_correction=0 cs=0').sessions[0];
+ assert.equal(r.health.corrections,1);assert.equal(r.health.maxCorrectionMm,Math.hypot(180,4));
+ assert.equal((plotSvg(r.tracks.FINAL_PARK_TRACE).match(/<polyline/g)||[]).length,2);
+});
+test('rejected scan does not create an applied correction',()=>{
+ const r=analyzeLog('[FINAL_PARK_TRACE] t=1 xyh=0/0/0 cs=0\n[FINAL PARK SCAN] correction_x_y_mm=180/4 valid=no\n[FINAL_PARK_TRACE] t=2 xyh=1/0/0 cs=0').sessions[0];
+ assert.equal(r.health.corrections,0);assert.equal((plotSvg(r.tracks.FINAL_PARK_TRACE).match(/<polyline/g)||[]).length,1);
+});
+test('correction sequence distinguishes cached values and equal new corrections',()=>{
+ const r=analyzeLog('[FINAL_PARK_TRACE] t=1 xyh=0/0/0 wall_correction=1 cs=1\n[FINAL_PARK_TRACE] t=2 xyh=1/0/0 wall_correction=1 cs=1\n[FINAL_PARK_TRACE] t=3 xyh=2/0/0 wall_correction=1 cs=2\n[FINAL_PARK_TRACE] t=4 xyh=3/0/0 wall_correction=0.0 cs=3').sessions[0];
+ assert.equal((plotSvg(r.tracks.FINAL_PARK_TRACE).match(/<polyline/g)||[]).length,3);
+ assert.ok(!r.findings.some(f=>f.id==='correction-identity'));
+});
+test('legacy cached corrections are not repeatedly split and retain uncertainty',()=>{
+ const r=analyzeLog('[LATER_TRACK] t=1 lap=2 pose=0,0,0 correction=1,0\n[LATER_TRACK] t=2 lap=2 pose=1,0,0 correction=1,0\n[LATER_TRACK] t=3 lap=2 pose=2,0,0 correction=2,0').sessions[0];
+ assert.equal((plotSvg(r.tracks['LATER_TRACK · lap 2']).match(/<polyline/g)||[]).length,2);
+ assert.ok(r.findings.some(f=>f.id==='correction-identity'));
 });
 test('combined view matches CW/CCW geometry and accepted maps',()=>{
  assert.equal(seatPosition(5,1).x,500);assert.equal(seatPosition(5,1).y,-900);
@@ -263,6 +313,13 @@ test('legacy rounds retain only recorded points and never borrow the connector p
  assert.ok(!svg.includes('stroke="#1769aa"'));assert.ok(!hasPlan(svg));
  assert.ok(hasPlan(wholeRunSvg(r,{round:'1'})));
  assert.ok(!hasPlan(wholeRunSvg(r,{round:'1',route:'none'})));
+});
+
+
+test('whole legacy view respects explicit scan and correction identity breaks',()=>{
+ const r=analyzeLog('[FINAL_PARK_TRACE] t=1 xyh=0/0/0 cs=0\n[FINAL PARK SCAN] correction_x_y_mm=180/4 valid=yes\n[FINAL_PARK_TRACE] t=2 xyh=180/4/0 cs=0').sessions[0];
+ const svg=wholeRunSvg(r);const paths=[...svg.matchAll(/<polyline points="([^"]+)"[^>]*stroke="#713da7"/g)];
+ assert.equal(paths.length,4);assert.ok(paths.every(m=>!m[1].includes(' ')));
 });
 
 console.log(`${checks} regression checks passed.`);

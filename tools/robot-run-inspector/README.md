@@ -14,7 +14,7 @@ allein. Vor der Abreise bei ausgeschaltetem WLAN mit einem echten Log testen.
 2. Bei mehreren expliziten `[OC] New obstacle run`-Markern den Abschnitt wählen.
 3. Befund, Sensorübersicht und Auffälligkeiten prüfen. Zeilenbuttons öffnen
    den Originalkontext. Logsuche und direkte Zeilenauswahl sind verfügbar.
-4. Fahrspuren einzeln auswählen. Runden und Diagnosequellen bleiben getrennt.
+4. Soll-/Istspuren einzeln auswählen. Quellen, Runden und lokale/Feldrahmen bleiben getrennt. Violett zeigt vorhandene Sollreferenzen, Grün die Roboterschätzung; Punkte öffnen den Originalkontext.
 5. Physische Beobachtungen und Video-Dateinamen ergänzen.
 6. HTML-Bericht oder JSON speichern; Drucken ermöglicht die PDF-Ausgabe.
 
@@ -23,7 +23,7 @@ JSON enthält alle Abschnitte und die Originalzeilen. Downloads werden im vom
 Browser gewählten Ordner gespeichert. Für Repository-Arbeit Berichte nach
 `local_workspace/robot-run-inspector/` verschieben; Rohlogs separat unverändert
 nach der Evidenz-Anleitung in `AGENTS.md` archivieren. Ein Bericht ist keine
-Evidenzarchivierung. Beobachtungen bleiben bis zum Export nur im Arbeitsspeicher.
+Evidenzarchivierung. Beobachtungen bleiben bis zum JSON-Export nur im Arbeitsspeicher. Zum Wiederladen zuerst dasselbe Original-Log öffnen, dann den JSON-Bericht unter „Physische Beobachtung“ auswählen. SHA-256, Dateigrösse und Abschnittsgrenzen müssen übereinstimmen; die Diagnose wird weiterhin aus dem Original berechnet. Ohne verfügbaren Originalhash ist die Wiederherstellung gesperrt.
 
 ## Unterstützte Daten
 
@@ -33,7 +33,7 @@ Evidenzarchivierung. Beobachtungen bleiben bis zum Export nur im Arbeitsspeicher
 - Sicherheits-/Testhalte, Park-/Corner-Abbrüche, Park-Endprüfung, Schlupfindikatoren.
 - Abgelaufene Hindernis-Beobachtungshalte, verworfene Routenanschlüsse und
   Anzahl/Maximalbetrag expliziter PARK_DIAG-Posekorrekturen.
-- Logger-Überlauf und PARK_DIAG overflow/truncated-Marker.
+- Getrennte Zähler/Befunde für Gesamtlog-Überlauf und PARK_DIAG overflow/truncated-Diagnoselimits.
 - Positionen aus PARK_DIAG, CONNECTOR_TRACK, LATER_TRACK, DISCOVERY_TRACE und
   FINAL_PARK_TRACE. Gleicher Massstab beider Achsen; geschätzte Feldansicht, kein Kollisionsnachweis.
 - Neue ToF-Datensätze aus PARK_DIAG v2 sowie seitliche FINAL_PARK_TRACE-Werte.
@@ -43,7 +43,7 @@ Evidenzarchivierung. Beobachtungen bleiben bis zum Export nur im Arbeitsspeicher
 ## Grenzen
 
 Keine Roboterverbindung, kein Upload und keine zusätzlichen Fahrbewegungen.
-Die bestehende Firmware und Diagnoseausgabe bleiben unverändert.
+Der Inspector selbst verändert keine Firmware und erzeugt keine Roboterlogs.
 Keine Bildauswertung, Spannungsmessung oder automatische Ursachengarantie.
 Ein Software-Containment-Ergebnis bestätigt nicht die tatsächliche Parkposition.
 Fehlende Fehler-/Ergebnisdaten bedeuten unbekannt, nicht erfolgreich.
@@ -68,6 +68,23 @@ einschliesslich historischer Fehlerlogs und synthetischer Grenzfälle.
 Suche, Zeilensprung und Exporte mit einem minimalen DOM-Testadapter. Dies ist
 keine visuelle Browserprüfung.
 
+## Soll-/Istvergleich (Version 1.1)
+
+- PARK_DIAG v2: `pose` und `nominal` desselben Datensatzes werden überlagert. Mittelwert, RMS, Maximum, ΔX/ΔY und gewickelte Winkelabweichung werden berechnet. Die nominale Spur integriert Sollkrümmung über den tatsächlichen Encoderweg; sie ist kein unabhängiger zeitbasierter Plan. Lokaler Start und jedes Feld-Rebase sind getrennte Spuren. Korrekturen/fehlende Positionen unterbrechen Linien.
+- CONNECTOR_POINT: zusammenhängende connector/route-Wegpunkte des jeweiligen Snapshots bilden die violette Referenz. Pro CONNECTOR_TRACK-Position wird der kürzeste Abstand zu einem protokollierten Segment berechnet, dessen orthogonale Projektion innerhalb des Segments liegt. Keine Extrapolation über Enden, Indexlücken oder Planwechsel. Ausschnitte sind keine vollständige Routenkarte; bei Schleifen ist die räumlich nächste Stelle nicht zwingend die zeitlich richtige.
+- LATER_TRACK und weitere Spuren: vorausliegende `target`- bzw. `tx/ty`-Lenkziele erscheinen gelb. Ihr Abstand ist kein synchroner Positionsfehler. Fehlt eine vergleichbare Sollreferenz, wird keine Abweichung erfunden. Insbesondere liefern spätere Runden und FINAL_PARK_TRACE allein keine vollständige Sollbahn.
+- Rote Verbindungen zeigen Vergleichsabstände. Die Tabelle zeigt die 20 grössten; CSV exportiert alle vergleichbaren Datensätze der gewählten Spur. HTML-Berichte enthalten ebenfalls Overlays und Kennzahlen für alle Spuren des Abschnitts.
+- Bis zu 400 anklickbare Positionspunkte und 120 Abstandsmarkierungen halten die Grafik übersichtlich. Kennzahlen/CSV nutzen alle vergleichbaren Datensätze. Kein Vergleich ist ein externer Nachweis tatsächlicher Bewegung oder Genauigkeit.
+
+Der Inspector läuft auf dem Laptop; für seine Verwendung ist kein Firmware-Upload nötig.
+
+## Korrekturzuordnung (Version 1.2)
+
+Akzeptierte FINAL PARK SCAN-Registrierungen und explizite anfängliche Wandkorrekturen werden gezählt und unterbrechen die Istspur. Abgelehnte Scans bleiben Ereignisse ohne angewandte Korrektur.
+
+Neue LATER_TRACK/FINAL_PARK_TRACE-Datensätze können ein kompaktes `cs=` enthalten: Die laufende Korrektur-ID ändert sich nur bei einer tatsächlich angewandten nichtnulligen ToF-/Wandkorrektur. Ein gespeicherter letzter Korrekturwert zerlegt die Spur dadurch nicht wiederholt; auch zwei gleich grosse neue Korrekturen bleiben unterscheidbar. Aufzeichnungsrate und Datensatzlimits ändern sich nicht. Höchstens 14 zusätzliche ASCII-Bytes pro vorhandener Zeile, also 6.160 Bytes bei den kombinierten Limits von 200 und 240 Datensätzen; kein grösserer RAM-Logpuffer.
+
+Alte Logs bleiben lesbar. Ohne Ereignis-ID erkennt der Inspector Wertänderungen, weist aber ausdrücklich darauf hin, dass identische wiederholte Werte nicht eindeutig zugeordnet werden können.
 ## Gesamtlauf mit Pfosten (Version 1.1)
 
 Nach dem TXT-Import zeigt die neue Ansicht das gesamte Feld und ein Detail
@@ -149,7 +166,11 @@ Poppler-Versionen variieren; Asset-Metadaten und HTML werden zusammen erzeugt.
 
 ## Lauftelemetrie und Zeit (Version 1.3)
 
-`RUN_POSE` v1 zeichnet die geschätzte Spur über den ganzen Lauf. Lokale
+In einer ausdrücklich aktivierten Detail-Firmware zeichnet `RUN_POSE` v1
+die geschätzte Spur über den Lauf, soweit das Logbudget reicht. Die normale
+Firmware erzeugt nur kompakte Start-/Runden-/Abschlussmarker; vorhandene
+PARK_DIAG-/CONNECTOR_TRACK-/LATER_TRACK-/FINAL_PARK_TRACE-Spuren bleiben
+verfügbar. Lokale
 Positionen sind in der Einzelspur verfügbar, Feldpositionen im Gesamtlauf.
 Fortlaufende Messpunkte verbinden auch Anschluss und Runde; Korrekturen,
 Rahmenwechsel und Zeitlücken bleiben getrennt. Der Planselektor zeigt die zuletzt
@@ -208,3 +229,13 @@ und separate Einzelspur-Auswahl bleiben vom Gesamtlauf-Filter unabhängig.
 Alte Logs zeigen nur vorhandene Daten: einzelne Erkundungspositionen in Runde 1,
 spätere LATER_TRACK-Punkte in ihrer Runde, Anschlusspläne nur in Runde 1.
 Fehlende Fahrspuren oder Pläne werden ausdrücklich gemeldet, nicht ergänzt.
+
+## Zusammengeführter Stand1.6
+
+Gesamtansicht, Runden-/Ebenenfilter und offline eingebettete Matte ergänzen den
+Soll/Ist-Vergleich, CSV und hashgebundene Beobachtungen. Planversionsauswahl
+hängt von vorhandenen Routenrevisionen ab, nicht von Laufabschnitten.
+Die normale Firmware ergänzt nur kompakte Start-/Runden-/Abschlusszeiten.
+Neue vollständige RUN_POSE-/RUN_ROUTE-Spuren benötigen eine ausdrücklich
+aktivierte Detailkonfiguration; historische Spurlücken bleiben unbekannt.
+Siehe `simulation/RUN_TELEMETRY.md` für Grenzen und Aktivierung.

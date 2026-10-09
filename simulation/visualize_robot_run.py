@@ -49,6 +49,23 @@ def session_text(log: ParsedLog) -> str:
     return '\n'.join(lines[log.source_line_start - 1:log.source_line_end])
 
 
+def connector_plans(text: str) -> list[list[tuple[float, float, float]]]:
+    """Never draw a chord between distinct replans or missing indices."""
+    versions = []
+    previous = None
+    for m in re.finditer(r'\[CONNECTOR_POINT\] kind=connector index=(\d+) x=([\d.-]+) y=([\d.-]+) h=([\d.-]+)', text):
+        index = int(m[1])
+        point = tuple(map(float, m.group(2, 3, 4)))
+        if not all(math.isfinite(value) for value in point):
+            previous = None
+            continue
+        if previous is None or index != previous + 1:
+            versions.append([])
+        versions[-1].append(point)
+        previous = index
+    return versions
+
+
 def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
     import matplotlib
     matplotlib.use('Agg')
@@ -60,8 +77,8 @@ def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
     pillars = recorded_pillars(text, turn)
     exit_samples = [s for s in log.samples if s.state.startswith('segment_')]
     loc = [s for s in log.samples if s.state.startswith('localize_')]
-    plan = [tuple(map(float, m)) for m in re.findall(
-        r'\[CONNECTOR_POINT\] kind=connector index=\d+ x=([\d.-]+) y=([\d.-]+) h=([\d.-]+)', text)]
+    plans = connector_plans(text)
+    plan = [point for version in plans for point in version]
     tracking = [tuple(map(float, m)) for m in re.findall(
         r'\[CONNECTOR_TRACK\] t=(\d+) progress=\d+ x=([\d.-]+) y=([\d.-]+) h=([\d.-]+)', text)]
     later: dict[int, list[tuple[int, tuple[float, float, float]]]] = {}
@@ -104,7 +121,9 @@ def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
         if plan and end:
             line(ax, [end, plan[0]], color='#d98518', ls=':', lw=1.8,
                  label='Scan endpoints (path unavailable)')
-        line(ax, plan, color='#888', ls='--', lw=1.5, label='Accepted connector plan')
+        for version, points in enumerate(plans):
+            line(ax, points, color='#888', ls='--', lw=1.5,
+                 label='Accepted connector plans (separate versions)' if version == 0 else None)
         # Show sparse connector observations as points; do not invent intervening motion.
         if tracking:
             prefix = [p for t, p in sparse if t < tracking[0][0]]

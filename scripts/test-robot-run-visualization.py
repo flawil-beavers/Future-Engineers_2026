@@ -6,11 +6,17 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'simulation'))
-from visualize_robot_run import recorded_pillars, seat_position, session_text
+from visualize_robot_run import recorded_pillars, seat_position, session_text, connector_plans
 from analyze_parking_exit_pose import parse_log_sessions
 
 
 class RunVisualizationTests(unittest.TestCase):
+    def test_connector_replans_and_missing_indices_stay_separate(self):
+        point = lambda i, x: f'[CONNECTOR_POINT] kind=connector index={i} x={x} y=0 h=0'
+        plans = connector_plans('\n'.join([point(0,0),point(1,10),point(0,100),point(1,110),point(3,130)]))
+        self.assertEqual([len(version) for version in plans], [2,2,1])
+        self.assertEqual(plans[1][0], (100,0,0))
+
     def test_both_directions_and_section_rotations(self):
         self.assertEqual(seat_position(5, 1), (500, -900))
         self.assertEqual(seat_position(9, 1), (900, 0))

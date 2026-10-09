@@ -37,6 +37,7 @@
  */
 
 #include "serial_handler.h"
+#include "runtime_safety.h"
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
@@ -66,6 +67,7 @@
 static char ringBuffer[BUFFER_SIZE];
 static int head = 0;
 static int tail = 0;
+static bool discarding_message = false;
 
 /**
  * Select a mode for the current power cycle only. A reset always returns to
@@ -153,7 +155,8 @@ static bool handle_pid_command(const char *message)
   char group[12] = {};
   char parameter[12] = {};
   float value = 0.0f;
-  const int fields = sscanf(message, "pid %11s %11s %11s %f", action, group, parameter, &value);
+  char extra = '\0';
+  const int fields = sscanf(message, "pid %11s %11s %11s %f %c", action, group, parameter, &value, &extra);
   if (fields < 1 || strcmp(action, "help") == 0) {
     print_pid_help();
     return true;
@@ -168,7 +171,8 @@ static bool handle_pid_command(const char *message)
   }
   if (strcmp(action, "test") == 0) {
     float speed = 0.0f;
-    if (sscanf(message, "pid test %f", &speed) != 1 || fabsf(speed) > 1000.0f) {
+    if (sscanf(message, "pid test %f %c", &speed, &extra) != 1 ||
+        !isfinite(speed) || fabsf(speed) > 1000.0f) {
       Serial.println("Usage: pid test <speed_mm_s>");
       return true;
     }
@@ -180,7 +184,8 @@ static bool handle_pid_command(const char *message)
   }
   if (strcmp(action, "tune") == 0) {
     float speed = 0.0f, baseline = 0.0f, relay = 0.0f;
-    if (sscanf(message, "pid tune %f %f %f", &speed, &baseline, &relay) != 3 ||
+    if (sscanf(message, "pid tune %f %f %f %c", &speed, &baseline, &relay, &extra) != 3 ||
+        !isfinite(speed) || !isfinite(baseline) || !isfinite(relay) ||
         !pid_autotune_configure(speed, baseline, relay)) {
       Serial.println("Invalid tune values. Use: pid tune <speed> <baseline_PWM> <relay_step>");
       Serial.println("Requirements: speed >= 40, PWM within motor range, step >= 2.");
@@ -253,17 +258,23 @@ static bool handle_seat_command(const char *message)
   int station = -1;
   char side = '?';
   int range = -1;
-  char extra = '\0';
-  const int fields = sscanf(
-      message,
-      "seat expect %d %d %c %d %c",
-      &section,
-      &station,
-      &side,
-      &range,
-      &extra);
+  const char *argument = message;
+  int fields = 0;
+  if (strncmp(message, "seat expect", 11) == 0 &&
+      isspace(static_cast<unsigned char>(message[11]))) {
+    argument = message + 11;
+    if (RuntimeSafety::integerToken(argument, section) &&
+        RuntimeSafety::integerToken(argument, station)) {
+      while (isspace(static_cast<unsigned char>(*argument))) ++argument;
+      if (*argument) side = *argument++;
+      if (RuntimeSafety::integerToken(argument, range) && RuntimeSafety::argumentEnd(argument))
+        fields = 4;
+    }
+  }
   bool accepted = false;
-  if (fields == 4 && current_mode == MODE_OBSTACLE_SEAT_TEST) {
+  if (fields == 4 && section >= 0 && section <= 3 &&
+      station >= 0 && station <= 2 && range >= 150 && range <= 1000 &&
+      current_mode == MODE_OBSTACLE_SEAT_TEST) {
     accepted = obstacle_seat_test_expect(
         static_cast<uint8_t>(section),
         static_cast<uint8_t>(station),
@@ -367,23 +378,26 @@ extern unsigned long last_pid_status_time;
 
 void check_serial_available()
 {
-  while (Serial.available() > 0)
-  {
-    char c = Serial.read();
+  while (Serial.available() > 0) {
+    const char c = Serial.read();
+    if (discarding_message) {
+      if (c == '\n') {
+        discarding_message = false;
+        Serial.println("Serial command too long; discarded.");
+      }
+      continue;
+    }
+    const int next = (head + 1) % BUFFER_SIZE;
+    if (next == tail) {
+      // Discard the entire line, never execute its truncated tail as a command.
+      head = tail = 0;
+      discarding_message = c != '\n';
+      if (!discarding_message) Serial.println("Serial command too long; discarded.");
+      continue;
+    }
     ringBuffer[head] = c;
-    head = (head + 1) % BUFFER_SIZE;
-
-    // Handle buffer overflow
-    if (head == tail)
-    {
-      tail = (tail + 1) % BUFFER_SIZE;
-    }
-
-    // Process message when newline is received
-    if (c == '\n')
-    {
-      processMessage();
-    }
+    head = next;
+    if (c == '\n') processMessage();
   }
 }
 
@@ -418,6 +432,7 @@ void processMessage()
     --index;
   }
   message[index] = '\0'; // Null-terminate
+  if (index == 0) return;
 
   // A complete command proves that a laptop terminal is connected. Allow its
   // response to be printed in full, then restore safe unplugging for any mode.
@@ -430,6 +445,9 @@ void processMessage()
 
 void parseMessage(char *msg)
 {
+  if (!msg) return;
+  while (isspace(static_cast<unsigned char>(*msg))) ++msg;
+  if (!*msg) return;
   if (strcmp(msg, "camshot") == 0) {
     camera_snapshot_export();
     return;
@@ -438,8 +456,10 @@ void parseMessage(char *msg)
       (msg[7] == '\0' || msg[7] == ' ')) {
     int image_x = 0;
     int foot_y = 0;
-    char extra = '\0';
-    if (sscanf(msg, "camseat %d %d %c", &image_x, &foot_y, &extra) != 2) {
+    const char *argument = msg + 7;
+    if (!RuntimeSafety::integerToken(argument, image_x) ||
+        !RuntimeSafety::integerToken(argument, foot_y) ||
+        !RuntimeSafety::argumentEnd(argument)) {
       Serial.println("Usage: camseat <image_x 30..290> <foot_y 105..205>");
       return;
     }
@@ -461,24 +481,31 @@ void parseMessage(char *msg)
   if (tof_pose_diagnostic_handle_command(msg))
     return;
 
-  char cmd[3]; // Command character
+  char command = '\0';
   int value = 0;
-
-  // Extract command (first character)
-  sscanf(msg, "%1s", cmd);
-
-  // Skip whitespace and extract numeric value
-  char *beg = ++msg;
-  while (*beg == ' ')
-  {
-    beg++;
+  char *beg = nullptr;
+  if (!RuntimeSafety::legacyCommand(msg, command, value, beg)) {
+    Serial.println("Invalid command argument; no action taken.");
+    return;
+  }
+  bool safe_value = true;
+  switch (command) {
+    case 'd': safe_value = value >= -1000 && value <= 1000; break;
+    case 's': safe_value = value >= -MAX_STEERING && value <= MAX_STEERING; break;
+    case 'q': case 'Q': safe_value = value >= 0 && value <= 10000; break;
+    case 'w': case 'W': safe_value = value >= 0 && value <= 100000; break;
+    case 'E': safe_value = value >= 0 && value <= 1000000; break;
+    case 'a': safe_value = value >= 0 && value <= 10000; break;
+    case 'u': safe_value = value > 0 && value <= TOF_MAX_LONG_DISTANCE_MM; break;
+    default: break;
+  }
+  if (!safe_value) {
+    Serial.println("Command value outside supported range; no action taken.");
+    return;
   }
 
-  // Parse integer value if present
-  value = atoi(beg);
-
   // Execute command
-  switch (cmd[0])
+  switch (command)
   {
   case 'd':
     // Direct drive commands consistently select manual mode.
@@ -493,7 +520,7 @@ void parseMessage(char *msg)
 
   case 'n':
     // Print distance
-    Serial.println(get_distance(encoder_pos));
+    Serial.println(get_distance());
     break;
 
   case 'p':

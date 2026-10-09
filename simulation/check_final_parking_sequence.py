@@ -29,7 +29,7 @@ struct Logger {std::ostringstream lines;int writes=0;
  void write_to_usb(){++writes;}} robot_logger;
 unsigned long millis(){return hostTime;}float get_distance(){return encoder;}
 PositionEstimate get_position_struct(){return hostPose;}
-bool gyro_is_healthy(){return true;}
+bool hostGyroHealthy=true;bool gyro_is_healthy(){return hostGyroHealthy;}
 void position_apply_xy_correction(float x,float y){hostPose.x_mm+=x;hostPose.y_mm+=y;}
 void position_reset(float x,float y,float h){hostPose.x_mm=x;hostPose.y_mm=y;hostPose.heading_deg=h;}
 void stop(bool hold){dc_state=hold?DC_HOLDING:DC_DISABLED;command=0;current_speed=measured_speed=0;servo_disabled=true;}
@@ -45,6 +45,7 @@ struct TofObjectDiagnostic{int16_t distance_mm=0;bool hardware_valid=true,filter
 struct TofDiagnosticSnapshot{uint8_t stored_object_count=0;TofObjectDiagnostic objects[4];uint32_t sequence=0,sampled_ms=0;float selected_raw_distance_mm=0;};
 bool get_tof_diagnostic_snapshot(TofSensor,TofDiagnosticSnapshot &);
 namespace parking_module {
+void final_parking_sensor_hold();
 '''
     # Arduino/sensor headers are supplied by the host adapter above.
     fixture+=source[source.index('#define Serial robot_logger'):]
@@ -86,9 +87,17 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
   hostPose.x_mm=optimizedPath[index].x;hostPose.y_mm=optimizedPath[index].y;hostPose.heading_deg=connectorRouteHeading(optimizedPath,index);
   truePose=hostPose;hostPose.y_mm+=poseBias;
   parking_module::final_parking_reset();hostTime=0;encoder=0;stop(true);robot_logger.lines.str("");robot_logger.lines.clear();robot_logger.writes=0;
-  bool frozenServo=false,physicalCollision=false,xBiasInjected=false;
+  bool frozenServo=false,physicalCollision=false,xBiasInjected=false,gyroPauseInjected=false;
   for(int step=0;step<20000&&!parking_module::final_parking_complete()&&!parking_module::final_parking_aborted();++step){
    if(!xBiasInjected&&parking_module::state==parking_module::FP_SCAN_SETTLE){hostPose.x_mm+=xBias;xBiasInjected=true;}
+   if(!gyroPauseInjected&&parking_module::state==parking_module::FP_SEGMENT_DRIVE){
+    auto savedState=parking_module::state;auto savedStart=parking_module::stateStartMs;
+    hostGyroHealthy=false;parking_module::final_parking_update(dir);
+    if(parking_module::final_parking_aborted()||parking_module::state!=savedState||dc_state!=DC_DISABLED)return 1;
+    hostTime+=1500;hostGyroHealthy=true;parking_module::final_parking_sensor_resume();
+    if(parking_module::stateStartMs!=savedStart+1500)return 1;
+    gyroPauseInjected=true;
+   }
    parking_module::final_parking_update(dir);
    if(dc_state==DC_ENABLED){
     if(servo_disabled&&steeringCommand!=0)frozenServo=true;

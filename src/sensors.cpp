@@ -4,10 +4,12 @@
  */
 
 #include "sensors.h"
+#include "runtime_safety.h"
 #include "config.h"
 #include <Wire.h>
 #include "logger.h"
 #include "motor_control.h"
+#include "final_parking.h"
 #include "rear_tof_rpc.h"
 #define Serial robot_logger
 
@@ -24,6 +26,7 @@ static sh2_SensorValue_t sensor_value;
 static float current_degree = 0;
 static float current_heading = 0;
 static bool gyro_stream_healthy = false;
+static uint32_t gyro_last_valid_report_ms = 0;
 
 /**
  * @brief The timing budget (refresh rate) of ToF sensors captured at startup.
@@ -42,6 +45,15 @@ static float tof_signal_rates[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
 static float tof_sigmas[TOF_COUNT] = {-1.0f, -1.0f, -1.0f};
 static TofDiagnosticSnapshot tof_diagnostics[TOF_COUNT] = {};
 static uint32_t rear_tof_rpc_sequence = 0;
+static bool tof_transport_valid[TOF_COUNT] = {};
+
+static bool tof_value_fresh(TofSensor sensor)
+{
+  if (static_cast<unsigned>(sensor) >= TOF_COUNT) return false;
+  const auto &d = tof_diagnostics[sensor];
+  return tof_transport_valid[sensor] && RuntimeSafety::sampleFresh(
+      millis(), d.sampled_ms, d.sequence != 0, d.timing_budget_us, 250U);
+}
 
 static bool restart_gyro_stream()
 {
@@ -52,6 +64,11 @@ static bool restart_gyro_stream()
   // restart. The main loop also stays suspended until a fresh quaternion.
   stop(false);
   gyro_stream_healthy = false;
+  // Preserve the existing bounded parking fault evidence without changing the active mode.
+  final_parking_sensor_hold();
+  // Preserve controller, route and accumulated angle across recovery.
+  // The first valid raw yaw seeds a new baseline without adding sensor-zero
+  // changes to current_degree. Fresh reports resume the same active mode.
   sh2_close();
   if (!bno.begin_SPI(BNO085_CS, BNO085_INT, &SPI1))
     return false;
@@ -73,109 +90,78 @@ static bool restart_gyro_stream()
 
 void update_gyro()
 {
-  static unsigned long last_gyro_data_time = 0;
-  static unsigned long last_gyro_poll_time = 0;
+  static uint32_t observation_start_ms = 0;
+  static uint32_t last_poll_ms = 0;
+  static bool polled = false;
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
   static bool reset_recovery_pending = false;
-
-  const unsigned long now = millis();
-  const bool first_poll = last_gyro_poll_time == 0;
-  const unsigned long poll_gap_ms = first_poll ? 0 : now - last_gyro_poll_time;
-  last_gyro_poll_time = now;
-
-  if (first_poll)
-  {
-    // Give the initial report stream one timeout period to produce a sample.
-    last_gyro_data_time = now;
-  }
-  else if (poll_gap_ms > GYRO_REPORT_TIMEOUT_MS)
-  {
-    // A stale sample after a long main-loop pause is not evidence that the
-    // BNO085 stopped reporting. Start a fresh observation window instead of
-    // resetting the sensor (the old recovery did exactly that while the INT
-    // line was HIGH).
+  const uint32_t now = millis();
+  const uint32_t poll_gap_ms = polled ? uint32_t(now - last_poll_ms) : 0;
+  if (!polled) observation_start_ms = now;
+  polled = true;
+  last_poll_ms = now;
+  if (poll_gap_ms > GYRO_REPORT_TIMEOUT_MS) {
+    // A loop pause is not a sensor failure. Defer transport recovery, but do
+    // not renew the age of the last actual measurement or permit stale driving.
+    gyro_stream_healthy = false;
+    observation_start_ms = now;
     Serial.print("[GYRO] Main loop did not poll gyro for ");
     Serial.print(poll_gap_ms);
     Serial.println("ms; deferring sensor timeout check.");
-    last_gyro_data_time = now;
   }
 
-  // The BNO085 INT pin is active low. If HIGH, no data is ready.
-  if (digitalRead(BNO085_INT) == HIGH)
-  {
-    const unsigned long timeout_ms = reset_recovery_pending
-                                         ? GYRO_RESET_RECOVERY_TIMEOUT_MS
-                                         : GYRO_REPORT_TIMEOUT_MS;
-    if (now - last_gyro_data_time > timeout_ms)
-    {
-      // enableReport() cannot be sent directly while INT is HIGH. Reopen the
-      // complete SPI/SH2 transport, which performs a controlled reset first.
-      Serial.println("[GYRO] Sensor report timeout; restarting SPI/SH2...");
-      const bool restarted = restart_gyro_stream();
-      Serial.println(restarted
-                         ? "[GYRO] SPI/SH2 stream restarted."
-                         : "[GYRO] SPI/SH2 restart failed.");
+  if (digitalRead(BNO085_INT) == LOW) {
+    const bool has_event = bno.getSensorEvent(&sensor_value);
+    if (bno.wasReset()) {
+      Serial.println("BNO085 was reset! Restarting SPI/SH2...");
       gyro_initialized = false;
+      const bool restarted = restart_gyro_stream();
+      Serial.println(restarted ? "[GYRO] SPI/SH2 stream restarted."
+                               : "[GYRO] SPI/SH2 restart failed.");
       reset_recovery_pending = true;
-      last_gyro_data_time = millis();
+      observation_start_ms = millis();
+      return;
     }
-    return;
+    if (has_event && sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR) {
+      const auto &q = sensor_value.un.gameRotationVector;
+      float yaw_deg = 0;
+      if (RuntimeSafety::quaternionYaw(q.real, q.i, q.j, q.k, yaw_deg)) {
+        current_heading = yaw_deg;
+        if (!gyro_initialized) {
+          last_yaw_deg = yaw_deg;
+          gyro_initialized = true;
+        }
+        float delta = yaw_deg - last_yaw_deg;
+        if (delta > 180) delta -= 360;
+        else if (delta < -180) delta += 360;
+        current_degree += delta;
+        last_yaw_deg = yaw_deg;
+        gyro_last_valid_report_ms = millis();
+        observation_start_ms = gyro_last_valid_report_ms;
+        reset_recovery_pending = false;
+        gyro_stream_healthy = true;
+        return;
+      }
+      // Never publish NaN/zero quaternions or mark them as healthy.
+      gyro_stream_healthy = false;
+    }
   }
 
-  // Get sensor event
-  bool has_event = bno.getSensorEvent(&sensor_value);
-
-  // Check if sensor was reset
-  if (bno.wasReset())
-  {
-    Serial.println("BNO085 was reset! Restarting SPI/SH2...");
-    gyro_initialized = false; // Reset local tracking on hardware reset
+  const uint32_t checked_ms = millis();
+  if (uint32_t(checked_ms - gyro_last_valid_report_ms) > GYRO_REPORT_TIMEOUT_MS)
+    gyro_stream_healthy = false;
+  const uint32_t timeout_ms = reset_recovery_pending
+      ? GYRO_RESET_RECOVERY_TIMEOUT_MS : GYRO_REPORT_TIMEOUT_MS;
+  // This also covers INT stuck LOW, empty events and unrelated event types.
+  if (uint32_t(checked_ms - observation_start_ms) > timeout_ms) {
+    Serial.println("[GYRO] Sensor report timeout; restarting SPI/SH2...");
     const bool restarted = restart_gyro_stream();
-    Serial.println(restarted
-                       ? "[GYRO] SPI/SH2 stream restarted."
-                       : "[GYRO] SPI/SH2 restart failed.");
+    Serial.println(restarted ? "[GYRO] SPI/SH2 stream restarted."
+                             : "[GYRO] SPI/SH2 restart failed.");
+    gyro_initialized = false;
     reset_recovery_pending = true;
-    last_gyro_data_time = millis();
-    return; // Drop this frame and re-baseline on the first new quaternion.
-  }
-
-  // Parse Game Rotation Vector (No Magnetometer = No Drift near motors)
-  if (has_event)
-  {
-    if (sensor_value.sensorId == SH2_GAME_ROTATION_VECTOR)
-    {
-      last_gyro_data_time = now;
-      reset_recovery_pending = false;
-      gyro_stream_healthy = true;
-      sh2_RotationVector_t rotationVector = sensor_value.un.gameRotationVector;
-      float r = rotationVector.real;
-      float i = rotationVector.i;
-      float j = rotationVector.j;
-      float k = rotationVector.k;
-
-      // Convert rotation vector to Yaw (Euler heading) in degrees
-      float yaw = atan2(2.0 * (i * j + r * k), r * r + i * i - j * j - k * k);
-      current_heading = yaw * 180.0 / PI;
-
-      if (!gyro_initialized)
-      {
-        last_yaw_deg = current_heading;
-        gyro_initialized = true;
-      }
-
-      float delta = current_heading - last_yaw_deg;
-      if (delta > 180)
-      {
-        delta -= 360;
-      }
-      else if (delta < -180)
-      {
-        delta += 360;
-      }
-      last_yaw_deg = current_heading;
-      current_degree += delta;
-    }
+    observation_start_ms = millis();
   }
 }
 
@@ -214,15 +200,18 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // float max_accept_sigma = nav_long_range_active ? 50.0f : 10.0f;
 
   uint8_t data_ready = 0;
-  if (sensor.VL53L4CX_GetMeasurementDataReady(&data_ready) != VL53L4CX_ERROR_NONE || !data_ready)
-  {
+  if (sensor.VL53L4CX_GetMeasurementDataReady(&data_ready) != VL53L4CX_ERROR_NONE) {
+    tof_transport_valid[sensor_index] = false;
     return;
   }
+  if (!data_ready) return;
 
   VL53L4CX_MultiRangingData_t ranging_data;
   float measured_distance = TOF_OUT_OF_RANGE_MM; // Default to out of range
   int best_idx = -1;
-  if (sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE)
+  const bool measurement_ok =
+      sensor.VL53L4CX_GetMultiRangingData(&ranging_data) == VL53L4CX_ERROR_NONE;
+  if (measurement_ok)
   {
     frame.reported_object_count = ranging_data.NumberOfObjectsFound;
     if (ranging_data.NumberOfObjectsFound > 0)
@@ -309,7 +298,8 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   // Consistency check: limit the change from the previous value (Slew Rate Limiter)
   // We skip this if the previous value was invalid (-1.0) or if either value is OUT_OF_RANGE
   // to ensure we still detect gaps (9999.0) and re-acquire walls instantly.
-  if (measured_distance != TOF_OUT_OF_RANGE_MM && out_distance != -1.0f && out_distance != TOF_OUT_OF_RANGE_MM)
+  if (tof_value_fresh(sensor_index) && measured_distance != TOF_OUT_OF_RANGE_MM &&
+      out_distance != -1.0f && out_distance != TOF_OUT_OF_RANGE_MM)
   {
     float delta = measured_distance - out_distance;
     if (fabs(delta) > TOF_MAX_DELTA_MM)
@@ -318,7 +308,10 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
     }
   }
 
-  sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+  const bool restart_ok =
+      sensor.VL53L4CX_ClearInterruptAndStartMeasurement() == VL53L4CX_ERROR_NONE;
+  tof_transport_valid[sensor_index] = measurement_ok && restart_ok;
+  if (!measurement_ok) measured_distance = -1.0f;
   
   // Use the raw measured distance. It will be 9999.0 only if detection truly failed.
   // The navigation_controller logic will still treat distances > 600mm as an edge/gap.
@@ -335,18 +328,12 @@ static void read_single_tof(VL53L4CX &sensor, float &out_distance)
   frame.sampled_ms = millis();
   diagnostic = frame;
 
-  // Update signal rate and sigma only if a valid measurement was found
-  if (best_idx != -1) {
-    if (&sensor == &sensor_left) {
-      tof_signal_rates[TOF_LEFT] = current_signal_rate;
-      tof_sigmas[TOF_LEFT] = current_sigma;
-      tof_raw_distances[TOF_LEFT] = raw_measured_dist;
-    } else if (&sensor == &sensor_right) {
-      tof_signal_rates[TOF_RIGHT] = current_signal_rate;
-      tof_sigmas[TOF_RIGHT] = current_sigma;
-      tof_raw_distances[TOF_RIGHT] = raw_measured_dist;
-    }
-  }
+  // Publish the complete current selection, including invalid frames. Never
+  // fall back to an old raw object after a fresh empty/out-of-range frame.
+  tof_signal_rates[sensor_index] = current_signal_rate;
+  tof_sigmas[sensor_index] = current_sigma;
+  tof_raw_distances[sensor_index] = raw_measured_dist;
+
 }
 
 void update_lasers()
@@ -365,12 +352,14 @@ void update_lasers()
 
   RearTofRpcFrame rear_frame;
   if (!rear_tof_rpc_read(rear_frame)) {
+    tof_transport_valid[TOF_REAR] = false;
     tof_distances[TOF_REAR] = -1.0f;
     tof_raw_distances[TOF_REAR] = -1.0f;
     tof_signal_rates[TOF_REAR] = -1.0f;
     tof_sigmas[TOF_REAR] = -1.0f;
     return;
   }
+  tof_transport_valid[TOF_REAR] = true;
   if (rear_frame.sequence == rear_tof_rpc_sequence)
     return;
 
@@ -408,6 +397,7 @@ static bool configure_tof_for_test(VL53L4CX &sensor, TofSensor side,
                                    VL53L4CX_DistanceModes distance_mode,
                                    uint32_t budget_us)
 {
+  tof_transport_valid[side] = false; // Old objects belong to the previous configuration.
   VL53L4CX_Error status = sensor.VL53L4CX_StopMeasurement();
   if (status == VL53L4CX_ERROR_NONE)
     status = sensor.VL53L4CX_SetDistanceMode(distance_mode);
@@ -508,7 +498,7 @@ static void init_single_tof(VL53L4CX &sensor, TwoWire *bus, const char* name)
 
 float get_tof_distance(TofSensor sensor)
 {
-  if (sensor < TOF_COUNT)
+  if (tof_value_fresh(sensor))
   {
     return tof_distances[sensor];
   }
@@ -517,7 +507,7 @@ float get_tof_distance(TofSensor sensor)
 
 float get_tof_raw_distance(TofSensor sensor)
 {
-  if (sensor < TOF_COUNT)
+  if (tof_value_fresh(sensor))
   {
     return tof_raw_distances[sensor];
   }
@@ -526,7 +516,7 @@ float get_tof_raw_distance(TofSensor sensor)
 
 float get_tof_signal_rate(TofSensor sensor)
 {
-  if (sensor < TOF_COUNT)
+  if (tof_value_fresh(sensor))
   {
     return tof_signal_rates[sensor];
   }
@@ -535,7 +525,7 @@ float get_tof_signal_rate(TofSensor sensor)
 
 float get_tof_sigma(TofSensor sensor)
 {
-  if (sensor < TOF_COUNT)
+  if (tof_value_fresh(sensor))
   {
     return tof_sigmas[sensor];
   }
@@ -545,8 +535,8 @@ float get_tof_sigma(TofSensor sensor)
 bool get_tof_diagnostic_snapshot(TofSensor sensor,
                                  TofDiagnosticSnapshot &snapshot)
 {
-  if (sensor >= TOF_COUNT ||
-      tof_diagnostics[sensor].sequence == 0)
+  if (static_cast<unsigned>(sensor) >= TOF_COUNT ||
+      !tof_transport_valid[sensor] || tof_diagnostics[sensor].sequence == 0)
     return false;
   snapshot = tof_diagnostics[sensor];
   return true;
@@ -564,7 +554,8 @@ float get_heading()
 
 bool gyro_is_healthy()
 {
-  return gyro_stream_healthy;
+  return gyro_stream_healthy &&
+      uint32_t(millis() - gyro_last_valid_report_ms) <= GYRO_REPORT_TIMEOUT_MS;
 }
 
 void reset_VL53L4CX_via_I2C(TwoWire &wire)

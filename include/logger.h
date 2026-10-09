@@ -49,7 +49,7 @@ public:
      */
     void clear();
     size_t remaining() const { return LOG_BUFFER_SIZE - 1 - buffer_head; }
-    void reserve_tail(size_t bytes) { tail_reserve = bytes; }
+    void reserve_tail(size_t bytes) { tail_reserve = bytes < LOG_BUFFER_SIZE ? bytes : LOG_BUFFER_SIZE - 1; }
 
 private:
     size_t tail_reserve = 0;

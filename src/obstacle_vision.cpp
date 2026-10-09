@@ -198,6 +198,13 @@ void printCameraCalibration()
     Serial.print(camera.getLastServiceTimeUs());
     Serial.print(" processing_ms=");
     Serial.print(result.processingTimeUs / 1000.0f, 2);
+    // Extend the existing stationary calibration record only; no driving chatter.
+    Serial.print(" roi_value_mean/min/max=");
+    Serial.print(result.meanValue); Serial.print("/");
+    Serial.print(result.minValue); Serial.print("/"); Serial.print(result.maxValue);
+    Serial.print(" roi_samples/dark/clipped=");
+    Serial.print(result.qualitySamples); Serial.print("/");
+    Serial.print(result.darkSamples); Serial.print("/"); Serial.print(result.clippedSamples);
     Serial.print(" control_block_ms=");
     Serial.println(
         (camera.getLastServiceTimeUs() + result.processingTimeUs) /

@@ -102,14 +102,15 @@ bool gyro_is_healthy();
 /**
  * @brief Get the latest distance from a specific ToF sensor
  * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
- * @return Distance in millimeters, or -1.0 if invalid
+ * @return Fresh distance in millimeters; -1.0 if unavailable/stale/bus-failed.
+ *         A fresh out-of-range frame remains TOF_OUT_OF_RANGE_MM (a gap).
  */
 float get_tof_distance(TofSensor sensor);
 
 /**
  * @brief Get the latest raw distance (before clamping) from a specific ToF sensor
  * @param sensor The sensor to query (TOF_LEFT, TOF_RIGHT, or TOF_REAR)
- * @return Raw distance in millimeters, or -1.0 if invalid
+ * @return Fresh raw distance in millimeters, or -1.0 if invalid/stale.
  */
 float get_tof_raw_distance(TofSensor sensor);
 
@@ -127,7 +128,8 @@ float get_tof_signal_rate(TofSensor sensor);
  */
 float get_tof_sigma(TofSensor sensor);
 
-/** Copy the most recent complete ranging frame for stationary diagnostics. */
+/** Copy the latest transport-valid frame, retaining its sequence and sampled_ms.
+ * Consumers must check acquisition age; this also supports stale-frame diagnostics. */
 bool get_tof_diagnostic_snapshot(TofSensor sensor,
                                  TofDiagnosticSnapshot &snapshot);
 

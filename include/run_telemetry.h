@@ -2,6 +2,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef RUN_TELEMETRY_DETAILED
+#define RUN_TELEMETRY_DETAILED 0
+#endif
+
 #ifdef ARDUINO
 void run_telemetry_start();
 void run_telemetry_tick();

@@ -88,9 +88,43 @@ int main(){
     if not compiler:
         raise RuntimeError('A host C++ compiler is required')
     binary = folder / 'fixture.exe'
-    subprocess.run([compiler, '-std=c++17', '-DARDUINO', '-I' + str(folder),
+    subprocess.run([compiler, '-std=c++17', '-DARDUINO', '-DRUN_TELEMETRY_DETAILED=1', '-I' + str(folder),
                     '-I' + str(ROOT / 'include'), str(ROOT / 'src/run_telemetry.cpp'),
                     str(folder / 'fixture.cpp'), '-o', str(binary)], check=True)
+    subprocess.run([str(binary)], check=True)
+    # Production default must not dump poses/routes or read the estimator.
+    compact = folder / 'compact.cpp'
+    compact.write_text(r'''
+#include "run_telemetry.h"
+#include "logger.h"
+#include "position_estimator.h"
+#include <cassert>
+#include <iostream>
+Logger robot_logger;uint32_t now=0;unsigned reads=0;
+uint32_t millis(){return now;}
+PositionEstimate get_position_struct(){++reads;return {100,-1200,90};}
+int main(){
+ run_telemetry_start();float path[192][3]={};
+ for(unsigned i=0;i<4000;++i){now+=250;run_telemetry_tick();
+  run_telemetry_phase(i%2?"driving":"gyro_hold",1);
+  run_telemetry_motion(i%2?"drive":"stop");
+  run_telemetry_route("learned",path,192,sizeof(path[0]),true);
+  run_telemetry_pose_change("correction",0,0,0,1,1,1);
+ }
+ for(unsigned lap=1;lap<=3;++lap)run_telemetry_lap(lap);
+ run_telemetry_finish("completed","test");
+ assert(reads==0&&robot_logger.text.size()<1024);
+ assert(robot_logger.text.find("[RUN_START]")!=std::string::npos);
+ assert(robot_logger.text.find("[RUN_END]")!=std::string::npos);
+ assert(robot_logger.text.find("[RUN_POSE]")==std::string::npos);
+ assert(robot_logger.text.find("[RUN_ROUTE]")==std::string::npos);
+ assert(robot_logger.text.find("[RUN_EVENT]")==std::string::npos);
+ std::cout<<"PASS: production compact timing, no pose reads/dumps, below1KiB\n";
+}
+''')
+    subprocess.run([compiler, '-std=c++17', '-DARDUINO', '-I' + str(folder),
+                    '-I' + str(ROOT / 'include'), str(ROOT / 'src/run_telemetry.cpp'),
+                    str(compact), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 
 

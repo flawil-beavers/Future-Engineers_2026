@@ -5,6 +5,7 @@
  */
 
 #include "motor_control.h"
+#include "runtime_safety.h"
 #include "ackermann_kinematics.h"
 #include "config.h"
 #include "navigation_controller.h"
@@ -21,8 +22,8 @@ extern void serial_setup();
 Servo servo;
 
 // Encoder position tracking
-long encoder_pos = 0;
-int encoder_dir = 1; // 1 -> CCW, -1 -> CW
+volatile long encoder_pos = 0;
+volatile int encoder_dir = 1; // 1 -> CCW, -1 -> CW
 
 // Motor state
 DCState dc_state = DC_DISABLED;
@@ -260,7 +261,7 @@ unsigned long steering_diff = 0;
 
 // Enable switch state management
 bool system_enabled = false;           // Whether system is currently running, otherwise no movement is done
-static bool last_physical_switch_state = false; // Tracks physical switch to detect transitions
+static RuntimeSafety::EnableSwitchFilter enable_switch_filter;
 
 // ==========================================
 // MOTOR CONTROL FUNCTIONS
@@ -420,14 +421,24 @@ void set_dc(float dc, bool rate_limit)
   service_motor_output();
 }
 
-float get_distance(long encoder_pos)
+EncoderSnapshot get_encoder_snapshot()
 {
-  return encoder_pos * COUNTER_TO_MM;
+  // Restore the prior interrupt state; never enable interrupts inside an ISR.
+  const uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  const EncoderSnapshot snapshot = {encoder_pos, encoder_dir};
+  if (!primask) __enable_irq();
+  return snapshot;
 }
+
+long get_encoder_count() { return get_encoder_snapshot().count; }
+
+float get_distance(long encoder_counts) { return encoder_counts * COUNTER_TO_MM; }
+float get_distance() { return get_distance(get_encoder_count()); }
 
 int estimate_dc(float speed)
 {
-  float distance = get_distance(encoder_pos);
+  float distance = get_distance();
   float dc = speed / distance * MOTOR_MAX_DC;
   if (dc > MOTOR_MAX_DC)
   {
@@ -827,7 +838,7 @@ void loop_updater()
   last_loop_time_us = current_time - last_time;
   last_loop_time = last_loop_time_us / 1000000.0; // Convert to seconds
 
-  current_distance = get_distance(encoder_pos);
+  current_distance = get_distance();
 
   if (speed_sample_start_us == 0)
   {
@@ -1029,7 +1040,7 @@ void system_interface_setup()
 
   // Check initial state
   system_enabled = digitalRead(ENABLE_SWITCH_PIN);
-  last_physical_switch_state = system_enabled;
+  enable_switch_filter.reset(system_enabled, micros());
 
   // Setup serial and wait if not enabled (defined in serial_handler.cpp)
   serial_setup();
@@ -1046,28 +1057,11 @@ void system_interface_setup()
 
 void handle_enable_switch()
 {
-  // Throttling: Only poll the physical pin every 50ms (20Hz).
-  // Human-operated switches don't need MHz-rate polling, and this saves CPU cycles.
-  static unsigned long last_poll_time = 0;
-  if (current_time - last_poll_time < ENABLE_SWITCH_POLL_INTERVAL_US) return;
-  last_poll_time = current_time;
-
-  bool current_switch_state = digitalRead(ENABLE_SWITCH_PIN);
-  
-  // If the switch state matches our internal state, no action is needed
-  if (current_switch_state == last_physical_switch_state) return;
-  last_physical_switch_state = current_switch_state;
-
-  // Check if enough time has passed since the last transition to debounce the signal
-  static unsigned long last_enable_interrupt_time = 0;
-  if (current_time - last_enable_interrupt_time > ENABLE_DEBOUNCE_TIME_US)
-  {
-    last_enable_interrupt_time = current_time;
-    if (current_switch_state)
-      mode_resume();
-    else
-      mode_pause();
-  }
+  // One pin read per loop keeps LOW independent of the HIGH debounce window.
+  const int transition = enable_switch_filter.update(
+      digitalRead(ENABLE_SWITCH_PIN) == HIGH, current_time, ENABLE_DEBOUNCE_TIME_US);
+  if (transition < 0) mode_pause();
+  else if (transition > 0) mode_resume();
 }
 
 // ==========================================

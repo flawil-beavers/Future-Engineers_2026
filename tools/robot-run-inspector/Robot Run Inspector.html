@@ -9,7 +9,7 @@
 .whole-run{height:auto;aspect-ratio:1200/760;background:white} @media(max-width:700px){#wholePlot{overflow:auto}.whole-run{min-width:900px}}
 </style>
 <main>
-<header><div><h1>Robot Run Inspector</h1><div class="muted">Offline-Diagnose für eure Roboterläufe · Version 1.5</div></div><span class="badge">100 % lokal · kein Internet</span></header>
+<header><div><h1>Robot Run Inspector</h1><div class="muted">Offline-Diagnose für eure Roboterläufe · Version 1.6</div></div><span class="badge">100 % lokal · kein Internet</span></header>
 <section class="panel drop" id="drop"><h2>Log öffnen. Lauf verstehen.</h2><p>Eine originale TXT-Logdatei hierher ziehen oder auswählen.<br>Die Datei wird nur gelesen und bleibt auf diesem Computer.</p><input id="file" type="file" accept=".txt,.log,text/plain"><p class="muted" id="loadStatus" role="status" aria-live="polite">Keine Installation und keine Verbindung zum Roboter erforderlich.</p></section>
 <div id="workspace" hidden>
 <section class="panel toolbar"><label for="session">Laufabschnitt</label><select id="session"></select><button id="export">HTML-Bericht speichern</button><button id="json" class="secondary">JSON speichern</button><button id="print" class="secondary">Drucken / PDF</button></section>
@@ -17,9 +17,9 @@
 <section class="panel"><h2>Befund & Grenzen</h2><div id="summary"></div><small>Die Fahrspur ist eine Schätzung des Roboters. Kontakte, tatsächliche Parkposition, Akkuspannung und Kameraqualität sind ohne zusätzliche Messungen oder Bilder nicht belegt. Kein Fehler im Log bedeutet nicht, dass der Lauf fehlerfrei war.</small></section>
 <div class="grid"><section class="panel"><h2>Auffälligkeiten</h2><div id="findings" class="scroll"></div></section><section class="panel"><h2>Sensoren & Aufzeichnung</h2><div id="health"></div></section></div>
 <section class="panel"><div class="toolbar"><h2>Gesamtlauf mit Pfosten</h2><label for="roundFilter">Runde</label><select id="roundFilter"><option value="all">Alle Runden + Parken</option><option value="1">Runde 1</option><option value="2">Runde 2</option><option value="3">Runde 3</option><option value="other">Parken / ohne Runde</option></select><label for="trajectoryLayers">Spuren</label><select id="trajectoryLayers"><option value="both">Plan + Fahrspur</option><option value="driven">Nur Fahrspur</option><option value="plan">Nur Plan</option></select><label for="fieldBackground">FE-Spielfeld</label><select id="fieldBackground"><option value="show">Anzeigen</option><option value="hide">Ausblenden</option></select><span id="planVersionControl" hidden><label for="planVersion">Planversion</label> <select id="planVersion"></select></span><button id="saveWholeSvg" class="secondary">SVG speichern</button></div><div id="wholePlot"></div><p class="muted">Farben trennen Ausparken, Anschluss und Runden. Kleine Punkte: einzelne Erkundungspositionen. Dunkel gestrichelt: ausgewählter Routenplan; dick und farbig: geschätzte Fahrspur; punktiert: Scan-Endpunkte oder Posekorrektur. Unbeobachtete Pfosten und fehlende Fahrspuren werden nicht ergänzt.</p></section>
-<section class="panel"><div class="toolbar"><h2>Geschätzte Fahrspur</h2><label for="track">Spur</label><select id="track"></select></div><div id="plot"></div><p id="plotInfo" class="muted"></p></section>
+<section class="panel"><div class="toolbar"><h2>Soll- und Istspur</h2><label for="track">Spur</label><select id="track"></select></div><div id="plot"></div><p id="plotInfo" class="muted"></p><div id="deviations"></div><button id="csv" class="secondary">Abweichungen als CSV speichern</button></section>
 <section class="panel"><h2>Ereignisse im Lauf</h2><div id="events" class="scroll"></div></section>
-<section class="panel"><h2>Physische Beobachtung</h2><p class="muted">Diese Angaben stammen von euch und werden im Bericht getrennt von der Telemetrie gespeichert.</p><label for="notes">Aufbau, Akku, Kontakt, Stoppposition, Video-Dateiname</label><textarea id="notes" placeholder="Zum Beispiel: B, CW, Akku 2, keine Berührung beobachtet, Video run_508.mp4"></textarea></section>
+<section class="panel"><h2>Physische Beobachtung</h2><p class="muted">Diese Angaben stammen von euch und werden im Bericht getrennt von der Telemetrie gespeichert.</p><label for="notes">Aufbau, Akku, Kontakt, Stoppposition, Video-Dateiname</label><p><label for="noteFile">Beobachtungen aus JSON wieder laden (Original-Log zuerst öffnen)</label><br><input id="noteFile" type="file" accept=".json,application/json"><span id="noteStatus" role="status" aria-live="polite"></span></p><textarea id="notes" placeholder="Zum Beispiel: B, CW, Akku 2, keine Berührung beobachtet, Video run_508.mp4"></textarea></section>
 <section class="panel" id="rawPanel"><h2>Original-Log durchsuchen</h2><div class="toolbar"><input type="search" id="search" placeholder="Suchbegriff, z. B. GYRO oder FINAL PARK" aria-label="Log durchsuchen"><label for="line">Zeile</label><input type="number" id="line" min="1" style="width:100px"><button id="jump" class="secondary">Anzeigen</button><button id="more" class="secondary">Weitere Zeilen</button></div><p id="rawInfo" class="muted"></p><div id="raw" class="scroll log"></div></section>
 </div>
 </main>
@@ -30,7 +30,7 @@ const OFFICIAL_FE_MAT="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0nMS4wJyBlbmN
 /* END OFFICIAL FE MAT */
 // Pure parser: kept independent of the DOM for regression tests.
 function fields(line){return Object.fromEntries([...line.matchAll(/([^\s=]+)=([^\s]+)/g)].map(m=>[m[1],m[2]]));}
-function numbers(value,separator=','){if(!value)return null;const a=value.split(separator).map(Number);return a.every(Number.isFinite)?a:null;}
+function numbers(value,separator=','){if(!value)return null;const parts=value.split(separator);if(parts.some(s=>!s.trim()))return null;const a=parts.map(Number);return a.every(Number.isFinite)?a:null;}
 function analyzeLog(text,name='log.txt'){
  const all=text.replace(/^\uFEFF/,'').split(/\r\n|\n|\r/);if(all.at(-1)==='')all.pop();
  const starts=[];all.forEach((s,i)=>{if(s.includes('[OC] New obstacle run'))starts.push(i);});
@@ -40,22 +40,34 @@ function analyzeLog(text,name='log.txt'){
  const sessions=[];
  for(let b=0;b<bounds.length-1;b++){
   const start=bounds[b],end=bounds[b+1];const rows=all.slice(start,end).map((text,i)=>({line:start+i+1,text}));
-  const r={index:b+1,start:start+1,end,rows,builds:[],directions:[],laps:[],findings:[],events:[],tracks:{},lastState:'Nicht protokolliert',lastOperational:'Nicht protokolliert',lastStop:'Nicht protokolliert',parking:'Kein Endergebnis protokolliert',exit:false,times:[],health:{gyroTimeout:0,gyroRestart:0,loopPause:0,slip:0,overflow:0,malformed:0,corrections:0,maxCorrectionMm:0,maxCorrectionDeg:0,tof:{}}};
-  const groups=new Map();let finalResult=null,aborted=false,diagConfigs=0;
+  const r={index:b+1,start:start+1,end,rows,builds:[],directions:[],laps:[],findings:[],events:[],tracks:{},lastState:'Nicht protokolliert',lastOperational:'Nicht protokolliert',lastStop:'Nicht protokolliert',parking:'Kein Endergebnis protokolliert',exit:false,times:[],health:{gyroTimeout:0,gyroRestart:0,loopPause:0,slip:0,overflow:0,loggerOverflow:0,diagnosticLimit:0,malformed:0,corrections:0,maxCorrectionMm:0,maxCorrectionDeg:0,tof:{}}};
+  const groups=new Map();let finalResult=null,aborted=false,diagConfigs=0,parkFrame=0,parkEpoch=0,connectorBatch=0;let connectorReference=[];const pendingBreak=new Set();const correctionIdentity=new Map();
   function flag(id,severity,title,detail,row){if(!groups.has(id))groups.set(id,{id,severity,title,detail,count:0,lines:[]});const g=groups.get(id);g.count++;g.lines.push(row.line);}
   for(const row of rows){const s=row.text,f=fields(s),tag=s.match(/^\[([^\]]+)\]/)?.[1]||'';const tm=f.t!==undefined?Number(f.t):NaN;if(Number.isFinite(tm))r.times.push(tm);
    if(f.build&&!r.builds.includes(f.build))r.builds.push(f.build);
    const direction=s.match(/\bturn=(CW|CCW)\b/)?.[1]||(tag==='PARK_DIAG_CONFIG'?(f.turn==='-1'?'CW':f.turn==='1'?'CCW':null):null);if(direction&&!r.directions.includes(direction))r.directions.push(direction);
    const lap=s.match(/\[PATH\] Completed lap (\d+)/);if(lap&&!r.laps.includes(+lap[1]))r.laps.push(+lap[1]);
-   if(tag==='PARK_DIAG_CONFIG')diagConfigs++;
+   if(tag==='PARK_DIAG_CONFIG'){diagConfigs++;parkFrame=0;parkEpoch++;}
+   if(tag==='PARK_DIAG'&&(f.type==='rebase'||f.type==='correction')){if(f.type==='rebase')parkFrame++;parkEpoch++;}
+   if(tag==='CONNECTOR_POINT'){
+    if(f.kind==='connector'&&f.index==='0'){connectorBatch++;connectorReference=[];}
+    const a=numbers([f.x,f.y,f.h].join(','));
+    if(a&&a.length===3&&['connector','route'].includes(f.kind))connectorReference.push({x:a[0],y:a[1],h:a[2],kind:f.kind,index:Number(f.index),line:row.line});
+   }
    if(tag==='GYRO'&&/Sensor report timeout/i.test(s)){r.health.gyroTimeout++;flag('gyro-timeout','error','Gyro-Timeout nachgewiesen','Sensorbericht blieb aus. Versorgung, Verkabelung und SPI/SH2 prüfen; Ursache ist durch diese Meldung allein nicht bewiesen.',row);}
    if(tag==='GYRO'&&/stream restarted/i.test(s))r.health.gyroRestart++;
    if(tag==='GYRO'&&/did not poll gyro/i.test(s)){r.health.loopPause++;flag('loop-pause','warning','Längere Gyro-Abfragepause','Die Hauptschleife hat den Gyro zeitweise nicht abgefragt. Das ist von einem bestätigten Sensor-Timeout getrennt zu beurteilen.',row);}
    if(tag==='SLIP'){r.health.slip++;flag('slip','warning','Schlupf-Indikator protokolliert','Abweichung zwischen Bewegungsmodell und Messung; kein unabhängiger Nachweis von Reifenschlupf. Video und Mechanik vergleichen.',row);}
    if(tag==='DISCOVERY_TRACE'&&f.reason==='hold_expired'){flag('discovery-expired','warning','Hindernis-Beobachtungshalt abgelaufen','Die begrenzte Beobachtungszeit ist abgelaufen. Sichtbarkeit und verworfene Erkennungen im Originalkontext prüfen.',row);r.events.push(row);}
    if(tag==='CONNECTOR_TRACK'&&f.rejected==='1'){flag('connector-rejected','warning','Routenanschluss verworfen','Die Firmware hat die Anschluss-Geometrie nicht akzeptiert. Originalwerte für Abstand und Richtung prüfen.',row);r.events.push(row);}
+   if(tag==='FINAL PARK SCAN'&&f.valid==='yes'){
+    const d=numbers(f.correction_x_y_mm,'/');
+    if(d&&d.length===2){r.health.corrections++;r.health.maxCorrectionMm=Math.max(r.health.maxCorrectionMm,Math.hypot(...d));pendingBreak.add('FINAL_PARK_TRACE');}
+   }
+   if(tag==='FINAL PARK WALL'&&Number.isFinite(Number(f.initial_y_correction_mm))){r.health.corrections++;r.health.maxCorrectionMm=Math.max(r.health.maxCorrectionMm,Math.abs(Number(f.initial_y_correction_mm)));pendingBreak.add('FINAL_PARK_TRACE');}
    if(tag==='PARK_DIAG'&&f.type==='correction'){const d=numbers(f.delta);if(d&&d.length===3){r.health.corrections++;r.health.maxCorrectionMm=Math.max(r.health.maxCorrectionMm,Math.hypot(d[0],d[1]));r.health.maxCorrectionDeg=Math.max(r.health.maxCorrectionDeg,Math.abs(d[2]));r.events.push(row);}}
-   if(/LOG BUFFER OVERFLOW|\btype=overflow\b|\btype=truncated\b/.test(s)){r.health.overflow++;flag('overflow','error','Aufzeichnung begrenzt oder übergelaufen','Daten fehlen möglicherweise. Diagnose-Limit und vollständigen Logger-Überlauf anhand der Originalzeilen unterscheiden.',row);}
+   if(/LOG BUFFER OVERFLOW/.test(s)){r.health.overflow++;r.health.loggerOverflow++;flag('logger-overflow','error','Gesamtlog übergelaufen','Logger-Puffer erschöpft; weitere Logdaten können fehlen.',row);}
+   if(tag==='PARK_DIAG'&&['overflow','truncated'].includes(f.type)){r.health.overflow++;r.health.diagnosticLimit++;flag('diagnostic-limit','warning','Auspark-Diagnose begrenzt','Das Diagnosebudget ist erreicht. Andere Logquellen können weiterlaufen; dies ist kein Nachweis eines Gesamtlog-Überlaufs.',row);}
    if(/\[(?:FINAL PARK|CORNER VIEW) ABORT\]|\[PATH TEST\] ABORT:/.test(s)){aborted=tag==='FINAL PARK ABORT'||aborted;if(tag==='FINAL PARK ABORT')r.parking='Parkabbruch protokolliert';flag('abort-'+tag,'error','Abbruch: '+tag,'Der protokollierte Grund steht in der Originalzeile. Ein früherer Abbruch kann späteren Ereignissen vorausgehen.',row);r.lastStop=s;}
    if(/\[(?:FINAL PARK SENSOR HOLD|FINAL PARK TEST HOLD)\]|\[BENCH\].*HOLD/.test(s)){flag('hold-'+tag,'warning','Sicherheits-/Testhalt: '+tag,'Die Software hält an; den konkreten Grund in der Logzeile prüfen.',row);r.lastStop=s;}
    if(tag==='FINAL PARK RESULT'){finalResult=f;r.parking=f.contained==='yes'&&f.stopped==='yes'?'Software meldet: enthalten und gestoppt':'Software meldet: Park-Endprüfung nicht bestanden';if(f.contained!=='yes'||f.stopped!=='yes')flag('park-result','error','Park-Endprüfung nicht bestanden','Containment oder Stillstand wurde von der Firmware nicht bestätigt.',row);}
@@ -66,8 +78,29 @@ function analyzeLog(text,name='log.txt'){
    if(tag==='PARK_DIAG'&&f.type==='state')r.events.push(row);
    if(['RUN_START','RUN_EVENT','RUN_LAP','RUN_ROUTE','RUN_END','RUN_TRUNCATED'].includes(tag))r.events.push(row);
    if(tag==='RUN_TRUNCATED'||(tag==='RUN_END'&&f.truncated==='1'))flag('run-limit','warning','Telemetrie begrenzt','Positionen oder Routen fehlen; nur vorhandene Daten werden gezeichnet.',row);
-   if(['PARK_DIAG','LATER_TRACK','CONNECTOR_TRACK','FINAL_PARK_TRACE','DISCOVERY_TRACE'].includes(tag)&&(f.pose||f.xyh||(tag==='CONNECTOR_TRACK'&&f.x))){
-    const p=tag==='CONNECTOR_TRACK'?numbers(`${f.x},${f.y},${f.h}`):numbers(f.pose||f.xyh,f.xyh?'/':',');if(p&&p.length===3){const key=tag+(f.lap?' · lap '+f.lap:'');(r.tracks[key]??=[]).push({x:p[0],y:p[1],h:p[2],t:Number.isFinite(tm)?tm:null,line:row.line,target:numbers(f.target)});}else{r.health.malformed++;flag('malformed','warning','Ungültiger Positionsdatensatz','Dieser Datensatz wird aus der Fahrspur ausgelassen.',row);}
+   if(['PARK_DIAG','LATER_TRACK','CONNECTOR_TRACK','FINAL_PARK_TRACE','DISCOVERY_TRACE'].includes(tag)&&(f.pose||f.xyh||(tag==='CONNECTOR_TRACK'&&f.x!==undefined))){
+    const p=tag==='CONNECTOR_TRACK'?numbers([f.x,f.y,f.h].join(',')):numbers(f.pose||f.xyh,f.xyh?'/':',');
+    const key=tag+(f.lap?' · lap '+f.lap:'')+(tag==='PARK_DIAG'?' · '+(parkFrame?'Feld '+parkFrame:'lokaler Start'):'')+(tag==='CONNECTOR_TRACK'&&connectorBatch>1?' · Plan '+connectorBatch:'');
+    if(p&&p.length===3){
+     const target=tag==='CONNECTOR_TRACK'?numbers([f.tx,f.ty].join(',')):numbers(f.target);
+     const nominal=tag==='PARK_DIAG'&&f.v==='2'?numbers(f.nominal):null;
+     if(f.nominal&&f.v==='2'&&(!nominal||nominal.length!==3)){r.health.malformed++;flag('nominal-malformed','warning','Ungültige Sollposition','Für diese Zeile wird kein Soll/Ist-Vergleich berechnet.',row);}
+     const points=r.tracks[key]??=[];
+     const point={x:p[0],y:p[1],h:p[2],t:Number.isFinite(tm)?tm:null,line:row.line,target:target?.length===2?target:null,nominal:nominal?.length===3?nominal:null,epoch:tag==='PARK_DIAG'?parkEpoch:connectorBatch,state:f.state||f['state/phase']||'',segment:f.seg||null,breakBefore:pendingBreak.has(key)};
+     pendingBreak.delete(key);
+     if(tag==='CONNECTOR_TRACK'&&connectorReference.length)point.reference=connectorReference.slice();
+     if(tag==='LATER_TRACK'||tag==='FINAL_PARK_TRACE'){
+      const delta=tag==='LATER_TRACK'?numbers(f.correction):numbers(f.wall_correction);
+      const hasCorrection=delta?.some(v=>v!==0);
+      const explicit=f.cs!==undefined&&/^\d+$/.test(f.cs);
+      const identity=explicit?'seq:'+f.cs:'legacy:'+(delta?.join(',')||'');
+      const previous=correctionIdentity.get(key);
+      if(previous!==undefined&&previous!==identity&&(explicit||hasCorrection))point.breakBefore=true;
+      correctionIdentity.set(key,identity);
+      if(hasCorrection&&!explicit&&!groups.has('correction-identity'))flag('correction-identity','warning','Ältere Korrekturen ohne Ereignis-ID','Wiederholte identische Werte können ein gespeicherter letzter Wert oder mehrere gleich grosse Korrekturen sein. Spurlücken dieser älteren Datensätze sind nur näherungsweise zuordenbar.',row);
+     }
+     points.push(point);
+    }else{pendingBreak.add(key);r.health.malformed++;flag('malformed','warning','Ungültiger Positionsdatensatz','Dieser Datensatz wird ausgelassen und die Verbindung über die Datenlücke unterbrochen.',row);}
    }
    if(tag==='PARK_DIAG'&&f.type==='sample')for(const key of ['s0','s1','s2']){
     if(!f[key]||f[key]==='none'||f[key]==='same')continue;
@@ -88,11 +121,48 @@ function analyzeLog(text,name='log.txt'){
  return {name,lineCount:all.length,sessions,hasRunMarker:starts.length>0};
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function plotSvg(points){
+function splitBefore(p,prev){return !!prev&&(p.breakBefore||p.epoch!==prev.epoch||p.frame!==prev.frame||p.route!==prev.route||(p.t!=null&&prev.t!=null&&(p.t<prev.t||p.t-prev.t>2000)));}
+function comparisons(points){return points.flatMap(p=>{
+ let q=null,kind='',heading=null;
+ if(p.nominal){q={x:p.nominal[0],y:p.nominal[1]};kind='Nominalmodell';heading=((p.h-p.nominal[2]+180)%360+360)%360-180;}
+ else if(p.reference){
+  let best=Infinity;
+  for(let i=1;i<p.reference.length;i++){
+   const u=p.reference[i-1],v=p.reference[i];if(u.kind!==v.kind||v.index!==u.index+1)continue;
+   const dx=v.x-u.x,dy=v.y-u.y,len=dx*dx+dy*dy;if(!len)continue;
+   const t=((p.x-u.x)*dx+(p.y-u.y)*dy)/len;
+   // Outside the finite snapshot there is no supported route-error estimate.
+   if(t<0||t>1)continue;
+   const x=u.x+t*dx,y=u.y+t*dy,d=Math.hypot(p.x-x,p.y-y);
+   if(d<best){best=d;q={x,y};kind='Wegpunktabschnitt';}
+  }
+ }
+ return q?[{line:p.line,t:p.t,state:p.state,segment:p.segment,kind,x:p.x,y:p.y,expectedX:q.x,expectedY:q.y,dx:p.x-q.x,dy:p.y-q.y,distance:Math.hypot(p.x-q.x,p.y-q.y),heading}]:[];
+});}
+function deviationSummary(points,interactive=true){
+ const rows=comparisons(points);if(!rows.length)return '<p class="muted">Keine vergleichbare Sollreferenz vorhanden. Vorausliegende Lenkziele werden nicht als Positionsfehler gewertet.</p>';
+ const mean=rows.reduce((s,p)=>s+p.distance,0)/rows.length,rms=Math.sqrt(rows.reduce((s,p)=>s+p.distance*p.distance,0)/rows.length),max=rows.reduce((a,p)=>p.distance>a.distance?p:a,rows[0]);
+ const heading=rows.filter(p=>p.heading!==null);const worst=rows.slice().sort((a,b)=>b.distance-a.distance).slice(0,20);
+ return '<p><b>'+rows.length+' vergleichbare Datensätze</b> · Mittel '+mean.toFixed(1)+' mm · RMS '+rms.toFixed(1)+' mm · Maximum '+max.distance.toFixed(1)+' mm (Zeile '+max.line+')'+(heading.length?' · max. |Winkel| '+heading.reduce((m,p)=>Math.max(m,Math.abs(p.heading)),0).toFixed(1)+'°':'')+'</p><p class="muted">Nominalmodell: Differenz im selben Datensatz, integriert über tatsächlichen Encoderweg. Wegpunktabschnitt: kürzester Abstand zu einem protokollierten, zusammenhängenden Plansegment; nur innerhalb seiner Projektion. Keine absolute Messgenauigkeit oder zeitbasierte Sollbahn.</p><div class="scroll"><table><thead><tr><th>Zeile</th><th>Zeit</th><th>Referenz</th><th>Abstand</th><th>ΔX / ΔY</th><th>ΔWinkel</th></tr></thead><tbody>'+worst.map(p=>'<tr><td>'+(interactive?'<button class="secondary" data-line="'+p.line+'">'+p.line+'</button>':p.line)+'</td><td>'+(p.t===null?'—':p.t+' ms')+'</td><td>'+p.kind+'</td><td>'+p.distance.toFixed(1)+' mm</td><td>'+p.dx.toFixed(1)+' / '+p.dy.toFixed(1)+' mm</td><td>'+(p.heading===null?'—':p.heading.toFixed(1)+'°')+'</td></tr>').join('')+'</tbody></table></div><small>Bis zu 20 grösste Abweichungen; CSV enthält alle vergleichbaren Datensätze.</small>';
+}
+function deviationCsv(points){const rows=comparisons(points);return 'line,time_ms,reference,state,segment,x_mm,y_mm,expected_x_mm,expected_y_mm,dx_mm,dy_mm,distance_mm,heading_error_deg\r\n'+rows.map(p=>[p.line,p.t,p.kind,p.state,p.segment,p.x,p.y,p.expectedX,p.expectedY,p.dx,p.dy,p.distance,p.heading].map(v=>'"'+String(typeof v==='string'&&/^[=+@-]/.test(v)?"'"+v:v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');}
+function plotSvg(points,interactive=true){
  if(!points.length)return '<p class="muted">Keine unterstützten Positionsdaten vorhanden.</p>';
- const [xmin,xmax,ymin,ymax]=points.reduce((a,p)=>[Math.min(a[0],p.x),Math.max(a[1],p.x),Math.min(a[2],p.y),Math.max(a[3],p.y)],[Infinity,-Infinity,Infinity,-Infinity]);const scale=Math.min(640/Math.max(1,xmax-xmin),300/Math.max(1,ymax-ymin));const x=v=>50+(v-xmin)*scale,y=v=>330-(v-ymin)*scale;
- let paths='',segment=[];const flush=()=>{if(segment.length)paths+=`<polyline points="${segment.join(' ')}" fill="none" stroke="#70e2c5" stroke-width="2"/>`;segment=[];};points.forEach((p,i)=>{const prev=points[i-1];if(prev&&((p.t!==null&&prev.t!==null&&(p.t<prev.t||p.t-prev.t>2000))||p.frame!==prev.frame||p.route!==prev.route))flush();segment.push(`${x(p.x).toFixed(2)},${y(p.y).toFixed(2)}`);});flush();
- const first=points[0],last=points.at(-1);return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 380" role="img" aria-label="Geschätzte Fahrspur, X und Y in Millimetern"><path d="M50 30V330H710" fill="none" stroke="#46617e"/>${paths}<circle cx="${x(first.x)}" cy="${y(first.y)}" r="5" fill="#ffd58b"/><circle cx="${x(last.x)}" cy="${y(last.y)}" r="5" fill="#ff9c9c"/><text x="50" y="355" fill="#a7b8cd" font-size="13">X ${xmin.toFixed(0)} … ${xmax.toFixed(0)} mm · Y ${ymin.toFixed(0)} … ${ymax.toFixed(0)} mm</text><text x="50" y="375" fill="#a7b8cd" font-size="13">Gelb: erster Messpunkt · Rot: letzter Messpunkt · gleiche Skalierung beider Achsen</text></svg>`;
+ const reference=points[0]?.reference||[];
+ const all=points.flatMap(p=>[p,...(p.nominal?[{x:p.nominal[0],y:p.nominal[1]}]:[]),...(p.target?[{x:p.target[0],y:p.target[1]}]:[])]).concat(reference);
+ const [xmin,xmax,ymin,ymax]=all.reduce((a,p)=>[Math.min(a[0],p.x),Math.max(a[1],p.x),Math.min(a[2],p.y),Math.max(a[3],p.y)],[Infinity,-Infinity,Infinity,-Infinity]);
+ const scale=Math.min(640/Math.max(1,xmax-xmin),280/Math.max(1,ymax-ymin)),x=v=>50+(v-xmin)*scale,y=v=>320-(v-ymin)*scale;
+ const coord=p=>x(p.x).toFixed(2)+','+y(p.y).toFixed(2);
+ function path(data,color,dashed=false){let result='',segment=[];function flush(){if(segment.length)result+='<polyline points="'+segment.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2"'+(dashed?' stroke-dasharray="6 4"':'')+'/>';segment=[];}
+ data.forEach((p,i)=>{if(!p){flush();return;}if(splitBefore(p,data[i-1]))flush();segment.push(coord(p));});flush();return result;}
+ let drawing=path(points,'#70e2c5');
+ drawing+=path(points.map(p=>p.nominal?{...p,x:p.nominal[0],y:p.nominal[1]}:null),'#b59aff',true);
+ drawing+=path(reference.map((p,i)=>({...p,breakBefore:i>0&&(p.kind!==reference[i-1].kind||p.index!==reference[i-1].index+1)})),'#b59aff',true);
+ // Targets are pursuit/lookahead locations, not synchronous nominal positions.
+ drawing+=path(points.map(p=>p.target?{...p,x:p.target[0],y:p.target[1]}:null),'#ffd58b',true);
+ const errors=comparisons(points),stride=Math.max(1,Math.ceil(errors.length/120));drawing+=errors.filter((p,i)=>i%stride===0).map(p=>'<line x1="'+x(p.x)+'" y1="'+y(p.y)+'" x2="'+x(p.expectedX)+'" y2="'+y(p.expectedY)+'" stroke="#ff9c9c" opacity="0.45"/>').join('');
+ const pointStride=Math.max(1,Math.ceil(points.length/400));drawing+=points.filter((p,i)=>i%pointStride===0||i===points.length-1).map(p=>'<circle cx="'+x(p.x)+'" cy="'+y(p.y)+'" r="3.5" fill="#70e2c5"'+(interactive?' tabindex="0" role="button" data-line="'+p.line+'" aria-label="Originalzeile '+p.line+'"':'')+'><title>Zeile '+p.line+' · '+(p.t===null?'Zeit unbekannt':p.t+' ms')+' · X '+p.x+' / Y '+p.y+' mm</title></circle>').join('');
+ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 400" role="img" aria-label="Sollreferenz und geschätzte Istspur in Millimetern"><path d="M50 30V320H710" fill="none" stroke="#46617e"/>'+drawing+'<text x="50" y="345" fill="#a7b8cd" font-size="12">X '+xmin.toFixed(0)+' … '+xmax.toFixed(0)+' mm · Y '+ymin.toFixed(0)+' … '+ymax.toFixed(0)+' mm · gleicher Massstab</text><text x="50" y="366" fill="#70e2c5" font-size="12">Grün: geschätzte Istspur · Violett: Sollreferenz</text><text x="50" y="387" fill="#ffd58b" font-size="12">Gelb: Lenkziele (kein Fehler) · Rot: Vergleichsabstände</text></svg>';
 }
 // Combined view stays independent of DOM and uses this session's original rows.
 function seatPosition(seat,turn){
@@ -136,6 +206,7 @@ function runTimingHtml(r){
 
 function runGeometry(r){
  const turn=r.directions.length===1?(r.directions[0]==='CCW'?1:-1):null;
+ const trackPoints=new Map(Object.values(r.tracks).flat().map(p=>[p.line,p]));
  const map=new Map(),series=new Map(),corrections=[],plans=[];let plan=null,fieldFrame=false,gap=null,fixedLine=null,currentRound='other';
  const add=(key,p,color,dots=false)=>{if(!series.has(key))series.set(key,{name:key,color,dots,points:[]});series.get(key).points.push(p);};
  for(const row of r.rows){const s=row.text,f=fields(s),tag=s.match(/^\[([^\]]+)\]/)?.[1],tm=Number(f.t),t=f.t!==undefined&&Number.isFinite(tm)?tm:null;
@@ -161,7 +232,7 @@ function runGeometry(r){
   else if(tag==='LATER_TRACK'){p=numbers(f.pose);key=`Runde ${f.lap||'?'}: Messpunkte`;color=f.lap==='3'?'#b35197':'#2960b2';round=poseRound({lap:Number(f.lap)});}
   else if(tag==='FINAL_PARK_TRACE'){p=numbers(f.xyh||f.pose,f.xyh?'/':',');key='Endparken';color='#713da7';}
   else if(tag==='DISCOVERY_TRACE'||tag==='RED SEAT'){p=numbers(f.pose);key='Runde 1: einzelne Messpunkte';color='#087f8c';dots=true;round='1';}
-  if(p?.length===3&&key)add(key,{x:p[0],y:p[1],h:p[2],t,line:row.line,round},color,dots);
+  if(p?.length===3&&key)add(key,{x:p[0],y:p[1],h:p[2],t,line:row.line,round,breakBefore:trackPoints.get(row.line)?.breakBefore||false},color,dots);
  }
  const pillars=turn?[...map].map(([seat,color])=>({seat,color,...seatPosition(seat,turn)})):[];
  const telemetry=r.telemetry||runTelemetry(r.rows);
@@ -245,7 +316,7 @@ function wholeRunSvg(r,options={}){
   for(const series of !showDriven||g.telemetry.poses.length?[]:g.series){
    if(series.dots){for(const p of series.points)out.push(`<circle cx="${x(p.x)}" cy="${y(p.y)}" r="2.2" fill="${series.color}"/>`);continue;}
    let part=[];const flush=()=>{path(part,series.color);if(part.length===1)out.push(`<circle cx="${x(part[0].x)}" cy="${y(part[0].y)}" r="3" fill="${series.color}"/>`);part=[];};
-   for(const p of series.points){const prev=part.at(-1);if(prev&&((p.t!==null&&prev.t!==null&&(p.t<prev.t||p.t-prev.t>2000||p.frame!==prev.frame||p.route!==prev.route))||g.corrections.some(c=>c.line>prev.line&&c.line<=p.line)))flush();part.push(p);}flush();
+   for(const p of series.points){const prev=part.at(-1);if(prev&&(p.breakBefore||(p.t!==null&&prev.t!==null&&(p.t<prev.t||p.t-prev.t>2000||p.frame!==prev.frame||p.route!==prev.route))||g.corrections.some(c=>c.line>prev.line&&c.line<=p.line)))flush();part.push(p);}flush();
   }
   for(const plan of g.plans)path(plan,'#303640','8 6',2);
   for(const c of showDriven?g.corrections:[]){
@@ -267,41 +338,50 @@ function wholeRunSvg(r,options={}){
  return out.join('');
 }
 
-if(typeof module!=='undefined')module.exports={analyzeLog,fields,plotSvg,escapeHtml,seatPosition,runGeometry,wholeRunSvg,runTelemetry,runTimingHtml,poseRound};
+if(typeof module!=='undefined')module.exports={analyzeLog,fields,numbers,plotSvg,escapeHtml,comparisons,deviationSummary,deviationCsv,seatPosition,runGeometry,wholeRunSvg,runTelemetry,runTimingHtml,poseRound};
 if(typeof document!=='undefined'){
  const $=id=>document.getElementById(id);let report=null,current=0,rawLimit=250,focused=null,loadToken=0;const notes=new Map();
  const selected=()=>report.sessions[current];
- async function openFile(file){if(!file)return;const token=++loadToken;$('loadStatus').textContent='Log wird eingelesen …';try{if(file.size>20*1024*1024)throw Error('Bitte eine Logdatei bis 20 MB auswählen.');const bytes=await file.arrayBuffer();if(token!==loadToken)return;const content=new TextDecoder('utf-8').decode(bytes);if(content.includes('\0'))throw Error('Diese Datei enthält Binärdaten. Bitte ein TXT-Log auswählen.');report=analyzeLog(content,file.name);report.bytes=file.size;report.sha256='Nicht verfügbar';if(globalThis.crypto?.subtle){const hash=await crypto.subtle.digest('SHA-256',bytes);if(token!==loadToken)return;report.sha256=[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('');}if(token!==loadToken)return;current=0;notes.clear();$('session').replaceChildren(...report.sessions.map((s,i)=>new Option(`Abschnitt ${s.index} · Zeilen ${s.start}–${s.end}`,i)));$('workspace').hidden=false;$('loadStatus').textContent=`${file.name} · ${file.size.toLocaleString('de-CH')} Bytes · ${report.lineCount.toLocaleString('de-CH')} Zeilen`;render();}catch(e){if(token===loadToken)$('loadStatus').textContent='Öffnen fehlgeschlagen: '+e.message;}}
+ async function restoreNotes(file){if(!file||!report)return;const source=report,token=loadToken;try{
+  if(file.size>80*1024*1024)throw Error('JSON-Bericht ist zu gross.');
+  const saved=JSON.parse(await file.text());if(source!==report||token!==loadToken)return;
+  if(!/^[a-f0-9]{64}$/.test(report.sha256)||saved.sha256!==report.sha256||saved.bytes!==report.bytes)throw Error('Bericht passt nicht zum SHA-256 des geöffneten Originals.');
+  if(!Array.isArray(saved.sessions)||saved.sessions.length!==report.sessions.length)throw Error('Laufabschnitte stimmen nicht überein.');
+  const restored=saved.sessions.map((s,i)=>{const r=report.sessions[i];if(s.start!==r.start||s.end!==r.end||typeof s.physicalObservation!=='string'||s.physicalObservation.length>100000)throw Error('Beobachtungen oder Abschnittsgrenzen ungültig.');return s.physicalObservation;});
+  restored.forEach((s,i)=>notes.set(i,s));$('notes').value=notes.get(current)||'';$('noteStatus').textContent=' Beobachtungen für '+restored.length+' Abschnitte geladen.';
+ }catch(e){if(source===report&&token===loadToken)$('noteStatus').textContent=' Laden fehlgeschlagen: '+e.message;}}
+ $('noteFile').addEventListener('change',e=>restoreNotes(e.target.files[0]));
+ async function openFile(file){if(!file)return;const token=++loadToken;$('loadStatus').textContent='Log wird eingelesen …';try{if(file.size>20*1024*1024)throw Error('Bitte eine Logdatei bis 20 MB auswählen.');const bytes=await file.arrayBuffer();if(token!==loadToken)return;const content=new TextDecoder('utf-8').decode(bytes);if(content.includes('\0'))throw Error('Diese Datei enthält Binärdaten. Bitte ein TXT-Log auswählen.');const candidate=analyzeLog(content,file.name);candidate.bytes=file.size;candidate.sha256='Nicht verfügbar';if(globalThis.crypto?.subtle){const hash=await crypto.subtle.digest('SHA-256',bytes);if(token!==loadToken)return;candidate.sha256=[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('');}if(token!==loadToken)return;report=candidate;current=0;notes.clear();$('noteStatus').textContent='';$('session').replaceChildren(...report.sessions.map((s,i)=>new Option(`Abschnitt ${s.index} · Zeilen ${s.start}–${s.end}`,i)));$('workspace').hidden=false;$('loadStatus').textContent=`${file.name} · ${file.size.toLocaleString('de-CH')} Bytes · ${report.lineCount.toLocaleString('de-CH')} Zeilen`;render();}catch(e){if(token===loadToken)$('loadStatus').textContent='Öffnen fehlgeschlagen: '+e.message;}}
  function links(lines){return lines.slice(0,8).map(n=>`<button class="secondary" data-line="${n}">Zeile ${n}</button>`).join('')+(lines.length>8?`<small> + ${lines.length-8} weitere</small>`:'');}
  function render(){const r=selected();rawLimit=250;focused=null;$('search').value='';$('notes').value=notes.get(current)||'';
   $('cards').innerHTML=[['Firmware-Builds',r.builds.join(' / ')||'Unbekannt','Modulkennung; kein installierter Binärnachweis'],['Richtung',r.directions.join(' / ')||'Unbekannt','Aus expliziten Logmarkern'],['Abgeschlossene Runden',r.laps.length?Math.max(...r.laps):'Unbekannt','Nur explizite Completed-lap-Marker'],['Auffälligkeiten',r.findings.reduce((a,f)=>a+f.count,0),'Protokollierte Vorkommnisse, keine Ursachenanzahl']].map(([a,b,c])=>`<div class="metric"><span class="muted">${a}</span><strong>${escapeHtml(b)}</strong><small>${c}</small></div>`).join('');
-  $('summary').innerHTML=`<p><b>Parken:</b> ${escapeHtml(r.parking)}<br><b>Ausparken:</b> ${r.exit?'Abschlussmarker vorhanden':'Kein Abschlussmarker erfasst'}<br><b>Letzter erfasster Zustand:</b> ${escapeHtml(r.lastOperational)}<br><b>Letzter Halt-/Abbruchmarker:</b> ${escapeHtml(r.lastStop)}</p><p class="muted">Vollständigkeit der Gesamtdatei: nicht unabhängig nachweisbar. ${r.health.overflow?'Begrenzung/Überlauf protokolliert.':'Kein Überlaufmarker gefunden.'} ${!report.hasRunMarker?'Kein eindeutiger Laufstartmarker gefunden.':''}<br>SHA-256 der Originalbytes: <span style="overflow-wrap:anywhere">${escapeHtml(report.sha256)}</span></p>`;
+  $('summary').innerHTML=`<p><b>Parken:</b> ${escapeHtml(r.parking)}<br><b>Ausparken:</b> ${r.exit?'Abschlussmarker vorhanden':'Kein Abschlussmarker erfasst'}<br><b>Letzter erfasster Zustand:</b> ${escapeHtml(r.lastOperational)}<br><b>Letzter Halt-/Abbruchmarker:</b> ${escapeHtml(r.lastStop)}</p><p class="muted">Vollständigkeit der Gesamtdatei: nicht unabhängig nachweisbar. ${r.health.loggerOverflow?'Gesamtlog-Überlauf protokolliert.':'Kein Gesamtlog-Überlaufmarker gefunden.'} ${r.health.diagnosticLimit?'Auspark-Diagnose begrenzt.':''} ${!report.hasRunMarker?'Kein eindeutiger Laufstartmarker gefunden.':''}<br>SHA-256 der Originalbytes: <span style="overflow-wrap:anywhere">${escapeHtml(report.sha256)}</span></p>`;
   $('findings').innerHTML=r.findings.length?r.findings.map(f=>`<div class="finding"><b class="${f.severity}">${escapeHtml(f.title)} · ${f.count}×</b><p>${escapeHtml(f.detail)}</p>${links(f.lines)}</div>`).join(''):'<p>Keine unterstützten Fehlermarker gefunden. Nicht erfasste Fehler bleiben unbekannt.</p>';
-  $('health').innerHTML=`<table><tbody>${[['Gyro-Timeouts',r.health.gyroTimeout],['Gyro-Neustarts',r.health.gyroRestart],['Abfragepausen',r.health.loopPause],['Schlupf-Indikatoren',r.health.slip],['Überlauf-/Limitmarker',r.health.overflow],['Ungültige Datensätze',r.health.malformed],['Explizite Pose-Korrekturen',r.health.corrections],['Grösste Pose-Korrektur',r.health.corrections?`${r.health.maxCorrectionMm.toFixed(1)} mm / ${r.health.maxCorrectionDeg.toFixed(1)}°`:'Nicht erfasst']].map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</tbody></table><h3>ToF: aufgezeichnete neue Datensätze</h3><table><thead><tr><th>Quelle</th><th>Anzahl</th><th>Ungültig / verworfen</th><th>Max. Alter</th></tr></thead><tbody>${Object.entries(r.health.tof).map(([k,q])=>`<tr><td>${escapeHtml(k)}</td><td>${q.records}</td><td>${q.invalid}</td><td>${q.maxAge} ms</td></tr>`).join('')||'<tr><td colspan="4">Keine unterstützten ToF-Daten vorhanden.</td></tr>'}</tbody></table><p class="muted">PARK_DIAG v2: s0 links, s1 rechts, s2 hinten. „same“ wird nicht erneut gezählt. Ungültige Werte sind nicht automatisch ein Sensordefekt; die Szene kann ausserhalb der Messreichweite liegen. „final“ ist der ausgewählte seitliche Park-ToF.</p>`;
+  $('health').innerHTML=`<table><tbody>${[['Gyro-Timeouts',r.health.gyroTimeout],['Gyro-Neustarts',r.health.gyroRestart],['Abfragepausen',r.health.loopPause],['Schlupf-Indikatoren',r.health.slip],['Gesamtlog-Überläufe',r.health.loggerOverflow],['Auspark-Diagnoselimits',r.health.diagnosticLimit],['Ungültige Datensätze',r.health.malformed],['Explizite Pose-Korrekturen',r.health.corrections],['Grösste Pose-Korrektur',r.health.corrections?`${r.health.maxCorrectionMm.toFixed(1)} mm / ${r.health.maxCorrectionDeg.toFixed(1)}°`:'Nicht erfasst']].map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</tbody></table><h3>ToF: aufgezeichnete neue Datensätze</h3><table><thead><tr><th>Quelle</th><th>Anzahl</th><th>Ungültig / verworfen</th><th>Max. Alter</th></tr></thead><tbody>${Object.entries(r.health.tof).map(([k,q])=>`<tr><td>${escapeHtml(k)}</td><td>${q.records}</td><td>${q.invalid}</td><td>${q.maxAge} ms</td></tr>`).join('')||'<tr><td colspan="4">Keine unterstützten ToF-Daten vorhanden.</td></tr>'}</tbody></table><p class="muted">PARK_DIAG v2: s0 links, s1 rechts, s2 hinten. „same“ wird nicht erneut gezählt. Ungültige Werte sind nicht automatisch ein Sensordefekt; die Szene kann ausserhalb der Messreichweite liegen. „final“ ist der ausgewählte seitliche Park-ToF.</p>`;
   $('summary').innerHTML+=runTimingHtml(r);
   $('roundFilter').value='all';$('fieldBackground').value='show';$('trajectoryLayers').value='both';
-  $('planVersionControl').hidden=report.sessions.length<2;
+  $('planVersionControl').hidden=r.telemetry.routes.length<2;
   $('planVersion').replaceChildren(new Option('Letzter Plan in Auswahl','active'),...r.telemetry.routes.map(v=>new Option(`Route ${v.id} · ${v.kind}`,String(v.id))));
   drawWholePlot();$('saveWholeSvg').disabled=!$('wholePlot').innerHTML.includes('<svg');
-  const keys=Object.keys(r.tracks);$('track').replaceChildren(...keys.map(k=>new Option(k,k)));$('track').disabled=!keys.length;drawPlot();
+  const keys=Object.keys(r.tracks);$('track').replaceChildren(...keys.map(k=>new Option(k,k)));$('track').disabled=!keys.length;if(keys.some(k=>k.includes(' · Feld ')))$('track').value=keys.find(k=>k.includes(' · Feld '));drawPlot();
   $('events').innerHTML=r.events.length?'<table><thead><tr><th>Zeile</th><th>Originalereignis</th></tr></thead><tbody>'+r.events.map(e=>`<tr><td>${links([e.line])}</td><td class="log">${escapeHtml(e.text)}</td></tr>`).join('')+'</tbody></table>':'<p>Keine unterstützten Ereignisse vorhanden.</p>';renderRaw();
  }
+ function drawPlot(){const p=selected().tracks[$('track').value]||[];$('plot').innerHTML=plotSvg(p);$('deviations').innerHTML=deviationSummary(p);$('csv').disabled=!comparisons(p).length;$('plotInfo').textContent=p.length+' protokollierte Positionen. Istspur = Roboterschätzung, keine externe Messung. Protokollierte Koordinatenwechsel, Korrekturen und Zeitlücken werden nicht als Fahrt verbunden. Punkte anklicken für Originalkontext. Fehlende Sollreferenzen werden nicht erfunden.';}
  function viewOptions(){return {route:$('planVersion').value||'active',round:$('roundFilter').value||'all',field:$('fieldBackground').value||'show',layers:$('trajectoryLayers').value||'both'};}
  function drawWholePlot(){ $('wholePlot').innerHTML=wholeRunSvg(selected(),viewOptions()); }
- function drawPlot(){const p=selected().tracks[$('track').value]||[];$('plot').innerHTML=plotSvg(p);$('plotInfo').textContent=`${p.length} erfasste Messpunkte. Spuren und Runden werden getrennt dargestellt; Zeitlücken über 2 s werden nicht verbunden. Keine Darstellung der tatsächlichen Kollisionsfreiheit.`;}
  function renderRaw(){const r=selected(),query=$('search').value.toLowerCase();let rows=focused?r.rows.filter(x=>Math.abs(x.line-focused)<=12):r.rows.filter(x=>x.text.toLowerCase().includes(query));const shown=rows.slice(0,rawLimit);$('raw').innerHTML=shown.map(x=>`<div class="log-row ${x.line===focused?'selected':''}"><span class="line-no">${x.line}</span>${escapeHtml(x.text)}</div>`).join('');$('rawInfo').textContent=`${shown.length} von ${rows.length} Zeilen${focused?' · Kontext um Zeile '+focused:''}`;$('more').disabled=shown.length>=rows.length;}
  function jump(n){if(!Number.isInteger(n)||n<selected().start||n>selected().end){$('rawInfo').textContent='Zeile liegt ausserhalb dieses Abschnitts.';return;}focused=n;$('line').value=n;$('search').value='';rawLimit=250;renderRaw();$('rawPanel').scrollIntoView({behavior:'smooth'});}
  function download(content,type,suffix){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([content],{type}));a.href=url;a.download=report.name.replace(/\.[^.]+$/,'')+'-inspector'+suffix;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  $('file').addEventListener('change',e=>openFile(e.target.files[0]));$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over');});$('drop').addEventListener('dragleave',()=>$('drop').classList.remove('over'));$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');openFile(e.dataTransfer.files[0]);});
- $('session').addEventListener('change',()=>{notes.set(current,$('notes').value);current=+$('session').value;render();});$('notes').addEventListener('input',()=>notes.set(current,$('notes').value));$('track').addEventListener('change',drawPlot);$('search').addEventListener('input',()=>{focused=null;rawLimit=250;renderRaw();});$('more').addEventListener('click',()=>{rawLimit+=250;renderRaw();});$('jump').addEventListener('click',()=>jump(Number($('line').value)));$('workspace').addEventListener('click',e=>{const b=e.target.closest('[data-line]');if(b)jump(Number(b.dataset.line));});$('print').addEventListener('click',()=>window.print());
+ $('session').addEventListener('change',()=>{notes.set(current,$('notes').value);current=+$('session').value;render();});$('notes').addEventListener('input',()=>notes.set(current,$('notes').value));$('track').addEventListener('change',drawPlot);$('search').addEventListener('input',()=>{focused=null;rawLimit=250;renderRaw();});$('more').addEventListener('click',()=>{rawLimit+=250;renderRaw();});$('jump').addEventListener('click',()=>jump(Number($('line').value)));$('workspace').addEventListener('click',e=>{const b=e.target.closest('[data-line]');if(b)jump(Number(b.dataset.line));});$('print').addEventListener('click',()=>window.print());$('csv').addEventListener('click',()=>download(deviationCsv(selected().tracks[$('track').value]||[]),'text/csv','-abschnitt-'+selected().index+'-abweichungen.csv'));$('workspace').addEventListener('keydown',e=>{const b=e.target.closest('[data-line]');if(b&&['Enter',' '].includes(e.key)){e.preventDefault();jump(Number(b.dataset.line));}});
  $('planVersion').addEventListener('change',drawWholePlot);
  $('roundFilter').addEventListener('change',()=>{$('planVersion').value='active';drawWholePlot();});
  $('fieldBackground').addEventListener('change',drawWholePlot);
  $('trajectoryLayers').addEventListener('change',drawWholePlot);
 
  $('saveWholeSvg').addEventListener('click',()=>download(wholeRunSvg(selected(),viewOptions()),'image/svg+xml','-run.svg'));
- $('json').addEventListener('click',()=>download(JSON.stringify({...report,sessions:report.sessions.map((r,i)=>({...r,physicalObservation:notes.get(i)||''}))},null,2),'application/json','.json'));
- $('export').addEventListener('click',()=>{const r=selected(),style=document.querySelector('style').textContent;const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Run Inspector Report</title><style>${style}</style><main><h1>Robot Run Inspector · Bericht</h1><p>${escapeHtml(report.name)} · Abschnitt ${r.index} · Zeilen ${r.start}–${r.end}</p><div class="cards">${$('cards').innerHTML}</div><section class="panel"><h2>Befund & Grenzen</h2>${$('summary').innerHTML}<p>Software-Schätzungen sind kein Nachweis von physischer Kollisionsfreiheit. Kameraqualität und Akkuspannung sind hier nicht belegt.</p></section><section class="panel"><h2>Auffälligkeiten</h2>${$('findings').innerHTML.replace(/<button\b[^>]*>([^<]*)<\/button>/g,'<span>$1 · </span>')}</section><section class="panel"><h2>Sensoren</h2>${$('health').innerHTML}</section><section class="panel"><h2>Gesamtlauf mit Pfosten</h2>${wholeRunSvg(r,viewOptions())}</section>${Object.entries(r.tracks).map(([k,p])=>`<section class="panel"><h2>${escapeHtml(k)}</h2>${plotSvg(p)}</section>`).join('')}<section class="panel"><h2>Physische Beobachtung · vom Benutzer</h2><p style="white-space:pre-wrap">${escapeHtml(notes.get(current)||'Keine Angabe')}</p></section><section class="panel"><h2>Originalereignisse</h2><div class="log">${r.events.map(e=>`${e.line}: ${escapeHtml(e.text)}`).join('\n')}</div></section></main></html>`;download(html,'text/html','.html');});
+ $('json').addEventListener('click',()=>download(JSON.stringify({...report,inspectorVersion:'1.6',sessions:report.sessions.map((r,i)=>({...r,physicalObservation:notes.get(i)||''}))},null,2),'application/json','.json'));
+ $('export').addEventListener('click',()=>{const r=selected(),style=document.querySelector('style').textContent;const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Run Inspector Report</title><style>${style}</style><main><h1>Robot Run Inspector · Bericht</h1><p>${escapeHtml(report.name)} · Abschnitt ${r.index} · Zeilen ${r.start}–${r.end}</p><div class="cards">${$('cards').innerHTML}</div><section class="panel"><h2>Befund & Grenzen</h2>${$('summary').innerHTML}<p>Software-Schätzungen sind kein Nachweis von physischer Kollisionsfreiheit. Kameraqualität und Akkuspannung sind hier nicht belegt.</p></section><section class="panel"><h2>Auffälligkeiten</h2>${$('findings').innerHTML.replace(/<button\b[^>]*>([^<]*)<\/button>/g,'<span>$1 · </span>')}</section><section class="panel"><h2>Sensoren</h2>${$('health').innerHTML}</section><section class="panel"><h2>Gesamtlauf mit Pfosten</h2>${wholeRunSvg(r,viewOptions())}</section>${Object.entries(r.tracks).map(([k,p])=>`<section class="panel"><h2>${escapeHtml(k)}</h2>${plotSvg(p,false)}${deviationSummary(p,false)}</section>`).join('')}<section class="panel"><h2>Physische Beobachtung · vom Benutzer</h2><p style="white-space:pre-wrap">${escapeHtml(notes.get(current)||'Keine Angabe')}</p></section><section class="panel"><h2>Originalereignisse</h2><div class="log">${r.events.map(e=>`${e.line}: ${escapeHtml(e.text)}`).join('\n')}</div></section></main></html>`;download(html,'text/html','.html');});
 }
 </script>
 </html>

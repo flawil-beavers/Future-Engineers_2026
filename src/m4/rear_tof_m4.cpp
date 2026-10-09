@@ -96,8 +96,9 @@ void pollSensor()
   float selectedSigma = -1.0f;
   int16_t largestAcceptedDistance = -1;
 
-  if (rearSensor.VL53L4CX_GetMultiRangingData(&rangingData) ==
-      VL53L4CX_ERROR_NONE) {
+  const bool measurementOk = rearSensor.VL53L4CX_GetMultiRangingData(&rangingData) ==
+      VL53L4CX_ERROR_NONE;
+  if (measurementOk) {
     for (uint8_t i = 0; i < rangingData.NumberOfObjectsFound; ++i) {
       const auto &candidate = rangingData.RangeData[i];
       const float signal = candidate.SignalRateRtnMegaCps / 65536.0f;
@@ -122,7 +123,9 @@ void pollSensor()
 
   if (selectedDistance > REAR_TOF_MAX_RELIABLE_DISTANCE_MM)
     selectedDistance = TOF_OUT_OF_RANGE_MM;
-  if (selectedDistance != TOF_OUT_OF_RANGE_MM &&
+  const bool previousFresh = frame.status == REAR_TOF_RPC_RUNNING &&
+      millis() - lastMeasurementMs <= MEASUREMENT_TIMEOUT_MS;
+  if (previousFresh && selectedDistance != TOF_OUT_OF_RANGE_MM &&
       previousDistanceMm >= 0.0f &&
       previousDistanceMm != TOF_OUT_OF_RANGE_MM) {
     const float delta = selectedDistance - previousDistanceMm;
@@ -136,7 +139,8 @@ void pollSensor()
       VL53L4CX_ERROR_NONE) {
     frame.status = REAR_TOF_RPC_BUS_FAILED;
   } else {
-    frame.status = REAR_TOF_RPC_RUNNING;
+    // Restart success does not erase the preceding read failure.
+    frame.status = measurementOk ? REAR_TOF_RPC_RUNNING : REAR_TOF_RPC_BUS_FAILED;
   }
   previousDistanceMm = selectedDistance;
   frame.filtered_distance_mm = selectedDistance;

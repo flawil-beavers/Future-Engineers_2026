@@ -114,6 +114,7 @@ void update_position()
     
     // Get current sensor readings
     float current_angle = get_angle();
+    if (!isfinite(current_angle) || !isfinite(current_distance)) return;
     float delta_dist = current_distance - prev_distance;
     float delta_angle = current_angle - prev_angle;
     
@@ -121,9 +122,8 @@ void update_position()
     delta_angle = wrap_to_180(delta_angle);
     
     if (fabs(delta_dist) < 0.01f && fabs(delta_angle) < 0.01f) {
-        // No significant movement, skip to save CPU
-        prev_distance = current_distance;
-        prev_angle = current_angle;
+        // Retain the integration baseline so sub-threshold motion accumulates.
+        // A later accepted update includes the complete distance and yaw.
         return;
     }
     
@@ -228,8 +228,8 @@ void position_apply_xy_correction(float dx_mm, float dy_mm)
     pos.x_mm += dx_mm;
     pos.y_mm += dy_mm;
 
-    const float correction = hypotf(dx_mm, dy_mm);
-    pos.confidence_mm = fmaxf(0.0f, pos.confidence_mm - correction);
+    // Applying a correction alone does not prove its accuracy. Keep the existing
+    // heuristic uncertainty instead of claiming perfect confidence after a jump.
 }
 
 void position_print()

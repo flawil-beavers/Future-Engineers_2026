@@ -1308,7 +1308,8 @@ static const char *parkingExitDiagnosticReference()
 
 static bool updateParkingExit()
 {
-    run_telemetry_phase(obstacle_parking_exit_trace_phase());
+    if (RUN_TELEMETRY_DETAILED)
+        run_telemetry_phase(obstacle_parking_exit_trace_phase());
     if (oc_parking_exit_state != PARKING_EXIT_IDLE &&
         oc_parking_exit_state != PARKING_EXIT_DONE &&
         oc_parking_exit_state != PARKING_EXIT_TEST_HOLD)
