@@ -1,4 +1,4 @@
-function hasPlan(svg){return /<polyline\b[^>]*stroke="#888"[^>]*stroke-dasharray="6 5"/.test(svg);}
+function hasPlan(svg){return /<polyline\b[^>]*stroke="#303640"[^>]*stroke-dasharray="8 6"/.test(svg);}
 // Node.js regression tests for the parser delivered inside the offline app.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -97,7 +97,7 @@ test('combined view isolates runs, rejects sightings and keeps local rear poses 
 test('whole-run corrections and time gaps are not solid travel connections',()=>{
  const r=analyzeLog('[PARK_DIAG_CONFIG] turn=1\n[PARK_DIAG] type=sample state=segment_drive t=10 pose=300,-1300,0\n[PARK_DIAG] type=correction t=15 before=300,-1300,0 after=310,-1300,0\n[PARK_DIAG] type=sample state=segment_drive t=20 pose=310,-1300,0\n[PARK_DIAG] type=sample state=segment_drive t=5000 pose=320,-1300,0').sessions[0];
  const g=runGeometry(r);assert.equal(g.corrections.length,1);
- const svg=wholeRunSvg(r);assert.equal((svg.match(/stroke="#1769aa" stroke-width="2.3"/g)||[]).length,6);
+ const svg=wholeRunSvg(r);assert.equal((svg.match(/stroke="#1769aa" stroke-width="3.2"/g)||[]).length,6);
  assert.ok(svg.includes('stroke-dasharray="2 4"'));
 });
 test('official mat is shared by both panels with a fixed coordinate transform',()=>{
@@ -208,7 +208,61 @@ test('legacy correction survives missing new events and splits the new solid tra
  const r=analyzeLog(pose(10,1)+'\n'+legacyCorrection+'\n'+pose(20,1)).sessions[0];
  assert.equal(runGeometry(r).corrections.length,1);
  const svg=wholeRunSvg(r);
- assert.equal((svg.match(/stroke="#1769aa" stroke-width="2.3"/g)||[]).length,4);
+ assert.equal((svg.match(/stroke="#087f8c" stroke-width="3.2"/g)||[]).length,4);
  assert.ok(/stroke="#a34ab5" stroke-width="3" stroke-dasharray="2 4"/.test(svg));
 });
+
+const roundLog=`[RUN_START] v=1 t=0
+[RUN_ROUTE] v=1 t=1 route=1 base=0 kind=lap count=2 closed=0
+[RUN_ROUTE_POINT] v=1 route=1 index=0 pose=0,-1200,0
+[RUN_ROUTE_POINT] v=1 route=1 index=1 pose=200,-1200,0
+[RUN_ROUTE_END] v=1 route=1
+[RUN_ROUTE] v=1 t=2 route=2 base=0 kind=lap count=2 closed=0
+[RUN_ROUTE_POINT] v=1 route=2 index=0 pose=500,1000,0
+[RUN_ROUTE_POINT] v=1 route=2 index=1 pose=600,1000,0
+[RUN_ROUTE_END] v=1 route=2
+[RUN_POSE] v=1 t=250 phase=driving lap=1 route=1 frame=1 space=field pose=0,-1200,0
+[RUN_POSE] v=1 t=500 phase=driving lap=2 route=1 frame=1 space=field pose=10,-1200,0
+[RUN_EVENT] v=1 t=510 kind=correction frame=2 before=10,-1200,0 after=20,-1200,0
+[RUN_POSE] v=1 t=750 phase=driving lap=2 route=1 frame=2 space=field pose=20,-1200,0
+[RUN_POSE] v=1 t=1000 phase=driving lap=3 route=2 frame=2 space=field pose=500,1000,0
+[RUN_POSE] v=1 t=1250 phase=final_park lap=3 route=0 frame=2 space=field pose=30,-1200,0
+[RUN_EVENT] v=1 t=1260 kind=correction frame=3 before=30,-1200,0 after=40,-1200,0`;
+test('round selection scopes trajectories, corrections and automatic route version',()=>{
+ const r=analyzeLog(roundLog).sessions[0],svg=markup(wholeRunSvg(r,{round:'2'}));
+ assert.ok(svg.includes('data-round="2"'));assert.ok(svg.includes('Plan v1'));
+ assert.ok(svg.includes('stroke="#2960b2" stroke-width="3.2"'));
+ assert.ok(!svg.includes('stroke="#b35197"'));assert.ok(!svg.includes('stroke="#713da7"'));
+ assert.equal((svg.match(/data-correction-line=/g)||[]).length,2);
+ assert.ok(wholeRunSvg(r,{round:'3'}).includes('Plan v2'));
+ assert.ok(!hasPlan(wholeRunSvg(r,{round:'other'})));
+ assert.ok(wholeRunSvg(r,{round:'2',route:'2'}).includes('Plan v2'));
+});
+test('hiding the FE artwork preserves physical geometry, plans and travel in both views',()=>{
+ const r=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
+ const svg=markup(wholeRunSvg(r,{round:'1',field:'hide'}));
+ assert.ok(svg.includes('data-field="hide"'));assert.ok(!svg.includes('data-layer="official-mat"'));
+ assert.equal((svg.match(/data-layer="nominal-walls"/g)||[]).length,2);
+ assert.equal((svg.match(/data-layer="parking-barriers"/g)||[]).length,2);
+ assert.ok(svg.includes('data-seat="17"'));assert.ok(hasPlan(svg));
+ assert.ok(svg.includes('stroke="#cc7a12"'));assert.ok(svg.includes('FE-Spielfeld ausgeblendet'));
+ assert.ok(wholeRunSvg(r,{field:'show'}).includes('data-layer="official-mat"'));
+});
+test('filtering away intermediate phases never creates a false connecting line',()=>{
+ const p=(t,phase,x)=>`[RUN_POSE] v=1 t=${t} phase=${phase} lap=2 route=1 frame=1 space=field pose=${x},-1200,0`;
+ const r=analyzeLog([p(250,'driving',0),p(500,'final_park',10),p(750,'driving',20)].join('\n')).sessions[0];
+ const svg=markup(wholeRunSvg(r,{round:'2'}));
+ const traces=[...svg.matchAll(/<polyline points="([^"]+)"[^>]*stroke="#2960b2"/g)];
+ assert.equal(traces.length,4);assert.ok(traces.every(m=>!m[1].includes(' ')));
+ const missing=wholeRunSvg(r,{round:'1'});assert.ok(missing.includes('Keine Feldpositionsdaten in Auswahl'));assert.ok(!hasPlan(missing));
+});
+test('legacy rounds retain only recorded points and never borrow the connector plan',()=>{
+ const r=analyzeLog(fixture('20261006_log_476_ccw.txt')).sessions[0];
+ const svg=markup(wholeRunSvg(r,{round:'2'}));
+ assert.ok(svg.includes('stroke="#2960b2"'));assert.ok(!svg.includes('stroke="#b35197"'));
+ assert.ok(!svg.includes('stroke="#1769aa"'));assert.ok(!hasPlan(svg));
+ assert.ok(hasPlan(wholeRunSvg(r,{round:'1'})));
+ assert.ok(!hasPlan(wholeRunSvg(r,{round:'1',route:'none'})));
+});
+
 console.log(`${checks} regression checks passed.`);

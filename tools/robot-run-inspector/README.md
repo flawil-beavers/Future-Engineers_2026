@@ -153,7 +153,7 @@ Poppler-Versionen variieren; Asset-Metadaten und HTML werden zusammen erzeugt.
 Positionen sind in der Einzelspur verfügbar, Feldpositionen im Gesamtlauf.
 Fortlaufende Messpunkte verbinden auch Anschluss und Runde; Korrekturen,
 Rahmenwechsel und Zeitlücken bleiben getrennt. Der Planselektor zeigt die zuletzt
-aktive Route, eine gewählte protokollierte Version oder blendet Pläne aus.
+aktive Route, eine gewählte protokollierte Version in der gewählten Runde.
 Gestrichelte Linien sind akzeptierte Pläne, keine gefahrenen Positionen. Fehlende
 Basisversionen und unvollständige Routenblöcke werden nicht gezeichnet.
 
@@ -177,3 +177,34 @@ Bei gemischten Formaten bleiben PARK_DIAG-Korrekturen erhalten, wenn neue
 RUN_EVENT-Daten fehlen; doppelte Meldungen desselben Sprungs werden einmal
 gezeichnet (Zeitabstand maximal10ms, X/Y-Rundungsabweichung maximal0,15mm).
 Kleine Korrekturen sind im Gesamtlauf entsprechend kurz; z.B. log476:27,1mm.
+
+
+## Runden- und Spurauswahl (Version 1.5)
+
+Im Gesamtlauf wählt „Runde“ alle Runden, Runde 1/2/3 oder „Parken / ohne Runde“.
+Beide Feldansichten und SVG-/HTML-Exporte übernehmen diese Auswahl. Feld und
+bestätigte Pfosten bleiben sichtbar. Aus- und Endparken gehören zur separaten
+Parkauswahl, auch wenn ein Parkdatensatz noch die Nummer der letzten Runde trägt.
+Der Anschluss gehört zur Runde 1. Versteckte Phasen werden nicht durch eine
+neue Verbindung überbrückt. Posekorrekturen folgen ihrer protokollierten Phase.
+
+„FE-Spielfeld“ zeigt oder versteckt ausschließlich das offizielle Matten-Artwork.
+Wände, bestätigte Pfosten und bekannte Parkbegrenzungen bleiben in beiden
+Ansichten sichtbar, ebenso Fahrspur und ausgewählter Plan. SVG-/HTML-Exporte
+übernehmen die Hintergrundwahl. Die separate Auswahl „Spuren“ zeigt Plan + Fahrspur, nur Fahrspur oder nur
+Plan, unabhängig vom Hintergrund. Der Planversionsselektor mit „Letzter Plan
+in Auswahl“ erscheint nur bei mehreren Läufen/Abschnitten in derselben Datei;
+bei einer einzelnen Sitzung wird dieser Plan automatisch gewählt. Geschätzte Fahrt ist
+dick, farbig und durchgezogen; akzeptierte Pläne sind dünn, dunkel gestrichelt
+und liegen darüber. Violett punktiert bleibt ausschließlich Posekorrektur.
+„Letzter Plan in Auswahl“ verwendet die Route des letzten Feldpositionsdatensatzes
+der gewählten Runde. Eine explizite Planversion erlaubt den manuellen Vergleich
+mit einer anderen protokollierten Version. Es ist eine ausgewählte Planversion,
+kein zeitlicher Replay aller während einer Runde aktivierten Versionen.
+
+Der Filter erleichtert Plan-/Ist-Vergleiche ohne überlagerte Runden. „Alle Runden“
+bleibt für Übergänge und den gesamten Ablauf sinnvoll. Übersicht, Zeiten, Rohlog
+und separate Einzelspur-Auswahl bleiben vom Gesamtlauf-Filter unabhängig.
+Alte Logs zeigen nur vorhandene Daten: einzelne Erkundungspositionen in Runde 1,
+spätere LATER_TRACK-Punkte in ihrer Runde, Anschlusspläne nur in Runde 1.
+Fehlende Fahrspuren oder Pläne werden ausdrücklich gemeldet, nicht ergänzt.

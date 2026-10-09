@@ -10381,3 +10381,52 @@ Browser-rendered log476 checked. No firmware edits/build/upload, new evidence,
 commit or push. Prepared/staged app/docs/tests only; prior staged work retained.
 Next owner reviews normal CW/CCW imports; physical telemetry validation from
 previous session remains pending.
+
+
+## 2026-10-09: Inspector round and trajectory-layer filters
+
+Owner requested clearer round separation and plan/travel distinction. Inspector1.5
+adds all/1/2/3/parking round selection and both/driven/plan layers to both whole-run
+panels and SVG/HTML exports. Travel is coloured solid3.2px; accepted plans dark
+dashed8/6 at2px above travel, both outlined. Purple dotted corrections retained.
+Automatic plan uses last field pose route within selected round; explicit version
+permits manual comparison. This is one selected plan, not time replay. Exit/final
+parking stays separate regardless of lap number; connector and legacy discovery
+points belong to round1. Filtered phases cannot create solid travel connections.
+Missing old-log positions/plans stay unknown. Summary/timing/raw and independent
+single-track view remain whole-run/unaffected. Import/session switch resets filters.
+
+30 parser/render regressions PASS including125 archived originals and synthetic
+round/route/correction/gap/layer cases; DOM round/layer/reset/SVG/HTML exports PASS;
+official asset checks PASS. Chrome views of log476 round2 and synthetic overlapping
+plan/correction detail visually checked; QA stays under ignored local_workspace.
+Prepared/staged without commit or push. No firmware changes/build or new evidence.
+Next owner reviews Inspector1.5 filters on normal CW/CCW imports; pending physical
+telemetry validation from earlier entries remains unchanged.
+
+
+## 2026-10-09: field visibility replaces trajectory-layer selector
+
+Owner clarified that hiding should target the FE field artwork. Replaced the
+both/driven/plan selector and removed the Plan ausblenden UI option with
+FE-Spielfeld Anzeigen/Ausblenden. Both panels and SVG/HTML exports omit only
+the official-mat layer when hidden; nominal walls, confirmed pillars, known
+parking barriers, selected-round travel/plans/corrections remain visible.
+Missing parking geometry remains unknown. Default and import/session reset show
+artwork. This supersedes the layer-control behavior of the preceding entry.
+30 regressions across125 archived originals, DOM/export/reset checks and official
+asset verification PASS. Prepared/staged; no firmware edit/build, commit or push.
+Next owner reviews the field visibility control on normal imported runs.
+
+
+## 2026-10-09: independent travel/plan and field controls
+
+Owner requested restoration of the trajectory selector alongside field visibility.
+Restored both/driven/plan selection, independent of show/hide official artwork.
+Planversion control (including Letzter Plan in Auswahl) appears only when the
+imported file has multiple parsed run sessions. Single-session files automatically
+use the last active plan within round selection; no version menu is shown.
+Both selectors reset on import/session change and persist in SVG/HTML exports.
+30 parser/render checks across125 archived originals plus DOM visibility,
+independent selectors, resets and exports PASS. Prepared/staged, no commit/push
+or firmware build. Next owner reviews controls with single- and multi-run files.

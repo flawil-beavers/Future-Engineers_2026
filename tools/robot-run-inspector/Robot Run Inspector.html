@@ -9,14 +9,14 @@
 .whole-run{height:auto;aspect-ratio:1200/760;background:white} @media(max-width:700px){#wholePlot{overflow:auto}.whole-run{min-width:900px}}
 </style>
 <main>
-<header><div><h1>Robot Run Inspector</h1><div class="muted">Offline-Diagnose für eure Roboterläufe · Version 1.4</div></div><span class="badge">100 % lokal · kein Internet</span></header>
+<header><div><h1>Robot Run Inspector</h1><div class="muted">Offline-Diagnose für eure Roboterläufe · Version 1.5</div></div><span class="badge">100 % lokal · kein Internet</span></header>
 <section class="panel drop" id="drop"><h2>Log öffnen. Lauf verstehen.</h2><p>Eine originale TXT-Logdatei hierher ziehen oder auswählen.<br>Die Datei wird nur gelesen und bleibt auf diesem Computer.</p><input id="file" type="file" accept=".txt,.log,text/plain"><p class="muted" id="loadStatus" role="status" aria-live="polite">Keine Installation und keine Verbindung zum Roboter erforderlich.</p></section>
 <div id="workspace" hidden>
 <section class="panel toolbar"><label for="session">Laufabschnitt</label><select id="session"></select><button id="export">HTML-Bericht speichern</button><button id="json" class="secondary">JSON speichern</button><button id="print" class="secondary">Drucken / PDF</button></section>
 <div class="cards" id="cards"></div>
 <section class="panel"><h2>Befund & Grenzen</h2><div id="summary"></div><small>Die Fahrspur ist eine Schätzung des Roboters. Kontakte, tatsächliche Parkposition, Akkuspannung und Kameraqualität sind ohne zusätzliche Messungen oder Bilder nicht belegt. Kein Fehler im Log bedeutet nicht, dass der Lauf fehlerfrei war.</small></section>
 <div class="grid"><section class="panel"><h2>Auffälligkeiten</h2><div id="findings" class="scroll"></div></section><section class="panel"><h2>Sensoren & Aufzeichnung</h2><div id="health"></div></section></div>
-<section class="panel"><div class="toolbar"><h2>Gesamtlauf mit Pfosten</h2><label for="planVersion">Plan</label><select id="planVersion"></select><button id="saveWholeSvg" class="secondary">SVG speichern</button></div><div id="wholePlot"></div><p class="muted">Farben trennen Ausparken, Anschluss und Runden. Graue Punkte: einzelne Erkundungspositionen. Gestrichelt: ausgewählter Routenplan; punktiert: Scan-Endpunkte oder Posekorrektur. Unbeobachtete Pfosten und fehlende Fahrspuren werden nicht ergänzt.</p></section>
+<section class="panel"><div class="toolbar"><h2>Gesamtlauf mit Pfosten</h2><label for="roundFilter">Runde</label><select id="roundFilter"><option value="all">Alle Runden + Parken</option><option value="1">Runde 1</option><option value="2">Runde 2</option><option value="3">Runde 3</option><option value="other">Parken / ohne Runde</option></select><label for="trajectoryLayers">Spuren</label><select id="trajectoryLayers"><option value="both">Plan + Fahrspur</option><option value="driven">Nur Fahrspur</option><option value="plan">Nur Plan</option></select><label for="fieldBackground">FE-Spielfeld</label><select id="fieldBackground"><option value="show">Anzeigen</option><option value="hide">Ausblenden</option></select><span id="planVersionControl" hidden><label for="planVersion">Planversion</label> <select id="planVersion"></select></span><button id="saveWholeSvg" class="secondary">SVG speichern</button></div><div id="wholePlot"></div><p class="muted">Farben trennen Ausparken, Anschluss und Runden. Kleine Punkte: einzelne Erkundungspositionen. Dunkel gestrichelt: ausgewählter Routenplan; dick und farbig: geschätzte Fahrspur; punktiert: Scan-Endpunkte oder Posekorrektur. Unbeobachtete Pfosten und fehlende Fahrspuren werden nicht ergänzt.</p></section>
 <section class="panel"><div class="toolbar"><h2>Geschätzte Fahrspur</h2><label for="track">Spur</label><select id="track"></select></div><div id="plot"></div><p id="plotInfo" class="muted"></p></section>
 <section class="panel"><h2>Ereignisse im Lauf</h2><div id="events" class="scroll"></div></section>
 <section class="panel"><h2>Physische Beobachtung</h2><p class="muted">Diese Angaben stammen von euch und werden im Bericht getrennt von der Telemetrie gespeichert.</p><label for="notes">Aufbau, Akku, Kontakt, Stoppposition, Video-Dateiname</label><textarea id="notes" placeholder="Zum Beispiel: B, CW, Akku 2, keine Berührung beobachtet, Video run_508.mp4"></textarea></section>
@@ -101,16 +101,23 @@ function seatPosition(seat,turn){
  const px=turn*(-500+station*500),py=-1000+turn*(side?100:-100),a=turn*section*Math.PI/2;
  return {x:Math.round(px*Math.cos(a)-py*Math.sin(a)),y:Math.round(px*Math.sin(a)+py*Math.cos(a))};
 }
+function poseRound(p){
+ if(/^(exit_|final_)/.test(p.phase||''))return 'other';
+ return [1,2,3].includes(Number(p.lap))?String(p.lap):'other';
+}
+function roundLabel(value){return value==='all'?'Alle Runden + Parken':value==='other'?'Parken / ohne Runde':`Runde ${value}`;}
+function travelColor(p){return p.phase?.startsWith('exit_')?'#1769aa':p.phase?.startsWith('final_')?'#713da7':p.phase==='connector'?'#cc7a12':p.lap===3?'#b35197':p.lap===2?'#2960b2':'#087f8c';}
 function runTelemetry(rows){
- const r={start:null,end:null,laps:[],poses:[],routes:[],corrections:[],truncated:false,observedMs:null},versions=new Map();let pending=null,space='unknown';
+ const r={start:null,end:null,laps:[],poses:[],routes:[],corrections:[],truncated:false,observedMs:null},versions=new Map();let pending=null,space='unknown',round='other';
  for(const row of rows){const s=row.text,f=fields(s),tag=s.match(/^\[([^\]]+)\]/)?.[1];if(!tag?.startsWith('RUN_')||f.v!=='1')continue;
   const time=Number(f.t),elapsed=Number(f.elapsed_ms);if(f.elapsed_ms!==undefined&&Number.isFinite(elapsed)&&elapsed>=0)r.observedMs=Math.max(r.observedMs||0,elapsed);
-  if(tag==='RUN_START'&&Number.isFinite(time)){r.start={t:time,line:row.line};space='local';}
+  if(tag==='RUN_START'&&Number.isFinite(time)){r.start={t:time,line:row.line};space='local';round='other';}
   if(tag==='RUN_END'&&Number.isFinite(time)&&Number.isFinite(elapsed)&&elapsed>=0){r.end={t:time,elapsedMs:elapsed,outcome:f.outcome,reason:f.reason,line:row.line};r.truncated||=f.truncated==='1';}
   if(tag==='RUN_TRUNCATED')r.truncated=true;
   if(tag==='RUN_LAP'&&Number.isFinite(elapsed)&&Number.isFinite(Number(f.lap_ms)))r.laps.push({lap:Number(f.lap),elapsedMs:elapsed,lapMs:Number(f.lap_ms)});
-  if(tag==='RUN_POSE'){const p=numbers(f.pose);if(p?.length===3&&Number.isFinite(time)&&typeof f.phase==='string'&&['local','field'].includes(f.space)&&['lap','route','frame'].every(k=>Number.isInteger(Number(f[k]))&&Number(f[k])>=0)){r.poses.push({x:p[0],y:p[1],h:p[2],t:time,line:row.line,lap:Number(f.lap),phase:f.phase,route:Number(f.route),frame:Number(f.frame),space:f.space});space=f.space;}}
-  if(tag==='RUN_EVENT'&&['rebase','correction'].includes(f.kind)){const before=numbers(f.before),after=numbers(f.after);if(before?.length===3&&after?.length===3){if(f.kind==='rebase')space='field';r.corrections.push({before,after,t:time,line:row.line,kind:f.kind,space});}}
+  if(tag==='RUN_POSE'){const p=numbers(f.pose);if(p?.length===3&&Number.isFinite(time)&&typeof f.phase==='string'&&['local','field'].includes(f.space)&&['lap','route','frame'].every(k=>Number.isInteger(Number(f[k]))&&Number(f[k])>=0)){r.poses.push({x:p[0],y:p[1],h:p[2],t:time,line:row.line,lap:Number(f.lap),phase:f.phase,route:Number(f.route),frame:Number(f.frame),space:f.space});space=f.space;round=poseRound({phase:f.phase,lap:Number(f.lap)});}}
+  if(tag==='RUN_EVENT'&&f.kind==='phase')round=poseRound({phase:f.phase,lap:Number(f.lap)});
+  if(tag==='RUN_EVENT'&&['rebase','correction'].includes(f.kind)){const before=numbers(f.before),after=numbers(f.after);if(before?.length===3&&after?.length===3){if(f.kind==='rebase')space='field';r.corrections.push({before,after,t:time,line:row.line,kind:f.kind,space,round});}}
   if(tag==='RUN_ROUTE'){
    const count=Number(f.count),base=Number(f.base);const prior=versions.get(base);
    pending={id:Number(f.route),kind:f.kind,t:time,line:row.line,closed:f.closed==='1',count,points:base&&prior?prior.points.map(p=>({...p})):new Array(Number.isInteger(count)&&count>=0&&count<=192?count:0),valid:Number.isInteger(Number(f.route))&&Number(f.route)>0&&Number.isInteger(base)&&base>=0&&Number.isInteger(count)&&count>=0&&count<=192&&(!base||!!prior)};
@@ -129,9 +136,10 @@ function runTimingHtml(r){
 
 function runGeometry(r){
  const turn=r.directions.length===1?(r.directions[0]==='CCW'?1:-1):null;
- const map=new Map(),series=new Map(),corrections=[],plans=[];let plan=null,fieldFrame=false,gap=null,fixedLine=null;
+ const map=new Map(),series=new Map(),corrections=[],plans=[];let plan=null,fieldFrame=false,gap=null,fixedLine=null,currentRound='other';
  const add=(key,p,color,dots=false)=>{if(!series.has(key))series.set(key,{name:key,color,dots,points:[]});series.get(key).points.push(p);};
  for(const row of r.rows){const s=row.text,f=fields(s),tag=s.match(/^\[([^\]]+)\]/)?.[1],tm=Number(f.t),t=f.t!==undefined&&Number.isFinite(tm)?tm:null;
+  if(tag==='RUN_POSE'||(tag==='RUN_EVENT'&&f.kind==='phase'))currentRound=poseRound({phase:f.phase,lap:Number(f.lap)});
   const gapMatch=s.match(/Prototype footprint .*?gap_mm=([\d.]+)/);if(gapMatch&&+gapMatch[1]>0&&+gapMatch[1]<1000)gap=+gapMatch[1];
   if(tag==='PARK FIELD START'&&Number.isFinite(Number(f.fixed_line_x)))fixedLine=Number(f.fixed_line_x);
   const mapped=s.match(/\[MAP\] Confirmed S([0-3]) station=([0-2]) side=(RIGHT|LEFT) color=(RED|GREEN)/);
@@ -142,18 +150,18 @@ function runGeometry(r){
   if(tag==='RUN_POSE'&&f.space==='local')fieldFrame=false;
   if(tag==='PARK_DIAG'&&f.type==='rebase')fieldFrame=true;
   if(tag==='PARK_DIAG'&&f.type==='sample'&&/^(segment_|localize_)/.test(f.state||''))fieldFrame=true;
-  if(tag==='PARK_DIAG'&&f.type==='correction'&&fieldFrame){const before=numbers(f.before),after=numbers(f.after);if(before?.length===3&&after?.length===3)corrections.push({before,after,t,line:row.line});}
+  if(tag==='PARK_DIAG'&&f.type==='correction'&&fieldFrame){const before=numbers(f.before),after=numbers(f.after);if(before?.length===3&&after?.length===3)corrections.push({before,after,t,line:row.line,round:currentRound});}
   if(tag==='CONNECTOR_POINT'&&f.kind==='connector'){
    const p=numbers(`${f.x},${f.y},${f.h}`);if(p?.length===3){if(f.index==='0'||!plan){plan=[];plans.push(plan);}plan.push({x:p[0],y:p[1],h:p[2],t:null,line:row.line});}
   }
-  let p=null,key=null,color=null,dots=false;
+  let p=null,key=null,color=null,dots=false,round='other';
   if(tag==='PARK_DIAG'&&f.type==='sample'&&fieldFrame&&/^(segment_|localize_)/.test(f.state||'')){
    p=numbers(f.pose);key=f.state.startsWith('segment_')?'Ausparken':'Lokalisierung';color=key==='Ausparken'?'#1769aa':'#008b80';
-  }else if(tag==='CONNECTOR_TRACK'){p=numbers(`${f.x},${f.y},${f.h}`);key='Anschluss: Messpunkte';color='#cc7a12';}
-  else if(tag==='LATER_TRACK'){p=numbers(f.pose);key=`Runde ${f.lap||'?'}: Messpunkte`;color=f.lap==='3'?'#b35197':'#2960b2';}
+  }else if(tag==='CONNECTOR_TRACK'){p=numbers(`${f.x},${f.y},${f.h}`);key='Anschluss: Messpunkte';color='#cc7a12';round='1';}
+  else if(tag==='LATER_TRACK'){p=numbers(f.pose);key=`Runde ${f.lap||'?'}: Messpunkte`;color=f.lap==='3'?'#b35197':'#2960b2';round=poseRound({lap:Number(f.lap)});}
   else if(tag==='FINAL_PARK_TRACE'){p=numbers(f.xyh||f.pose,f.xyh?'/':',');key='Endparken';color='#713da7';}
-  else if(tag==='DISCOVERY_TRACE'||tag==='RED SEAT'){p=numbers(f.pose);key='Erkundung: einzelne Messpunkte';color='#8b8b8b';dots=true;}
-  if(p?.length===3&&key)add(key,{x:p[0],y:p[1],h:p[2],t,line:row.line},color,dots);
+  else if(tag==='DISCOVERY_TRACE'||tag==='RED SEAT'){p=numbers(f.pose);key='Runde 1: einzelne Messpunkte';color='#087f8c';dots=true;round='1';}
+  if(p?.length===3&&key)add(key,{x:p[0],y:p[1],h:p[2],t,line:row.line,round},color,dots);
  }
  const pillars=turn?[...map].map(([seat,color])=>({seat,color,...seatPosition(seat,turn)})):[];
  const telemetry=r.telemetry||runTelemetry(r.rows);
@@ -161,7 +169,7 @@ function runGeometry(r){
   series.clear();
   for(const p of telemetry.poses.filter(p=>p.space==='field')){
    const key=p.phase.startsWith('exit_')?'Ausparken':p.phase.startsWith('final_')?'Endparken':p.phase==='connector'?'Anschluss: Messpunkte':`Runde ${p.lap}: Messpunkte`;
-   const color=p.phase.startsWith('final_')?'#713da7':p.phase==='connector'?'#cc7a12':p.lap===3?'#b35197':p.lap===2?'#2960b2':'#1769aa';
+   const color=travelColor(p);
    add(key,p,color);
   }
 
@@ -178,15 +186,25 @@ function runGeometry(r){
  return {turn,pillars,series:[...series.values()],corrections,plans,gap,fixedLine,telemetry};
 }
 function wholeRunSvg(r,options={}){
- const g=runGeometry(r),detail=g.series.filter(s=>!s.name.startsWith('Runde ')&&s.name!=='Erkundung: einzelne Messpunkte').flatMap(s=>s.points).concat(g.plans.flat());
- const routeChoice=options.route||'active';
+ const g=runGeometry(r),round=['1','2','3','other'].includes(String(options.round))?String(options.round):'all';
+ const showField=options.field!=='hide',layers=['driven','plan'].includes(options.layers)?options.layers:'both',showDriven=layers!=='plan',showPlan=layers!=='driven';
+ const matches=p=>round==='all'||(p.round||poseRound(p))===round;
+ const poses=g.telemetry.poses.map((p,sampleIndex)=>({...p,sampleIndex})).filter(p=>p.space==='field').filter(matches);
+ g.series=g.series.map(s=>({...s,points:s.points.filter(matches)})).filter(s=>s.points.length);
+ g.corrections=g.corrections.filter(matches);
+ const routeChoice=options.route||'active';let selectedPlan=null;
  if(g.telemetry.poses.length||g.telemetry.routes.length){
-  const activeId=g.telemetry.poses.at(-1)?.route;
-  const chosen=g.telemetry.routes.find(v=>v.id===(routeChoice==='active'?activeId:Number(routeChoice)));
-  g.plans=chosen&&routeChoice!=='none'?[chosen.closed&&chosen.points.length?chosen.points.concat(chosen.points[0]):chosen.points]:[];
- }
+  // Automatic means the last active version within the selected round, not
+  // the last version of a later lap/parking phase.
+  const activeId=poses.at(-1)?.route;
+  selectedPlan=g.telemetry.routes.find(v=>v.id===(routeChoice==='active'?activeId:Number(routeChoice)));
+  g.plans=selectedPlan&&routeChoice!=='none'?[selectedPlan.closed&&selectedPlan.points.length?selectedPlan.points.concat(selectedPlan.points[0]):selectedPlan.points]:[];
+ }else if(round!=='all'&&round!=='1')g.plans=[]; // Legacy connector plans belong to lap 1 only.
+ if(!showPlan||routeChoice==='none')g.plans=[];
  const all=g.series.flatMap(s=>s.points);
- const out=['<svg class="whole-run" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="Gesamtlauf mit Pfosten und Ausparkdetail"><rect width="1200" height="760" fill="white"/>'];
+ const detail=(round==='all'?g.series.filter(s=>!s.name.startsWith('Runde ')):g.series).flatMap(s=>s.points).concat(g.plans.flat());
+ const layerLabel=layers==='plan'?'Nur Plan':layers==='driven'?'Nur geschätzte Fahrspur':'Geschätzte Fahrspur + Plan';
+ const out=['<svg class="whole-run" data-round="'+round+'" data-layers="'+layers+'" data-field="'+(showField?'show':'hide')+'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="Gesamtlauf mit Pfosten und Ausparkdetail"><rect width="1200" height="760" fill="white"/>'];
  out.push(`<defs><image id="official-fe-mat" width="3200" height="3200" href="${OFFICIAL_FE_MAT}"/></defs>`);
  const ext=detail.length?detail.reduce((a,p)=>[Math.min(a[0],p.x-120),Math.max(a[1],p.x+120),Math.min(a[2],p.y-120),Math.max(a[3],p.y+120)],[Infinity,-Infinity,Infinity,-Infinity]):[-600,600,-1500,-700];
  function panel(id,left,bounds,title){
@@ -195,7 +213,7 @@ function wholeRunSvg(r,options={}){
   out.push(`<text x="${left}" y="26" fill="#333" font-size="17">${title}</text><defs><clipPath id="${id}"><rect x="${left}" y="45" width="500" height="500"/></clipPath></defs><rect x="${left}" y="45" width="500" height="500" fill="#fafafa" stroke="#bbb"/><g clip-path="url(#${id})">`);
   function rect(px,py,w,h,fill,stroke){out.push(`<rect x="${x(px)}" y="${y(py+h)}" width="${w*scale}" height="${h*scale}" fill="${fill}" stroke="${stroke}"/>`);}
   // The art, walls and logged geometry share this panel's mm-to-SVG mapping.
-  out.push(`<g data-layer="official-mat"><use href="#official-fe-mat" transform="translate(${x(-1600)} ${y(1600)}) scale(${scale})"/></g>`);
+  if(showField)out.push(`<g data-layer="official-mat"><use href="#official-fe-mat" transform="translate(${x(-1600)} ${y(1600)}) scale(${scale})"/></g>`);
   out.push('<g data-layer="nominal-walls" fill="none" stroke="#111" stroke-width="2">');
   rect(-1500,-1500,3000,3000,'none','#111');rect(-500,-500,1000,1000,'none','#111');
   out.push('</g>');
@@ -205,48 +223,51 @@ function wholeRunSvg(r,options={}){
    rect(g.fixedLine-20,-1500,20,200,'#ff00ff','#7b007b');
    out.push('</g>');
   }
-  const path=(pts,color,dash='')=>{
+  const path=(pts,color,dash='',width=3.2)=>{
    if(!pts.length)return;
    const coords=pts.map(p=>`${x(p.x).toFixed(2)},${y(p.y).toFixed(2)}`).join(' '),pattern=dash?`stroke-dasharray="${dash}"`:'';
-   out.push(`<polyline points="${coords}" fill="none" stroke="white" stroke-width="5.3" ${pattern}/><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2.3" ${pattern}/>`);
+   out.push(`<polyline points="${coords}" fill="none" stroke="white" stroke-width="${width+2.6}" ${pattern}/><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="${width}" ${pattern}/>`);
   };
-  for(const plan of g.plans)path(plan,'#888','6 5');
+
   const localization=g.series.find(s=>s.name==='Lokalisierung')?.points.at(-1)||g.series.find(s=>s.name==='Ausparken')?.points.at(-1);
   const scanStart=g.plans[0]?.[0],after=g.corrections.filter(c=>c.line<scanStart?.line).at(-1)?.after;
-  if(!g.telemetry.poses.length&&scanStart&&(after||localization))path([after?{x:after[0],y:after[1]}:localization,scanStart],'#cc7a12','2 5');
-  if(g.telemetry.poses.length){
+  if(showDriven&&!g.telemetry.poses.length&&scanStart&&(after||localization))path([after?{x:after[0],y:after[1]}:localization,scanStart],'#cc7a12','2 5');
+  if(showDriven&&g.telemetry.poses.length){
    let part=[],color=null;
    const flush=()=>{path(part,color);if(part.length===1)out.push(`<circle cx="${x(part[0].x)}" cy="${y(part[0].y)}" r="3" fill="${color}"/>`);part=[];};
-   for(const p of g.telemetry.poses.filter(p=>p.space==='field')){
-    const nextColor=p.phase.startsWith('final_')?'#713da7':p.phase==='connector'?'#cc7a12':p.lap===3?'#b35197':p.lap===2?'#2960b2':'#1769aa',prev=part.at(-1);
-    const continuous=prev&&p.frame===prev.frame&&p.t>=prev.t&&p.t-prev.t<=2000&&!g.corrections.some(c=>c.line>prev.line&&c.line<=p.line);
+   for(const p of poses){
+    const nextColor=travelColor(p),prev=part.at(-1);
+    const continuous=prev&&p.sampleIndex===prev.sampleIndex+1&&p.frame===prev.frame&&p.t>=prev.t&&p.t-prev.t<=2000&&!g.corrections.some(c=>c.line>prev.line&&c.line<=p.line);
     if(prev&&(!continuous||nextColor!==color)){flush();if(continuous)part.push(prev);}
     color=nextColor;part.push(p);
    }flush();
   }
-  for(const series of g.telemetry.poses.length?[]:g.series){
+  for(const series of !showDriven||g.telemetry.poses.length?[]:g.series){
    if(series.dots){for(const p of series.points)out.push(`<circle cx="${x(p.x)}" cy="${y(p.y)}" r="2.2" fill="${series.color}"/>`);continue;}
    let part=[];const flush=()=>{path(part,series.color);if(part.length===1)out.push(`<circle cx="${x(part[0].x)}" cy="${y(part[0].y)}" r="3" fill="${series.color}"/>`);part=[];};
    for(const p of series.points){const prev=part.at(-1);if(prev&&((p.t!==null&&prev.t!==null&&(p.t<prev.t||p.t-prev.t>2000||p.frame!==prev.frame||p.route!==prev.route))||g.corrections.some(c=>c.line>prev.line&&c.line<=p.line)))flush();part.push(p);}flush();
   }
-  for(const c of g.corrections){
+  for(const plan of g.plans)path(plan,'#303640','8 6',2);
+  for(const c of showDriven?g.corrections:[]){
    out.push(`<g data-correction-line="${c.line}"><title>Posekorrektur: (${c.before[0]}, ${c.before[1]}) → (${c.after[0]}, ${c.after[1]}) mm</title>`);
-   path([{x:c.before[0],y:c.before[1]},{x:c.after[0],y:c.after[1]}],'#a34ab5','2 4');out.push('</g>');
+   path([{x:c.before[0],y:c.before[1]},{x:c.after[0],y:c.after[1]}],'#a34ab5','2 4',2.3);out.push('</g>');
   }
   for(const p of g.pillars){out.push(`<rect data-seat="${p.seat}" x="${x(p.x)-5}" y="${y(p.y)-5}" width="10" height="10" fill="${p.color==='RED'?'#dc4545':'#38a85c'}" stroke="#333"/><text x="${x(p.x)+8}" y="${y(p.y)-8}" fill="#333" font-size="12">${p.color[0]}${p.seat}</text>`);}
-  const first=g.series.find(s=>s.name==='Ausparken')?.points[0];if(first)out.push(`<circle cx="${x(first.x)}" cy="${y(first.y)}" r="5" fill="#149443"/>`);
-  const last=g.series.find(s=>s.name==='Anschluss: Messpunkte')?.points.at(-1);if(last)out.push(`<circle cx="${x(last.x)}" cy="${y(last.y)}" r="5" fill="#222"/>`);
+  const first=g.series.find(s=>s.name==='Ausparken')?.points[0];if(showDriven&&first)out.push(`<circle cx="${x(first.x)}" cy="${y(first.y)}" r="5" fill="#149443"/>`);
+  const last=g.series.find(s=>s.name==='Anschluss: Messpunkte')?.points.at(-1);if(showDriven&&last)out.push(`<circle cx="${x(last.x)}" cy="${y(last.y)}" r="5" fill="#222"/>`);
   out.push(`</g><text x="${left}" y="567" fill="#555" font-size="12">X ${xmin.toFixed(0)} … ${xmax.toFixed(0)} mm · Y ${ymin.toFixed(0)} … ${ymax.toFixed(0)} mm</text>`);
  }
- if(!all.length)out.push('<text x="45" y="690" fill="#555" font-size="12">Keine Feldpositionsdaten; lokale Positionen bleiben in der Einzelspur.</text>');
- panel('whole-field',45,[-1600,1600,-1600,1600],'Gesamtes Feld');panel('whole-detail',650,ext,'Ausparken / Anschluss / Endparken');
- const legends=g.series.map(s=>[s.name,s.color]).concat([['Ausgewählter Plan (keine Messspur)','#888','6 5'],['Posekorrektur (keine Fahrt)','#a34ab5','2 4'],['Scan: nur Endpunkte','#cc7a12','2 5']]);
+ const missing=showDriven&&!all.length?' · Keine Feldpositionsdaten in Auswahl':'';
+ const planInfo=showPlan?(g.plans.some(p=>p.length)?` · Plan ${selectedPlan?'v'+selectedPlan.id:'Anschluss'}${routeChoice==='active'?' (letzter in Auswahl)':''}`:' · Kein protokollierter Plan in Auswahl'):'';
+ out.push(`<text x="45" y="690" fill="#555" font-size="12">${escapeHtml(roundLabel(round)+' · '+layerLabel+(showField?'':' · FE-Spielfeld ausgeblendet')+missing+planInfo)}</text>`);
+ panel('whole-field',45,[-1600,1600,-1600,1600],'Gesamtes Feld');panel('whole-detail',650,ext,['1','2','3'].includes(round)?roundLabel(round)+' · Detail':'Ausparken / Anschluss / Endparken');
+ const legends=(showDriven?g.series.map(s=>[s.name+' (geschätzt)',s.color]):[]).concat(showPlan?[['Plan (nicht gefahren)','#303640','8 6']]:[],showDriven?[['Posekorrektur (keine Fahrt)','#a34ab5','2 4']]:[]);
  legends.forEach(([label,color,dash],i)=>{const x=45+(i%3)*380,y=597+Math.floor(i/3)*24;out.push(`<path d="M${x} ${y}h20" stroke="${color}" stroke-width="3" ${dash?`stroke-dasharray="${dash}"`: ''}/><text x="${x+28}" y="${y+4}" fill="#333" font-size="12">${escapeHtml(label)}</text>`);});
  out.push(`<text x="45" y="715" fill="#555" font-size="12">Pfosten: ${g.pillars.length} bestätigte Sitze; Symbole, keine maßstäblichen Körper. ${g.turn?'Nominale CW/CCW-Sitzgeometrie.':'Richtung unbekannt/mehrdeutig: Pfosten ausgelassen.'}</text><text x="45" y="736" fill="#555" font-size="12">Offizielle WRO-Matte; Wände nominal. Parkbegrenzung: ${g.gap!==null&&g.fixedLine!==null?'aus Log':'unbekannt'}. X/Y maßgleich; Positionen geschätzt.</text></svg>`);
  return out.join('');
 }
 
-if(typeof module!=='undefined')module.exports={analyzeLog,fields,plotSvg,escapeHtml,seatPosition,runGeometry,wholeRunSvg,runTelemetry,runTimingHtml};
+if(typeof module!=='undefined')module.exports={analyzeLog,fields,plotSvg,escapeHtml,seatPosition,runGeometry,wholeRunSvg,runTelemetry,runTimingHtml,poseRound};
 if(typeof document!=='undefined'){
  const $=id=>document.getElementById(id);let report=null,current=0,rawLimit=250,focused=null,loadToken=0;const notes=new Map();
  const selected=()=>report.sessions[current];
@@ -258,12 +279,15 @@ if(typeof document!=='undefined'){
   $('findings').innerHTML=r.findings.length?r.findings.map(f=>`<div class="finding"><b class="${f.severity}">${escapeHtml(f.title)} · ${f.count}×</b><p>${escapeHtml(f.detail)}</p>${links(f.lines)}</div>`).join(''):'<p>Keine unterstützten Fehlermarker gefunden. Nicht erfasste Fehler bleiben unbekannt.</p>';
   $('health').innerHTML=`<table><tbody>${[['Gyro-Timeouts',r.health.gyroTimeout],['Gyro-Neustarts',r.health.gyroRestart],['Abfragepausen',r.health.loopPause],['Schlupf-Indikatoren',r.health.slip],['Überlauf-/Limitmarker',r.health.overflow],['Ungültige Datensätze',r.health.malformed],['Explizite Pose-Korrekturen',r.health.corrections],['Grösste Pose-Korrektur',r.health.corrections?`${r.health.maxCorrectionMm.toFixed(1)} mm / ${r.health.maxCorrectionDeg.toFixed(1)}°`:'Nicht erfasst']].map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</tbody></table><h3>ToF: aufgezeichnete neue Datensätze</h3><table><thead><tr><th>Quelle</th><th>Anzahl</th><th>Ungültig / verworfen</th><th>Max. Alter</th></tr></thead><tbody>${Object.entries(r.health.tof).map(([k,q])=>`<tr><td>${escapeHtml(k)}</td><td>${q.records}</td><td>${q.invalid}</td><td>${q.maxAge} ms</td></tr>`).join('')||'<tr><td colspan="4">Keine unterstützten ToF-Daten vorhanden.</td></tr>'}</tbody></table><p class="muted">PARK_DIAG v2: s0 links, s1 rechts, s2 hinten. „same“ wird nicht erneut gezählt. Ungültige Werte sind nicht automatisch ein Sensordefekt; die Szene kann ausserhalb der Messreichweite liegen. „final“ ist der ausgewählte seitliche Park-ToF.</p>`;
   $('summary').innerHTML+=runTimingHtml(r);
-  $('planVersion').replaceChildren(new Option('Zuletzt aktive Route','active'),new Option('Plan ausblenden','none'),...r.telemetry.routes.map(v=>new Option(`Route ${v.id} · ${v.kind}`,String(v.id))));
+  $('roundFilter').value='all';$('fieldBackground').value='show';$('trajectoryLayers').value='both';
+  $('planVersionControl').hidden=report.sessions.length<2;
+  $('planVersion').replaceChildren(new Option('Letzter Plan in Auswahl','active'),...r.telemetry.routes.map(v=>new Option(`Route ${v.id} · ${v.kind}`,String(v.id))));
   drawWholePlot();$('saveWholeSvg').disabled=!$('wholePlot').innerHTML.includes('<svg');
   const keys=Object.keys(r.tracks);$('track').replaceChildren(...keys.map(k=>new Option(k,k)));$('track').disabled=!keys.length;drawPlot();
   $('events').innerHTML=r.events.length?'<table><thead><tr><th>Zeile</th><th>Originalereignis</th></tr></thead><tbody>'+r.events.map(e=>`<tr><td>${links([e.line])}</td><td class="log">${escapeHtml(e.text)}</td></tr>`).join('')+'</tbody></table>':'<p>Keine unterstützten Ereignisse vorhanden.</p>';renderRaw();
  }
- function drawWholePlot(){ $('wholePlot').innerHTML=wholeRunSvg(selected(),{route:$('planVersion').value||'active'}); }
+ function viewOptions(){return {route:$('planVersion').value||'active',round:$('roundFilter').value||'all',field:$('fieldBackground').value||'show',layers:$('trajectoryLayers').value||'both'};}
+ function drawWholePlot(){ $('wholePlot').innerHTML=wholeRunSvg(selected(),viewOptions()); }
  function drawPlot(){const p=selected().tracks[$('track').value]||[];$('plot').innerHTML=plotSvg(p);$('plotInfo').textContent=`${p.length} erfasste Messpunkte. Spuren und Runden werden getrennt dargestellt; Zeitlücken über 2 s werden nicht verbunden. Keine Darstellung der tatsächlichen Kollisionsfreiheit.`;}
  function renderRaw(){const r=selected(),query=$('search').value.toLowerCase();let rows=focused?r.rows.filter(x=>Math.abs(x.line-focused)<=12):r.rows.filter(x=>x.text.toLowerCase().includes(query));const shown=rows.slice(0,rawLimit);$('raw').innerHTML=shown.map(x=>`<div class="log-row ${x.line===focused?'selected':''}"><span class="line-no">${x.line}</span>${escapeHtml(x.text)}</div>`).join('');$('rawInfo').textContent=`${shown.length} von ${rows.length} Zeilen${focused?' · Kontext um Zeile '+focused:''}`;$('more').disabled=shown.length>=rows.length;}
  function jump(n){if(!Number.isInteger(n)||n<selected().start||n>selected().end){$('rawInfo').textContent='Zeile liegt ausserhalb dieses Abschnitts.';return;}focused=n;$('line').value=n;$('search').value='';rawLimit=250;renderRaw();$('rawPanel').scrollIntoView({behavior:'smooth'});}
@@ -271,10 +295,13 @@ if(typeof document!=='undefined'){
  $('file').addEventListener('change',e=>openFile(e.target.files[0]));$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over');});$('drop').addEventListener('dragleave',()=>$('drop').classList.remove('over'));$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');openFile(e.dataTransfer.files[0]);});
  $('session').addEventListener('change',()=>{notes.set(current,$('notes').value);current=+$('session').value;render();});$('notes').addEventListener('input',()=>notes.set(current,$('notes').value));$('track').addEventListener('change',drawPlot);$('search').addEventListener('input',()=>{focused=null;rawLimit=250;renderRaw();});$('more').addEventListener('click',()=>{rawLimit+=250;renderRaw();});$('jump').addEventListener('click',()=>jump(Number($('line').value)));$('workspace').addEventListener('click',e=>{const b=e.target.closest('[data-line]');if(b)jump(Number(b.dataset.line));});$('print').addEventListener('click',()=>window.print());
  $('planVersion').addEventListener('change',drawWholePlot);
+ $('roundFilter').addEventListener('change',()=>{$('planVersion').value='active';drawWholePlot();});
+ $('fieldBackground').addEventListener('change',drawWholePlot);
+ $('trajectoryLayers').addEventListener('change',drawWholePlot);
 
- $('saveWholeSvg').addEventListener('click',()=>download(wholeRunSvg(selected(),{route:$('planVersion').value||'active'}),'image/svg+xml','-run.svg'));
+ $('saveWholeSvg').addEventListener('click',()=>download(wholeRunSvg(selected(),viewOptions()),'image/svg+xml','-run.svg'));
  $('json').addEventListener('click',()=>download(JSON.stringify({...report,sessions:report.sessions.map((r,i)=>({...r,physicalObservation:notes.get(i)||''}))},null,2),'application/json','.json'));
- $('export').addEventListener('click',()=>{const r=selected(),style=document.querySelector('style').textContent;const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Run Inspector Report</title><style>${style}</style><main><h1>Robot Run Inspector · Bericht</h1><p>${escapeHtml(report.name)} · Abschnitt ${r.index} · Zeilen ${r.start}–${r.end}</p><div class="cards">${$('cards').innerHTML}</div><section class="panel"><h2>Befund & Grenzen</h2>${$('summary').innerHTML}<p>Software-Schätzungen sind kein Nachweis von physischer Kollisionsfreiheit. Kameraqualität und Akkuspannung sind hier nicht belegt.</p></section><section class="panel"><h2>Auffälligkeiten</h2>${$('findings').innerHTML.replace(/<button\b[^>]*>([^<]*)<\/button>/g,'<span>$1 · </span>')}</section><section class="panel"><h2>Sensoren</h2>${$('health').innerHTML}</section><section class="panel"><h2>Gesamtlauf mit Pfosten</h2>${wholeRunSvg(r,{route:$('planVersion').value||'active'})}</section>${Object.entries(r.tracks).map(([k,p])=>`<section class="panel"><h2>${escapeHtml(k)}</h2>${plotSvg(p)}</section>`).join('')}<section class="panel"><h2>Physische Beobachtung · vom Benutzer</h2><p style="white-space:pre-wrap">${escapeHtml(notes.get(current)||'Keine Angabe')}</p></section><section class="panel"><h2>Originalereignisse</h2><div class="log">${r.events.map(e=>`${e.line}: ${escapeHtml(e.text)}`).join('\n')}</div></section></main></html>`;download(html,'text/html','.html');});
+ $('export').addEventListener('click',()=>{const r=selected(),style=document.querySelector('style').textContent;const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Run Inspector Report</title><style>${style}</style><main><h1>Robot Run Inspector · Bericht</h1><p>${escapeHtml(report.name)} · Abschnitt ${r.index} · Zeilen ${r.start}–${r.end}</p><div class="cards">${$('cards').innerHTML}</div><section class="panel"><h2>Befund & Grenzen</h2>${$('summary').innerHTML}<p>Software-Schätzungen sind kein Nachweis von physischer Kollisionsfreiheit. Kameraqualität und Akkuspannung sind hier nicht belegt.</p></section><section class="panel"><h2>Auffälligkeiten</h2>${$('findings').innerHTML.replace(/<button\b[^>]*>([^<]*)<\/button>/g,'<span>$1 · </span>')}</section><section class="panel"><h2>Sensoren</h2>${$('health').innerHTML}</section><section class="panel"><h2>Gesamtlauf mit Pfosten</h2>${wholeRunSvg(r,viewOptions())}</section>${Object.entries(r.tracks).map(([k,p])=>`<section class="panel"><h2>${escapeHtml(k)}</h2>${plotSvg(p)}</section>`).join('')}<section class="panel"><h2>Physische Beobachtung · vom Benutzer</h2><p style="white-space:pre-wrap">${escapeHtml(notes.get(current)||'Keine Angabe')}</p></section><section class="panel"><h2>Originalereignisse</h2><div class="log">${r.events.map(e=>`${e.line}: ${escapeHtml(e.text)}`).join('\n')}</div></section></main></html>`;download(html,'text/html','.html');});
 }
 </script>
 </html>

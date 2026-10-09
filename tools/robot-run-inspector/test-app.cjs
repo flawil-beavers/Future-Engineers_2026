@@ -1,4 +1,4 @@
-function hasPlan(svg){return /<polyline\b[^>]*stroke="#888"[^>]*stroke-dasharray="6 5"/.test(svg);}
+function hasPlan(svg){return /<polyline\b[^>]*stroke="#303640"[^>]*stroke-dasharray="8 6"/.test(svg);}
 // Behavioral integration checks with a DOM adapter; no browser dependencies.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -35,6 +35,7 @@ async function open(text,name='run.txt'){
 (async()=>{
  await open('[OC] New obstacle run\n[GYRO] Sensor report timeout; restarting SPI/SH2...\n[FINAL PARK ABORT] <img onerror="evil">\n[OC] New obstacle run\n[FINAL PARK RESULT] contained=yes stopped=yes');
  assert.equal(elements.get('workspace').hidden,false);
+ assert.equal(elements.get('planVersionControl').hidden,false);
  assert.ok(elements.get('cards').innerHTML.includes('Unbekannt'));
  assert.ok(elements.get('summary').innerHTML.includes('Parkabbruch protokolliert'));
  assert.ok(!elements.get('summary').innerHTML.includes('<img'));
@@ -58,6 +59,7 @@ async function open(text,name='run.txt'){
  await open('');assert.ok(elements.get('summary').innerHTML.includes('Kein Endergebnis'));
  const fixture=fs.readFileSync(path.join(__dirname,'../../simulation/evidence/parking_exit_diagnostics/20261006_log_476_ccw.txt'),'utf8');
  await open(fixture,'476.txt');
+ assert.equal(elements.get('planVersionControl').hidden,true);
  assert.ok(elements.get('wholePlot').innerHTML.includes('>G17</text>'));
  assert.ok(elements.get('wholePlot').innerHTML.includes('data-layer="official-mat"'));
  await elements.get('saveWholeSvg').fire('click');
@@ -74,12 +76,36 @@ async function open(text,name='run.txt'){
  elements.get('session').value='1';await elements.get('session').fire('change');
  assert.ok(!elements.get('wholePlot').innerHTML.includes('>G5</text>'));assert.ok(!elements.get('saveWholeSvg').disabled);assert.ok(elements.get('wholePlot').innerHTML.includes('Keine Feldpositionsdaten'));
  await open('[RUN_ROUTE] v=1 t=10 route=1 base=0 kind=connector count=2 closed=0\n[RUN_ROUTE_POINT] v=1 route=1 index=0 pose=0,-1200,0\n[RUN_ROUTE_POINT] v=1 route=1 index=1 pose=200,-1200,0\n[RUN_ROUTE_END] v=1 route=1\n[RUN_POSE] v=1 t=250 phase=connector lap=1 route=1 frame=1 space=field pose=0,-1200,0');
- elements.get('planVersion').value='none';await elements.get('planVersion').fire('change');
- await elements.get('saveWholeSvg').fire('click');
- assert.ok(!hasPlan((await downloads.at(-1).blob.text())));
  elements.get('planVersion').value='1';await elements.get('planVersion').fire('change');
  await elements.get('export').fire('click');
  assert.ok(hasPlan((await downloads.at(-1).blob.text())));
  assert.ok((await downloads.at(-1).blob.text()).includes('data-layer="official-mat"'));
+
+ elements.get('roundFilter').value='1';await elements.get('roundFilter').fire('change');
+ assert.equal(elements.get('planVersion').value,'active');
+ elements.get('fieldBackground').value='hide';await elements.get('fieldBackground').fire('change');
+ await elements.get('saveWholeSvg').fire('click');
+ const filteredSvg=await downloads.at(-1).blob.text();
+ assert.ok(filteredSvg.includes('data-round="1" data-layers="both" data-field="hide"'));assert.ok(hasPlan(filteredSvg));assert.ok(!filteredSvg.includes('data-layer="official-mat"'));
+ await elements.get('export').fire('click');
+ assert.ok((await downloads.at(-1).blob.text()).includes('data-round="1" data-layers="both" data-field="hide"'));
+ elements.get('fieldBackground').value='show';await elements.get('fieldBackground').fire('change');
+ assert.ok(hasPlan(elements.get('wholePlot').innerHTML));
+ elements.get('trajectoryLayers').value='driven';await elements.get('trajectoryLayers').fire('change');
+ assert.ok(!hasPlan(elements.get('wholePlot').innerHTML));
+ assert.ok(elements.get('wholePlot').innerHTML.includes('data-layer="official-mat"'));
+ elements.get('fieldBackground').value='hide';await elements.get('fieldBackground').fire('change');
+ elements.get('trajectoryLayers').value='plan';await elements.get('trajectoryLayers').fire('change');
+ assert.ok(hasPlan(elements.get('wholePlot').innerHTML));
+ assert.ok(!elements.get('wholePlot').innerHTML.includes('data-layer="official-mat"'));
+ await elements.get('saveWholeSvg').fire('click');
+ assert.ok((await downloads.at(-1).blob.text()).includes('data-layers="plan" data-field="hide"'));
+ await elements.get('export').fire('click');
+ assert.ok((await downloads.at(-1).blob.text()).includes('data-layers="plan" data-field="hide"'));
+ await open('[OC] New obstacle run\n[OC] New obstacle run');
+ assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,false);
+ elements.get('roundFilter').value='2';elements.get('fieldBackground').value='hide';
+ elements.get('session').value='1';await elements.get('session').fire('change');
+ assert.equal(elements.get('roundFilter').value,'all');assert.equal(elements.get('fieldBackground').value,'show');assert.equal(elements.get('trajectoryLayers').value,'both');assert.equal(elements.get('planVersionControl').hidden,false);
  console.log('PASS app import, search, line context, session isolation, HTML/JSON exports, hash and binary/empty input checks.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
