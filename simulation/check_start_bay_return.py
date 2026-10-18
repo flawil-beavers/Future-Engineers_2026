@@ -1,4 +1,4 @@
-"""First-lap return to fixed pink bay; actual source functions, ideal bicycle.
+"""First-lap return to fixed pink bay; actual source functions, calibrated CAD linkage.
 Known maps, no ToF feedback/servo lag. Includes all official start colour
 layouts and both sides/colours of the preceding section's last station.
 """
@@ -24,10 +24,10 @@ int main(){int total=0,bad=0;
    if(dir<0?x<50&&y<-800:x>550&&y<-500){ok=true;break;}
    progressIndex=nearestPathIndex(livePath,x,y,progressIndex,OBSTACLE_PATH_PROGRESS_WINDOW);
    PositionEstimate p;p.x_mm=x;p.y_mm=y;p.heading_deg=h*180/PI;
-   float look=adaptiveLookahead(livePath[progressIndex].speedMmS);if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
+   float look=firstLapLookahead(livePath[progressIndex].speedMmS);if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
    auto t=findLookahead(livePath,p,look);float dx=t.x-x,dy=t.y-y;
    float k=2*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1,dx*dx+dy*dy);
-   int servo=static_cast<int>(clampFloat(-atanf(100*k)*180/PI,-42,42));if(!parkingReturnMotionSafe(p,servo))break;k=-tanf(servo*PI/180)/100;
+   int servo=static_cast<int>(clampFloat(pursuitServoForCurvature(k),-42,42));if(!parkingReturnMotionSafe(p,servo))break;k=pursuitCurvatureForServo(servo);
    float next=h+k*2;if(fabsf(k)>1e-6){x+=(sinf(next)-sinf(h))/k;y+=(cosf(h)-cosf(next))/k;}else{x+=2*cosf(h);y+=2*sinf(h);}h=next;
   }
   ++total;if(!ok){++bad;std::cout<<"FAIL "<<dir<<" "<<layout<<" "<<side<<" "<<color<<" pose "<<x<<" "<<y<<" "<<h*180/PI<<"\n";}

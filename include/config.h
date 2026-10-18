@@ -894,6 +894,8 @@ constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 45;
 constexpr auto OBSTACLE_FINAL_PARKING_ENTRY_SPEED = 60;
 constexpr auto OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS = 400;
 constexpr auto OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS = 300;
+// Additional bounded wait when measured motion persists after the brake dwell.
+constexpr uint32_t OBSTACLE_FINAL_PARKING_BRAKE_SETTLE_TIMEOUT_MS = 2500UL;
 constexpr auto OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM = 80.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_LINE_HEADING_KP = 3.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING = 42;
@@ -1097,6 +1099,9 @@ constexpr auto OBSTACLE_SOUTH_OUTER_WALL_Y_MM =
 
 constexpr auto OBSTACLE_LOOKAHEAD_MIN_MM = 150.0f;
 constexpr auto OBSTACLE_LOOKAHEAD_MAX_MM = 330.0f;
+// Lap 1 must retain the obstacle bypass through corners at full discovery
+// speed. A 330 mm horizon cuts it too closely in the calibrated CAD replay.
+constexpr auto OBSTACLE_LAP1_LOOKAHEAD_MAX_MM = 280.0f;
 constexpr auto OBSTACLE_LOOKAHEAD_CORNER_SCALE = 0.65f;
 constexpr auto OBSTACLE_PATH_PROGRESS_WINDOW = 12;
 constexpr auto OBSTACLE_MAX_PURSUIT_STEERING_DEG = 42.0f;
@@ -1110,9 +1115,29 @@ constexpr auto OBSTACLE_PARKING_CCW_CONNECTOR_MAX_TRAVEL_MM = 650.0f;
 constexpr auto OBSTACLE_PATH_MIN_SPEED = 135.0f;
 constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
 // Recorded-map laps 2/3 only: multiply the existing curvature speed profile.
-// 1.50 -> maximum target 390 mm/s. Exit, discovery and final runout retain
+// 2.00 -> maximum target 520 mm/s, further limited by the physical profile.
+// Exit, discovery and final runout retain
 // their original speeds. Runtime test caps still have priority.
-constexpr auto OBSTACLE_LATER_LAP_SPEED_FACTOR = 1.50f;
+constexpr auto OBSTACLE_LATER_LAP_SPEED_FACTOR = 2.00f;
+// Engineering budgets, not measured tyre friction/CG limits. mm, s units.
+// Combined 800 lateral / 500 motor longitudinal acceleration is < 0.10 g.
+constexpr float OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS = 800.0f;
+constexpr float OBSTACLE_LATER_LAP_SPEED_TOLERANCE = 1.10f;
+constexpr float OBSTACLE_LATER_LAP_CURVATURE_TOLERANCE = 1.15f;
+// Estimate the smooth track followed by 182-280 mm pursuit, rather than the
+// instantaneous vertex angle of a 50 mm waypoint polyline.
+constexpr float OBSTACLE_LATER_LAP_CURVATURE_WINDOW_MM = 150.0f;
+constexpr float OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS = 180.0f;
+constexpr float OBSTACLE_LATER_LAP_PLAN_ACCEL_MMSS = 180.0f;
+// Allow motor-profile/servo response before counting useful braking distance.
+constexpr float OBSTACLE_LATER_LAP_RESPONSE_S = 0.35f;
+static_assert(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS > 0 &&
+    OBSTACLE_LATER_LAP_SPEED_TOLERANCE >= 1 &&
+    OBSTACLE_LATER_LAP_CURVATURE_TOLERANCE >= 1 &&
+    OBSTACLE_LATER_LAP_CURVATURE_WINDOW_MM > 0 &&
+    OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS > 0 &&
+    OBSTACLE_LATER_LAP_PLAN_ACCEL_MMSS > 0 &&
+    OBSTACLE_LATER_LAP_RESPONSE_S >= 0, "Invalid later-lap dynamics budget");
 constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 
 // Radius-1 smoothing reduces the requested displacement. 260 mm adds about
@@ -1176,9 +1201,9 @@ constexpr auto OBSTACLE_LATER_LAP_OUTER_PLATEAU_WAYPOINTS = 3;
 // Model reserve for a sampled later-lap route; physical acceptance still
 // requires driving logs. Existing pursuit steering limit remains unchanged.
 constexpr auto OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM = 5.0f;
-// Optional lap-2/3 shape refinement: small changes only; protect the entire
-// seam blend and keep the measured geometric reserve within 1 mm of before.
-constexpr auto OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM = 6.0f;
+// Try progressively smaller shortening/smoothing candidates; protect passing
+// plateaus and seam, and keep modeled geometric reserves within 1 mm of before.
+constexpr auto OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM = 40.0f;
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM = 30.0f;
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM = 1.0f;
 // The first member of the worst adjacent outer-seat reversal needs more than

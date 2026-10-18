@@ -13,7 +13,7 @@ from check_cw_start_planner import ROOT, fixture_source
 from check_connector_servo_resume import block
 
 
-def main():
+def later_lap_fixture():
     source = (ROOT/'src/obstacle_path.cpp').read_text()
     fixture = fixture_source().split('int main()')[0]
     fixture = fixture.replace(
@@ -30,6 +30,7 @@ bool parkingEntryJoining=false,parkingEntryTestHold=false,runtimeTestMode=false;
 bool optimizedBuilt=false,lapBoundaryPending=false,lapCountingArmed=false,laterLapPlanRejected=false,lapBoundaryHoldLogged=false,lapFinishPending=false;
 uint8_t completedLaps=0,runtimeLapTarget=3;bool finished=false;
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
+float laterLapSpeedLimits[OBSTACLE_MAX_PATH_WAYPOINTS]={};
 void roundKnownCornerPairs(PathPoint *, bool injectedOnly = false);
 bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT]={};
 ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
@@ -38,7 +39,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
     fixture += extra
     fixture += '\n#include "ackermann_kinematics.h"\n'
     signatures = (
-        'bool parkingReturnMotionSafe(', 'float laterLapServoForCurvature(', 'float recordedLapSpeed(',
+        'bool parkingReturnMotionSafe(', 'float recordedLapSpeed(',
         'uint8_t sectionInferredEmpty(', 'bool stationResolved(', 'bool allStationsResolved(',
         'bool withinCornerGate(', 'bool nearCorner(', 'bool isExtremeAdjacentPair(',
         'bool targetsOuterExtreme(', 'bool hasConfirmedExtremeAdjacentPair(',
@@ -48,7 +49,9 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
         'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)\n{',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
-        'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(', 'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
+        'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
+        'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
+        'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
@@ -82,12 +85,12 @@ float discoveryCornerMinimum(bool rounded){
   ObstacleClearanceSample sample{};calculateClearanceAtPose(seats[18],x,y,pose.heading_deg,sample);
   minimum=fminf(minimum,sample.pillarMm);if(sample.wallMm<=0)return -1;
   if(y<300)return minimum;
-  float look=adaptiveLookahead(livePath[progressIndex].speedMmS);
+  float look=firstLapLookahead(livePath[progressIndex].speedMmS);
   if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
   auto target=findLookahead(livePath,pose,look);float dx=target.x-x,dy=target.y-y;
   float k=2*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1,dx*dx+dy*dy);
-  int steering=static_cast<int>(clampFloat(-atanf(OBSTACLE_WHEELBASE_MM*k)*180/PI,-42,42));
-  k=-tanf(steering*PI/180)/OBSTACLE_WHEELBASE_MM;
+  int steering=static_cast<int>(clampFloat(pursuitServoForCurvature(k),-42,42));
+  k=pursuitCurvatureForServo(steering);
   float next=h+k*2;
   if(fabsf(k)>1e-6){x+=(sinf(next)-sinf(h))/k;y+=(cosf(h)-cosf(next))/k;}
   else{x+=2*cosf(h);y+=2*sinf(h);}h=next;
@@ -130,8 +133,8 @@ bool stateChecks(){
  if(!lapBoundaryPending||completedLaps||lapCountingArmed)return false;
  resetState();
  if(recordedLapSpeed(260)!=260)return false;
- completedLaps=1;if(recordedLapSpeed(260)!=390)return false;
- completedLaps=2;if(recordedLapSpeed(180)!=270)return false;
+ completedLaps=1;if(recordedLapSpeed(260)!=520)return false;
+ completedLaps=2;if(recordedLapSpeed(180)!=360)return false;
  lapFinishPending=true;if(recordedLapSpeed(180)!=180)return false;
  lapFinishPending=false;runtimeTestMode=true;if(recordedLapSpeed(260)!=260)return false;
  resetState();baseline();learned();lapBoundaryPending=true;
@@ -246,14 +249,16 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   const float forward=dx*cosf(heading)+dy*sinf(heading);
   const float lateral=-dx*sinf(heading)+dy*cosf(heading);
   const float requestedCurvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
-  const float requiredSteering=laterLapServoForCurvature(requestedCurvature);
+  const float requiredSteering=pursuitServoForCurvature(requestedCurvature);
   if(!std::isfinite(requiredSteering)){failReason=4;return false;}
   const float steering=static_cast<int>(clampFloat(requiredSteering,-OBSTACLE_MAX_PURSUIT_STEERING_DEG,
                                  OBSTACLE_MAX_PURSUIT_STEERING_DEG));
   if(!parkingReturnMotionSafe(pose,static_cast<int>(steering))){failReason=8;return false;}
   const float curvature=fabsf(steering)<2?0:-1/Ackermann::getTurnRadius(steering);
-  // 8 mm/update covers 390 mm/s at roughly 20 ms controller intervals.
-  const float ds=8;
+  // Worst-case 20 ms travel at the new maximum, including 10% speed error.
+  // Constant step stresses every turn at this resolution even when speed falls.
+  const float ds=OBSTACLE_PATH_MAX_SPEED*OBSTACLE_LATER_LAP_SPEED_FACTOR*
+      OBSTACLE_LATER_LAP_SPEED_TOLERANCE*.020f;
   const float next=heading+curvature*ds;
   if(fabsf(curvature)>1e-6){x+=(sinf(next)-sinf(heading))/curvature;
    y+=(cosf(heading)-cosf(next))/curvature;}
@@ -280,6 +285,11 @@ int main(){
 '''
     # baseline() must select the supplied travel direction at runtime.
     fixture = fixture.replace('anchor.heading_deg=180;', 'anchor.heading_deg=routeTurnSign>0?0:180;')
+    return fixture
+
+
+def main():
+    fixture = later_lap_fixture()
     destination = ROOT/'local_workspace/later-laps'
     destination.mkdir(parents=True,exist_ok=True)
     (destination/'Arduino.h').write_text('#pragma once\n#define M_PI 3.14159265358979323846\n#include <cstddef>\n#include <cmath>\ntemplate<class T> T constrain(T v,T lo,T hi){return v<lo?lo:(v>hi?hi:v); }\n')

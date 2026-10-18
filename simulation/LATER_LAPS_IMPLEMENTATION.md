@@ -1,16 +1,20 @@
 # Optimized laps 2 and 3 (2026-10-06)
 
+2026-10-18 update: see [LATER_LAP_DYNAMICS_REVIEW.md](LATER_LAP_DYNAMICS_REVIEW.md)
+for the current 520 mm/s ceiling, curvature/braking budgets and larger bounded
+route refinement. Older numerical speed/geometry results below are historical.
+
 ## Current run selection
 
 The default Obstacle run is now **exit, discovery lap 1, recorded-map laps 2
-and 3, final stop and USB log save**. No upload has been performed.
+and 3, then final parking and USB log save**. No upload has been performed here.
 
 | Switch in `include/config.h` | Current value | Effect |
 | --- | --- | --- |
 | `OBSTACLE_FIRST_LAP_TEST_ENABLED` | `false` | Allow laps 2 and 3 |
-| `OBSTACLE_THREE_LAP_TEST_ENABLED` | `true` | Stop after three laps, before final parking |
+| `OBSTACLE_THREE_LAP_TEST_ENABLED` | `false` | Continue to final parking after three laps |
 | `OBSTACLE_STARTUP_CHECK_ALL_STATIONS` | `false` | Official section rules; serial `O` selects this too |
-| `OBSTACLE_FINAL_PARKING_ENTRY_ARMED` | `false` | Bay entry remains a separate validation step |
+| `OBSTACLE_FINAL_PARKING_ENTRY_ARMED` | `true` | Existing final-parking entry is armed |
 
 For isolated CW/CCW start tests set the first-lap flag back to `true`; it has
 priority. Both lap-test flags must be `false` to hand over to the existing

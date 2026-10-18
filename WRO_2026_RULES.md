@@ -1,5 +1,14 @@
 # WRO 2026 Future Engineers rules reference
 
+2026-10-18 route/speed review: canonical PDF still identifies January 15, 2026,
+55 pages; local copy has SHA-256
+`c23ba063c548e74812ffd9ed580931b2d4264541261b5f8eaff643a1e3201043`.
+Official Q&A rechecked. Its October 16 clarification excludes the three
+outer-wall sign positions in the parking straight at the International Final;
+this agrees with the existing inner-row start-layout assumption. It does not
+permit ignoring a confirmed sign on an arbitrary practice field. The optimization
+retains every confirmed sign and the existing passing-side policy.
+
 Use the official WRO sources instead of committing a local copy of the rules
 PDF:
 

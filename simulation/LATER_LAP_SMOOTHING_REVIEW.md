@@ -1,5 +1,8 @@
 # Conservative route refinement for laps 2 and 3
 
+Historical 2026-10-08 version. The larger bounded refinement and physical speed
+profile are documented in [LATER_LAP_DYNAMICS_REVIEW.md](LATER_LAP_DYNAMICS_REVIEW.md).
+
 Implemented and checked on 2026-10-08. This refines the complete learned map
 once at the lap-1 handover. Laps 2 and 3 use the same stored refined route.
 

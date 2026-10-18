@@ -1,6 +1,6 @@
 """Actual production CCW short scan/connector and front passing calculation.
 
-Known colours and ideal tracking; no camera or robot acceptance. Archived
+Known colours and calibrated CAD tracking; no camera or robot acceptance. Archived
 second-edge poses are translated east by the removed continuation distance.
 This estimates the changed reference, rather than claiming new measurements.
 """
@@ -38,8 +38,8 @@ def main():
     fixture = fixture.replace(marker,
         '        rolloutX=x;rolloutY=y;rolloutH=heading*180/PI;\n'+marker)
     fixture += r'''
-// Additional ideal normal-route continuation uses production findLookahead,
-// adaptiveLookahead, nearestPathIndex and capsule checks. Does not model ToF,
+// Additional calibrated normal-route continuation uses production findLookahead,
+// firstLapLookahead, nearestPathIndex and capsule checks. Does not model ToF,
 // vision/holds or motor dynamics. It witnesses full directional front passing.
 bool frontPass(float x,float y,float h,uint16_t merge,int color){
  if(!color)return true;
@@ -62,13 +62,13 @@ bool frontPass(float x,float y,float h,uint16_t merge,int color){
   }
   if(minX>500)return color==1?minY>-875:maxY<-925;
   PositionEstimate pose;pose.x_mm=x;pose.y_mm=y;pose.heading_deg=h;
-  const auto target=findLookahead(livePath,pose,adaptiveLookahead(livePath[progressIndex].speedMmS));
+  const auto target=findLookahead(livePath,pose,firstLapLookahead(livePath[progressIndex].speedMmS));
   const float dx=target.x-x,dy=target.y-y;
   const float forward=dx*cosf(heading)+dy*sinf(heading);
   const float lateral=-dx*sinf(heading)+dy*cosf(heading);
-  const float curvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
-  if(forward<=1||fabsf(atanf(OBSTACLE_WHEELBASE_MM*curvature)*180/PI)>
-     OBSTACLE_MAX_PURSUIT_STEERING_DEG)return false;
+  float curvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
+  if(forward<=1)return false;
+  curvature=pursuitCurvatureForServo(static_cast<int>(clampFloat(pursuitServoForCurvature(curvature),-42,42)));
   const float next=heading+curvature*2;
   if(fabsf(curvature)>1e-6){x+=(sinf(next)-sinf(heading))/curvature;
     y+=(cosf(heading)-cosf(next))/curvature;}
@@ -120,16 +120,16 @@ bool behindReturn(int back,int middle,int front,float speedCap){
    if(crossed[0]&&crossed[1]&&x>70)return true;
   }
   PositionEstimate pose;pose.x_mm=x;pose.y_mm=y;pose.heading_deg=heading*180/PI;
-  float lookahead=adaptiveLookahead(speedCap>0?fminf(livePath[progressIndex].speedMmS,speedCap):
+  float lookahead=firstLapLookahead(speedCap>0?fminf(livePath[progressIndex].speedMmS,speedCap):
                                   livePath[progressIndex].speedMmS);
   if(nearCorner(baselinePath[progressIndex].distanceMm))lookahead*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
   const auto target=findLookahead(livePath,pose,lookahead);
   const float dx=target.x-x,dy=target.y-y;
   const float forward=dx*cosf(heading)+dy*sinf(heading);
   const float lateral=-dx*sinf(heading)+dy*cosf(heading);
-  const float curvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
-  if(forward<=1||fabsf(atanf(OBSTACLE_WHEELBASE_MM*curvature)*180/PI)>
-       OBSTACLE_MAX_PURSUIT_STEERING_DEG)return false;
+  float curvature=2*lateral/fmaxf(1,dx*dx+dy*dy);
+  if(forward<=1)return false;
+  curvature=pursuitCurvatureForServo(static_cast<int>(clampFloat(pursuitServoForCurvature(curvature),-42,42)));
   const float next=heading+curvature*2;
   if(fabsf(curvature)>1e-6){x+=(sinf(next)-sinf(heading))/curvature;
    y+=(cosf(heading)-cosf(next))/curvature;}
@@ -183,7 +183,7 @@ int main(){
     if not compiler:
         raise RuntimeError('Host C++ compiler on PATH required')
     exe = destination/'check.exe'
-    subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(ROOT/'include'),
+    subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(ROOT/'include'),'-I',str(ROOT/'simulation/host'),
                     str(cpp), '-o', str(exe)], check=True)
     layouts = [(1,0,0),(2,0,0),(0,1,0),(0,2,0),(0,0,1),(0,0,2),
                (1,0,1),(1,0,2),(2,0,1),(2,0,2),(0,0,0)]

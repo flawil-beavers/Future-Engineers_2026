@@ -10568,3 +10568,151 @@ Next: existing normal cable-free B CW/C CCW three laps+parking and normal save;
 archive originals with identity/physical report. Check timing footer, hold,
 automatic gyro recovery and real clearance. No dedicated sweep/movements/pauses.
 The one-time commit authorization is consumed by this integration only.
+
+## 2026-10-18: shorter recorded-map routes and physical speed budgets
+
+Owner requested smooth, shortest practical safe routes and a noticeable speed
+increase for laps2/3. Starting checkout e2d7027 was clean. Prepared M7-only
+changes; no upload, physical batch, commit or push. Lap1, parking manoeuvres,
+run/test flags, servo centre and diagnostics retain their existing settings.
+
+Later-map refinement now tries40/20/10/6mm bounds with24/12/6/4 passes,
+largest first. Protected seam/passing plateaus and the existing wall/pillar/
+pink footprint gates remain. Candidates must shorten/reduce bending without
+higher peak curvature, with>=30mm modeled reserves and<=1mm loss against prior
+minima. This is local optimization, not a global shortest-path proof.
+
+Maximum recorded-lap command390->520mm/s. Cached cyclic profile uses150mm
+curvature windows, a_lat800mm/s2, simultaneous speed1.10/curvature1.15 allowances,
+180mm/s2 braking/acceleration and350ms response plus the largest actual waypoint
+interval. Runtime additionally caps actual pursuit/quantized CAD curvature;
+invalid numbers fail to zero. Original route speed metadata remains unchanged.
+Motor controller untouched. Conditional mu>=0.20/50%-usage calculation is an
+engineering assumption; grip, mass, CG and pose-error bounds remain unmeasured.
+
+Final2807 CAD/state cases pass at11.44mm/update; minimum modeled wall/pillar
+80.281/35.301mm. Analytic dynamics checks and21 two-lap A/B/C rollouts with the
+actual motor ramp at10/20/50ms pass: peak lateral0.6177m/s2, speed523.9mm/s,
+minimum pillar35.578mm. These omit real slip/servo/sensor feedback.2970parking
+approaches,5registration and396parking sequences pass; same6safe rejections
+among162perturbed entry checks. No new physical clearance evidence.
+
+Comparison against saved preceding production fixture/config:2191uncapped
+cases mean target-time reduction15.17%, range-3.43..25.02%; tight cases may slow.
+A/B/C examples7.9..13.9% faster target times,0..63.50mm extra shortening/lap.
+Maximum extra shortening across matrix142.74mm. These are target integrals,
+not measured lap times. Full calculations/limits and reproducible scripts are
+in simulation/LATER_LAP_DYNAMICS_REVIEW.md; generated reports/fixtures remain
+ignored under local_workspace/later-lap-optimization, later-lap-dynamics and
+later-laps. Canonical WRO PDF/Q&A rechecked; October16 parking-row clarification
+agrees with existing official inner-row assumption. All confirmed signs retained.
+
+Final IDE-managed incremental giga_r1_m7 SUCCESS:RAM433792/523624,
+flash507456/786432; firmware SHA-256
+00a2347f84f592c1a672bd8e644629aeb2b1ccd77b8882a400ce305675cd802d.
+M4 unaffected/not built; existing compiler warnings remain. Next owner uploads
+M7 and uses normal cable-free B CW/C CCW three laps through parking with normal
+save. Check clearances, transitions and lap timing; archive unchanged complete
+originals with firmware identity, hashes and physical reports before analysis.
+No extra ToF sweep, movement or pause. Do not claim physical speed acceptance.
+
+## 2026-10-18: final-parking arrival scope and protection audit
+
+Owner requested rechecking parking from every arrival position/direction.
+Reviewed post-lap handover, approach/scan/capture/seven segments, containment,
+cached sensing and gyro holds. Actual scope is checked start-straight arrivals
+in CW/CCW, not global recovery from any field pose. The practice command resets
+estimated pose to its configured placement and is not park-from-here.
+
+Corrected four M7 protections: reject non-finite coordinates in final footprint
+and include initial/final states in the existing motion-health gate; reject ToF
+frames with no hardware-valid/filter-accepted object instead of accepting a
+diagnostic fallback; require finite measured speed<=5mm/s at initial handover
+and after each existing300ms brake dwell. Additional stopping wait<=2500ms,
+otherwise brake_not_settled abort. Retain the existing hold target while waiting;
+after measured standstill, clear HOLD's retained old lap-speed ramp before the
+new low-speed approach command. Without this reset, two direction-specific
+negative controls inherit the old520mm/s profile despite physical standstill.
+gyro pauses also exclude idle-braking timeout time. Entry geometry/speeds,
+unparking, new later-lap optimization, sensor acquisition and log budgets retained.
+No new active pose correction or backlash compensation.
+
+Negative controls reproduce NaN-X false containment, unaccepted-positive ToF
+fallback and60 failures of the old time-only braking transitions. Final tests:
+46 non-finite/gyro-phase checks,5quality-selection checks and66braking checks
+pass.5registration+396original complete parking sequences pass;2970approaches
+pass with the same6safe rejections among162perturbed entry preflights.
+
+Broader production-state-machine matrix1540/1540 safe modeled outcomes:
+990known arrivals all park (both directions,11start configurations incl empty,
+3true gaps242.5/247.5/252.5mm,actual offsets up to40mm and headings+/-10deg).
+132single-axis unknown pose-error cases:88park/44stop;360arbitrary start-region
+poses:112park/248stop;40other-section starts,16sensor faults and2wrong-gap cases
+all stop. Total1190park/350reject, no modeled contact or false completion.
+Actual barrier geometry and true/estimated poses are separate;1mm substeps.
+Sensor returns/CAD motion remain ideal; no measured physical error bound or
+absolute reliability claim. Combined pose errors, reflections, braking coast,
+servo lag and slip remain limitations. Standstill logic has separate rolling-
+measurement tests because the whole-sequence hardware stub stops instantly.
+
+Details/commands:simulation/FINAL_PARKING_ROBUSTNESS_REVIEW.md. New reusable
+fixture and robustness/braking scripts are prepared; all generated sources,
+per-shard inputs/outputs and report.json remain ignored under local_workspace/
+final-parking-robustness and final-parking-braking. A serial repeat timed out;
+the final four-process run completed with the final firmware source and the
+same1540safe outcomes. No raw evidence log changed or new physical batch received.
+
+Final IDE-managed incremental giga_r1_m7 SUCCESS:RAM433800/523624,
+flash507792/786432; firmware SHA-256
+d72f96b8fbd60376143ba7937fb51de854c8eaa34796b3624297d58ce202f551.
+M4 unaffected/not built. Existing compiler warnings remain. No upload, commit
+or push. Next owner uploads M7, uses normal cable-free B CW/C CCW three-lap
+runs through parking and normal save; report actual containment/contact and
+any brake_not_settled/scan/entry rejection. Archive unchanged complete originals
+with firmware identity/hashes/physical reports before analysis. No dedicated
+ToF sweep, arbitrary-placement physical grid, extra movement or pause requested.
+
+## 2026-10-18: authorized first-lap geometry correction
+
+After the read-only first-lap audit, user authorized its correction. First-lap
+and start-connector pursuit now share the existing CAD/Ackermann servo inverse
+with laps2/3. Physical axle spacing/calibration, first-lap speeds and42deg runtime
+limit are unchanged. Connector rollout now integrates integer servo degrees
+through the CAD plant, retaining all forward/finite, footprint, clearance,
+travel and merge gates (including40deg CCW planning reserve). Removed the
+duplicate exact-Hermite-pose steering gate; acceptance still requires nominal
+curve footprint checks and the full calibrated tracked-pose rollout. Normal
+first-lap horizon is capped280mm before the existing corner multiplier.
+
+Current-source first-lap regression1736/1736 passes both directions, including
+body/wheel passing-side witnesses and actual runtime steering/lookahead
+expressions. Frozen known-map minima:wall65.3267CW/65.3270CCW,pillar47.6570/
+47.6197mm, versus about2.05mm pillar reserve in the prior controller audit.
+Coverage28normal-section arrangements, repeated with0/140/175caps and all
+ordered neighbouring pairs; empty start section isolates normal route geometry.
+No perception/discovery/ToF/timing/slip proof or exhaustive full-field claim.
+
+CW8943,CCW4158+33stored returns+135prefix checks, measured-start CCW81,
+B/C/join173,bay-return88 all pass. Updated continuation fixtures use CAD,
+runtime normal steering clamp and first-lap horizon. C now witnesses complete
+body/wheel GREEN-left passage instead of an x-only check150mm beyond the sign.
+Later-lap2807 matrix passes; numeric steering there is preserved. Latest
+discovery/state replay passes with unrounded/rounded corner reserve67.5203/
+109.675mm. Servo resume, rectangular-wall and2400footprint comparisons pass.
+Parking integration396/396parks,5registration and66brake checks pass.
+
+Details/commands/limits:simulation/FIRST_LAP_GEOMETRY_REVIEW.md. New host-only
+Arduino shim supports calibrated source-extracted geometry fixtures. Generated
+artifacts remain ignored under local_workspace/first-lap-geometry,first-lap-fix
+and existing regression folders. Prior audit artifacts remain under
+local_workspace/first-lap-audit. No new physical log/evidence batch received.
+
+IDE-managed incremental giga_r1_m7 SUCCESS:RAM433800/523624,
+flash507048/786432;firmware SHA-256
+ac94f696300f307b560d0dd4023ec0f75e04c0cf37666c38f78a76128c97e31c.
+M4 unaffected/not built; existing warnings remain. No upload, commit or push.
+Next owner uploads M7 and observes normal CW/CCW runs, particularly middle-RED
+start,GREEN joins and same-colour corners, through final parking. Use normal
+save; report actual contact/clearance and guarded stops, then archive complete
+original logs with firmware identity/hashes before analysis. No dedicated ToF
+sweep, arbitrary-placement grid, extra movement or pause requested.

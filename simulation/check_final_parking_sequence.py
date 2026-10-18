@@ -12,7 +12,7 @@ import shutil,subprocess
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
 
-def main():
+def fixture_source():
     source=(ROOT/'src/final_parking.cpp').read_text()
     fixture=(ROOT/'local_workspace/later-laps/check.cpp').read_text().split('int main()')[0]
     path=(ROOT/'src/obstacle_path.cpp').read_text()
@@ -62,6 +62,13 @@ bool get_tof_diagnostic_snapshot(TofSensor sensor,TofDiagnosticSnapshot &s){
  if(fixed||moving){s.stored_object_count=2;s.objects[1].distance_mm=static_cast<int16_t>(parking_module::expectedOuterWallRange(sensor,truePose));s.selected_raw_distance_mm=s.objects[1].distance_mm;}
  return true;
 }
+'''
+    return fixture
+
+
+def main():
+    fixture=fixture_source()
+    fixture+=r'''
 int main(){int total=0,bad=0,parked=0,safeRejected=0;
  // Registration must not accept a single piece, wrong gap, or excessive
  // correction simply because the longitudinal allowance is now larger.

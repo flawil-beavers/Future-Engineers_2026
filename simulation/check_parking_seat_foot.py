@@ -22,5 +22,5 @@ int main(){
 }
 '''
 p=ROOT/'local_workspace/start-foot';p.mkdir(parents=True,exist_ok=True);(p/'check.cpp').write_text(f)
-subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),str(p/'check.cpp'),'-o',str(p/'check.exe')],check=True)
+subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'simulation/host'),str(p/'check.cpp'),'-o',str(p/'check.exe')],check=True)
 subprocess.run([str(p/'check.exe')],check=True)

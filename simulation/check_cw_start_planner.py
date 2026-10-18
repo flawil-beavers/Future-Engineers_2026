@@ -21,7 +21,8 @@ def fixture_source():
     def extract(signature):
         return block(source, source.index(signature))
     functions = [extract(s) for s in (
-        'float clampFloat(', 'float adaptiveLookahead(', 'float wrap180(',
+        'float pursuitServoForCurvature(', 'float pursuitCurvatureForServo(',
+        'float clampFloat(', 'float adaptiveLookahead(', 'float firstLapLookahead(', 'float wrap180(',
         'float distanceSquared(', 'void transformFromRunFrame(',
         'void appendLocalPoint(', 'void appendStraight(', 'void appendCorner(',
         'PathPoint interpolateBaseline(', 'void initializeSeats(',
@@ -51,6 +52,7 @@ constexpr float PI=3.14159265358979323846f;
 bool telemetryRouteDirty=false;
 #include "config.h"
 #include "parking_start_footprint.h"
+#include "ackermann_kinematics.h"
 @@TYPES@@
 @@STRUCTS@@
 struct PositionEstimate {float x_mm=0,y_mm=0,heading_deg=0,confidence_mm=0;};
@@ -177,7 +179,7 @@ int main() {
     if not compiler:
         raise RuntimeError('A host C++ compiler on PATH is required')
     executable = destination / 'check.exe'
-    subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(ROOT/'include'), str(cpp), '-o', str(executable)], check=True)
+    subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(ROOT/'include'), '-I', str(ROOT/'simulation/host'), str(cpp), '-o', str(executable)], check=True)
     layouts = [(1,0,0),(2,0,0),(0,1,0),(0,2,0),(0,0,1),(0,0,2),
                (1,0,1),(1,0,2),(2,0,1),(2,0,2),(0,0,0)]
     poses = [review(n)['proposed_short_approach']['logged_prelocalization_pose']

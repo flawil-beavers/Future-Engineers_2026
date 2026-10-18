@@ -1,5 +1,5 @@
 """Production CCW connector replay for measured GREEN-front B starts.
-Known colour and ideal bicycle; no camera/ToF/servo-delay acceptance.
+Known colour and calibrated CAD linkage; no camera/ToF/servo-delay acceptance.
 Each planned perturbed start is also replayed against a fixed retained path
 with independent actual-start perturbations and the physical42deg envelope.
 Generated code and outputs remain ignored in local_workspace.
@@ -15,7 +15,7 @@ f+=block(source,source.index('bool connectorRolloutFeasible(')).replace('connect
 f+='''
 int main(){float x,y,h;int n=0,failed=0;while(std::cin>>x>>y>>h){baseline();memcpy(livePath,baselinePath,sizeof(PathPoint)*pathLength);for(auto &d:discoveryStations)d.observedClear=false;seats[5].confirmed=seats[5].injected=true;seats[5].red=false;displaceForSeat(livePath,5,260,true);PositionEstimate p;p.x_mm=x;p.y_mm=y;p.heading_deg=h;uint16_t merge=0;bool ok=buildParkingEntryConnector(p,livePath,merge);if(ok){for(float dx:{-3.f,0.f,3.f})for(float dy:{-3.f,0.f,3.f})for(float dh:{-1.f,0.f,1.f}){PositionEstimate actual=p;actual.x_mm+=dx;actual.y_mm+=dy;actual.heading_deg+=dh;if(!runtimePerturbedRollout(actual,parkingEntryConnectorLookaheadMm,5,5,3,livePath,merge,true))ok=false;}}std::cout<<n++<<" "<<ok<<" "<<parkingEntryConnectorLookaheadMm<<"\\n";failed+=!ok;}return failed?1:0;}
 '''
-p=ROOT/'local_workspace/b_measured_ccw';p.mkdir(exist_ok=True);(p/'check.cpp').write_text(f);subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),str(p/'check.cpp'),'-o',str(p/'check.exe')],check=True)
+p=ROOT/'local_workspace/b_measured_ccw';p.mkdir(exist_ok=True);(p/'check.cpp').write_text(f);subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'simulation/host'),str(p/'check.cpp'),'-o',str(p/'check.exe')],check=True)
 rows=[]
 for n in (479,480,481):
  s=(ROOT/f'simulation/evidence/parking_exit_diagnostics/20261006_log_{n}_ccw.txt').read_text();m=re.search(r'kind=connector index=0 x=([-\d.]+) y=([-\d.]+) h=([-\d.]+)',s);assert m;pose=list(map(float,m.groups()))

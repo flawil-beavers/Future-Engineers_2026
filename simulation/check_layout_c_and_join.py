@@ -91,16 +91,38 @@ int main(){int bad=0,total=0;
   learned();joinSameColourStraightEnds(livePath,true);roundKnownCornerPairs(livePath,true);recomputeSpeedProfile(livePath);
   float x=-1325+dx,y=-320.6f+dy,h=(64.32f+dh)*PI/180;
   progressIndex=nearestPathIndex(baselinePath,x,y,0,pathLength);
-  bool ok=false;
+  bool ok=false,passedGreen=false;
+  float previousForward=-1e9f;
   for(int step=0;step<750;++step){
    ObstacleClearanceSample c{};calculateClearanceAtPose(seats[11],x,y,h*180/PI,c);
    if(c.pillarMm<20||c.wallMm<20)break;
-   if(y>650){ok=x<seats[11].x-125;break;}
+   // Witness the whole body passing GREEN on its left. The former x-only
+   // check 150 mm after the pillar rejected safe inward convergence after
+   // passing, and its fixed 150 mm pursuit was not the runtime controller.
+   float minForward=1e9f,minSide=1e9f;
+   const float ref=seats[11].headingDeg*PI/180;
+   for(int wheelSign:{-1,1}){
+    parking_start_footprint::Quad bodies[6];
+    parking_start_footprint::robotQuads(x,y,h*180/PI,wheelSign,0,bodies);
+    for(const auto &body:bodies)for(const auto &p:body.p){
+     float px=p.x-seats[11].x,py=p.y-seats[11].y;
+     minForward=fminf(minForward,px*cosf(ref)+py*sinf(ref));
+     minSide=fminf(minSide,-px*sinf(ref)+py*cosf(ref));
+    }
+   }
+   if(previousForward<=0 && minForward>0){
+    if(minSide<=25)break;
+    passedGreen=true;
+   }
+   previousForward=minForward;
+   if(y>650){ok=passedGreen;break;}
    progressIndex=nearestPathIndex(livePath,x,y,progressIndex,OBSTACLE_PATH_PROGRESS_WINDOW);
    PositionEstimate p;p.x_mm=x;p.y_mm=y;p.heading_deg=h*180/PI;
-   auto t=findLookahead(livePath,p,150);float ax=t.x-x,ay=t.y-y;
+   float look=firstLapLookahead(livePath[progressIndex].speedMmS);
+   if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
+   auto t=findLookahead(livePath,p,look);float ax=t.x-x,ay=t.y-y;
    float k=2*(-ax*sinf(h)+ay*cosf(h))/fmaxf(1,ax*ax+ay*ay);
-   int servo=static_cast<int>(clampFloat(-atanf(100*k)*180/PI,-42,42));k=-tanf(servo*PI/180)/100;
+   int servo=static_cast<int>(clampFloat(pursuitServoForCurvature(k),-42,42));k=pursuitCurvatureForServo(servo);
    float n=h+k*2;if(fabsf(k)>1e-6){x+=(sinf(n)-sinf(h))/k;y+=(cosf(h)-cosf(n))/k;}else{x+=2*cosf(h);y+=2*sinf(h);}h=n;
   }
   ++total;if(!ok){++bad;std::cout<<"C FAIL "<<dx<<" "<<dy<<" "<<dh<<" "<<x<<" "<<y<<"\n";}

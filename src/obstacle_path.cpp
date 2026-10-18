@@ -25,6 +25,21 @@ void processGreenSeatCandidates(
 
 namespace
 {
+// Pure Pursuit uses positive curvature for a left turn; the servo is positive
+// to the right. Use the calibrated linkage on every lap and in its preflight.
+float pursuitServoForCurvature(float curvature)
+{
+    if (!isfinite(curvature)) return NAN;
+    if (fabsf(curvature) < 1.0e-6f) return 0.0f;
+    return Ackermann::getServoAngleForRadius(-1.0f / curvature);
+}
+
+float pursuitCurvatureForServo(int steering)
+{
+    if (abs(steering) < 2) return 0.0f;
+    return -1.0f / Ackermann::getTurnRadius(steering);
+}
+
 struct PathPoint
 {
     float x = 0.0f;
@@ -111,6 +126,7 @@ int8_t routeTurnSign = 1;
 bool running = false;
 bool finished = false;
 bool optimizedBuilt = false;
+float laterLapSpeedLimits[OBSTACLE_MAX_PATH_WAYPOINTS] = {};
 bool lapBoundaryPending = false;
 // A start connector may join just BEFORE phase zero. That first seam crossing
 // is not a lap; require progress through the middle half of the course first.
@@ -286,6 +302,12 @@ float adaptiveLookahead(float speedMmS)
                     (OBSTACLE_PATH_MAX_SPEED - OBSTACLE_PATH_MIN_SPEED),
                 0.0f,
                 1.0f);
+}
+
+float firstLapLookahead(float speedMmS)
+{
+    return fminf(adaptiveLookahead(speedMmS),
+                 OBSTACLE_LAP1_LOOKAHEAD_MAX_MM);
 }
 
 float wrap180(float angle)
@@ -1006,17 +1028,21 @@ bool connectorRolloutFeasible(
         const float forward = dx * cosf(heading) + dy * sinf(heading);
         const float lateral = -dx * sinf(heading) + dy * cosf(heading);
         const float curvature = 2.0f * lateral / fmaxf(1.0f, dx * dx + dy * dy);
-        const float steering = -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
+        const float steering = pursuitServoForCurvature(curvature);
         if (!isfinite(forward) || !isfinite(steering) || forward <= 1.0f ||
             fabsf(steering) > (parkingCcwShortStart ? OBSTACLE_PARKING_CONNECTOR_PLAN_STEERING_DEG :
                                  OBSTACLE_MAX_PURSUIT_STEERING_DEG))
             return reject("tracking", travel, -1, noClearance,
                 forward, steering);
-        const float nextHeading = heading + curvature * stepMm;
-        if (fabsf(curvature) > 1.0e-6f)
+        // Runtime sends integer servo degrees. Predict that same command through
+        // the CAD linkage instead of integrating the ideal requested curvature.
+        const float actualCurvature = pursuitCurvatureForServo(
+            static_cast<int>(steering));
+        const float nextHeading = heading + actualCurvature * stepMm;
+        if (fabsf(actualCurvature) > 1.0e-6f)
         {
-            x += (sinf(nextHeading) - sinf(heading)) / curvature;
-            y += (cosf(heading) - cosf(nextHeading)) / curvature;
+            x += (sinf(nextHeading) - sinf(heading)) / actualCurvature;
+            y += (cosf(heading) - cosf(nextHeading)) / actualCurvature;
         }
         else
         {
@@ -1182,76 +1208,26 @@ bool tryParkingEntryConnectorMerge(
         }
     }
 
-    // Validate the same lookahead geometry that Pure Pursuit will use. Pure
-    // Pursuit is a forward controller: a target behind the rear axle can still
-    // produce a finite steering command, but driving that command forward makes
-    // the robot circle instead of converging. Reject that geometry before the
-    // motor is enabled, together with targets that need more than the physical
-    // steering envelope.
+    // Test the actual tracked poses, not hypothetical exact on-curve poses.
+    // A feasible pursuit track can differ from the Hermite centreline. The
+    // complete calibrated rollout below checks forward targets, integer servo
+    // commands, all swept footprints and the terminal merge for every retry.
     float desiredLookahead = adaptiveLookahead(
         OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S);
     if (!parkingShortStart() && confirmedSeat >= 0 && !seats[confirmedSeat].red)
         desiredLookahead *=
             OBSTACLE_PARKING_ENTRY_GREEN_JOIN_LOOKAHEAD_SCALE;
     parkingEntryConnectorLookaheadMm = 0.0f;
-    float failedForward = 0.0f;
-    float failedSteering = 0.0f;
-    uint8_t failedSample = 0;
-    uint16_t failedTarget = 0;
     for (float candidateLookahead = desiredLookahead;
          candidateLookahead >=
              OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM - 0.1f;
          candidateLookahead -= OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM)
     {
-        bool feasible = true;
-        for (uint8_t sample = 0;
-             sample + 1 < parkingEntryConnectorLength;
-             ++sample)
+        const bool feasible = connectorRolloutFeasible(
+            start, candidateLookahead, referenceSeat, confirmedSeat,
+            guardSeat, route, best, continueIntoRoute);
+        if (!feasible)
         {
-            const PathPoint &at = parkingEntryConnector[sample];
-            const PathPoint &connectorEnd = parkingEntryConnector[
-                parkingEntryConnectorLength - 1];
-            if (hypotf(
-                    connectorEnd.x - at.x,
-                    connectorEnd.y - at.y) <=
-                    OBSTACLE_PARKING_ENTRY_JOIN_CROSS_TRACK_MM &&
-                fabsf(wrap180(at.headingDeg - connectorEnd.headingDeg)) <=
-                    OBSTACLE_PARKING_ENTRY_JOIN_HEADING_DEG)
-            {
-                break;
-            }
-            uint16_t targetSample = sample;
-            const PathPoint target = connectorLookaheadFrom(
-                sample, candidateLookahead, route, best,
-                continueIntoRoute, &targetSample);
-            const float dx = target.x - at.x;
-            const float dy = target.y - at.y;
-            const float heading = at.headingDeg * PI / 180.0f;
-            const float localX = dx * cosf(heading) + dy * sinf(heading);
-            const float localY = -dx * sinf(heading) + dy * cosf(heading);
-            const float targetDistanceSquared =
-                fmaxf(1.0f, dx * dx + dy * dy);
-            const float curvature = 2.0f * localY / targetDistanceSquared;
-            const float requiredSteering =
-                -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
-            if (!isfinite(localX) || !isfinite(requiredSteering) ||
-                localX <= 1.0f ||
-                fabsf(requiredSteering) > (parkingCcwShortStart ? OBSTACLE_PARKING_CONNECTOR_PLAN_STEERING_DEG :
-                                         OBSTACLE_MAX_PURSUIT_STEERING_DEG))
-            {
-                feasible = false;
-                failedSample = sample;
-                failedTarget = targetSample;
-                failedForward = localX;
-                failedSteering = requiredSteering;
-                break;
-            }
-        }
-        if (feasible && !connectorRolloutFeasible(
-                start, candidateLookahead, referenceSeat, confirmedSeat,
-                guardSeat, route, best, continueIntoRoute))
-        {
-            feasible = false;
             Serial.print("[PARK ENTRY CONNECTOR] Rollout FAIL lookahead_mm=");
             Serial.println(candidateLookahead, 1);
         }
@@ -1264,15 +1240,7 @@ bool tryParkingEntryConnectorMerge(
     if (parkingEntryConnectorLookaheadMm <= 0.0f)
     {
         Serial.print(
-            "[PARK ENTRY CONNECTOR] Preflight FAIL tracking_sample/target=");
-        Serial.print(failedSample);
-        Serial.print("/");
-        Serial.print(failedTarget);
-        Serial.print(" forward_mm=");
-        Serial.print(failedForward, 1);
-        Serial.print(" steering/min_lookahead_deg_mm=");
-        Serial.print(failedSteering, 1);
-        Serial.print("/");
+            "[PARK ENTRY CONNECTOR] Preflight FAIL calibrated_tracking min_lookahead_mm=");
         Serial.print(OBSTACLE_PARKING_ENTRY_CONNECTOR_SAMPLE_MM, 1);
         Serial.print(" merge_forward/lateral/before_pillar_mm=");
         Serial.print(bestForward, 0);
@@ -2211,7 +2179,7 @@ bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
             const float curvature = fabsf(
                 wrap180((afterHeading - beforeHeading) * 180.0f / PI) *
                 PI / 180.0f) / segment;
-            if (atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI >
+            if (fabsf(pursuitServoForCurvature(curvature)) >
                 OBSTACLE_MAX_PURSUIT_STEERING_DEG)
                 return false;
         }
@@ -2697,8 +2665,9 @@ float laterLapBending(const PathPoint *route, float &length, float &peak)
     return bending;
 }
 
-// Small shape changes after the map is complete. Keep pillar passing policy,
-// lap seam and metadata intact; reject any shortcut losing useful reserve.
+// Bounded local shortening after the map is complete. Try the largest smooth
+// candidate first, then back off to the previous 6 mm refinement if needed.
+// Passing plateaus, lap seam, metadata and geometric reserves stay protected.
 void smoothKnownLaterLapRoute(PathPoint *route, PathPoint *rollback,
                              float oldWall, float oldPillar)
 {
@@ -2706,68 +2675,173 @@ void smoothKnownLaterLapRoute(PathPoint *route, PathPoint *rollback,
     float oldLength,oldPeak;
     const float oldBending=laterLapBending(route,oldLength,oldPeak);
     constexpr float weights[]={1,4,6,4,1};
-    for(uint8_t pass=0;pass<4;++pass)
-    {
-        memcpy(smoothingBuffer,route,sizeof(PathPoint)*pathLength);
-        for(uint16_t i=0;i<pathLength;++i)
-        {
-            const float seam=fminf(baselinePath[i].distanceMm,
-                loopLengthMm-baselinePath[i].distanceMm);
-            const float keep=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
-            if(seam<=keep)continue;
-            // Fade the refinement in over 150 mm; avoid a new kink at the
-            // protected seam boundary. Symmetric stencil has no directional bias.
-            float fade=clampFloat((seam-keep)/150.0f,0.0f,1.0f);
-            fade=fade*fade*(3.0f-2.0f*fade);
-            // Leave the actual pillar-passing plateau intact. Refine its
-            // approach/exit only, with a gradual transition outside 150 mm.
-            for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
-            {
-                if(!seats[seat].confirmed)continue;
-                const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,
-                    baselinePath[i].distanceMm);
-                const float distance=fminf(ahead,loopLengthMm-ahead);
-                float retain=clampFloat((distance-150.0f)/150.0f,0.0f,1.0f);
-                retain=retain*retain*(3.0f-2.0f*retain);
-                fade=fminf(fade,retain);
-            }
-            float x=0,y=0;
-            for(int k=-2;k<=2;++k)
-            {
-                const uint16_t j=(i+pathLength+k)%pathLength;
-                x+=weights[k+2]*smoothingBuffer[j].x/16.0f;
-                y+=weights[k+2]*smoothingBuffer[j].y/16.0f;
-            }
-            x=smoothingBuffer[i].x+0.5f*fade*(x-smoothingBuffer[i].x);
-            y=smoothingBuffer[i].y+0.5f*fade*(y-smoothingBuffer[i].y);
-            const float dx=x-rollback[i].x,dy=y-rollback[i].y;
-            const float shift=hypotf(dx,dy);
-            // Smooth saturation avoids a new kink where the displacement
-            // limit becomes active; shift*scale is always below that limit.
-            const float relative=shift/OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM;
-            const float scale=1.0f/sqrtf(1.0f+relative*relative);
-            route[i].x=rollback[i].x+scale*dx;
-            route[i].y=rollback[i].y+scale*dy;
-        }
-    }
-    float length,peak,wall,pillar;
-    const float bending=laterLapBending(route,length,peak);
-    const bool accept=length<=oldLength+0.1f && bending<oldBending*0.98f &&
-        peak<=oldPeak+1e-7f && laterLapRouteSafe(route,&wall,&pillar) &&
-        wall>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
-        pillar>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
-        wall>=oldWall-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM &&
-        pillar>=oldPillar-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM;
-    if(!accept)
+    constexpr uint8_t passes[]={24,12,6,4};
+    const float shifts[]={OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM,
+        20.0f,10.0f,6.0f};
+    for(uint8_t trial=0;trial<4;++trial)
     {
         memcpy(route,rollback,sizeof(PathPoint)*pathLength);
-        Serial.println("[LAPS] Smoothing rejected; checked prior shape retained");
+        for(uint8_t pass=0;pass<passes[trial];++pass)
+        {
+            memcpy(smoothingBuffer,route,sizeof(PathPoint)*pathLength);
+            for(uint16_t i=0;i<pathLength;++i)
+            {
+                const float seam=fminf(baselinePath[i].distanceMm,
+                    loopLengthMm-baselinePath[i].distanceMm);
+                const float keep=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
+                if(seam<=keep)continue;
+                // Fade the refinement in over 150 mm; avoid a new kink at the
+                // protected seam boundary. Symmetric stencil has no directional bias.
+                float fade=clampFloat((seam-keep)/150.0f,0.0f,1.0f);
+                fade=fade*fade*(3.0f-2.0f*fade);
+                // Leave the actual pillar-passing plateau intact. Refine its
+                // approach/exit only, with a gradual transition outside 150 mm.
+                for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+                {
+                    if(!seats[seat].confirmed)continue;
+                    const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,
+                        baselinePath[i].distanceMm);
+                    const float distance=fminf(ahead,loopLengthMm-ahead);
+                    float retain=clampFloat((distance-150.0f)/150.0f,0.0f,1.0f);
+                    retain=retain*retain*(3.0f-2.0f*retain);
+                    fade=fminf(fade,retain);
+                }
+                float x=0,y=0;
+                for(int k=-2;k<=2;++k)
+                {
+                    const uint16_t j=(i+pathLength+k)%pathLength;
+                    x+=weights[k+2]*smoothingBuffer[j].x/16.0f;
+                    y+=weights[k+2]*smoothingBuffer[j].y/16.0f;
+                }
+                x=smoothingBuffer[i].x+0.5f*fade*(x-smoothingBuffer[i].x);
+                y=smoothingBuffer[i].y+0.5f*fade*(y-smoothingBuffer[i].y);
+                const float dx=x-rollback[i].x,dy=y-rollback[i].y;
+                const float shift=hypotf(dx,dy);
+                // Smooth saturation avoids a new kink where the displacement
+                // limit becomes active; shift*scale is always below that limit.
+                const float relative=shift/shifts[trial];
+                const float scale=1.0f/sqrtf(1.0f+relative*relative);
+                route[i].x=rollback[i].x+scale*dx;
+                route[i].y=rollback[i].y+scale*dy;
+            }
+        }
+        float length,peak,wall,pillar;
+        const float bending=laterLapBending(route,length,peak);
+        const bool accept=length<=oldLength+0.1f && bending<oldBending*0.98f &&
+            peak<=oldPeak+1e-7f && laterLapRouteSafe(route,&wall,&pillar) &&
+            wall>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
+            pillar>=OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM &&
+            wall>=oldWall-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM &&
+            pillar>=oldPillar-OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM;
+        if(!accept)
+        {
+            continue;
+        }
+        Serial.print("[LAPS] Smooth route length_before_after_mm=");
+        Serial.print(oldLength,1);Serial.print('/');Serial.print(length,1);
+        Serial.print(" bending_reduction_pct=");
+        Serial.println(100.0f*(oldBending-bending)/fmaxf(oldBending,1e-9f),1);
         return;
     }
-    Serial.print("[LAPS] Smooth route length_before_after_mm=");
-    Serial.print(oldLength,1);Serial.print('/');Serial.print(length,1);
-    Serial.print(" bending_reduction_pct=");
-    Serial.println(100.0f*(oldBending-bending)/fmaxf(oldBending,1e-9f),1);
+    memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+    Serial.println("[LAPS] Smoothing rejected; checked prior shape retained");
+}
+
+float laterLapCurvatureSpeed(float curvature)
+{
+    if (!isfinite(curvature)) return 0.0f;
+    const float maximum = OBSTACLE_PATH_MAX_SPEED * OBSTACLE_LATER_LAP_SPEED_FACTOR;
+    const float k = fabsf(curvature) * OBSTACLE_LATER_LAP_CURVATURE_TOLERANCE;
+    return k < 1e-7f ? maximum : fminf(maximum,
+        sqrtf(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS / k) /
+            OBSTACLE_LATER_LAP_SPEED_TOLERANCE);
+}
+
+float laterLapTrackingSpeed(float speed, float requestedCurvature, int steering)
+{
+    if (!isfinite(speed) || speed < 0 || !isfinite(requestedCurvature)) return 0;
+    // Include the quantized CAD command as well as the pursuit request.
+    const float actualCurvature=abs(steering)<2 ? 0.0f :
+        1.0f/Ackermann::getTurnRadius(steering);
+    return fminf(speed,laterLapCurvatureSpeed(
+        fmaxf(fabsf(requestedCurvature),fabsf(actualCurvature))));
+}
+
+void planLaterLapSpeeds(const PathPoint *route)
+{
+    float curveLimits[OBSTACLE_MAX_PATH_WAYPOINTS];
+    const float maximum = OBSTACLE_PATH_MAX_SPEED * OBSTACLE_LATER_LAP_SPEED_FACTOR;
+    float maximumSegment = OBSTACLE_PATH_SAMPLE_MM;
+    for (uint16_t i=0;i<pathLength;++i)
+    {
+        const uint16_t next=(i+1)%pathLength;
+        maximumSegment=fmaxf(maximumSegment,hypotf(route[next].x-route[i].x,
+            route[next].y-route[i].y));
+        uint16_t p=i,n=i;
+        float beforeDistance=0,afterDistance=0;
+        for(uint16_t step=1;step<pathLength;++step)
+        {
+            const uint16_t old=p;
+            p=(p+pathLength-1)%pathLength;
+            beforeDistance+=hypotf(route[old].x-route[p].x,route[old].y-route[p].y);
+            if(beforeDistance>=OBSTACLE_LATER_LAP_CURVATURE_WINDOW_MM)break;
+        }
+        for(uint16_t step=1;step<pathLength;++step)
+        {
+            const uint16_t old=n;
+            n=(n+1)%pathLength;
+            afterDistance+=hypotf(route[n].x-route[old].x,route[n].y-route[old].y);
+            if(afterDistance>=OBSTACLE_LATER_LAP_CURVATURE_WINDOW_MM)break;
+        }
+        // Circumcircle curvature over a pursuit-scale window. A polyline
+        // vertex is not an instantaneous physical steering angle. Runtime
+        // still caps the actual pursuit/CAD curvature on every control update.
+        const float a=hypotf(route[i].x-route[p].x,route[i].y-route[p].y);
+        const float b=hypotf(route[n].x-route[i].x,route[n].y-route[i].y);
+        const float c=hypotf(route[n].x-route[p].x,route[n].y-route[p].y);
+        const float cross=(route[i].x-route[p].x)*(route[n].y-route[i].y)-
+            (route[i].y-route[p].y)*(route[n].x-route[i].x);
+        const float k=2*cross/fmaxf(1,a*b*c);
+        curveLimits[i]=fminf(ceilf(route[i].speedMmS *
+            OBSTACLE_LATER_LAP_SPEED_FACTOR),laterLapCurvatureSpeed(k));
+    }
+    // Include a full actual waypoint interval; displacement can stretch the
+    // baseline's nominal 50 mm spacing. Never use baseline station distances.
+    const float responseDistance = maximum * OBSTACLE_LATER_LAP_SPEED_TOLERANCE *
+        OBSTACLE_LATER_LAP_RESPONSE_S + maximumSegment;
+    // Every upcoming turn constrains the entry speed. This includes braking
+    // across the cyclic seam and accounts for the finite motor response.
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        float distance=0,limit=curveLimits[i];
+        for(uint16_t step=1;step<pathLength;++step)
+        {
+            const uint16_t p=(i+step-1)%pathLength,n=(i+step)%pathLength;
+            distance+=hypotf(route[n].x-route[p].x,route[n].y-route[p].y);
+            const float usable=fmaxf(0,distance-responseDistance);
+            // All later distances are greater and all squared curve speeds
+            // nonnegative. Beyond this point no future curve can lower limit.
+            if(2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*usable>=limit*limit)break;
+            limit=fminf(limit,sqrtf(curveLimits[n]*curveLimits[n]+
+                2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*usable));
+        }
+        laterLapSpeedLimits[i]=limit;
+    }
+    // Two cyclic forward sweeps limit planned acceleration after a slow turn.
+    for(uint8_t pass=0;pass<2;++pass)
+        for(uint16_t i=0;i<pathLength;++i)
+        {
+            const uint16_t n=(i+1)%pathLength;
+            const float ds=hypotf(route[n].x-route[i].x,route[n].y-route[i].y);
+            laterLapSpeedLimits[n]=fminf(laterLapSpeedLimits[n],sqrtf(
+                laterLapSpeedLimits[i]*laterLapSpeedLimits[i]+
+                2*OBSTACLE_LATER_LAP_PLAN_ACCEL_MMSS*ds));
+        }
+    Serial.print("[LAPS] Dynamics max/lateral/decel/response=");
+    Serial.print(maximum,0);Serial.print('/');
+    Serial.print(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS,0);Serial.print('/');
+    Serial.print(OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS,0);Serial.print('/');
+    Serial.println(OBSTACLE_LATER_LAP_RESPONSE_S,2);
 }
 
 bool buildOptimizedPath()
@@ -2824,6 +2898,7 @@ bool buildOptimizedPath()
     if(sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL)
         smoothKnownLaterLapRoute(optimizedPath,beforeLaneCarry,routeWall,routePillar);
     recomputeSpeedProfile(optimizedPath);
+    planLaterLapSpeeds(optimizedPath);
     optimizedBuilt = true;
     // Lap-1 passage reports have already consumed their injection snapshots.
     // Replace them with the actual later-lap route for lap-2/3 diagnostics.
@@ -4866,12 +4941,6 @@ bool parkingReturnMotionSafe(const PositionEstimate &pose, int servo)
     return true;
 }
 
-float laterLapServoForCurvature(float curvature)
-{
-    if (fabsf(curvature) < 1.0e-6f) return 0.0f;
-    return Ackermann::getServoAngleForRadius(-1.0f / curvature);
-}
-
 ObstacleTofCorrectionResult applyTofCorrectionAt(
     const PositionEstimate &pose,
     float pathDistance)
@@ -5572,9 +5641,12 @@ void obstacle_path_update(bool new_camera_frame)
     const PathPoint &progress = parkingEntryConnectorActive
         ? parkingEntryConnector[parkingEntryConnectorProgress]
         : path[progressIndex];
-    const float commandedSpeed = cappedPathSpeed(lapFinishPending
+    float commandedSpeed = cappedPathSpeed(lapFinishPending
         ? fminf(progress.speedMmS, OBSTACLE_LATER_LAP_CORNER_SPEED)
         : recordedLapSpeed(progress.speedMmS));
+    if (completedLaps > 0 && optimizedBuilt && !runtimeTestMode &&
+        !lapFinishPending && !parkingEntryConnectorActive)
+        commandedSpeed=fminf(commandedSpeed,laterLapSpeedLimits[progressIndex]);
     bool parkingEntryGreenJoin = false;
     if (parkingEntryJoining && parkingEntryTargetStation >= 0)
     {
@@ -5593,7 +5665,7 @@ void obstacle_path_update(bool new_camera_frame)
     float lookahead = parkingEntryConnectorActive
         ? parkingEntryConnectorLookaheadMm
         : (completedLaps > 0 ? OBSTACLE_LATER_LAP_LOOKAHEAD_MM
-                             : adaptiveLookahead(commandedSpeed));
+                             : firstLapLookahead(commandedSpeed));
     // Connector distance is local to the temporary path and must not be fed to
     // cyclic corner gates. Only the normal lap route uses corner scaling.
     if (!parkingEntryConnectorActive && nearCorner(progress.distanceMm))
@@ -5637,9 +5709,7 @@ void obstacle_path_update(bool new_camera_frame)
     const float targetDistanceSquared = fmaxf(1.0f, dx * dx + dy * dy);
     const float curvature = 2.0f * localY / targetDistanceSquared;
     // Positive geometric curvature is left; positive servo command is right.
-    const float requiredSteering = completedLaps > 0 && !parkingEntryConnectorActive
-        ? laterLapServoForCurvature(curvature)
-        : -atanf(OBSTACLE_WHEELBASE_MM * curvature) * 180.0f / PI;
+    const float requiredSteering = pursuitServoForCurvature(curvature);
     if (parkingEntryFarGreenFollowup && !parkingEntryConnectorActive)
     {
         constexpr float followupTravelMm = 1000.0f;
@@ -5807,6 +5877,14 @@ void obstacle_path_update(bool new_camera_frame)
     const char *discoveryTraceReason = nullptr;
     int discoveryTraceStation = -1;
     float safeSpeed = commandedSpeed;
+    if (completedLaps > 0 && !runtimeTestMode && !lapFinishPending &&
+        !parkingEntryConnectorActive)
+    {
+        // Actual pursuit corrections can be tighter than the stored route.
+        // Cover both requested curvature and the quantized CAD servo command.
+        safeSpeed=laterLapTrackingSpeed(safeSpeed,curvature,
+            static_cast<int>(steering));
+    }
     if (parkingEntryConnectorActive)
         safeSpeed = fminf(
             safeSpeed,

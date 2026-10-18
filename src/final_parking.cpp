@@ -94,6 +94,7 @@ int8_t captureFieldMotionSign = 1;
 bool completed = false;
 bool aborted = false;
 bool practiceMode = false;
+bool initialBrakeStarted = false;
 float approachOuterShiftX = OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM;
 uint32_t wallSequence = 0, finalTraceMs = 0;
 uint16_t finalTraceCount = 0;
@@ -219,7 +220,10 @@ float parkingOuterRange(const TofDiagnosticSnapshot &snapshot)
         if (object.hardware_valid && object.filter_accepted && object.distance_mm>0)
             nearest = fminf(nearest,static_cast<float>(object.distance_mm));
     }
-    return nearest < 1.0e9f ? nearest : snapshot.selected_raw_distance_mm;
+    // The diagnostic selection is not independent quality evidence. Without
+    // an accepted object, neither wall registration nor marker classification
+    // may consume a fallback number from this frame.
+    return nearest < 1.0e9f ? nearest : -1.0f;
 }
 
 // Only fresh, wall-consistent returns may correct scan-line odometry. Marker
@@ -333,6 +337,18 @@ void abortParking(const char *reason)
     Serial.println(reason);
     run_telemetry_finish("aborted",reason);
     robot_logger.write_to_usb();
+}
+
+bool parkingBrakeReady(uint32_t minimumMs)
+{
+    const uint32_t elapsed=millis()-stateStartMs;
+    if (elapsed<minimumMs) return false;
+    if (isfinite(measured_speed) &&
+        fabsf(measured_speed)<=SOFT_STOP_SPEED_THRESHOLD_MMS)
+        return true;
+    if (elapsed>=minimumMs+OBSTACLE_FINAL_PARKING_BRAKE_SETTLE_TIMEOUT_MS)
+        abortParking("brake_not_settled");
+    return false;
 }
 
 bool checkMotionHealth(const PositionEstimate &pose)
@@ -719,6 +735,9 @@ bool endpointWithinGate(uint8_t index)
 bool finalFootprintContained()
 {
     const PositionEstimate pose = get_position_struct();
+    if (!isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
+        !isfinite(pose.heading_deg))
+        return false;
     const float heading = pose.heading_deg * PI / 180.0f;
     const float c = cosf(heading);
     const float s = sinf(heading);
@@ -781,6 +800,7 @@ void final_parking_reset()
     completed = false;
     aborted = false;
     practiceMode = false;
+    initialBrakeStarted = false;
     approachOuterShiftX = OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM;
     wallSequence = finalTraceMs = 0;
     finalTraceCount = initialWallFrames = 0;
@@ -841,10 +861,27 @@ bool final_parking_update(int8_t turn_sign)
     }
 
     PositionEstimate pose = get_position_struct();
-    if (state == FP_IDLE)
+    if (state == FP_IDLE && !initialBrakeStarted)
     {
         routeTurnSign = turn_sign < 0 ? -1 : 1;
         outerSensor = routeTurnSign > 0 ? TOF_RIGHT : TOF_LEFT;
+        initialBrakeStarted = true;
+        stateStartMs = millis();
+        // Retain the challenge's existing position-hold target while settling.
+        // Reissuing stop(true) each tick would move that target with the coast.
+        if (dc_state != DC_HOLDING) stop(true);
+    }
+    // Include the initial preflight and final verification in the same health
+    // gate as motion. NaN coordinates must never count as contained/stopped.
+    if ((state == FP_IDLE || state == FP_VERIFY) && !checkMotionHealth(pose))
+        return true;
+    if (state == FP_IDLE)
+    {
+        if (!parkingBrakeReady(0)) return true;
+        // Position HOLD retains the old driving speed profile. Only after
+        // measured standstill, clear it before the low-speed parking command
+        // (CW may reverse relative to the completed lap).
+        stop(false);
         if (!chooseParkingApproach(pose))
         {
             abortParking("approach_swept_preflight");
@@ -933,8 +970,7 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_APPROACH_BRAKE)
     {
-        if (millis() - stateStartMs <
-            OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)
+        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         if (initialWallFrames < 2 && !updateOuterWallReference(true))
         {
@@ -1024,8 +1060,7 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_SCAN_BRAKE)
     {
-        if (millis() - stateStartMs <
-            OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)
+        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         stop(false);
         if (!applyScanLocalization())
@@ -1082,8 +1117,7 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_CAPTURE_BRAKE)
     {
-        if (millis() - stateStartMs <
-            OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)
+        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         stop(false);
         pose = get_position_struct();
@@ -1169,8 +1203,7 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_SEGMENT_BRAKE)
     {
-        if (millis() - stateStartMs <
-            OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)
+        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         stop(false);
         if (!endpointWithinGate(segmentIndex))
@@ -1245,7 +1278,7 @@ bool final_parking_aborted()
 
 bool final_parking_active()
 {
-    return state != FP_IDLE;
+    return state != FP_IDLE || initialBrakeStarted;
 }
 
 void final_parking_sensor_hold()
