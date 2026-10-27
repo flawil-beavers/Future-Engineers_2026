@@ -142,6 +142,9 @@ enum RobotMode {MODE_NONE,MODE_OBSTACLE_CHALLENGE,MODE_HOLD,MODE_TURN_RADIUS_CAL
 enum ModeResult {MODE_RESULT_RUNNING,MODE_RESULT_COMPLETED,MODE_RESULT_FAILED};
 RobotMode current_mode=MODE_OBSTACLE_CHALLENGE,pending_mode=MODE_NONE;
 ModeResult nextResult=MODE_RESULT_COMPLETED;bool parked=true;int stops=0;
+bool resume_after_save=false;
+struct Logger {bool is_busy(){return false;}}robot_logger;
+void mode_resume(){}
 ModeResult update_active_mode(){return nextResult;}
 const char *mode_name(RobotMode){return "test";}
 bool turn_radius_cal_waiting_for_right(){return false;}
@@ -214,6 +217,7 @@ enum {MODE_NONE,MODE_OBSTACLE_CHALLENGE};int current_mode=MODE_OBSTACLE_CHALLENG
 int stopped=0,cancelled=0,closed=0;bool gyro_stream_healthy=true;
 void mode_stop_all(){++cancelled;current_mode=MODE_NONE;}void stop(bool){++stopped;}
 void final_parking_sensor_hold(){}
+void obstacle_path_sensor_hold(){}
 void sh2_close(){++closed;}void delay(int){}
 constexpr int BNO085_CS=1,BNO085_INT=2,SH2_GAME_ROTATION_VECTOR=7,GYRO_REPORT_INTERVAL_US=10000;
 int SPI1=0,sensor_value=0;

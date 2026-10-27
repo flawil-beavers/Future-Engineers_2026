@@ -58,7 +58,16 @@ def main():
         fixture = fixture_path.read_text().split('int main()')[0]
         if mode == 'before':
             fixture = fixture.replace('#include "config.h"', '#include "config_reference.h"')
-            speed = 'ceilf(optimizedPath[i].speedMmS*OBSTACLE_LATER_LAP_SPEED_FACTOR)'
+            # A current reference fixture may share the profile helper. Bind
+            # it to the reference constants, rather than include config twice.
+            profile=(ROOT/'include/drive_profile.h').read_text().replace(
+                '#include "config.h"','').replace('#pragma once','')
+            fixture=fixture.replace('#include "drive_profile.h"',profile)
+            # A geometry-only comparison can use a reference that already has
+            # the same dynamics planner. Do not silently compare it against
+            # an uncapped legacy speed profile.
+            speed = ('laterLapSpeedLimits[i]' if 'void planLaterLapSpeeds(' in fixture
+                     else 'ceilf(optimizedPath[i].speedMmS*OBSTACLE_LATER_LAP_SPEED_FACTOR)')
             next_speed = speed.replace('[i]', '[n]')
         else:
             speed, next_speed = 'laterLapSpeedLimits[i]', 'laterLapSpeedLimits[n]'

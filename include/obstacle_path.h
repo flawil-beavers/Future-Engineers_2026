@@ -233,3 +233,6 @@ bool obstacle_path_parking_approach_target(
     float x_mm, float y_mm, float &target_x_mm, float &target_y_mm);
 
 void obstacle_path_log_run_telemetry();
+/** Freeze only recovery motion timers during an actual main-loop gyro hold. */
+void obstacle_path_sensor_hold();
+void obstacle_path_sensor_resume();

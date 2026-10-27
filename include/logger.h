@@ -45,7 +45,7 @@ public:
     bool is_busy() const;
 
     /**
-     * @brief Clear the RAM log buffer (call on each new run via system_enable()).
+     * @brief Clear startup/saved data; retain active or unsuccessfully saved logs.
      */
     void clear();
     size_t remaining() const { return LOG_BUFFER_SIZE - 1 - buffer_head; }
@@ -72,6 +72,7 @@ private:
     size_t buffer_head;
     bool buffer_overflow;
     int session_file_num;
+    int next_probe_number = 1;
     char session_filepath[64];
     LoggerState logger_state;
     unsigned long state_started_ms;

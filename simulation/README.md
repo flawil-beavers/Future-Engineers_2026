@@ -113,3 +113,22 @@ See [RUN_TELEMETRY.md](RUN_TELEMETRY.md) for the bounded M7 telemetry format,
 accepted route revisions, elapsed/lap timing, offline checks and normal CW/CCW
 validation. `check_run_telemetry.py` compiles the actual telemetry writer against
 a cached pose and bounded logger; generated fixtures stay in local_workspace.
+
+Recorded-map inner-route refinement (2026-10-27): see
+[LATER_LAP_INNER_ROUTE_REVIEW_20261027.md](LATER_LAP_INNER_ROUTE_REVIEW_20261027.md)
+for the same-speed comparison, force/deviation assumptions and physical limits.
+`check_later_lap_inner_routes.py` covers targeted transitions, exhaustive-clearance
+equivalence and optional-planning budget fallback; generated work stays ignored.
+
+Subsequent [full firmware review](FULL_CODE_REVIEW_20261027.md) records remaining
+actuator/time-gap/logger/I2C defects and **six new dynamic reserve failures** in
+the optional inner search, plus one pre-existing case. Reproduce runtime edges
+with `review_runtime_edges_20261027.py`; after refreshing the normal later-lap
+fixtures, `review_later_lap_matrix_20261027.py` compares all 2191 uncapped cases
+with/without only that search. Its initial nonzero result documented a real
+finding, not a test-infrastructure error. No firmware changes were made by the review.
+The subsequent [runtime/route corrections](RUNTIME_AND_ROUTE_FIXES_20261027.md)
+resolve these reproduced findings; the expanded dynamic matrix now passes.
+`check_later_lap_dynamics.py --full-matrix` covers all 2191 uncapped layouts at
+10/20/50ms, `check_drive_profile_timing.py` preserves the historical normal ramp,
+and `check_bounded_tof_transport.py` exercises both generated vendor wrappers.

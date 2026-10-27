@@ -16,7 +16,7 @@ start=path.rfind('    servo_disabled = false;',0,end)
 commit=path[start:end+len('    set_steering(static_cast<int>(steering));')]
 driver=r'''
 bool healthy=true; bool gyro_is_healthy(){return healthy;}
-void final_parking_sensor_hold(){} void run_telemetry_phase(const char*){}
+void final_parking_sensor_hold(){} void obstacle_path_sensor_hold(){} void run_telemetry_phase(const char*){}
 void run_telemetry_tick(){} struct Logger{void update(){}}robot_logger;
 float steering=30;
 void iteration(bool reject){

@@ -10,6 +10,7 @@
 #include "logger.h"
 #include "motor_control.h"
 #include "final_parking.h"
+#include "obstacle_path.h"
 #include "rear_tof_rpc.h"
 #define Serial robot_logger
 
@@ -66,6 +67,7 @@ static bool restart_gyro_stream()
   gyro_stream_healthy = false;
   // Preserve the existing bounded parking fault evidence without changing the active mode.
   final_parking_sensor_hold();
+  obstacle_path_sensor_hold();
   // Preserve controller, route and accumulated angle across recovery.
   // The first valid raw yaw seeds a new baseline without adding sensor-zero
   // changes to current_degree. Fresh reports resume the same active mode.

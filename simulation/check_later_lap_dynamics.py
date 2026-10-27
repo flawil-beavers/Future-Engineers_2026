@@ -3,6 +3,7 @@
 Run check_later_laps.py first to refresh the production fixture. Uses the real
 drive_loop speed ramp with ideal speed tracking; tyre/servo response is unknown.
 """
+import argparse
 import json
 import shutil
 import subprocess
@@ -12,6 +13,10 @@ from check_connector_servo_resume import block
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--full-matrix',action='store_true',
+                        help='All existing uncapped layouts at 10/20/50ms')
+    args=parser.parse_args()
     dest = ROOT/'local_workspace/later-lap-dynamics'
     dest.mkdir(parents=True, exist_ok=True)
     shared = ROOT/'local_workspace/later-laps'
@@ -30,6 +35,10 @@ enum {DC_DISABLED,DC_ENABLED};
 int dc_state=DC_ENABLED,target_speed=0,set_degree=0;
 float last_loop_time=.020f,current_speed=0,current_acceleration=0;
 float active_acceleration_limit=0,acc=DEFAULT_ACCELERATION,target_distance=0;
+bool drive_profile_restart_pending=false,speed_measurement_ready=false;
+float current_distance=0,measured_speed=0,commanded_acceleration=0;
+float pid_integral=0,accel_pid_integral=0,last_error=0;
+uint32_t cruise_candidate_start_us=0;
 void steer(int){} void service_motor_output(){} void pid_speed(){}
 float constrain(float v,float lo,float hi){return fminf(hi,fmaxf(lo,v));}
 '''
@@ -105,7 +114,8 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
     cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'), '-std=c++17', '-O2', '-I', str(ROOT/'include'),
                     '-I', str(shared), str(cpp), '-o', str(exe)], check=True)
-    cases = json.loads((shared/'report.json').read_text())['cases'][-7:]
+    cases = json.loads((shared/'report.json').read_text())['cases']
+    cases = [c for c in cases if c['speed_cap']==0] if args.full_matrix else cases[-7:]
     inputs = '\n'.join(' '.join(map(str, [c['direction'], c['speed_cap'], *c['colors']]))
                        for c in cases)+'\n'
     failed = False
@@ -113,7 +123,16 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
         run = subprocess.run([str(exe), str(dt)], input=inputs, text=True, capture_output=True)
         (dest/f'output_{int(dt*1000)}ms.txt').write_text(run.stdout+run.stderr)
         print('Control interval', dt, 's')
-        print(run.stdout, end='')
+        rows=[line.split() for line in run.stdout.splitlines() if line.startswith('DYNAMIC ')]
+        assert len(rows)==len(cases)
+        if args.full_matrix:
+            failures=[r for r in rows if r[2]!='1']
+            print('DYNAMIC MATRIX',len(rows),'FAILED',len(failures),
+                  'max_lateral_mss',max(float(r[4]) for r in rows)/1000,
+                  'min_pillar_mm',min(float(r[8]) for r in rows))
+            for row in failures[:20]:print('FAIL',' '.join(row))
+        else:
+            print(run.stdout, end='')
         if run.stderr:
             print(run.stderr)
         failed |= run.returncode != 0

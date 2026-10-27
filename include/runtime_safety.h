@@ -8,6 +8,19 @@
 #include <stdlib.h>
 
 namespace RuntimeSafety {
+// Validity loss clears votes without making a repeated sequence new again.
+struct FreshSampleCounter {
+    uint32_t sequence=0;
+    bool received=false;
+    uint8_t count=0;
+    void clearCount() { count=0; }
+    void update(uint32_t next, bool evidence) {
+        if (!evidence) count=0;
+        if (received && next==sequence) return;
+        sequence=next; received=true;
+        if (evidence && count<255) ++count;
+    }
+};
 // LOW is accepted immediately. HIGH must remain stable for the full debounce.
 // An accepted HIGH stays accepted after a software pause, preserving manual resume.
 struct EnableSwitchFilter {

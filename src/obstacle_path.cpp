@@ -15,6 +15,7 @@
 #include "run_telemetry.h"
 #include "parking_start_footprint.h"
 #include "ackermann_kinematics.h"
+#include "drive_profile.h"
 
 #undef Serial
 #define Serial robot_logger
@@ -171,6 +172,8 @@ CornerViewPhase cornerViewPhase = CORNER_VIEW_IDLE;
 bool cornerViewAttempted[OBSTACLE_SEAT_COUNT / 2] = {};
 uint8_t cornerViewStation = 0;
 uint32_t cornerViewPhaseMs = 0;
+bool cornerViewSensorPaused = false;
+uint32_t cornerViewSensorPauseMs = 0;
 PositionEstimate cornerViewOrigin;
 float cornerViewOriginEncoder = 0.0f, cornerViewReturnEncoder = 0.0f;
 float cornerViewDistanceMm = 0.0f, cornerViewMeasuredReverseMm = 0.0f;
@@ -2270,8 +2273,8 @@ bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
     return true;
 }
 
-void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly);
-void roundKnownCornerPairs(PathPoint *route, bool injectedOnly = false);
+void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours = false);
+void roundKnownCornerPairs(PathPoint *route, bool injectedOnly = false, bool mixedColours = false);
 
 void rebuildLivePath()
 {
@@ -2489,7 +2492,8 @@ void preserveLaterLapSeam(PathPoint *route)
 }
 
 bool laterLapRouteSafe(const PathPoint *route,
-                       float *minimumWall = nullptr, float *minimumPillar = nullptr)
+                       float *minimumWall = nullptr, float *minimumPillar = nullptr,
+                       uint32_t startedUs = 0, uint32_t budgetUs = 0)
 {
     if (minimumWall) *minimumWall=INFINITY;
     if (minimumPillar) *minimumPillar=INFINITY;
@@ -2500,6 +2504,7 @@ bool laterLapRouteSafe(const PathPoint *route,
     // substitute for motor/sensor tracking validation during the test laps.
     for (uint16_t i = 0; i < pathLength; ++i)
     {
+        if(budgetUs && uint32_t(micros()-startedUs)>=budgetUs)return false;
         const uint16_t previous = (i + pathLength - 1) % pathLength;
         const uint16_t next = (i + 1) % pathLength;
         const float heading = atan2f(route[next].y - route[previous].y,
@@ -2517,28 +2522,36 @@ bool laterLapRouteSafe(const PathPoint *route,
             Serial.println(i);
             return false;
         }
-        // Seat zero also supplies the complete field-wall geometry on empty
-        // tracks. No physical pillar is assumed there unless it is confirmed.
+        // Walls do not depend on the reference pillar. Compute them once per
+        // pose and retain the identical capsule distance for every pillar.
+        ObstacleClearanceSample reference{};
+        if(!calculateClearanceAtPose(seats[0],route[i].x,route[i].y,heading,reference) ||
+            !reference.valid || reference.wallMm<=OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM)
+        {
+            Serial.print("[LAPS] Route preflight rejected index/seat/wall/pillar=");
+            Serial.print(i);Serial.print("/0/");Serial.print(reference.wallMm,1);
+            Serial.print('/');Serial.println(reference.pillarMm,1);
+            return false;
+        }
+        if(minimumWall)*minimumWall=fminf(*minimumWall,reference.wallMm);
+        const float h=heading*PI/180.0f;
+        const float endX=route[i].x+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*cosf(h);
+        const float endY=route[i].y+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*sinf(h);
         for (uint8_t seatIndex = 0; seatIndex < OBSTACLE_SEAT_COUNT; ++seatIndex)
         {
-            if (seatIndex != 0 && !seats[seatIndex].confirmed)
-                continue;
-            ObstacleClearanceSample sample{};
-            if (!calculateClearanceAtPose(seats[seatIndex], route[i].x,
-                    route[i].y, heading, sample) ||
-                sample.wallMm <= OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM ||
-                (seats[seatIndex].confirmed &&
-                 sample.pillarMm <= OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM))
+            if(!seats[seatIndex].confirmed)continue;
+            const float gap=pointSegmentDistance(seats[seatIndex].x,seats[seatIndex].y,
+                route[i].x,route[i].y,endX,endY)-OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM-
+                OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+            if(!isfinite(gap) || gap<=OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM)
             {
                 Serial.print("[LAPS] Route preflight rejected index/seat/wall/pillar=");
-                Serial.print(i); Serial.print("/"); Serial.print(seatIndex);
-                Serial.print("/"); Serial.print(sample.wallMm, 1);
-                Serial.print("/"); Serial.println(sample.pillarMm, 1);
+                Serial.print(i);Serial.print('/');Serial.print(seatIndex);
+                Serial.print('/');Serial.print(reference.wallMm,1);
+                Serial.print('/');Serial.println(gap,1);
                 return false;
             }
-            if (minimumWall) *minimumWall=fminf(*minimumWall,sample.wallMm);
-            if (minimumPillar && seats[seatIndex].confirmed)
-                *minimumPillar=fminf(*minimumPillar,sample.pillarMm);
+            if(minimumPillar)*minimumPillar=fminf(*minimumPillar,gap);
         }
     }
     return true;
@@ -2547,7 +2560,7 @@ bool laterLapRouteSafe(const PathPoint *route,
 // Two confirmed end signs with the same passing colour need one continuous
 // straight bypass. Avoid returning to the centre between their tapers.
 // Official cards exclude a middle sign. O3 must retain independent geometry.
-void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)
+void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours)
 {
     if (sectionLayoutMode != OBSTACLE_SECTION_LAYOUT_OFFICIAL) return;
     for (uint8_t section=0; section<4; ++section)
@@ -2559,7 +2572,7 @@ void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)
             if (seats[first+side].confirmed && (!injectedOnly || seats[first+side].injected)) a=first+side;
             if (seats[first+4+side].confirmed && (!injectedOnly || seats[first+4+side].injected)) b=first+4+side;
         }
-        if (a<0 || b<0 || seats[a].red!=seats[b].red ||
+        if (a<0 || b<0 || (!mixedColours && seats[a].red!=seats[b].red) ||
             seats[first+2].confirmed || seats[first+3].confirmed) continue;
         const uint16_t ia=nearestPathIndex(baselinePath,seats[a].x,seats[a].y,0,pathLength);
         const uint16_t ib=nearestPathIndex(baselinePath,seats[b].x,seats[b].y,0,pathLength);
@@ -2581,7 +2594,7 @@ void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)
     }
 }
 
-void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)
+void roundKnownCornerPairs(PathPoint *route, bool injectedOnly, bool mixedColours)
 {
     // Two signs with the same passing colour at adjoining section ends need
     // one continuous corner. Summing two straight avoidance tapers can fold
@@ -2602,7 +2615,7 @@ void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)
                 nextSeat = nextFirst + side;
         }
         if (endSeat < 0 || nextSeat < 0 ||
-            seats[endSeat].red != seats[nextSeat].red)
+            (!mixedColours && seats[endSeat].red != seats[nextSeat].red))
             continue;
         uint16_t first = 0, last = 0;
         for (uint16_t i = 0; i < pathLength; ++i)
@@ -2646,7 +2659,7 @@ void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)
 // corner when the next section has a same-colour solitary middle sign.
 // Returning to the centre before taking the same side again wastes a turn.
 // Discovery/O3 geometry and all opposite-colour transitions stay independent.
-void carryKnownInnerLaneToMiddle(PathPoint *route)
+void carryKnownInnerLaneToMiddle(PathPoint *route, bool mixedColours = false)
 {
     if (sectionLayoutMode != OBSTACLE_SECTION_LAYOUT_OFFICIAL) return;
     for (uint8_t corner = 0; corner < 4; ++corner)
@@ -2663,7 +2676,7 @@ void carryKnownInnerLaneToMiddle(PathPoint *route)
             if (seats[nextFirst + 2 + side].confirmed) middleSeat = nextFirst + 2 + side;
         }
         if (endSeat < 0 || middleSeat < 0 ||
-            seats[endSeat].red != seats[middleSeat].red ||
+            (!mixedColours && seats[endSeat].red != seats[middleSeat].red) ||
             seats[nextFirst].confirmed || seats[nextFirst + 1].confirmed ||
             seats[nextFirst + 4].confirmed || seats[nextFirst + 5].confirmed)
             continue;
@@ -2706,9 +2719,11 @@ void carryKnownInnerLaneToMiddle(PathPoint *route)
     }
 }
 
-float laterLapBending(const PathPoint *route, float &length, float &peak)
+float laterLapBending(const PathPoint *route, float &length, float &peak,
+                     float *absoluteTurn = nullptr)
 {
     length=peak=0.0f;
+    if(absoluteTurn)*absoluteTurn=0;
     float bending=0.0f;
     for(uint16_t i=0;i<pathLength;++i)
     {
@@ -2720,6 +2735,7 @@ float laterLapBending(const PathPoint *route, float &length, float &peak)
         const float h1=atan2f(route[i].y-route[p].y,route[i].x-route[p].x);
         const float h2=atan2f(route[n].y-route[i].y,route[n].x-route[i].x);
         const float turn=wrap180((h2-h1)*180.0f/PI)*PI/180.0f;
+        if(absoluteTurn)*absoluteTurn+=fabsf(turn);
         const float ds=0.5f*(a+b);
         bending+=turn*turn/ds;
         peak=fmaxf(peak,fabsf(turn)/ds);
@@ -2906,6 +2922,228 @@ void planLaterLapSpeeds(const PathPoint *route)
     Serial.println(OBSTACLE_LATER_LAP_RESPONSE_S,2);
 }
 
+// Run the same quantized pursuit controller around the candidate before using
+// an optional shortcut. Wall geometry is sampled once per pose; other pillars
+// use the identical capsule distance directly, avoiding repeated wall work.
+bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t budgetUs)
+{
+    for(int perturbation=-1;perturbation<=1;++perturbation)
+    {
+        float h=connectorRouteHeading(livePath,0)*PI/180.0f;
+        float x=livePath[0].x-perturbation*10.0f*sinf(h);
+        float y=livePath[0].y+perturbation*10.0f*cosf(h);
+        h+=perturbation*PI/180.0f;
+        uint16_t index=0;
+        float previousForward[OBSTACLE_SEAT_COUNT];
+        for(float &value:previousForward)value=NAN;
+        uint8_t wraps=0;
+        bool completed=false;
+        float travel=0,speed=OBSTACLE_PATH_MAX_SPEED,acceleration=0,limit=0;
+        constexpr float dt=0.020f;
+        for(uint16_t step=0;step<6000;++step)
+        {
+            if(uint32_t(micros()-startedUs)>=budgetUs)return false;
+            const uint16_t previous=index;
+            index=nearestPathIndex(route,x,y,index,OBSTACLE_PATH_PROGRESS_WINDOW);
+            if(previous>pathLength*3/4 && index<pathLength/4 &&
+                travel>loopLengthMm*0.5f && ++wraps>=2){completed=true;break;}
+            ObstacleClearanceSample reference{};
+            if(!calculateClearanceAtPose(seats[0],x,y,h*180.0f/PI,reference) ||
+                !reference.valid || reference.wallMm<40.0f)return false;
+            const float endX=x+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*cosf(h);
+            const float endY=y+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*sinf(h);
+            for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+            {
+                if(!seats[seat].confirmed)continue;
+                const float gap=pointSegmentDistance(seats[seat].x,seats[seat].y,
+                    x,y,endX,endY)-OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM-
+                    OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+                if(!isfinite(gap) || gap<32.0f)return false;
+                // Witness correct passing once the complete steered footprint
+                // crosses the sign's transverse plane, not just the rear axle.
+                if(hypotf(x-seats[seat].x,y-seats[seat].y)>400.0f)continue;
+                const float sh=seats[seat].headingDeg*PI/180.0f;
+                float minForward=INFINITY;
+                float minSide=INFINITY,maxSide=-INFINITY;
+                for(int wheel:{-1,1})
+                {
+                    parking_start_footprint::Quad bodies[6];
+                    parking_start_footprint::robotQuads(x,y,h*180.0f/PI,wheel,0,bodies);
+                    for(const auto &body:bodies)for(const auto &p:body.p)
+                    {
+                        const float dx=p.x-seats[seat].x,dy=p.y-seats[seat].y;
+                        const float forward=dx*cosf(sh)+dy*sinf(sh);
+                        const float side=-dx*sinf(sh)+dy*cosf(sh);
+                        minForward=fminf(minForward,forward);
+                        minSide=fminf(minSide,side);maxSide=fmaxf(maxSide,side);
+                    }
+                }
+                if(isfinite(previousForward[seat]) && previousForward[seat]<=0 && minForward>0 &&
+                    (seats[seat].red ? maxSide>=-25.0f : minSide<=25.0f))return false;
+                previousForward[seat]=minForward;
+            }
+            if(y<-1100.0f &&
+                (!parking_start_footprint::safe(x,y,h*180.0f/PI,-1,false,20.0f) ||
+                 !parking_start_footprint::safe(x,y,h*180.0f/PI,1,false,20.0f)))return false;
+            float lookahead=OBSTACLE_LATER_LAP_LOOKAHEAD_MM;
+            if(nearCorner(baselinePath[index].distanceMm))lookahead*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
+            uint16_t target=index;float distance=0;
+            for(uint16_t k=0;k<pathLength && distance<lookahead;++k)
+            {
+                const uint16_t next=(target+1)%pathLength;
+                distance+=hypotf(route[next].x-route[target].x,route[next].y-route[target].y);
+                target=next;
+            }
+            const float dx=route[target].x-x,dy=route[target].y-y;
+            const float forward=dx*cosf(h)+dy*sinf(h);
+            const float curvature=2.0f*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1.0f,dx*dx+dy*dy);
+            const float requested=pursuitServoForCurvature(curvature);
+            if(!isfinite(requested) || forward<=1.0f)return false;
+            const float steering=clampFloat(requested,-OBSTACLE_MAX_PURSUIT_STEERING_DEG,
+                OBSTACLE_MAX_PURSUIT_STEERING_DEG);
+            const float k=pursuitCurvatureForServo(static_cast<int>(steering));
+            const int command=static_cast<int>(laterLapTrackingSpeed(
+                laterLapSpeedLimits[index],curvature,static_cast<int>(steering)));
+            // Same finite jerk/release/braking profile as drive_loop. A new
+            // lower target is not an instantaneous lower physical speed.
+            float stepMm=DriveProfile::advance(speed,acceleration,limit,command,dt,DEFAULT_ACCELERATION);
+            if(perturbation!=0)stepMm*=OBSTACLE_LATER_LAP_SPEED_TOLERANCE;
+            const float actualSpeed=stepMm/dt;
+            if(actualSpeed*actualSpeed*fabsf(k)>OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS)return false;
+            travel+=stepMm;
+            if(travel>loopLengthMm*2.5f)return false;
+            const float nextH=h+k*stepMm;
+            if(fabsf(k)>1e-6f){x+=(sinf(nextH)-sinf(h))/k;y+=(cosf(h)-cosf(nextH))/k;}
+            else{x+=stepMm*cosf(h);y+=stepMm*sinf(h);}
+            h=nextH;
+        }
+        if(!completed)return false;
+    }
+    return true;
+}
+
+float laterLapTargetTime(PathPoint *route)
+{
+    recomputeSpeedProfile(route);
+    planLaterLapSpeeds(route);
+    float seconds=0;
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        const uint16_t n=(i+1)%pathLength;
+        seconds+=2.0f*hypotf(route[n].x-route[i].x,route[n].y-route[i].y)/
+            fmaxf(1.0f,laterLapSpeedLimits[i]+laterLapSpeedLimits[n]);
+    }
+    return seconds;
+}
+
+// A lateral elastic line on the recorded route: retain the complete passing
+// plateaus, then connect them through free space towards the inner corridor.
+// There is no colour-pair restriction and no forced return to the centre.
+void shortenKnownInnerRoute(PathPoint *route,PathPoint *rollback)
+{
+    const uint32_t startedUs=micros();
+    const uint32_t budgetUs=OBSTACLE_LATER_LAP_INNER_PLAN_BUDGET_US;
+    memcpy(rollback,route,sizeof(PathPoint)*pathLength);
+    float oldLength,oldPeak,oldWall,oldPillar,oldTurn;
+    const float oldBending=laterLapBending(route,oldLength,oldPeak,&oldTurn);
+    if(!laterLapRouteSafe(route,&oldWall,&oldPillar,startedUs,budgetUs))return;
+    const float oldTime=laterLapTargetTime(route);
+    float bestTime=oldTime,bestLength=oldLength;
+    // Scratch storage is static: do not grow the main thread's stack on top
+    // of buildOptimizedPath's existing full-route rollback array.
+    static PathPoint best[OBSTACLE_MAX_PATH_WAYPOINTS];
+    struct Node {float nx,ny,fade,minimum,q,next;};
+    static Node nodes[OBSTACLE_MAX_PATH_WAYPOINTS];
+    memcpy(best,route,sizeof(PathPoint)*pathLength);
+    bool innerPass[OBSTACLE_SEAT_COUNT]={};
+    for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+        if(seats[seat].confirmed)innerPass[seat]=routeTurnSign*
+            targetLateralForSeat(seats[seat],optimizedClearanceForSeat(seat))>0;
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        const float h=baselinePath[i].headingDeg*PI/180.0f;
+        Node &node=nodes[i];node.nx=-sinf(h);node.ny=cosf(h);node.minimum=-INFINITY;
+        const float seam=fminf(baselinePath[i].distanceMm,loopLengthMm-baselinePath[i].distanceMm);
+        float fade=clampFloat((seam-400.0f)/200.0f,0.0f,1.0f);
+        for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+        {
+            if(!seats[seat].confirmed)continue;
+            const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,baselinePath[i].distanceMm);
+            const float distance=fminf(ahead,loopLengthMm-ahead);
+            if(innerPass[seat])
+            {
+                if(distance<=150.0f)node.minimum=routeTurnSign*
+                    ((rollback[i].x-baselinePath[i].x)*node.nx+(rollback[i].y-baselinePath[i].y)*node.ny);
+            }
+            else fade=fminf(fade,clampFloat((distance-150.0f)/200.0f,0.0f,1.0f));
+        }
+        node.fade=fade*fade*(3.0f-2.0f*fade);
+    }
+    constexpr float innerTargets[]={300.0f,240.0f,180.0f,120.0f,0.0f};
+    constexpr float weights[]={1,4,6,4,1};
+    for(float inner:innerTargets)
+    {
+        if(uint32_t(micros()-startedUs)>=budgetUs)break;
+        memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+        joinSameColourStraightEnds(route,false,true);
+        roundKnownCornerPairs(route,false,true);
+        carryKnownInnerLaneToMiddle(route,true);
+        preserveLaterLapSeam(route);
+        for(uint16_t i=0;i<pathLength;++i)nodes[i].q=
+            (route[i].x-baselinePath[i].x)*nodes[i].nx+(route[i].y-baselinePath[i].y)*nodes[i].ny;
+        for(uint16_t pass=0;inner>0 && pass<240;++pass)
+        {
+            if(uint32_t(micros()-startedUs)>=budgetUs)break;
+            for(uint16_t i=0;i<pathLength;++i)
+            {
+                Node &node=nodes[i];
+                float average=0;
+                for(int k=-2;k<=2;++k)
+                {
+                    const uint16_t j=(i+pathLength+k)%pathLength;
+                    average+=weights[k+2]*nodes[j].q/16.0f;
+                }
+                node.next=node.q+node.fade*(0.8f*(average-node.q)+0.0015f*(routeTurnSign*inner-node.q));
+                if(node.fade>0)node.next=routeTurnSign*fmaxf(routeTurnSign*node.next,node.minimum);
+            }
+            for(uint16_t i=0;i<pathLength;++i)nodes[i].q=nodes[i].next;
+        }
+        if(uint32_t(micros()-startedUs)>=budgetUs)break;
+        if(inner>0)for(uint16_t i=0;i<pathLength;++i)
+        {
+            const Node &node=nodes[i];
+            const float initial=(route[i].x-baselinePath[i].x)*node.nx+(route[i].y-baselinePath[i].y)*node.ny;
+            route[i].x+=node.nx*(node.q-initial);route[i].y+=node.ny*(node.q-initial);
+        }
+        float length,peak,wall,pillar,turn;
+        const float bending=laterLapBending(route,length,peak,&turn);
+        if(length>=oldLength-10.0f || peak>fmaxf(oldPeak,1.0f/250.0f)+1e-7f ||
+            turn>oldTurn+0.01f || bending>fmaxf(oldBending*1.30f,2.0f*PI/330.0f) ||
+            !laterLapRouteSafe(route,&wall,&pillar,startedUs,budgetUs) ||
+            wall<fmaxf(60.0f,fminf(oldWall,100.0f)) ||
+            pillar<fmaxf(40.0f,fminf(oldPillar,70.0f)))continue;
+        const float seconds=laterLapTargetTime(route);
+        if(seconds>bestTime-0.01f)continue;
+        if(!laterLapTrackedRouteSafe(route,startedUs,budgetUs))continue;
+        bestTime=seconds;bestLength=length;
+        memcpy(best,route,sizeof(PathPoint)*pathLength);
+    }
+    memcpy(route,best,sizeof(PathPoint)*pathLength);
+    if(bestTime<oldTime)
+    {
+        Serial.print("[LAPS] Inner route length_before_after_mm=");
+        Serial.print(oldLength,1);Serial.print('/');Serial.print(bestLength,1);
+        Serial.print(" target_s_before_after=");Serial.print(oldTime,3);
+        Serial.print('/');Serial.print(bestTime,3);
+        Serial.print(" planning_us=");Serial.println(uint32_t(micros()-startedUs));
+    }
+    else
+    {
+        Serial.print("[LAPS] Inner search retained checked shape planning_us=");
+        Serial.println(uint32_t(micros()-startedUs));
+    }
+}
+
 bool buildOptimizedPath()
 {
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
@@ -2958,7 +3196,10 @@ bool buildOptimizedPath()
         Serial.println("[LAPS] Later-lap shape rejected; using checked learned route");
     }
     if(sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL)
+    {
         smoothKnownLaterLapRoute(optimizedPath,beforeLaneCarry,routeWall,routePillar);
+        shortenKnownInnerRoute(optimizedPath,beforeLaneCarry);
+    }
     recomputeSpeedProfile(optimizedPath);
     planLaterLapSpeeds(optimizedPath);
     optimizedBuilt = true;
@@ -4051,6 +4292,7 @@ void updateCornerViewExtra(bool newFrame)
             return;
         }
         set_steering(cornerViewExtraSteering);
+        servo_disabled = false;
         set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S); return;
     case CORNER_VIEW_EXTRA_OBSERVE:
         holdCornerViewSteering(cornerViewExtraSteering);
@@ -4089,6 +4331,7 @@ void updateCornerViewExtra(bool newFrame)
             cornerViewPhase = CORNER_VIEW_EXTRA_BRAKE;
             cornerViewPhaseMs = millis(); return;
         }
+        servo_disabled = false;
         set_steering(cornerViewExtraSteering); set_speed(60); return;
     case CORNER_VIEW_EXTRA_BRAKE:
         holdCornerViewCentered();
@@ -4182,6 +4425,7 @@ void updateCornerView(bool newCameraFrame)
             const int steering=cornerViewStraightSteering(pose,-1);
             if (!cornerViewSteeredCommandSafe(pose,steering,-1))
             { lockCornerView("reverse command clearance"); return; }
+            servo_disabled = false;
             set_steering(steering);
         }
         set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S);
@@ -4268,6 +4512,7 @@ void updateCornerView(bool newCameraFrame)
             const int steering=cornerViewStraightSteering(pose,+1);
             if (!cornerViewSteeredCommandSafe(pose,steering,+1))
             { lockCornerView("return command clearance"); return; }
+            servo_disabled = false;
             set_steering(steering);
         }
         set_speed(60);
@@ -5362,6 +5607,20 @@ ObstacleSectionLayoutMode obstacle_path_section_layout_mode()
     return sectionLayoutMode;
 }
 
+void obstacle_path_sensor_hold()
+{
+    if (cornerViewPhase == CORNER_VIEW_IDLE || cornerViewSensorPaused) return;
+    cornerViewSensorPaused = true;
+    cornerViewSensorPauseMs = millis();
+}
+
+void obstacle_path_sensor_resume()
+{
+    if (!cornerViewSensorPaused) return;
+    cornerViewPhaseMs += uint32_t(millis() - cornerViewSensorPauseMs);
+    cornerViewSensorPaused = false;
+}
+
 void obstacle_path_reset()
 {
     telemetryRouteDirty=true;
@@ -5468,6 +5727,7 @@ void obstacle_path_reset()
     memset(discoveryStations, 0, sizeof(discoveryStations));
     cornerViewPhase = CORNER_VIEW_IDLE;
     memset(cornerViewAttempted, 0, sizeof(cornerViewAttempted));
+    cornerViewSensorPaused = false;
     cornerViewCanResume = false;
     cornerViewExtraUsed = false;
     cornerViewStoppedFrames = 0;

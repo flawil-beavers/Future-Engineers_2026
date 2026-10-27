@@ -10,6 +10,7 @@
 #include "serial_handler.h"
 #include "navigation_controller.h"
 #include "obstacle.h"
+#include "obstacle_path.h"
 #include "calibration.h"
 #include "position_estimator.h"
 #include "final_parking.h"
@@ -63,12 +64,14 @@ void loop()
     {
         stop(false);
         final_parking_sensor_hold();
+        obstacle_path_sensor_hold();
         run_telemetry_phase("gyro_hold");
         run_telemetry_tick();
         robot_logger.update();
         return;
     }
     final_parking_sensor_resume();
+    obstacle_path_sensor_resume();
     update_position();
     tof_pose_diagnostic_update();
     check_stalling();

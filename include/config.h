@@ -1133,7 +1133,7 @@ constexpr float OBSTACLE_LATER_LAP_CURVATURE_WINDOW_MM = 150.0f;
 constexpr float OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS = 180.0f;
 constexpr float OBSTACLE_LATER_LAP_PLAN_ACCEL_MMSS = 180.0f;
 // Allow motor-profile/servo response before counting useful braking distance.
-constexpr float OBSTACLE_LATER_LAP_RESPONSE_S = 0.35f;
+constexpr float OBSTACLE_LATER_LAP_RESPONSE_S = 0.40f;
 static_assert(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS > 0 &&
     OBSTACLE_LATER_LAP_SPEED_TOLERANCE >= 1 &&
     OBSTACLE_LATER_LAP_CURVATURE_TOLERANCE >= 1 &&
@@ -1209,6 +1209,9 @@ constexpr auto OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM = 5.0f;
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM = 40.0f;
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_MM = 30.0f;
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_RESERVE_LOSS_MM = 1.0f;
+// Optional recorded-map inner-line search must yield within one short control
+// interval. Keep the checked prior route if no better candidate finishes.
+constexpr uint32_t OBSTACLE_LATER_LAP_INNER_PLAN_BUDGET_US = 30000UL;
 // The first member of the worst adjacent outer-seat reversal needs more than
 // the former 160 mm reduced value. Log_84 measured -6 mm ToF wheel clearance
 // at 160 mm while about 242 mm remained to the opposite wall. Request 200 mm to

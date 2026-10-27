@@ -11280,3 +11280,144 @@ M7IDEincrementalSUCCESS,RAM433928/523624,flash514616/786432,SHA-256
 Next secure missing fourCW originalsFIRST, establish flashedidentity and actual
 GREEN stop/parking abort before specific intervention; normalphysicalacceptance
 pending. No dedicatedToFsweep, newpose/backlashcorrection or rollback.
+
+## 2026-10-27: authorized laps2/3 continuous inner-route optimization
+
+User requests efficient diagonal corner approaches/fewer centre returns with
+same speed settings; account for corner drift. No new physical batch received.
+Added OPTIONAL mixed-colour straight/corner joins and lateral elastic search,
+only in official recorded-map build. Discovery helper defaults remain same-colour;
+lap1/exit/vision/parking/speed constants unchanged. Preserve400mm seam,150mm
+outer passing plateaus; inner passes can move farther from sign. Accept>=10mm
+shorter AND>=.01s lower target time with same speed planner, bounded absolute
+turn/bending/peak curvature, full physical geometry and3CAD integer-controller
+rollouts(nominal,+/-10mm/+/-1deg paired initial errors),trackedwall40/pillar30,
+20mm parking bodyinflation and wholevehicle passing sides. Otherwise retain old
+checked shape. Targets300/240/180/120/0,240 symmetric cached lateral passes;
+no naive constant shift or altered discovery camera angle. Direct next-entry
+outerRED targeted example retains old route; next solitary-middle improves.
+Do not claim every colour transition or globally shortest path.
+Cooperative30ms optional budget returns best completed candidate/old shape,
+no added stop or sensor acquisition. Individual atomic steps can overrun;
+physicalplanning timing unverified. Static scratch+8448bytes avoids stackgrowth.
+Newplanning_us output for normal returned logs. Laterlap wall-once preflight
+identical capsule math,336frozen94b2e0d equivalence/minima checksPASS; retained
+route rejection diagnostics.4fakeclock/wrap fallback checksPASS.
+Final functional matrix2807/2807PASS,minwall80.281,pillar30.1851mm. Of2191
+uncapped598improve(CW295/CCW303),meanchanged298mm/lap,7.642%targettime gain,
+14.492%bending reduction. Acrossall81.336mm/2.086%;maxshortening1397.51mm.
+A CW405.27mm shorter,16.8514->15.3370s target;C CCWmirror193.27mm shorter,
+16.459->14.9284s. Same constants; severalexamplesfallbackunchanged. Comparison
+script now handles same-dynamics reference correctly, not legacyuncappedprofile.
+ExplicitCW/mirror outerend->nextmiddle:118.92mm/.5467s saved,absolute turn
+8.44865->8.04467rad,trackedCWpillar66.84->74.77mm. TargetedSVG/PNG reviewed.
+Dynamic21examples10/20/50msPASS,maxlateral.653264m/s2,maxspeed520.813mm/s,
+minpillar32.2399mm. Existing.8m/s2 budget and10%speed/15%curvature allowances
+unchanged; hypothetical.2s deviation=.5*.8*.2^2=16mm,not measured slip bound.
+Firstlap1736PASS,parking396+5registrationPASS. No further sweeps or physical
+extra motions. RulesPDFJan15/55pages+officialQArechecked,latestrowclarification
+Oct16,passing sides retained. Report+repro simulation/LATER_LAP_INNER_ROUTE_REVIEW_20261027.md.
+FinalM7IDEincrementalSUCCESS,RAM442376/523624,flash522696/786432,SHA-256
+0c54fbeacb6da5ce114a365e98433e8a0a4ff90ba422da3055e989d6a6202e3c. M4unaffected/notbuilt;no upload/commit/push,useruploads personally.
+Next normalCW/CCW3laps/save,archiveFIRST,verifyplanning_us/acceptedroute,
+realclearance/drift/lap times. Offlinefixtures evaluateallcandidates(micros0);
+onboard30ms budget may finishfewer, so modeled gain not promised physicaltime.
+Earlier4missingCWlogs still pending forGREENstop/finalparkingfailure.
+
+## 2026-10-27: whole-firmware review, remaining defects and inner-search regression
+
+Review only: HEAD 861ed8e plus staged inner-route work; no firmware edits,
+PlatformIO build, upload, commit or push. No new physical batch or USB available.
+Latest evidence remains 525--530 (529 explicitly an excerpt); all six hashes
+rechecked against simulation/evidence/parking_exit_diagnostics/README.md: match.
+The later four CW originals remain missing. Detailed findings, exact source
+hashes, seven failing seat arrays and next fixes are preserved in
+simulation/FULL_CODE_REVIEW_20261027.md. The prior inner-route report now links
+this superseding dynamic assessment.
+
+Fresh production geometry: 2807/2807 PASS; previous 21 dynamic examples PASS.
+Expanded actual-ramp 20 ms matrix: 7/2191 failures, versus 1/2191 with only
+shortenKnownInnerRoute disabled. Six NEW regressions: CW 116/129/139 and CCW
+395/399 pillar reserve 28.251--29.5479 mm below 30; CCW 548 lateral acceleration
+0.808221 m/s2 above 0.8. Pre-existing CW 154 remains 0.803892 m/s2. No modeled
+contact. Host searches all candidates; onboard 30 ms selection is unmeasured.
+Reproduce with simulation/review_later_lap_matrix_20261027.py after regenerating
+normal fixtures; its exit 1 is intentional. Working outputs stay ignored under
+local_workspace/code_audit_20261027/.
+
+simulation/review_runtime_edges_20261027.py executes original code fragments:
+corner reverse after stop(false) enables motor with servo still disabled
+(request 7 degrees, output 0); accepted-command restoration outputs 7. Normal
+path/final parking fixes remain valid; corner reverse/return and Open navigation
+still miss equivalent restoration. Actual drive_loop from rest, target 260,
+dt 819 ms produces profile 260 and virtual target distance 212.94 mm. Old logs
+have comparable gaps; their exact physical PID effect remains unproven.
+Actual mode_resume starts while logger busy; filename probing performs 535
+opens in one update with 534 existing files. Actual M4 I2C reports two complete
+bytes after data clock timeouts. Open corner debounce counts loop ticks rather
+than fresh ToF frames. Camera buffer ownership and queued gyro age are source
+risks without reproduced hardware faults. Dead helpers/constants are cleanup
+only. EXIT_TEST_ONLY=true does not hold when entry discovery is enabled;
+camera autostart affects only explicitly selected stationary mode.
+
+Next: fix accepted-command recovery, time-gap rebase and stopped USB coordination;
+align inner-route acceptance with actual target/ramp dynamics, reject six new
+bad candidates without blanket slowdown, handle old case 154 braking separately;
+then M4 I2C error propagation and fresh ToF debounce. Build only affected cores
+using IDE PlatformIO after firmware edits. No new global unmapped stop or HSV
+tightening; preserve route/braking/reversal/pose diagnostics. When missing logs
+arrive, archive original files FIRST, hash and track evidence/handoff, and
+identify the user-installed image before assigning physical causes.
+
+## 2026-10-27: authorized careful runtime and route corrections
+
+User authorized fixing the reproduced review defects; missing last four CW
+logs will follow later. No new physical batch, sensor sweep, upload, commit or
+push. Preserve original evidence through log 530 (529 is an excerpt). Detailed
+changes, reproducible tests and remaining limits:
+simulation/RUNTIME_AND_ROUTE_FIXES_20261027.md.
+
+Restored servo at all four accepted straight/parallax recovery commits and
+moving Open states; actual gyro holds freeze corner-recovery phase timers.
+Shared DriveProfile helper preserves the old normal ramp: 40000 comparisons
+at 1/10/20/50 ms, positive/negative targets and acceleration limits
+0/60/120/500/1000 match with zero speed difference. Restart/over-100-ms gap
+rebases virtual distance and integrals; no persistent new stop rule.
+USB start requests wait for saving and LOW/stop cancels them; no file I/O in
+speed-controlled driving. Four filename probes per update; failed-save RAM
+snapshot survives a subsequent clear/new run (bounded RAM can still overflow).
+Fresh Open corner votes use independent ToF sequences and confirmed side.
+
+M4 data/ACK timeouts discard the complete read transaction. Further verified
+upstream VL53L4CX unbounded address/empty-large-read loops; added bounded read/
+write transport for BOTH cores, two address attempts with transient recovery,
+exact byte counts and propagation of intermediate write failures. PlatformIO
+pre-script generates only adapted vendor I/O bodies under ignored
+local_workspace/generated_tof; no vendor/package-cache files edited and normal
+object/cache directories retained. Tests cover both actual generated wrappers,
+96-byte transfers, NACK/empty/short/partial/intermediate faults and recovery.
+
+Inner-candidate acceptance now uses the shared ramp, two laps and existing
+perturbed starts, 32-mm optional pillar floor and lateral budget. Same max
+520 target; curve response allowance .35 -> .40 s, no blanket straight slowdown.
+All 2191 layouts pass dynamic 10/20/50 ms:6573 PASS; worst lateral .796430 m/s2,
+minimum pillar 32.148 mm. Current/control 20-ms matrices both 2191 PASS versus
+previous 7/1 failures. Geometry2807 PASS; firstlap1736 PASS; parking1540 scenarios
+unsafe0, all990 known arrivals parked, plus46 boundary/5 quality PASS.
+42 segment-resume checks and prior gyro/connector negative controls PASS;
+runtime fault regressions PASS. Optional search budget/wrap and336 geometry
+equivalence checks PASS; targeted inner transition still saves118.92mm/.562s
+modeled target time. These are models, not measured physical clearances.
+
+Final IDE builds SUCCESS, both genuinely affected. M7 RAM442408/523624,
+flash524296/786432; binary SHA-256
+5542896c58ca0c36b2c389c0be2d63471b2a0dbeeb27a1cbedee4b44ab7b22d8.
+M4 RAM59768/294248, flash155328/1048576; SHA-256
+fbc3da65845172d9be1405ec56b626da1b716999ce2fd31e591a4c3a14057215.
+User must upload BOTH updated images; agent did not upload. M7 final rebuild
+includes the final shared headers (verified object timestamps newer than headers).
+Next normal CW/CCW validation with this image identity; archive incoming original
+logs FIRST, hash and track metadata/handoff before analysis. Camera thresholds,
+parking/exit segment geometry and their speeds unchanged. Live DMA ownership
+and queued gyro timestamp risks remain unproven topics; no speculative HSV
+tightening or global unmapped stop added. Preserve braking/reversal/pose diagnostics.

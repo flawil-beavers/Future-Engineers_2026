@@ -119,15 +119,15 @@ bool SoftwareI2C::writeByte(uint8_t value)
   return acknowledged;
 }
 
-uint8_t SoftwareI2C::readByte(bool acknowledge)
+bool SoftwareI2C::readByte(bool acknowledge, uint8_t &value)
 {
-  uint8_t value = 0;
+  value = 0;
   release(sda_pin_);
   for (uint8_t bit = 0; bit < 8; ++bit) {
     value <<= 1;
     delayMicroseconds(half_period_us_);
     if (!waitSclHigh())
-      break;
+      return false;
     if (digitalRead(sda_pin_) == HIGH)
       value |= 1;
     driveLow(scl_pin_);
@@ -138,10 +138,11 @@ uint8_t SoftwareI2C::readByte(bool acknowledge)
   else
     release(sda_pin_);
   delayMicroseconds(half_period_us_);
-  waitSclHigh();
+  if (!waitSclHigh())
+    return false;
   driveLow(scl_pin_);
   release(sda_pin_);
-  return value;
+  return true;
 }
 
 void SoftwareI2C::beginTransmission(uint8_t address)
@@ -187,8 +188,16 @@ size_t SoftwareI2C::requestFrom(uint8_t address, size_t length, bool stop_bit)
     return 0;
   }
 
-  for (size_t i = 0; i < length; ++i)
-    rx_buffer_[rx_length_++] = readByte(i + 1 < length);
+  for (size_t i = 0; i < length; ++i) {
+    uint8_t value;
+    if (!readByte(i + 1 < length, value)) {
+      // Discard this transaction; partial registers must not look complete.
+      rx_length_ = 0;
+      stopCondition();
+      return 0;
+    }
+    rx_buffer_[rx_length_++] = value;
+  }
   if (stop_bit)
     stopCondition();
   return rx_length_;

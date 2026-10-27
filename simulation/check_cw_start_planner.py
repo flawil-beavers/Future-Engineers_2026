@@ -51,6 +51,7 @@ constexpr float PI=3.14159265358979323846f;
 #include "run_telemetry.h"
 bool telemetryRouteDirty=false;
 #include "config.h"
+#include "drive_profile.h"
 #include "parking_start_footprint.h"
 #include "ackermann_kinematics.h"
 @@TYPES@@

@@ -34,6 +34,7 @@ static float debug_loop_time_max_us = 0.0f;
 static unsigned long debug_last_print_time = 0;
 static int pending_manual_speed_mm_s = 0;
 static bool obstacle_ready_led_on = false;
+static bool resume_after_save = false;
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
@@ -250,6 +251,10 @@ static bool start_mode(RobotMode mode)
 
 void mode_switch(RobotMode new_mode)
 {
+    if (new_mode == MODE_NONE) {
+        resume_after_save = false;
+        pending_mode = MODE_NONE;
+    }
     if (new_mode != MODE_OBSTACLE_CHALLENGE && obstacle_ready_led_on)
         set_obstacle_ready_led(false);
 
@@ -277,6 +282,7 @@ void mode_switch(RobotMode new_mode)
     // can request motion.
     if (new_mode == MODE_CAMERA_CALIBRATION)
     {
+        resume_after_save = false;
         pending_mode = MODE_NONE;
         stop(false);
         if (!start_mode(new_mode))
@@ -315,6 +321,14 @@ void mode_switch(RobotMode new_mode)
 
     pending_mode = MODE_NONE;
     set_obstacle_ready_led(false);
+    if (robot_logger.is_busy()) {
+        pending_mode = new_mode;
+        resume_after_save = true;
+        stop(false);
+        Serial.println("[MODE] Start queued until USB save finishes.");
+        return;
+    }
+    resume_after_save = false;
     // Hardware enable is mode-agnostic; the selected mode owns controller setup.
     system_enable();
     if (!start_mode(new_mode)) {
@@ -463,6 +477,11 @@ static ModeResult update_active_mode()
 
 void mode_update()
 {
+    if (resume_after_save) {
+        if (robot_logger.is_busy()) return;
+        resume_after_save = false;
+        mode_resume();
+    }
     const RobotMode updated_mode = current_mode;
     const ModeResult result = update_active_mode();
     if (updated_mode == MODE_NONE || result == MODE_RESULT_RUNNING)
@@ -494,6 +513,7 @@ void mode_update()
 
 void mode_pause()
 {
+    resume_after_save = false;
     if (current_mode != MODE_NONE) {
         const RobotMode paused_mode = current_mode;
         if(paused_mode==MODE_OBSTACLE_CHALLENGE)run_telemetry_finish("stopped","mode_pause");
@@ -522,6 +542,13 @@ void mode_resume()
     // Turn readiness feedback off at the switch event, before any controller
     // setup or motion can begin.
     set_obstacle_ready_led(false);
+    if (robot_logger.is_busy()) {
+        stop(false);
+        resume_after_save = true;
+        Serial.println("[MODE] Start queued until USB save finishes.");
+        return;
+    }
+    resume_after_save = false;
     system_enable();
 
     if (pending_mode == MODE_NONE) {
@@ -546,6 +573,7 @@ void mode_resume()
 
 void mode_stop_all()
 {
+    resume_after_save = false;
     set_obstacle_ready_led(false);
     stop_mode(current_mode);
     current_mode = MODE_NONE;

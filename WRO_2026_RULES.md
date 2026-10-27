@@ -1,5 +1,11 @@
 # WRO 2026 Future Engineers rules reference
 
+2026-10-27 inner-route review: canonical PDF and official Q&A checked again.
+The PDF remains January15,2026/55 pages; latest listed Future Engineers
+parking-row clarification remains October16. Recorded-map shortcuts retain
+the existing RED-right/GREEN-left whole-vehicle passing checks and all confirmed
+pillars. Inner-band preference never overrides a required passing side.
+
 2026-10-18 route/speed review: canonical PDF still identifies January 15, 2026,
 55 pages; local copy has SHA-256
 `c23ba063c548e74812ffd9ed580931b2d4264541261b5f8eaff643a1e3201043`.

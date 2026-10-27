@@ -4,6 +4,7 @@
  */
 
 #include "logger.h"
+#include "motor_control.h"
 
 #include <Arduino_USBHostMbed5.h>
 #include <FATFileSystem.h>
@@ -134,7 +135,9 @@ void USBLogger::buffer_char(char c)
 
 void USBLogger::clear()
 {
-    if (is_busy())
+    // A failed USB save leaves its snapshot in RAM. Starting another run must
+    // not discard that evidence just because the retry state machine is idle.
+    if (is_busy() || flush_target_length != 0)
         return;
 
     buffer_head = 0;
@@ -142,6 +145,7 @@ void USBLogger::clear()
     buffer_overflow = false;
     log_buffer[0] = '\0';
     session_file_num = -1;
+    next_probe_number = 1;
     session_filepath[0] = '\0';
     digitalWrite(PA_15, LOW);
 }
@@ -227,6 +231,7 @@ void USBLogger::restart_full_flush(const char *reason)
         fclose(active_file);
         active_file = nullptr;
     }
+    if (session_file_num > 0) next_probe_number = session_file_num + 1;
     session_file_num = -1;
     session_filepath[0] = '\0';
     flush_offset = 0;
@@ -269,6 +274,10 @@ void USBLogger::finish_attempt(bool success)
 void USBLogger::update()
 {
     update_terminal();
+    // File I/O may block in the USB stack even though our state machine yields.
+    // Defer it during any speed-controlled drive; a settled position hold can
+    // still save the completed parking run. Never interrupt an existing drive.
+    if (dc_state == DC_ENABLED) return;
     const unsigned long now = millis();
 
     switch (logger_state) {
@@ -338,19 +347,21 @@ void USBLogger::update()
 
     case LOGGER_OPEN_FILE:
         if (session_file_num < 1) {
-            int log_number = 1;
-            do {
+            for (uint8_t probes = 0; probes < 4; ++probes) {
                 snprintf(
                     session_filepath,
                     sizeof(session_filepath),
                     "/usb/log_%d.txt",
-                    log_number++);
+                    next_probe_number);
                 FILE *probe = fopen(session_filepath, "r");
-                if (probe == nullptr)
+                if (probe == nullptr) {
+                    session_file_num = next_probe_number;
                     break;
+                }
                 fclose(probe);
-            } while (true);
-            session_file_num = log_number - 1;
+                ++next_probe_number;
+            }
+            if (session_file_num < 1) return;
         }
 
         active_file = fopen(session_filepath, "a");

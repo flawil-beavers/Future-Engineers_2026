@@ -49,6 +49,6 @@ class SoftwareI2C final : public arduino::MbedI2C {
   bool startCondition();
   void stopCondition();
   bool writeByte(uint8_t value);
-  uint8_t readByte(bool acknowledge);
+  bool readByte(bool acknowledge, uint8_t &value);
   void recoverBus();
 };

@@ -21,6 +21,7 @@
 #include "config.h"
 #include "motor_control.h"
 #include "sensors.h"
+#include "runtime_safety.h"
 #include "logger.h"
 #define Serial robot_logger
 
@@ -73,6 +74,7 @@ bool nav_obstacle_mode = false;
 bool nav_soft_stop_started = false;
 bool nav_soft_stop_complete = false;
 uint8_t nav_corner_gap_samples = 0;
+RuntimeSafety::FreshSampleCounter nav_gap_confirm[TOF_SIDE_COUNT];
 float nav_wall_correction_resume_distance = 0;
 
 // PD Controller
@@ -227,31 +229,44 @@ void state_following()
   float wall_margin = nav_long_range_active ? 1500 : nav_wall_margin;
   bool beyond_blind_distance = nav_start_distance + blind_dist < get_distance();
   bool heading_plausible = fabs(gyro_error) < (nav_obstacle_mode ? 12.0f : 180.0f);
-  bool gap_seen = current_wall_distance > wall_margin && current_wall_distance > 0;
-  if (beyond_blind_distance && heading_plausible && gap_seen) {
-    if (nav_corner_gap_samples < 255) nav_corner_gap_samples++;
-  } else {
-    nav_corner_gap_samples = 0;
+  // Independent frames per side; one cached range is not several votes.
+  for (uint8_t side=0; side<TOF_SIDE_COUNT; ++side) {
+    TofDiagnosticSnapshot sample;
+    const TofSensor sensor=static_cast<TofSensor>(side);
+    const bool relevant=nav_following_wall==SIDE_UNKNOWN ||
+        (nav_following_wall==SIDE_LEFT ? sensor==TOF_LEFT : sensor==TOF_RIGHT);
+    const bool available=get_tof_diagnostic_snapshot(sensor,sample);
+    const bool valid=available && get_tof_distance(sensor)>0;
+    const float sideDistance=get_followed_wall_distance(
+        sensor==TOF_LEFT ? SIDE_LEFT : SIDE_RIGHT);
+    nav_gap_confirm[side].update(available ? sample.sequence : nav_gap_confirm[side].sequence,
+        valid && relevant && beyond_blind_distance && heading_plausible &&
+        sideDistance>wall_margin && sideDistance>0);
   }
+  nav_corner_gap_samples=nav_gap_confirm[0].count>nav_gap_confirm[1].count
+      ? nav_gap_confirm[0].count : nav_gap_confirm[1].count;
 
   uint8_t required_gap_samples =
       nav_obstacle_mode ? 4 : OPEN_CORNER_CONFIRM_SAMPLES;
   if (nav_corner_gap_samples >= required_gap_samples)
   {
+    const bool leftConfirmed=nav_gap_confirm[TOF_LEFT].count>=required_gap_samples;
+    const bool rightConfirmed=nav_gap_confirm[TOF_RIGHT].count>=required_gap_samples;
     nav_corner_gap_samples = 0;
+    for(auto &confirmation:nav_gap_confirm)confirmation.clearCount();
     if (nav_following_wall == SIDE_UNKNOWN)
     {
       // Searching for initial direction
       float dist_left = get_tof_distance(TOF_LEFT);
       float dist_right = get_tof_distance(TOF_RIGHT);
-      if (dist_left > wall_margin && dist_left > 0)
+      if (leftConfirmed && dist_left > wall_margin && dist_left > 0)
       {
         nav_following_wall = SIDE_LEFT;
         nav_turn_angle = 90;
         Serial.print("Dist Left: ");
         Serial.println(dist_left);
       }
-      else if (dist_right > wall_margin && dist_right > 0)
+      else if (rightConfirmed && dist_right > wall_margin && dist_right > 0)
       {
         nav_following_wall = SIDE_RIGHT;
         nav_turn_angle = -90;
@@ -324,6 +339,7 @@ void state_following()
   if (total_steering > 60) total_steering = 60;
   if (total_steering < -60) total_steering = -60;
 
+  servo_disabled = false;
   set_steering(total_steering);
 
   // An Ackermann-steered car needs a calm corner exit.  Keep the first part
@@ -345,6 +361,7 @@ void state_following()
  */
 void state_turning()
 {
+  servo_disabled = false;
   const float cornerSteering =
       nav_obstacle_mode ? OBSTACLE_CORNER_STEERING : 25.0f;
   set_steering(
@@ -388,6 +405,7 @@ void state_turning()
 
 void state_corner_reversing()
 {
+  servo_disabled = false;
   const float direction = (nav_turn_angle > 0) ? 1.0f : -1.0f;
   const float signed_overshoot =
       (get_angle() - nav_gyro_target) * direction;
@@ -420,6 +438,7 @@ void state_corner_reversing()
 
 void state_corner_aligning()
 {
+  servo_disabled = false;
   const float heading_error = get_angle() - nav_gyro_target;
   const float align_distance =
       fabsf(get_distance() - nav_corner_phase_start_distance);
@@ -541,6 +560,7 @@ void navigation_enable()
   nav_last_distance_error = 0;
   nav_last_gyro_error = 0;
   navigation_reset_filter();
+  for(auto &confirmation:nav_gap_confirm)confirmation=RuntimeSafety::FreshSampleCounter{};
   nav_searching_for_wall = false;
   nav_long_range_active = false;
 

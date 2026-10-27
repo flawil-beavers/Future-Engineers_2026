@@ -42,6 +42,7 @@ enum {DC_DISABLED, DC_ENABLED, DC_HOLDING, DRIVE_CRUISING,
       DRIVE_DECELERATING, DRIVE_ACCELERATING};
 constexpr int SERVO_CENTER=80, SERVO_MAX_ANGLE=140, SERVO_MIN_ANGLE=20;
 bool servo_disabled=false, low_speed_load_compensation_logged=false;
+bool drive_profile_restart_pending=false;
 int set_degree=0, dc_state=DC_ENABLED, target_speed=80, last_applied_drive_phase=0,
     drive_control_phase=0;
 float last_speed=0,current_speed=0,pid_integral=0,accel_pid_integral=0,

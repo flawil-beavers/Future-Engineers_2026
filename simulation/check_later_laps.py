@@ -31,7 +31,9 @@ bool optimizedBuilt=false,lapBoundaryPending=false,lapCountingArmed=false,laterL
 uint8_t completedLaps=0,runtimeLapTarget=3;bool finished=false;
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 float laterLapSpeedLimits[OBSTACLE_MAX_PATH_WAYPOINTS]={};
-void roundKnownCornerPairs(PathPoint *, bool injectedOnly = false);
+void joinSameColourStraightEnds(PathPoint *,bool,bool mixedColours=false);
+void roundKnownCornerPairs(PathPoint *, bool injectedOnly = false,bool mixedColours=false);
+uint32_t micros(){return 0;} // unlimited offline planning; budget faults tested separately
 bool plannedClearanceSnapshotValid[OBSTACLE_SEAT_COUNT]={};
 ObstacleClearanceSample plannedClearanceAtInjection[OBSTACLE_SEAT_COUNT];
 bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){return false;}
@@ -47,10 +49,11 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'float validatedClearanceForSeat(', 'float optimizedClearanceForSeat(',
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
-        'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly)\n{',
-        'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly)\n{',
+        'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
+        'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
         'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
+        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void shortenKnownInnerRoute(',
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)

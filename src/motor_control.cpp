@@ -8,6 +8,7 @@
 #include "runtime_safety.h"
 #include "ackermann_kinematics.h"
 #include "config.h"
+#include "drive_profile.h"
 #include "navigation_controller.h"
 #include "mode_manager.h"
 #include "logger.h"
@@ -251,6 +252,7 @@ static uint32_t low_speed_pulse_density_last_slot_us = 0;
 
 // Timing variables
 float last_loop_time = 0; // in s
+static bool drive_profile_restart_pending = true;
 float acc = DEFAULT_ACCELERATION;
 
 // Time tracking
@@ -692,67 +694,23 @@ void drive_loop()
 
   if (dc_state == DC_ENABLED)
   {
-    // A resumed forward command must never inherit enough negative ramp
-    // acceleration to make the speed profile briefly reverse (and vice versa).
-    if (target_speed > 0 && current_speed <= 0.0f &&
-        current_acceleration < 0.0f)
-        current_acceleration = 0.0f;
-    else if (target_speed < 0 && current_speed >= 0.0f &&
-             current_acceleration > 0.0f)
-        current_acceleration = 0.0f;
-
-    active_acceleration_limit = target_speed == 0
-        ? fminf(SOFT_STOP_DECELERATION_MMSS, acc)
-        : constrain(
-              fabsf((float)target_speed) * PROFILE_ACCEL_PER_TARGET_SPEED,
-              MIN_PROFILE_ACCELERATION_MMSS,
-              acc);
-    const float speed_error = target_speed - current_speed;
-    // Reduce acceleration early enough that it can reach zero at the target
-    // under the gentler release jerk: delta_v = a^2 / (2 * jerk).
-    const float allowed_acceleration = sqrtf(
-        2.0f * DRIVE_ACCEL_RELEASE_JERK_MMSSS * fabsf(speed_error));
-    const float desired_acceleration = fabsf(speed_error) > 0.5f
-        ? copysignf(
-              fminf(active_acceleration_limit, allowed_acceleration),
-              speed_error)
-        : 0.0f;
-    const bool releasing_acceleration =
-        current_acceleration * desired_acceleration < 0.0f ||
-        fabsf(desired_acceleration) < fabsf(current_acceleration);
-    const float active_jerk_limit = releasing_acceleration
-        ? DRIVE_ACCEL_RELEASE_JERK_MMSSS
-        : DRIVE_JERK_LIMIT_MMSSS;
-    const float max_acceleration_change = active_jerk_limit * last_loop_time;
-    current_acceleration += constrain(
-        desired_acceleration - current_acceleration,
-        -max_acceleration_change,
-        max_acceleration_change);
-
-    float next_speed =
-        current_speed + current_acceleration * last_loop_time;
-    const bool crossesForwardTarget =
-        target_speed > 0 && next_speed < 0.0f;
-    const bool crossesReverseTarget =
-        target_speed < 0 && next_speed > 0.0f;
-    const bool crossesZeroTarget = target_speed == 0 &&
-        ((current_speed > 0.0f && next_speed < 0.0f) ||
-         (current_speed < 0.0f && next_speed > 0.0f));
-    if (crossesForwardTarget || crossesReverseTarget || crossesZeroTarget)
-        next_speed = 0.0f;
-    if ((speed_error > 0.0f && next_speed >= target_speed) ||
-        (speed_error < 0.0f && next_speed <= target_speed) ||
-        fabsf(speed_error) <= 0.5f)
+    if (drive_profile_restart_pending || last_loop_time > 0.100f)
     {
-      current_speed = target_speed;
-      current_acceleration = 0.0f;
+      // Elapsed time before a new command is not commanded motion. After a
+      // delayed active loop, retain measured motion but discard artificial
+      // catch-up distance/integral. Do not introduce a persistent driving hold.
+      target_distance = current_distance;
+      current_speed = drive_profile_restart_pending ? 0.0f :
+          (isfinite(measured_speed) ? measured_speed : 0.0f);
+      current_acceleration = commanded_acceleration = 0.0f;
+      pid_integral = accel_pid_integral = last_error = 0.0f;
+      cruise_candidate_start_us = 0;
+      speed_measurement_ready = false;
+      drive_profile_restart_pending = false;
+      return;
     }
-    else
-    {
-      current_speed = next_speed;
-    }
-
-    target_distance += current_speed * last_loop_time;
+    target_distance += DriveProfile::advance(current_speed,current_acceleration,
+        active_acceleration_limit,target_speed,last_loop_time,acc);
   }
 
   pid_speed();
@@ -773,6 +731,7 @@ void stop(bool hold)
   last_speed = current_speed;
   if (!hold)
   {
+    drive_profile_restart_pending = true;
     dc_state = DC_DISABLED;
     pid_integral = 0;
     accel_pid_integral = 0;
@@ -805,6 +764,7 @@ void stop(bool hold)
 
 void set_speed(int speed)
 {
+  if (dc_state != DC_ENABLED) drive_profile_restart_pending = true;
   if (speed == -1)
   {
     speed = last_speed;
