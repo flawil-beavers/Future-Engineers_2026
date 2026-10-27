@@ -346,3 +346,122 @@ including failed/disconnected transfers; its stream sequence/error counter
 restarts too. The original unpaused-copy prototype stalled after one image and
 was replaced. This is diagnostic tooling,
 not a change to perception thresholds or competition driving.
+
+
+## 2026-10-26: CW failure investigation, paired colours and cyclic image shifts
+
+User explicitly requests a joint camera test and confirms USB connected,
+physical drive enable OFF. Existing stationary c0/c400/c600/camshot/camseat only;
+no movement or upload during this baseline. Running firmware associated with
+CW518--520 build `Oct_26_2026_17_45_26`; binary not read back. Sensor parameters,
+HSV thresholds, image capture and distance constants were not changed between
+these baseline captures. Frame counters restart after each stopped export.
+All payloads153600bytes and CRC/footer verified; original serial captures copied
+unchanged. RGB565/JSON/PNG alongside are derived with the existing decoder.
+The unrelated current-room baseline stays local only and is not a calibration
+reference or curated image. Clock dates use client receipt date2026-10-26.
+
+User reports initial RED400mm centred lens-to-front-face, GREEN swapped at
+identical position, then GREEN600mm and RED swapped there without moving robot.
+First RED01/02 pair has a112px cyclic horizontal displacement; first setup
+alignment history is not independently confirmed. User resets once with setup
+unchanged; three following RED images stablex151/foot134. User subsequently
+returns GREEN to400mm and explicitly says the robot was moved/rotated. Those
+three `green_new_pose` images are a new scene, not an identical-pose colour
+comparison. Their01/02 pair contains a second64px cyclic displacement. No camera
+rewiring or mount adjustment was requested/performed by the assistant.
+
+| Original `.serial.bin` stem | Bytes | SHA-256 | Payload CRC32 | Sequence / exposure |
+| --- | --- | --- | --- | --- |
+| `20261026_green_new_pose_400mm_01` | 155527 | `825a354941a37d90dc1ba34c9913a3e57f29b3739129b5d2f8855fbb01abaf6e` | 4167846399 | 1812 / 360 |
+| `20261026_green_new_pose_400mm_02` | 154847 | `0b0a8e8f85bb60746a50cec11f4e02cccb0f95666b9dc89ca5c062a5d831b1fb` | 1395633053 | 2185 / 360 |
+| `20261026_green_new_pose_400mm_03` | 154714 | `1e078c5ccbe3a25961726a4ea0bc9f919bc65e0fc2b6ae86462413afbfede7d7` | 3624812770 | 46 / 360 |
+| `20261026_green_same_pose_400mm_01` | 155164 | `29422f13c570323a680eab94b0b5c36af6832149f96d95c28b6066ef74cead4d` | 887280250 | 1283 / 360 |
+| `20261026_green_same_pose_600mm_01` | 155628 | `afa7785679e63f87f823515f4776aee5ec85d7f67e0d87b665eeaa7c2e398675` | 3988170823 | 1581 / 360 |
+| `20261026_red_after_reset_01` | 155186 | `86d1348f7797c1922829b34e322270b0800d05dbf47c6bfe969e0a844e39fc88` | 2657976696 | 169 / 360 |
+| `20261026_red_after_reset_02` | 154544 | `1fc6d0b50d734b8bae9c98fc39af83888b5c7eb48a186efe3983c6e32ad91cd2` | 3162191111 | 46 / 360 |
+| `20261026_red_after_reset_03` | 154546 | `79a3d639cf89edc0af51254e84ec88cbe60f033ed587f4f044c3670f3284c3bc` | 2180996190 | 46 / 360 |
+| `20261026_red_center_400mm_01` | 155254 | `5a698269d0f49abee11cde5c1d3e48d6093ae5971f936ca5124216de7777555d` | 4120432228 | 2139 / 360 |
+| `20261026_red_center_400mm_02` | 155198 | `1dfa6abd588f98784e4f746e69b594fa538168a172f57a9965f5b6b47617aa9e` | 219789785 | 662 / 360 |
+| `20261026_red_center_400mm_03` | 155456 | `4c9eaa940f5b0d0a1890f6f96ce73e5d60e111ef3aa56d7b237e32d99e37bda5` | 1065857921 | 3547 / 360 |
+| `20261026_red_center_400mm_04` | 154556 | `fdff6a80f2041fdf0905d2ad3c4f67c62c1ff43765f6cc810de142522beac4b2` | 847386996 | 46 / 360 |
+| `20261026_red_center_400mm_05` | 154556 | `b7fb33de5dec7f2e440f673f4ea9c05dda41721ffa6048769372d1bd63110c8b` | 3770952643 | 46 / 360 |
+| `20261026_red_center_400mm_06` | 154556 | `9adddb5da91c3bf001ab7247dcba2aa6d788f2f124af6f308fa79381b15f42b8` | 1172861079 | 46 / 360 |
+| `20261026_red_same_pose_600mm_01` | 156545 | `48a0c536e7d1b98c809656719a9e94f0f5a16b1b55c8704eddc47ef189fdd833` | 2833421424 | 3868 / 360 |
+
+Stationary diagnostic originals (unchanged bytes):
+
+| File | Bytes | SHA-256 |
+| --- | --- | --- |
+| `20261026_green_new_pose_400mm_stationary.txt` | 3815 | `a5f22796cb269e0023c1a4247319f2bdafdf062caab241bdb5de8c1ff9125ade` |
+| `20261026_green_same_pose_400mm_camseat.txt` | 3469 | `db2f9d1b3ff3a725d9a1632a102a0db31d8407a824cb33835fafcedf8dc8720d` |
+| `20261026_green_same_pose_400mm_stationary.txt` | 2987 | `0245649c0bba3793b890838d435b534cada63528f5884cf69c04b72d6fdd0a92` |
+| `20261026_green_same_pose_600mm_stationary.txt` | 2993 | `06eef5aa0e4b9346630d2e1c2026d0cc7eac6ff662c363692f61e3a612fa6e5e` |
+| `20261026_red_center_400mm_stationary.txt` | 2467 | `391edf0d1725c33782a56600f7d2df96c25bb8141a9ec38a5c22c65ef03f1b96` |
+| `20261026_red_same_pose_600mm_stationary.txt` | 2450 | `63482f2c1e3859a1ac8a79c781c9bfd84f5b8f4ec82804f760a3446403ac2510` |
+
+Measured findings: stable RED400mm currently maps to~429mm; paired GREEN400mm
+~445mm and both colours600mm~801mm. GREEN primary-valid counts across56fresh
+frames:53/56 at400mm,40/56 at600mm; primary width fluctuates with background.
+Existing local GREEN fallback detects10/10fresh400mm frames,including one
+rejected primary frame (6.7..6.9ms). Different-pose400mm GREEN maps~375mm and
+also fluctuates in width. Do not apply a two-point distance fit across those
+scenes without resolving the imaging/pose limitations. Offline58px/30000mm*px
+fit is provisional only; production remains78px/24000mm*px.
+
+Replay current production selection/range and numerical cyclic comparison:
+`simulation/review_camera_capture_20261026.py`; output stays below
+`local_workspace/camera-test-20261026/replay/`. Cyclic comparison ROI y85..225:
+RED112px shift reduces mean absolute RGB difference41.1251->4.2733;
+GREEN64px35.9192->2.9654. Correct CRC establishes USB payload integrity, not
+correct spatial ordering before export. No definitive wiring/sensor/DMA root
+cause or universal detection acceptance is claimed. New read-only VSYNC/DMA
+phase diagnostic source is being prepared separately, not present in these
+baseline captures. See `simulation/RETURNED_RUNS_518_520_CAMERA_REVIEW.md`.
+
+
+## 2026-10-26: phase diagnosis, recovery and final calibrated firmware
+
+Same later GREEN400mm view; user confirms robot was moved/rotated before the
+new-pose series. Do not treat it as a same-pose colour pair. All acquisition
+stationary with physical drive enable OFF. Original wire bytes retained;
+payload CRC/footer verified. PNG/RGB565/JSON companions derive from each wire.
+Read-only syncdiag firmware SHA-256:
+`c755856649b925430ee707ce0608760a03c887eebfbf8ca059da5cf0671ecb25`.
+Autosync firmware with original range model:
+`0ef8961d33b0489200e3d2f7159c6513efaf8f8e0ca669010c7b88cba51354f7`.
+Final firmware, successfully uploaded M7:
+`53a7bedc5e7b65849c267c568231a645db5a153d4e62b526793dcb1be1f77328`.
+
+| Capture | Original wire bytes | SHA-256 | Payload CRC32 |
+| --- | --- | --- | --- |
+| `20261026_green_autosync_400mm_01` | 156483 | `9feb09f28e5b9ac95ec6fbf2ab6966f38aace7cf0ce4c430bd488bdb88c00b92` | 3399921030 |
+| `20261026_green_autosync_400mm_02` | 155072 | `54b4a59c71e53062a7143dbf75c5271afa35c854b5ddd0e474885eee32bc4aee` | 201010645 |
+| `20261026_green_autosync_400mm_03` | 155072 | `eeae7f597f29fa10fcbacac059505a902f54c0d6b07496c97e9a241cc3efd550` | 4062597942 |
+| `20261026_green_final_400mm_01` | 156088 | `d05db71ea0486b0d238b8b7c84e0fe07f4a4b4ad900c1927c61ef4b5009331fe` | 2295131275 |
+| `20261026_green_syncdiag_400mm_01` | 155848 | `5d111be8e10a26f28a19f61ebc6ceb68b3661937349ba9a673155997b8e1e0cd` | 1307626593 |
+| `20261026_green_syncdiag_400mm_02` | 155426 | `aac676865c3b6523879f946c4a12112f89fd58830f19eb60f6402321a2967e61` | 4093283151 |
+
+| Original diagnostic file | Bytes | SHA-256 |
+| --- | --- | --- |
+| `20261026_green_syncdiag_400mm_stationary.txt` | 3126 | `40649471fdb365fecab1aea73cd3816c6e8abf1dee9148d8e98130b31a64b0da` |
+| `20261026_green_autosync_400mm_camseat.txt` | 3027 | `0e16e92e2767686956e7ca0f238f037efba4def1cec5245593c6c6a7452d27de` |
+| `20261026_green_autosync_initial_stationary.txt` | 5187 | `de8fab1781393d34d1c58a430904d2d0be175db010ec9fe9e225e840da58cbc7` |
+| `20261026_green_final_400mm_camseat.txt` | 3222 | `33a4233f8c003fc386ba23ca2ba391f2749c961a04b2508c04d4c5f43980fc37` |
+| `20261026_green_final_400mm_stationary.txt` | 3289 | `e48b19dbaf94c618d0c324f4214c005d940c55065a4bd44ad266208a480f97d0` |
+
+Diagnostic image phase38392 versus38400 corresponds to16px cyclic displacement:
+ROI RGB difference13.9393 becomes2.1040 after the matching shift. Final capture
+records automatic recovery count1,last fault38392,clean phase38400,max service7us.
+Following stationary telemetry records count2,last fault38395,clean38400,
+max service8us; stream spacing76.49ms,capture_errors0. Final local GREEN check
+10/10 candidates,8/10 primary-valid; ROI6.666..6.723ms. Final image exposure1080,
+then720 and360 in telemetry: this includes settling/background changes,not a
+controlled exposure-only comparison. Foreground includes the operator.
+
+Final range model52px/33600mm*px supersedes the baseline78/24000 model above.
+Five fitted references400/600mm have maximum replay error26.328mm versus200.698mm
+with the legacy model; these are training references,not independent accuracy
+proof. Final new-view400mm telemetry estimates373.4..373.5mm. Two actual live
+recoveries support acquisition recovery; moving-run reliability,phase latency
+effects and geometric seat association still need normal-run acceptance.

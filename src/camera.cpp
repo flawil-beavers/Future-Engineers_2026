@@ -129,6 +129,50 @@ bool CameraSystem::capture()
     const uint32_t serviceStartedUs = micros();
 #if CAMERA_ASYNC_CAPTURE_ENABLED
 #if CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    if (resyncPending)
+    {
+        if (!camera.continuousStopReady())
+        {
+            lastServiceTimeUs = micros() - serviceStartedUs;
+            if (lastServiceTimeUs > autoResyncMaxServiceUs)
+                autoResyncMaxServiceUs = lastServiceTimeUs;
+            return false;
+        }
+        // CAPTURE is already clear: this finalization does not wait for a
+        // sensor frame. The ordinary main loop ran throughout that wait.
+        if (camera.stopContinuous() != 0 ||
+            camera.startContinuous(frameA, frameB) != 0)
+        {
+            lastServiceTimeUs = micros() - serviceStartedUs;
+            if (lastServiceTimeUs > autoResyncMaxServiceUs)
+                autoResyncMaxServiceUs = lastServiceTimeUs;
+            return false;
+        }
+        acquiredFrameSequence = 0;
+        previousFrameCompletedUs = 0;
+        captureStartedUs = micros();
+        resyncPending = false;
+        ++autoResyncCount;
+        lastServiceTimeUs = micros() - serviceStartedUs;
+        if (lastServiceTimeUs > autoResyncMaxServiceUs)
+            autoResyncMaxServiceUs = lastServiceTimeUs;
+        return false;
+    }
+    CameraSyncDiagnostics sync;
+    camera.continuousSyncDiagnostics(sync);
+    if (sync.badPhaseStreak >= 3)
+    {
+        autoResyncLastWords = sync.wordsRemaining;
+        camera.requestContinuousStop();
+        resyncPending = true;
+    }
+    // Two consecutive matching frame boundaries enclose one spatially whole
+    // image. Keep malformed buffers out of vision, without a driving hold.
+    if (resyncPending || sync.goodPhaseStreak < 2)
+    {
+        lastServiceTimeUs = micros() - serviceStartedUs;
+        return false;
+    }
     FrameBuffer *completedFrame = nullptr;
     uint32_t sequence = 0;
     uint32_t frameCompletedUs = 0;
@@ -297,6 +341,15 @@ uint32_t CameraSystem::getCaptureErrorCount() const
     return camera.continuousErrorCount();
 #else
     return 0;
+#endif
+}
+
+void CameraSystem::getCaptureSyncDiagnostics(CameraSyncDiagnostics &out) const
+{
+#if CAMERA_CONTINUOUS_CAPTURE_ENABLED
+    camera.continuousSyncDiagnostics(out);
+#else
+    out = CameraSyncDiagnostics{};
 #endif
 }
 

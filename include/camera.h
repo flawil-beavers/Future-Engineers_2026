@@ -46,6 +46,10 @@ public:
     uint32_t getLongFrameIntervalCount() const;
     uint32_t getDiscardedFrameCount() const;
     uint32_t getCaptureErrorCount() const;
+    void getCaptureSyncDiagnostics(CameraSyncDiagnostics &out) const;
+    uint32_t getAutoResyncCount() const { return autoResyncCount; }
+    uint32_t getAutoResyncLastWords() const { return autoResyncLastWords; }
+    uint32_t getAutoResyncMaxServiceUs() const { return autoResyncMaxServiceUs; }
     uint16_t getExposureLines();
     uint32_t getLastServiceTimeUs() const;
     uint32_t getCompletedFrameCount() const;
@@ -73,6 +77,10 @@ private:
     uint32_t completedFrameCount = 0;
     uint32_t acquiredFrameSequence = 0;
     uint32_t discardedFrameCount = 0;
+    bool resyncPending = false;
+    uint32_t autoResyncCount = 0;
+    uint32_t autoResyncLastWords = 0;
+    uint32_t autoResyncMaxServiceUs = 0;
 
     FrameBuffer& frameForIndex(uint8_t index);
 

@@ -10672,6 +10672,7 @@ any brake_not_settled/scan/entry rejection. Archive unchanged complete originals
 with firmware identity/hashes/physical reports before analysis. No dedicated
 ToF sweep, arbitrary-placement physical grid, extra movement or pause requested.
 
+
 ## 2026-10-18: authorized first-lap geometry correction
 
 After the read-only first-lap audit, user authorized its correction. First-lap
@@ -10716,3 +10717,566 @@ start,GREEN joins and same-colour corners, through final parking. Use normal
 save; report actual contact/clearance and guarded stops, then archive complete
 original logs with firmware identity/hashes before analysis. No dedicated ToF
 sweep, arbitrary-placement grid, extra movement or pause requested.
+
+## 2026-10-26: returned CW/CCW/CW/CW batch, logs508--511
+
+User reports:508CW stops after start;509CCW also stops after start;510CW all
+driving works except final parking;511CW touches front parking barrier with
+LEFT front wheel (clarified during review). Contact instant not identified.
+All four complete originals captured unchanged from source before analysis in
+simulation/evidence/parking_exit_diagnostics/, with receipt-date20261026 names;
+USB filesystem dates2098 are invalid. SHA-256 matches source bytes:
+508cw 5c46c575e32dcf127baa9bb9a4fabd739e22aedd2a20df263c9558d192b36232;
+509ccw 14338878c0aaf21bf6408100500fddc8293af7225e3d559c9a528a22f8b735ed;
+510cw 4bba445ecff125c1758a70aa3d817fb8f42ea2ab96b43d1cf7035a1f75341c71;
+511cw a063008e7ea19574bf60ffcbf0175af723bcbff9978cb63d29a86aa7fe88f78c.
+Evidence README records portable filenames/bytes/reports. Parking marker
+Oct_18_2026_20_08_55,connector Oct18_2026_20:08:41; consistent with last candidate
+markers,not installed-binary/hash proof. Reviewed checkout94b2e0d. No firmware
+or calibration edits/build/upload; analysis-only docs and replay script added.
+
+508:connector preflight passes; actual pose139.91,-1062.61,123.66deg requests
+-42.030deg at t138187,42deg runtime gate stops motor. Target still129.67mm ahead;
+not target-behind. About14mm waypoint distance/18deg tangent error. CAD target
+replay matches all batch steering within0.009deg; legacy connector analyzer
+uses old bicycle mapping and rejects the new model,so use new batch replay.
+Nominal connectors for508/510 and arbitrary0.8..1.2curvature-factor probes all
+pass:these ideal models do not reproduce physical deviation. One gyro restart
+before508 connector motion; its causal contribution is unproven. Keep42deg gate.
+
+509:edge/wall localization appliesXY -38.6/-11.1mm,result356.2,-1232.6,358.4deg.
+Exact source replay rejects footprint at84+8mm braking endpoint,+1deg budget,
+5mm body reserve. SuppliedY+1mm passes this rounded-pose check; near boundary,
+not validated1mm remedy or physical pose accuracy. No scan movement follows.
+
+510:RUN_LAP58.080/20.403/20.047s,98.530s start through three laps; ceiling520
+logged. Physical driving successful per user; no recognition-rate proof.
+Final parking abort133.774s from start,35.244s after lap3. Wall registration
+Y=-25.4mm changes aligned approachY-1207.0 to-1232.4 before scan. First short
+marker-like returns occur while line-heading/y gate is unmet; phase0 persists.
+Later wall readings293..313 vs expected257..269 often exceed25mm residual gate.
+Scan phases1/2/3 first appear nearX461/443/397,then remain3 toX-132.6; no second
+marker/capture/entry. Likely first physical marker missed during line alignment;
+exact return identities not independently established. Five gyro report
+timeouts/restarts during parking;following~1.6s poll gaps are not proof of the
+original timeout cause. Preserve sensor health/quality gates.
+
+511:after segment4,estimated-vs-nominal XY disagreement20.2mm/heading16.62deg.
+At t20929/21132,source polygon replay overlaps LEFT front wheel with front/
+movable barrier for242.5mm gap;nominal247.5 consumes5mm reserve without physical
+polygon overlap. No equivalent sampled overlap in508/509/510. Gap/true pose
+unknown;supports physical report,not independent contact time/depth. Segment5
+watchdog logs9.6mm progress/1001ms,target80,measured12.9,DC144.6 and calls
+mode_pause:Manual disable text is generic here,not proof of a user button press.
+
+Details:simulation/RETURNED_RUNS_508_511_REVIEW.md;reproduce with
+simulation/review_returned_runs_508_511.py. Reports/generated C++/manifest stay
+ignored in local_workspace/batch_20261026_508_511/. Existing batch analyzer
+refreshed129complete files/130sessions,including pose/brake/reversal and ToF
+sensing-fan assessment. No stable new servo-neutral estimate;no raw RGB frames.
+
+Next corrections in priority order:front-left swept exit reserve against511
+while retaining508/509/510;post-wall-registration line acquisition and complete
+two-marker scan against510 plus separate gyro stream investigation;then robust
+508 connector deviation and509 start-reference envelope with all safety gates.
+No further physical run requested before corrections. Later use normal runs
+and normal save;no dedicated ToF sweep,extra movement,pause or placement grid.
+Evidence,README,handoff,review and replay script are tracked/staged in Git.
+Source,working-tree and indexed log bytes/SHA-256 match exactly;existing -text
+attributes preserve originalCRLF. No commit/push authorized or performed in
+this analysis session. Unrelated docs/CODE_ERKLAERUNG_DE.md appeared during the
+session and was left untouched/un-staged.
+
+## 2026-10-26: authorized fixes for508--511, new M7 candidate
+
+User requested implementing the fixes and a working version. Implemented M7
+changes against the archived batch;no new physical evidence received. Original
+four logs and indexed bytes/hashes are unchanged. No upload,commit or push.
+
+508:bounded runtime horizon extension25mm steps,maximum250mm,trigger>38deg.
+Accept only initial command<=38deg AND full remaining production CAD rollout
+with all existing footprint/pillar/steering/forward/travel/terminal gates.
+Retain42deg runtime rejection when no checked alternative exists. Recorded
+failure pose plus26 XY/heading variants all recover with checked rollouts.
+
+509:first-edge reverse target360->350mm within existing localization movement;
+longest safe scan arc84..68mm selected in2mm steps before movement. All trials
+retain5mm body,+/-1deg heading,+8mm braking and hidden-pillar preflight. No
+estimator-only pose shift. Measured pose translated by actual reference change
+and26 variants pass; camera colour acquisition itself unchanged/unproven.
+
+510:register wall once,then regain scan line before passing markers. New states
+FP_SCAN_ALIGN_DRIVE/BRAKE appended17/18 preserve prior telemetry numbers.
+Use outward free corridor;bounded reversals aroundX900..1080 when needed,
+<=4reversals/18s excluding gyro holds. Every command gets existing clearance
+forecast;every reversal waits for measured standstill. All new states share
+finite/gyro health gate. No marker/gap/wall-quality thresholds weakened.
+
+511:five segments retained;first four distances20/25/20/90 ->28/34/28/80mm;
+gyro final alignment120..220mm unchanged,nominal diagnostic target155->170mm.
+CW live current-pose footprint check before steering preload or motion keeps
+5mm barrier-face reserve and holds on invalid footprint. This is not a contact
+sensor or a proof against unknown pose error.256independent physical-model
+cases pass across both directions/gap extremes,+/-3mm XY,+/-1deg,curvature
+factor0.8..1.05,0/4mm initial straight travel after steering changes. Old route
+fails74;24cases using actual508/510/511 field-start estimates also pass. Broader
+unmeasured error ranges are not certified. Servo centre/tyre LUT unchanged.
+
+Final source checks:27connector+27CCWscan+256exit+24measured starts pass;
+4complete scan-registration cases with+/-25.4mm Y,150mm X bias and1.6s gyro
+pause pass. CW8943,CCW4158+33returns+135prefix,later-lap2807,2400start footprint
+comparisons pass. Parking396/396+5registration pass. Broader1540/1540safe outcomes:
+990known arrivals park;unknown errors88park/44stop;absolute starts112park/
+248stop;other-section40,sensor-fault16,wrong-gap2 all safely reject. Boundary46,
+quality5,braking78 and servo retain/replan+negative control pass. No modeled
+contact/false containment in delivered test matrices. Temporary unsuccessful
+geometry/alignment trials were superseded;their ignored working files are not
+the delivered firmware. Reports/commands/limits:simulation/FIXES_508_511.md;
+new source-extracted regressions check_batch_508_511_fixes.py and
+check_scan_registration_alignment.py. Generated search/fixtures/reports stay
+ignored below local_workspace/fix_508_511/ and existing regression folders.
+
+Final IDE-managed incremental giga_r1_m7 SUCCESS:RAM433816/523624,
+flash508624/786432,firmware SHA-256
+1136d2b5b97ae4a7a697726004b5b553a6defb52f5e02d81a186afd462723c97.
+M4 consumers/protocol unchanged,not built;existing compiler warnings remain.
+Gyro/SPI report-timeout root cause is not established or claimed fixed;stop/
+fresh-report recovery through new alignment is tested. Real contact clearance,
+camera discovery and complete physical success need normal-run acceptance.
+Next owner uploads onlyM7,performs normal CW/CCW complete runs and normal save,
+reports wheel/pink contacts,departure holds,scan completion/containment and gyro
+restarts. Archive complete new originals with firmware identity and reports.
+No dedicated ToF sweep,extra test movement/pause or arbitrary-placement grid.
+
+
+## 2026-10-26: returned CW512--514 and follow-up candidate
+
+User reports512 missed GREEN at3/4lap;513 could not exit;514 missed GREEN in
+section after start then RED contact. Complete original logs archived unchanged
+as simulation/evidence/parking_exit_diagnostics/20261026_log_512_cw.txt through
+20261026_log_514_cw.txt. Bytes/SHA-256, respectively:
+84732/078f39fe83bb7a44d7c3e331c4eafd060207ea0e723c1a5a25f84e42a61d954b;
+13729/55335769760eb6a2fc9b0106cf4e2a5e43f31a39546af071072f8064727a2252;
+70622/17cfea0b6c7199a6c8967b6bd5c026722f1316f04cfaf68554497eaa51a73ddd.
+Manifest README has physical reports; receipt date used, source clock2098 invalid.
+All turn=-1, parking buildOct_26_2026_16_57_33, exit targets28/34/28/80;
+installed binary not read back. RUN_END truncated=0, not full-rate image evidence.
+
+512 CLEAR precedes late GREEN23 injection at estimated1008/-57; stop near1210/
+-415.513 guard exit_swept_footprint_abort in reverse3, start393.3/-1360/180,
+outside old Y test range. During steering preload encoder shifts47.55->42.35mm,
+measured-57.68mm/s at cmd0; chassis travel/backlash attribution unproven.
+514 rejected low49x159 GREEN bottom238 still allows S1station1 CLEAR. RED
+latches ambiguous seat11 at547mm, snap137; closer projections favor10 and are
+rejected as opposite_confirmed. Physical RED seat/absolute pose unmeasured.
+Detailed engineering findings and limits:simulation/FIXES_512_514.md.
+
+Candidate now keeps separate valid RED/GREEN components alongside largest raw
+regions; one shared unchanged acquisition shape gate in obstacle_blob_validation.h.
+Synthetic real-Vision tests prove a larger invalid component no longer masks a
+smaller disconnected pillar; no claim this uniquely explains unavailable images.
+Unassociated low upright colour vetoes EMPTY even with disputed bearing.70mm
+rail ambiguity band applies at all ranges and to GREEN fallback. Near unassigned
+valid object commands zero speed,400mm plus real low-foot requirement so distant
+edge-clipped synthetic170mm placeholders alone cannot stop it. No HSV widening.
+Exit firstfour30/36/26/84mm; gyro final alignment unchanged. Require measured
+<=5mm/s before releasing brake/changing steering (dwell+2.5s bounded stop), and
+200ms quiet dwell after preload before capturing the next distance baseline.
+CW5mm-face current-pose guard retained; CCW reason/diagnostics unchanged.
+
+New production-source regressions:6camera selection,12logged perception,
+2304exit-model cases and10brake/preload transitions all pass. Exit matrixboth
+turns/gap242.5,252.5;X+/-5,0;Y-5,+5,+8 from nominal;heading+/-1;0/4mm initial
+straight;0.8/1.05 curvature independently in firstfour stages,fifth reusesfirst.
+Previous candidate fails22 in same matrix. Old508--511 tests27+27+256+24 pass;
+CW8943,CCW4158+33+135,laterlaps2807,layout/join173 and archived GREEN/RED checks
+pass. These are bounded simulations,not arbitrary-pose/contact/perception proof.
+Pose/reversal/braking reports local_workspace/fix_512_514/pose/ regenerated;
+all-archive laptop ToF fan report now132complete files/133sessions. No new
+sensor reads,movements or pauses requested for sensing analysis.
+
+Final IDE-managed incremental M7 SUCCESS,RAM433856/523624,flash509792/786432,
+firmware SHA-256 80c3f34f49cde0ad5590b31e850ec2d1b499b936050b95638548034cf5fe25ab.
+M4 consumers/protocol unaffected,not built. No upload,commit or push. Original
+logs,README,this handoff and new source/tests/report staged/tracked. All three
+source/disk/index byte hashes identical; manifest/handoff contain no machine
+absolute paths. Staged whitespace check passes with original CRLF permitted.
+Next:upload M7,normal complete CW acceptance targeting all three reported faults,
+then normal CCW mirror acceptance and usual saves. Confirm early GREEN bypass,
+correct RED rail,exit wheel/pink clearance and final parking; archive originals.
+Unrecorded full images,unknown pose/slip/compliance and gyro hardware root cause
+remain limitations; ambiguous perception may still hold. No100percent claim.
+
+
+## 2026-10-26: returned CW518--520; camera diagnosis and calibrated M7 installed
+
+User reports CW1 exited/held before start RED,CW2 looked out/held,CW3 missed
+RED/GREEN/held. Substantive source-run order518/519/520 matches those reports;
+complete ancillary515--517 have0mm travel,no direction/build diagnostic and
+are not substituted as those three runs. All six originals copied unchanged
+into simulation/evidence/parking_exit_diagnostics/ with receipt-date filenames.
+CW for515--517 is batch context only,direction unverified. Bytes/SHA-256:
+515: 889/afc8057b0b279099cb8c07f2078d83fd3b02133561ff50d7d66e60a1b65d8679;
+516: 888/115698349db564e91b3a744d65b705f758d3877dfd57540fc1034c12f53089a1;
+517: 887/b3d26a306fb01326513e543360811a25c99786e5916cda5a1c02135f0c5bd047;
+518: 85526/9c77a3161e674346997d01483f4650dca510e9669ba7f444ebdcb01d0a0f42ae;
+519: 50289/bd96a993dc37ed501052923a8608fe680a1ccad51926a811df0c5845875e7463;
+520: 122889/bacc04ed965a632e3395282aae2d68bd60aa892e6e564c55ddf1df721ce0c563;
+518--520 turn=-1,buildOct_26_2026_17_45_26,targets30/36/26/84;installed binary
+not read back.518:123 valid RED projection records all outside_snap. Projected
+outer start seat5 is excluded in official inner-row mode even at100mm snap
+error. Camera sees RED; legal-seat/pose/range association rejects it.519 exit
+completes but scout UNKNOWN locks drive.520 valid GREEN remains unassigned;
+perception hold expires but new close-unmapped reason overwrites hold_expired,
+suppressing the existing checked corner-view recovery. Concrete introduced
+regression; corrected only reason preservation,no new gates/threshold changes.
+Source-extracted tests6camera+15perception+2304exit+10settling pass.
+
+Stationary camera test explicitly requested; user confirms USB connected and
+physical drive enable OFF. User places paired RED/GREEN at400mm then600mm,
+lens-to-front face under normal field lighting. User resets once; later moves
+and rotates robot before GREEN400mm repeat. That repeat is named new_pose,
+not a same-pose colour pair. No autonomous motion/ToF sweep requested.
+21 complete field-image wire captures plus derived companions and diagnostic
+originals archived in simulation/evidence/camera_diagnostics/; README records
+bytes,SHA-256,CRC,firmware and setup. Initial room baseline stays local/private.
+RED initial112px cyclic displacement: RGB difference41.125->4.273 aftershift;
+new-pose GREEN64px35.919->2.965; syncdiag16px13.939->2.104 matches8DMAwords.
+IRQ remainder38392 vs38400 aligns with observed16px displacement. This supports
+acquisition-phase involvement,not a definitive wiring/sensor root cause.
+
+Driver caches VSYNC/DMA phase; publish only after2clean boundaries.3successive
+bad phases request end-of-frame stop; main loop polls without waiting,then
+restarts. No vehicle stop/new route guard. Transient bad sample followed by
+good boundaries does not restart. CameraSystem recovery counters persist over
+stopped exports; per-stream phase stats reset on restart. IRQ-latency effects
+under driving load remain unaccepted.17source-extracted register/state tests
+and5wire/legacy-protocol tests pass; archived/synthetic GREEN/RED checks pass.
+
+Original model78px/24000mm*px estimates~801mm at actual600mm for both colours.
+Final52px/33600mm*px fit uses5representative400/600mm observations across2views;
+maximum fitted-reference error26.328mm vs200.698mm legacy. Reproducible source
+replay:simulation/review_camera_capture_20261026.py. Fitted references are not
+held-out accuracy proof; user-reported distances not independently surveyed.
+GREEN primary varies with merged background; existing local seat fallback10/10
+in each of3stationary checks,including primary rejects. Final primary8/10.
+No HSV/shape loosening; correct projected seat remains necessary.
+
+Successful IDE-managed M7 builds/uploads only; M4 consumers/protocol unaffected:
+read-only syncdiag SHA-256
+c755856649b925430ee707ce0608760a03c887eebfbf8ca059da5cf0671ecb25;
+autosync with old range
+0ef8961d33b0489200e3d2f7159c6513efaf8f8e0ca669010c7b88cba51354f7;
+FINAL INSTALLED calibrated M7
+53a7bedc5e7b65849c267c568231a645db5a153d4e62b526793dcb1be1f77328.
+Final RAM433920/523624,flash511184/786432. Reason-only1f6cf395 build was not
+separately uploaded. No M4 build/upload,no commit/push,no driving commands.
+
+Final live capture records1automatic resync,lastbad38392,cleanphase38400,
+maxservice7us; following original telemetry records2resyncs,lastbad38395,
+clean38400,maxservice8us,76.49ms intervals,capture_errors0. Thus actual live
+stationary recovery observed twice. Final GREEN range373.4..373.5mm at reported
+400mm; fallback10/10,ROI6.666..6.723ms. Exposure settles1080->720->360 and final
+image includes operator; not controlled exposure-only comparison or driving
+acceptance. Details:simulation/RETURNED_RUNS_518_520_CAMERA_REVIEW.md.
+
+Next:normal complete CW acceptance then CCW mirror acceptance; save normally.
+Observe early RED/GREEN seat association,unnecessary holds,front-wheel/pink
+clearance and final parking. Archive complete original logs and physical
+reports; inspect phase recovery under load. No dedicated ToF sweep/movements.
+Do not claim100percent reliability or arbitrary-pose parking; legal-seat
+projection,background-dependent primary detection and real driving remain
+limitations. Evidence/index byte verification and tracking recorded below.
+
+Final archival verification:95camera files match original working exports,
+repository disk and Git index byte-for-byte;6logs515--520 match original USB,
+disk and index. Raw camera JSON now -text alongside TXT to preserve metadata
+bytes. Evidence manifests,handoff and source/tests are staged/tracked; no
+machine-specific paths in new documentation,staged whitespace check passes
+allowing original CRLF. Source replay includes all21field images and passes
+the5reference40mm budget. No commit/push; unrelated output/ left untouched.
+
+## 2026-10-26: returned CW521--522; discovery recovery investigation
+
+Full saved originals secured unchanged in simulation/evidence/parking_exit_diagnostics/
+and hashes verified against USB after temporary removal/reconnection. Read before
+copy was a process error called out by user: always secure originals FIRST.
+521:78189bytes/SHA-256 f1c899ab429ca8655a866b2d4a009e9432e748312e164f8d64e9d1f2d9bc0791;
+522:196322bytes/SHA-256 92c4297dab21f8c6021bdd8d5e86fdafe1576ad3431368155cc014fbcbaad115.
+BothCW,buildOct_26_2026_21_02_12,lastuploaded53a7bedc...;installedflashnotreadback.
+521 user:odd firstcorner,back/forward then outer-row GREEN contact. GREEN7
+confirmed during reverse;returned128.2mm to old stop pose,then stall.522user:
+repeatedstops,heldnearGREENthirdsectionafterstart;loggedS3station2holdexpires
+100834ms,expectedranges208/216below230localviewmin,rawGREENfoot238/rightedge.
+BothRUN_ENDtruncated0;522savedfilecomplete but LOG BUFFER OVERFLOW means lost
+telemetry. No driving camera resync counters available. No dedicatedToFsweep.
+Current fix/test work in progress:checked rejoin from reverse observation pose,
+same bounded view recovery at middle/end stations,and remove independent
+unassigned-blob motor stop while retaining station UNKNOWN holds/CLEAR vetoes.
+Original parking/braking/pose/reversal diagnostics retained. Exact final build,
+tests,tracking verification and next acceptance steps must be appended below.
+
+Completed corrections:remove extra unassigned-blob motor stop,retain UNKNOWN
+station holds/CLEAR vetoes. Enable same bounded swept view recovery at all12
+stations. After resolution,rebase within8preceding points and join from current
+stopped view only after700mm/5mm CAD pursuit preflight with30mm front/rear reserve;
+if needed extend same swept reverse40mm within220mm limit,never drive untested
+return towards pillar. Ordinary forward progress/lap counting unchanged.
+Replace active-path VISION spam with160maximum compact1Hz DRIVE_CAM records,
+including phase/resync/errors; no sensor reads/extra motion. This mitigates
+522logoverflow. Exact changes/limits:simulation/FIXES_521_522.md.
+
+Production-source tests:rejoin437checks/0failures,all216view scenarios accepted;
+CW/reflected pass-side geometry,both possible finalGREENrows,XY+/-5mm/yaw+/-1deg.
+521late returned pose fails30mm reserve,recordedscanpose passes.522inner-row
+hold geometry itself can pass; missing noncorner observation recovery explains
+terminalhold. Source state25pass;512batch6camera+12retainedperception+2304exit+
+10settlingpass;archivedGREEN/REDpass;knownmapfirstlap868CW+868CCWpass,
+minwall65.327/pillar47.620mm. Existing exit analyzer processed2originals with
+1complete nonoverflow aggregate;no neutral/backlash compensation. No camera
+resync counts in returned runs;root cause of physical acquisition shift remains
+unproven under driving load. FixtureCLEARstates/slip limits explicit in report.
+
+FINAL built M7 SHA-256
+6a07252e8f9523ca3b7c663fa378a2db61b4b2732e6729d4cc69fddc661e9a82;
+IDE-managed incrementalbuildSUCCESS,RAM433928/523624,flash513320/786432.
+M4 consumers/protocol unchanged,not built. USER WILL UPLOAD personally;agent
+did NOT upload or command motion. Last agent-installed firmware remains53a7bedc
+until user upload confirmation/newbuild evidence. No commit/push.
+Next:user uploadM7,normal completeCW/save/report,copy originals FIRST then
+analyze;confirm GREENouter bypass,repeatedstops,recovery and finalparking,
+then normalCCWmirroracceptance. No dedicatedToFsweep or extra test movements.
+
+## 2026-10-26: CCW523--524 archived FIRST; third report currently missing
+
+User asks archive/latest diagnosis:CCW1and3held on exit;CCW2exits but user stood
+in way,so second INVALID driving acceptance. Both available originals copied
+unchanged before analysis and USB/disk SHA checked:
+523availablefile38605bytes/SHA3250deee29e6d1757b10d777ddb2974eff8a858abcb301b6a21a9f7052ac2e1c;
+524completefile55647bytes/SHA8b58668e1f2051e3bfd38c17e0a6095b1af2344dc81e6325e58333da90e3de21.
+Portable evidence in simulation/evidence/parking_exit_diagnostics/.523has no
+RUN_END/manual-stop tail and is named20261026_log_523_ccw_excerpt.txt;the whole
+available source file is preserved,not passed off as a full run.524hasRUN_END,
+truncated0,nooverflow. BothCCWturn1/buildOct_26_2026_21_02_12,olderthan6a07252e
+candidate;no confirmation newerfirmwareuploaded,noinstalledflashreadback.
+No525onstick;user says third may be unsaved. Asked for normal RAM-log save if
+noreset/newrun since third. Do not attribute first-run cause to missingthird.
+Read-only analysis underway;no firmware edits/build/upload/motion commands.
+
+Completed read-only review:simulation/RETURNED_CCW_523_524_REVIEW.md.523exit
+diagnostics complete26519ms/75samples,thenstartseat5station2 UNKNOWN twice,
+samepose261.1,-1210.5,41.8;explicitDiscoveryunresolvedafterretry motorlock.
+PredictedGREENcenter95.37pxvslogged17then35--36;localfallbacksearch+/-18px
+around95 misses persistent mismatch,logsno_silhouette. GREENpixelsarepresent.
+PrimaryminX/maxX/rejection/fullimage absent:exact primary rejection and origin
+of projection mismatch not proven. Conditional edgeforward170→ray191.6 gives
+pairmidlinelateral52.0inside70ambiguityband;unclippedfoot190→ray274.4 gives129.5
+outside. Do not present missingedgecondition as measured hardware/rootcause.
+524GREEN5confirms,connectorcompletes,error18.8mm/14.8deg;subsequentstallinvalid
+becauseoperatorobstruction,asreported. Bothexitdiagnosticscomplete/notoverflow;
+existinganalyzer2sessions,2rear-motionresiduals3.05--3.51mmwithinuncertainty,
+no pose/backlash/neutral changes. Generatedreportslocal_workspace/ccw_523_525/.
+User confirms robotreset/newrun since third;missingRAMlogcannotbeassumed
+recoverable,no525found. Third failure remains reportonly,causeunknown.
+No firmware edits/build/upload/motioncommands thissession. Next:investigate
+CCWstart distinct-view retry and primaryrejection/edge-groundrange evidence;
+6a07252e normal-route recoverydoesnotclaim tofixthisparking-entrytimeout.
+Actualinstalledversionmustbeconfirmed;archive nextnormalrun FIRST,noToFsweep.
+
+## 2026-10-26: CW525--527 repeated GREEN contacts; originals secured FIRST
+
+Three complete originals in simulation/evidence/parking_exit_diagnostics/,
+USB/disk SHA verified before analysis:
+52563707bytes/37da5a65521b318fa03e301ae5c4b9403158f9ec4deea99aba7dc433ab960a22;
+52664235bytes/fd6f894d79c516036f43b353281819dc8f118345503bc96ccc63ed06c0213883;
+52768595bytes/e261e80eaa1df8f0d198329cb8b6d37fcf2e882b1fdd67f5559cd9dc0bfbc5cf.
+User:all3CW straightintoGREENaftercorner,samebehavior. AllGREEN7confirmed,
+resolvedviewresumeindex16,thenstallindex28/260mm/s. RUN_ENDtruncated0,nooverflow.
+Immediatelyafternewblockingrejoinpreflight:gyro poll gaps819/812/814ms.
+Code:loopgap canmakegyro unhealthy;mainstop(false)disablesservo;normalpath
+set_speedrestoresmotorbutnotservo. This is a new untested actuator-resume
+interaction;stationary CAD-only preflight tests missed it. Fix underway.
+BuildidentityCORRECTION:__DATE__/__TIME__are perobject inincrementalbuild.
+Parkingheader21:02doesNOTprove old wholefirmware;route21:34:48/newDRIVE_CAMand
+resume-from-viewprove newerroute in525--527,compatible6a07252e candidate,
+notflashreadback. Earlier523--524identity statements basedonlyparkingheader
+are weaker than stated;those lacknewrouteevidence,exactwholefirmwareuncertain.
+
+Completed fix:wall/corner calculation deduplicated once per front/rear capsule,
+samepillarpointsegment math/possible seats/30mmreserve/700mmhorizon/5mmsteps.
+Fullforecastwallcalls6768→282;host3557checksPASS including2904pose-equivalence
+checks and216previousuncertainviewscenarios. ActualMCUtimepending,nextnormal
+logprintscheck_us. No guaranteed runtime timing inferred fromoperationcounts.
+Successful normal-route steeringcommit nowrestoresservo_disabled=false AFTER
+rejectingguards;mainstillrequiresfreshhealthygyro beforecallingroute. This
+repairsstop(false)→freshgyro→set_speedmotorrestartwhilefrozenservo state.
+Newcheck_gyro_path_servo_resume.py usesactualmainhold/motor/commitbodies;
+fixedsequencePASS,removingrestorationreproducesmotoron/frozenservo(exit11).
+Originallogs lackservoenable/PWM/one-loopgyrohealth:individual unhealthyloop
+is inferred,not directly measured. NewboundedDRIVE_CAM addscommands/enable/pose.
+Runtime safety suitePASS,connectorservoresume+negativecontrolPASS,25discovery
+statesPASS. Updatedexistingparkingpausefixture scanAlignStartMs declaration/
+clockassertions only;no productionparking timing edit. Exit analyzerall3saved
+originals complete/untruncated diagnostic streams;rear-markerresidualswithin
+existinguncertainty. No neutral/backlash/pose compensation,noToFsweep.
+Report:simulation/FIXES_525_527.md. M7IDE-managedincrementalSUCCESS,
+RAM433928/523624,flash513768/786432,firmwareSHA-256
+3c32252fb12c7f7afda474d717aa117a1377b1edaa2a2896ed3eb9991cda6559.
+M4unaffected,notbuilt. NOagentupload;useruploads personally aspreviouslychosen.
+Next:userflashM7,normalCW/save/report,archiveFIRST;verifycheck_us/gyrohealth/
+steeringenableandGREENbypass,thenfullcourse/parkingandCCWmirroracceptance.
+No newstop/HSV/range thresholds. Physicalacceptancepending;no100percentclaim.
+
+## 2026-10-26: CCW528--530 archived FIRST; start approach investigation
+
+User:all3CCWfail,first/third odd drivenarc;frontGREENcanonlyinner,requests
+consider more reverse for easier view. Secured unchanged before analysis:
+52843794bytes/69186f1022677f4d33c4eecd3163af2ff106c913914a89c7afd51a66f5931689;
+52935823bytes/547721e6da8648d3e37ef5bad51df86ecf99de45905be5de54c23f6358dda4e7;
+53044143bytes/a1a7c351b0adbd21d4fae24e060e3d8a51dd89cbf9251659f64a224e63050bad.
+Portable simulation/evidence/parking_exit_diagnostics/.528/530RUN_ENDtruncated0,
+nooverflow.529entireavailablefilebutnoending/RUN_END,archivedwith_excerpt.
+AllCCW.528/530GREEN5confirms;connector headingovershoots135.68/144.33deg,
+then trackingrejectsteering43.247/42.007 atindex10/23or24. Bothmultiplegyro
+pollgaps216--392ms fromconnector rollouts/horizonupdates.529primary+samepose
+retryUNKNOWN/no_silhouette. Mappingalreadyexcludesouterparkingrow;don'tforce
+arbitraryGREENbackground toseat5. ReturnedDRIVE_CAM lacks3c32252e steering/
+enable/pose extension;exactwholeimageunverified. No newfirmwareidentityclaim
+fromunchangedparkingobject21:02. Investigation/fix inprogress.
+
+Completed:simulation/FIXES_528_530.md. ConfirmedinnerGREEN5alreadyused in528/530;
+failuresafterrecognition,not justification toforceanyrawGREENtoseat.529still
+same-poseUNKNOWN. Connectorrollouts/horizonupdates cause216--392ms pollgaps;
+optimize identical walls oncepercapsule and skipparkingSAT onlywhenquadwholly
+northofpiecesendingy=-1300. Sameclearance/steering/mergechecksretained.
+CCWentryadaptive270..350 in20mmsteps(up to80extrareverse). Purefullbody/wheel
+parking sweep uses84arc+8braking,X/Y8mm,heading1deg,bodymargin5;deepstartfallback
+350 retained,thenexistingfullwall/pillarpreflight/shorterarcstillapplies.
+Selectwhilebrakingatfirstedge,noextrasensorreads. Fixed270trialfails363/4158,
+NOTdelivered;adaptive4158/4158+33returns+135prefixPASS. CW8943PASS;52920SAT
+equivalencedecisions+4returned/fallbackchecksPASS. Returned3entryY/headings
+select270;view~310--330mmnearcentre ispredicted,notphysicalacceptance.
+NewPATHcontrol_revision=20261026_ccw_adaptive_view_servo_resume. Retainfresh-
+gyroservoresumeandboundedsteer/enable/posediagnostics from525--527. OldDRIVE_CAM
+inreturnedlogs lacks3c32252eextension;exactuploadedimageunverified,notinferred
+fromoldobjecttimestamp. NoHSV/seatgateweakening,no neutral/backlash changes.
+Analyzer3completeexitstreams,529whole-runendingmissing,generatedreportlocal.
+FinalM7IDEbuildSUCCESS,RAM433928/523624,flash514600/786432,SHA-256
+f2da4febefe0e9e5a746ae85683d2aba8108fdefa54f35ff3d6d797091c16257.
+M4unaffected/notbuilt. NOagentupload,useruploadspersonally. NextnormalCCWsave/
+report,archiveFIRST;verifyrevision/entryX/gyroservice/frontview/connectorheading,
+thenCW/fullcourse/parkingacceptance.NoToFsweep;physicaltimingandracepasspending.
+
+## 2026-10-26: New four-CW report; evidence acquisition pending
+
+User reports four CW runs: second stopped at the final GREEN on the third
+side; other three drove well, but final parking failed three times despite
+apparently good approach, with rear wheel already beside the front pink piece.
+Tentative log numbers 531--534 were listed before acquisition; none has been
+copied or analysed. Source USB volume disappeared before the first copy and
+remained absent when checked outside the sandbox. No archive/hash/completeness
+or installed firmware identity claimed. No source changes or new build in this
+session; do not infer a perception fault from the physical report alone.
+Next: reconnect source; copy complete original logs FIRST to portable evidence
+names, compare source/archive SHA-256, check endings and direction, add README
+rows and stage originals before analysis. Compare second-run GREEN association,
+UNKNOWN/recovery, gyro/steering and stop reason against the other three; inspect
+all final-parking states, marker scan, measured gap/capture pose and abort reason.
+Preserve working route and safety margins; target only evidenced faults, then
+run affected host checks and M7-only IDE build. User uploads personally. No
+physical ToF sweep, new motion, or pose/backlash compensation requested.
+
+## 2026-10-27: committed-interval lap1/exit audit (user scope correction)
+
+User explicitly clarified deterioration PRECEDES current uncommitted work;
+exclude pending firmware from causal comparison. Initial HEAD-vs-working
+inspection was superseded by committed689b3c3(Oct8)..94b2e0d(Oct18), with
+718d310..689b3c3 exit cross-check. Exact last successful physical binary is
+not tied to a readback/commit; comparison baseline is a historical anchor.
+No firmware edits, rollback, hardware build/upload or commit in this session.
+
+Confirmed exit20/25/20/90 +final gyro align(model155),speed80 unchanged.
+HEAD updateParkingExit equals baseline after removing detailed telemetry hook;
+base observation path unchanged. But94b2e0d explicitly changed lap1/connector
+steering to CAD inverse and capped normal lap1 horizon330->280; connector
+preflight acceptance changed too. e2d7027 changed shared gyro/ToF freshness,
+encoder snapshots, switch filtering and odometry accumulation. These do affect
+exit/lap1, unlike gated later-lap shape/speed selection. Camera78/24000 remains
+unchanged in this committed interval; pending calibration excluded.
+
+Laptop HEAD-only actuator replay reproduces gyro-hold->fresh normal tracking:
+motor enabled/target260 but servo_disabled1,actualservo80 vsrequested110.
+Missing ordinary-route servo restoration pre-exists the stricter gyro check;
+new freshness semantics provide additional hold exposure. This is a conditional
+code defect, not proof of occurrence in an individual unreturned physical run.
+Source CAD calculation for requestedR500:oldservo11.31/new14.52 degrees,
+integer-command modeled radii666.43/519.56mm. Thus first-lap response changed
+materially despite later-lap optimization being properly gated.
+
+Review:simulation/COMMITTED_LAP1_EXIT_AUDIT_20261027.md. Generated host fixtures
+and outputs ignored under local_workspace/committed_first_lap_audit_20261027/.
+No new test batch received. Preserve pending work; next identify pre-pending
+installed firmware, then separate gyro/servo resume, tracking-limit and
+discovery stops in archived runs. Do not remove freshness/clearance safeguards
+or revert all later-lap work without specific evidence.
+
+## 2026-10-27: final-parking wall-trigger source review, no new logs
+
+User asks why wall sighting does not lead to entry; USB explicitly unavailable
+until later. No new batch/evidence or installed identity claimed. Current
+TEST_ONLY=false, ENTRY_ARMED=true. Side-ToF scan requires wall/fixed piece/gap
+wall/moving piece/final wall, then gap registration, capture pose and full
+swept-entry clearance; wall alone is not permission to enter. Host sequence396
+parked+5registration checks PASS; approach2970 PASS, entry162 samples156accepted/
+6rejected. CW rejected samples:gap242.5,X-5,heading-1,Y-5/0/+5, all inside pose
+capture tolerances but failing full sweep. No weakened margins or source edit.
+Review simulation/FINAL_PARKING_WALL_TRIGGER_REVIEW_20261027.md records exact
+conditions and host limitations, including first-straight-only gyro injection
+and missing explicit servo restoration in curved FP_SEGMENT_DRIVE (not proof
+of initial refusal; physical servo angle persists). No build/upload necessary.
+Next archive four originals FIRST, determine phase/abort reason and installed
+revision, compare failed scan/registration/capture/preflight versus good runs;
+only then target the demonstrated failure. No dedicated ToF movement/sweep.
+
+## 2026-10-27: rationale behind committed lap1/exit changes
+
+User asks why measures in COMMITTED_LAP1_EXIT_AUDIT_20261027.md were introduced
+because recognition worsened. Reviewed original94b2e0d FIRST_LAP_GEOMETRY_REVIEW,
+e2d7027 RUNTIME_SAFETY_REVIEW and source diffs689b3c3..94b2e0d. Added rationale
+and validation limits to that audit. CAD conversion corrects wheel/servo-angle
+model mismatch; horizon280 reduces modeled corner cutting; integer connector
+rollout replaces ideal propagation/duplicate Hermite gate. Freshness prevents
+stale/corrupt heading or failedToF being treated as usable/free. Valid-image
+HSV/votes/exposure/frame rate and ground78/24000 unchanged in committed scope;
+invalid frames now clear detections and sparse quality counters added. Changed
+trajectory/pose/timing can indirectly degrade seat visibility/association;
+model-based tracking acceptance did not establish live-camera acceptance.
+Prepared servo-resume defect fix remains distinct from CAD/horizon hypothesis.
+No specific physical cause or firmware identity established, no new logs/source
+edit/build/upload. Next obtain originals FIRST and correlate detection/association
+versus tracking/hold events before changing control or thresholds.
+
+## 2026-10-27: authorized recovery correction and farther-acquisition regression
+
+User asks to improve remaining defects and retain recognition/mapping farther
+away. Existing pending normal-route gyro/servo restoration verified with its
+actual-motor negative control. Added servo_disabled=false at accepted parking
+FP_SEGMENT_DRIVE commit, after health and swept checks; no threshold/geometry/
+speed change. New42check source-state regression covers all7segments,both
+turns,hold/resume/rejectedNaN; removing restoration reproduces disabledflag on
+motor restart. Physical angle may persist; do not claim measured servo failure
+or identify this as missing CW batch cause. Source path evidence still absent.
+New actual-observation/shape/projection/seat/vote regression48PASS: RED/GREEN,
+both rows,modeled646/700mm can confirm and dispatch injection; ambiguity,
+unrelated futurestation and postlap1 remapping remain rejected. Mutation after
+confirmation stubbed, no real-image long-range proof.600mm governs clear/empty
+and localGREEN search, not all primary acquisition. Existing foot100/model52/
+33600 gives centred forwardlimit~700mm; no unlimited-range claim or widened
+HSV/shape/ambiguity gates. Normal camera view and safety checks retained.
+Runtime safety allPASS, archived/synthetic GREEN checksPASS, finalsequence396
+parked+5registrationPASS. Report simulation/RECOVERY_AND_FAR_ACQUISITION_20261027.md.
+M7IDEincrementalSUCCESS,RAM433928/523624,flash514616/786432,SHA-256
+5313b1d0ec4d288909a0a3431326eaf9cc9e55b18d10b04383efd4b9ff56454e. M4unaffected/notbuilt; no upload/commit/push,useruploads.
+Next secure missing fourCW originalsFIRST, establish flashedidentity and actual
+GREEN stop/parking abort before specific intervention; normalphysicalacceptance
+pending. No dedicatedToFsweep, newpose/backlashcorrection or rollback.

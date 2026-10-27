@@ -34,7 +34,7 @@ def fixture_source():
         'void appendParkingEntryPoint(', 'void buildParkingEntryPath(',
         'bool preflightCwStartArc(', 'float connectorRouteHeading(',
         'PathPoint connectorLookaheadFrom(\n    uint8_t index, float lookaheadMm, const PathPoint *route,\n    uint16_t mergeIndex, bool continueIntoRoute,\n    uint16_t *targetIndex)\n{',
-        'bool connectorJoinReached(', 'bool connectorRolloutFeasible(', 'bool tryParkingEntryConnectorMerge(',
+        'bool connectorJoinReached(', 'bool connectorRolloutFeasible(', 'bool widenParkingConnectorLookahead(', 'bool tryParkingEntryConnectorMerge(',
         'bool buildParkingEntryConnector(', 'bool parkingConnectorMergeUnchanged(',
         'bool retainParkingConnectorForFarGreen(')]
     # Only PathPoint and CandidateSeat; terminate at the next declaration.
@@ -71,6 +71,8 @@ int routeTurnSign=-1,parkingEntryTargetStation=1;
 bool parkingCwShortStart=true,parkingEntryConnectorRouteLookahead=false;
 bool parkingCcwShortStart=false;
 bool parkingCcwFirstEdgeStart=false;
+float parkingCcwScanArcMm=0;
+bool preflightCwStartArc(const PositionEstimate&,float);
 PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 uint8_t parkingEntryLength=0,parkingEntryProgress=0;
 PathPoint parkingEntryConnector[OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];

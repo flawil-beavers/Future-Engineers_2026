@@ -55,6 +55,8 @@ void camera_snapshot_export()
         return;
     }
     const uint32_t frame = camera.getCompletedFrameCount();
+    CameraSyncDiagnostics sync;
+    camera.getCaptureSyncDiagnostics(sync);
     // Only this stopped diagnostic pauses DMA; normal driving is unaffected.
     // The published frame remains immutable throughout CRC and USB transfer.
     if (!camera.pauseForDiagnostic()) {
@@ -63,14 +65,32 @@ void camera_snapshot_export()
         return;
     }
     const uint8_t *const snapshot = camera.getBuffer();
-    char header[192];
+    char header[512];
     const int length = snprintf(header, sizeof(header),
         "\n[CAMSHOT] v=1 width=320 height=240 bytes=%lu crc32=%08lx frame=%lu "
-        "exposure=%u msb_first=%u rotate180=%u\n",
+        "exposure=%u msb_first=%u rotate180=%u "
+        "sync_vsync=%lu sync_dma=%lu sync_words=%lu sync_min=%lu "
+        "sync_max=%lu sync_ct=%lu sync_sr=%lu sync_errors=%lu "
+        "sync_good=%lu sync_bad=%lu sync_bad_total=%lu "
+        "sync_resyncs=%lu sync_last_fault=%lu sync_resync_max_us=%lu\n",
         static_cast<unsigned long>(imageBytes),
         static_cast<unsigned long>(crc32(snapshot, imageBytes)),
         static_cast<unsigned long>(frame), camera.getExposureLines(),
-        vision.rgb565MsbFirst() ? 1U : 0U, vision.rotates180() ? 1U : 0U);
+        vision.rgb565MsbFirst() ? 1U : 0U, vision.rotates180() ? 1U : 0U,
+        static_cast<unsigned long>(sync.vsyncCount),
+        static_cast<unsigned long>(sync.dmaSequence),
+        static_cast<unsigned long>(sync.wordsRemaining),
+        static_cast<unsigned long>(sync.minimumWords),
+        static_cast<unsigned long>(sync.maximumWords),
+        static_cast<unsigned long>(sync.currentTarget),
+        static_cast<unsigned long>(sync.dcmiStatus),
+        static_cast<unsigned long>(sync.errorBits),
+        static_cast<unsigned long>(sync.goodPhaseStreak),
+        static_cast<unsigned long>(sync.badPhaseStreak),
+        static_cast<unsigned long>(sync.badPhaseCount),
+        static_cast<unsigned long>(camera.getAutoResyncCount()),
+        static_cast<unsigned long>(camera.getAutoResyncLastWords()),
+        static_cast<unsigned long>(camera.getAutoResyncMaxServiceUs()));
     const uint32_t started = millis();
     const char footer[] = "\n[CAMSHOT END]\n";
     // Normal telemetry cannot interleave: this command runs only while stopped.

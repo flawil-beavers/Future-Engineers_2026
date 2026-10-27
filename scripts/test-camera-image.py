@@ -21,6 +21,18 @@ class ImageTransferTests(unittest.TestCase):
         self.assertEqual(image.getpixel((319, 239)), (255, 0, 0))
         self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
 
+    def test_optional_sync_fields_preserve_legacy_payload_format(self):
+        header = ('[CAMSHOT] v=1 width=320 height=240 bytes=153600 crc32=%08x '
+                  'frame=2 exposure=360 msb_first=1 rotate180=1 '
+                  'sync_vsync=10 sync_dma=9 sync_words=56 sync_min=56 '
+                  'sync_max=38400 sync_ct=1 sync_sr=0 sync_errors=0\n' %
+                  binascii.crc32(self.payload)).encode()
+        fields = capture.parse_header(header)
+        self.assertEqual(fields['sync_words'], 56)
+        self.assertEqual(fields['sync_max'], 38400)
+        capture.validate_payload(fields, self.payload)
+        self.assertNotIn('sync_words', self.fields)
+
     def test_corruption_and_truncation_rejected(self):
         with self.assertRaises(ValueError):
             capture.validate_payload(self.fields, self.payload[:-1])

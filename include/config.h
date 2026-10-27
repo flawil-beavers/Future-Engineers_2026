@@ -517,7 +517,7 @@ constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
 // Five extra millimetres in the preceding away arc require about five more
 // millimetres in this gyro-terminated return arc. Together they move the
 // aligned exit pose about 10 mm farther past the pink parking-piece ends.
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 155.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 170.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 220.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
 // The side ToF must see the outer wall after rear positioning. A much shorter
@@ -630,10 +630,13 @@ constexpr bool OBSTACLE_PARKING_CCW_SHORT_START_ENABLED = true;
 // far enough to observe/pass the front start place. Missing/ambiguous first
 // edge retains the established second-edge fallback. O3 retains that fallback.
 constexpr bool OBSTACLE_PARKING_CCW_FIRST_EDGE_REFERENCE_ENABLED = true;
-// Rear axle remains east of the movable pink piece during the longer camera
-// arc; the 84mm arc provides the yaw needed for a front GREEN bypass. Both
-// values were checked together, including the measured batch y/heading spread.
-constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM = 360.0f;
+// Permit up to80mm more straight reverse before the observation arc. Select
+// the deepest swept-safe target for the measured Y/heading; low poses near
+// the movable pink piece retain the established350mm fallback.
+// The 84 mm observation arc is shortened only when a complete swept preflight
+// requires it (including the measured 509 localized pose and braking reserve).
+constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM = 350.0f;
+constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_MIN_ENTRY_X_MM = 270.0f;
 constexpr float OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM = 84.0f;
 constexpr auto OBSTACLE_PARKING_CCW_LOCALIZE_CONTINUE_MM = 0.0f;
 constexpr auto OBSTACLE_PARKING_CW_SCAN_ARC_MM = 65.0f;
@@ -1313,11 +1316,14 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // The official pillar distances are measured horizontally from the camera to
 // the foot of the block. Its top is clipped by the obstacle ROI at longer
 // ranges, so height is not a reliable range input. Ground-plane calibration
-// Full-sensor stationary red measurements have maxY=138 at 400 mm and
-// maxY=118 at 600 mm, giving
-// distance = scale / (maxY - horizonY).
-constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 78.0f;
-constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 24000.0f;
+// 2026-10-26 stationary paired RED/GREEN at400/600mm, plus a second400mm
+// robot view: measured feet134/132/142 at400mm and108 at600mm. Fit footY
+// versus1/depth across those conditions; do not over-weight repeated frames.
+// Reference/evidence:simulation/RETURNED_RUNS_518_520_CAMERA_REVIEW.md.
+// distance = scale / (maxY - horizonY). Camera mount/lighting acceptance is
+// limited to the recorded setups; no universal range-accuracy claim.
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 52.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 33600.0f;
 // The former centred-crop mode needed a V-shaped off-axis correction. In the
 // full-sensor mode, equal 400 mm forward-depth samples had maxY=136 (left) and
 // maxY=138 (right), so the old 0.11 slope badly overcorrected their range.

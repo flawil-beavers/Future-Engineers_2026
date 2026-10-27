@@ -194,6 +194,23 @@ void printCameraCalibration()
     Serial.print(camera.getCaptureErrorCount());
     Serial.print(" exposure_lines=");
     Serial.print(camera.getExposureLines());
+    CameraSyncDiagnostics sync;
+    camera.getCaptureSyncDiagnostics(sync);
+    Serial.print(" sync_vsync/dma=");
+    Serial.print(sync.vsyncCount); Serial.print("/"); Serial.print(sync.dmaSequence);
+    Serial.print(" sync_words/min/max=");
+    Serial.print(sync.wordsRemaining); Serial.print("/");
+    Serial.print(sync.minimumWords); Serial.print("/"); Serial.print(sync.maximumWords);
+    Serial.print(" sync_ct/sr/errors=");
+    Serial.print(sync.currentTarget); Serial.print("/");
+    Serial.print(sync.dcmiStatus); Serial.print("/"); Serial.print(sync.errorBits);
+    Serial.print(" sync_good/bad/total=");
+    Serial.print(sync.goodPhaseStreak); Serial.print("/");
+    Serial.print(sync.badPhaseStreak); Serial.print("/"); Serial.print(sync.badPhaseCount);
+    Serial.print(" auto_resyncs/last_words=");
+    Serial.print(camera.getAutoResyncCount()); Serial.print("/");
+    Serial.print(camera.getAutoResyncLastWords());
+    Serial.print(" auto_resync_max_us="); Serial.print(camera.getAutoResyncMaxServiceUs());
     Serial.print(" service_us=");
     Serial.print(camera.getLastServiceTimeUs());
     Serial.print(" processing_ms=");
@@ -279,11 +296,13 @@ const Blob *getLargestObstacle()
 const Blob *getLargestValidObstacle()
 {
     const VisionResult &result = vision.getResult();
-    const Blob *red = obstacle_blob_valid_for_acquisition(&result.red)
-        ? &result.red
+    const Blob *red = obstacle_blob_valid_for_acquisition(&result.redPillar)
+        ? &result.redPillar
+        : obstacle_blob_valid_for_acquisition(&result.red) ? &result.red
         : nullptr;
-    const Blob *green = obstacle_blob_valid_for_acquisition(&result.green)
-        ? &result.green
+    const Blob *green = obstacle_blob_valid_for_acquisition(&result.greenPillar)
+        ? &result.greenPillar
+        : obstacle_blob_valid_for_acquisition(&result.green) ? &result.green
         : nullptr;
 
     if (red == nullptr)

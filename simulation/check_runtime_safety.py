@@ -353,7 +353,7 @@ int main(){
 check('seat-command',seat)
 
 parking_pause = common+r'''
-uint32_t nowMs=0,stateStartMs=100,sensorHoldStartMs=0;
+uint32_t nowMs=0,stateStartMs=100,sensorHoldStartMs=0,scanAlignStartMs=200;
 uint32_t millis(){return nowMs;} bool sensorHoldPending=false,active=true;
 uint8_t sensorHoldTraceCount=0;bool final_parking_active(){return active;}
 void traceParking(bool){}
@@ -361,13 +361,13 @@ void traceParking(bool){}
 int main(){
  nowMs=500;final_parking_sensor_hold();
  nowMs=700;final_parking_sensor_hold();nowMs=1500;final_parking_sensor_resume();
- assert(stateStartMs==1100&&!sensorHoldPending);
+ assert(stateStartMs==1100&&scanAlignStartMs==1200&&!sensorHoldPending);
  final_parking_sensor_resume();assert(stateStartMs==1100);
  sensorHoldTraceCount=6;nowMs=1600;final_parking_sensor_hold();
  nowMs=2600;final_parking_sensor_resume();assert(stateStartMs==2100);
  active=false;final_parking_sensor_hold();assert(!sensorHoldPending);
  nowMs=0xfffffff0U;active=true;final_parking_sensor_hold();
- nowMs=16;final_parking_sensor_resume();assert(stateStartMs==2132);
+ nowMs=16;final_parking_sensor_resume();assert(stateStartMs==2132&&scanAlignStartMs==2232);
  std::cout<<"PASS parking sensor pause: timeout preserved, repeated calls/log cap/wrap\n";
 }
 '''

@@ -139,8 +139,8 @@ bool behindReturn(int back,int middle,int front,float speedCap){
  return false;
 }
 int main(){
- float x,y,h,ex,ey,eh;int back,middle,front,id=0,failed=0;
- while(std::cin>>x>>y>>h>>back>>middle>>front>>ex>>ey>>eh){
+ float x,y,h,ex,ey,eh;int back,middle,front,firstEdge,id=0,failed=0;
+ while(std::cin>>x>>y>>h>>back>>middle>>front>>ex>>ey>>eh>>firstEdge){
   baseline();memcpy(livePath,baselinePath,sizeof(PathPoint)*pathLength);
   int colors[3]={back,middle,front};
   for(int s=0;s<3;++s){
@@ -152,9 +152,14 @@ int main(){
     displaceForSeat(livePath,5,OBSTACLE_LAP1_CLEARANCE_MM,front==1);}
   }
   PositionEstimate start;start.x_mm=x;start.y_mm=y;start.heading_deg=h;
-  parkingCcwFirstEdgeStart=x>300; // Fixture supplies first-edge candidates explicitly.
+  parkingCcwFirstEdgeStart=firstEdge; // Reference type is independent of its X target.
+  if(firstEdge)start.x_mm+=parking_start_footprint::ccwObservationEntryX(
+      start.y_mm,start.heading_deg,OBSTACLE_PARKING_CCW_FIRST_EDGE_MIN_ENTRY_X_MM,
+      OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM,OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM,
+      OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM)-OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM;
+  buildParkingEntryPath(start);
   const bool arc=preflightCwStartArc(start,parkingEntryScanArcMm()+parkingEntryScoutArcMm());
-  buildParkingEntryPath(start);const auto end=parkingEntryPath[parkingEntryLength-1];
+  const auto end=parkingEntryPath[parkingEntryLength-1];
   PositionEstimate join;join.x_mm=end.x+ex;join.y_mm=end.y+ey;join.heading_deg=end.headingDeg+eh;
   uint16_t merge=0;const bool connector=buildParkingEntryConnector(join,livePath,merge);
   bool pass=false;
@@ -232,7 +237,7 @@ int main(){
             start = [p+d for p,d in zip(start,delta)]
         else:
             settled = delta
-        lines.append(' '.join(map(str,[*start,*c['layout'],*settled])))
+        lines.append(' '.join(map(str,[*start,*c['layout'],*settled,int(start[0]>300)])))
     # First-edge reference candidate: actual y/heading spread in logs461-465,
     # x240 target plus5mm positioning and8mm braking reserve. The old rejected
     # second-edge poses are evidence of correct guards, not nominal fixtures.
@@ -241,7 +246,7 @@ int main(){
             start=[OBSTACLE_FIRST_EDGE_X+dx,y+dy,h+dh]
             cases.append(dict(source='first-edge candidate; measured batch y/heading',
                               layout=layout,stage='first_edge',delta=[dx,dy,dh],reference=start))
-            lines.append(' '.join(map(str,[*start,*layout,0,0,0])))
+            lines.append(' '.join(map(str,[*start,*layout,0,0,0,1])))
     run = subprocess.run([str(exe)], input='\n'.join(lines)+'\n', text=True,
                          capture_output=True, check=True)
     (destination/'output.txt').write_text(run.stdout)

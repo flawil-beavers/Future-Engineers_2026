@@ -61,6 +61,21 @@ enum {
 extern const uint32_t restab[CAMERA_RMAX][2];
 
 
+// Cached existing VSYNC/DMA interrupt observations. No capture/control action.
+struct CameraSyncDiagnostics {
+    uint32_t vsyncCount = 0;
+    uint32_t dmaSequence = 0;
+    uint32_t wordsRemaining = 0;
+    uint32_t minimumWords = 0;
+    uint32_t maximumWords = 0;
+    uint32_t currentTarget = 0;
+    uint32_t dcmiStatus = 0;
+    uint32_t errorBits = 0;
+    uint32_t goodPhaseStreak = 0;
+    uint32_t badPhaseStreak = 0;
+    uint32_t badPhaseCount = 0;
+};
+
 /**
  * @class FrameBuffer
  * @brief Frame buffer class for storing captured frames.
@@ -519,9 +534,13 @@ class Camera {
             uint32_t &sequence,
             uint32_t &completedTimeUs);
         int stopContinuous();
+        // Request the normal end-of-frame stop without waiting in the caller.
+        void requestContinuousStop();
+        bool continuousStopReady() const;
 
         /** DMA/DCMI errors observed during continuous capture. */
         uint32_t continuousErrorCount() const;
+        void continuousSyncDiagnostics(CameraSyncDiagnostics &out) const;
 
         /**
          * @brief Enable motion detection with the specified callback.

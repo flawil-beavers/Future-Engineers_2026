@@ -34,7 +34,9 @@ enum FinalParkingState : uint8_t
     FP_VERIFY,
     FP_TEST_HOLD,
     FP_HOLD,
-    FP_ABORT
+    FP_ABORT,
+    FP_SCAN_ALIGN_DRIVE,
+    FP_SCAN_ALIGN_BRAKE
 };
 
 struct ParkingSegment
@@ -78,6 +80,10 @@ uint8_t scanPhase = 0;
 uint8_t classFrames = 0;
 bool scanArmed = false;
 bool scanLineEstablished = false;
+bool scanWallRegistered = false;
+int8_t scanAlignSign = 1;
+uint8_t scanAlignTurns = 0;
+uint32_t scanAlignStartMs = 0;
 
 PositionEstimate lastFixedMarkerPose{};
 float lastFixedMarkerRange = 0.0f;
@@ -790,6 +796,10 @@ void final_parking_reset()
     classFrames = 0;
     scanArmed = false;
     scanLineEstablished = false;
+    scanWallRegistered = false;
+    scanAlignSign = 1;
+    scanAlignTurns = 0;
+    scanAlignStartMs = 0;
     movingCandidateStored = false;
     latestWallRange = 0.0f;
     measuredFixedInsideX = 0.0f;
@@ -903,7 +913,8 @@ bool final_parking_update(int8_t turn_sign)
 
     pose = get_position_struct();
     traceParking();
-    if (state >= FP_APPROACH_LANE && state <= FP_SEGMENT_BRAKE &&
+    if (((state >= FP_APPROACH_LANE && state <= FP_SEGMENT_BRAKE) ||
+         state == FP_SCAN_ALIGN_DRIVE || state == FP_SCAN_ALIGN_BRAKE) &&
         !checkMotionHealth(pose))
         return true;
 
@@ -956,7 +967,7 @@ bool final_parking_update(int8_t turn_sign)
         {
             stop(true);
             stateStartMs = millis();
-            initialWallFrames = 0;
+            if (!scanWallRegistered) initialWallFrames = 0;
             state = FP_APPROACH_BRAKE;
         }
         else if (distanceSince(runStartDistance) >=
@@ -972,15 +983,27 @@ bool final_parking_update(int8_t turn_sign)
     {
         if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
-        if (initialWallFrames < 2 && !updateOuterWallReference(true))
+        if (!scanWallRegistered && initialWallFrames < 2 && !updateOuterWallReference(true))
         {
             if (millis()-stateStartMs > 2500)
                 abortParking("initial_outer_wall_reference");
             return true;
         }
-        // After wall registration, align while returning west through the
-        // free approach corridor. Continuing east to correct lateral drift
-        // would consume room before the next outer wall.
+        scanWallRegistered = true;
+        // Registration can move Y by tens of millimetres (log 510: -25.4).
+        // Regain the scan line in the checked outward corridor BEFORE passing
+        // either marker. Keep the existing distance/X/time bounds in force.
+        if (!linePoseReady(get_position_struct(), OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
+        {
+            stop(false);
+            servo_disabled = false;
+            scanAlignSign = pose.x_mm < 1000.0f ? 1 : -1;
+            scanAlignStartMs = millis();
+            scanAlignTurns = 0;
+            state = FP_SCAN_ALIGN_DRIVE;
+            Serial.println("[FINAL PARK] Re-align outward after wall registration");
+            return true;
+        }
         stop(false);
         servo_disabled = false;
         set_steering(0);
@@ -1010,6 +1033,36 @@ bool final_parking_update(int8_t turn_sign)
         stateStartMs = millis();
         state = FP_SCAN_DRIVE;
         Serial.println("[FINAL PARK] Reverse field scan started");
+        return true;
+    }
+
+    if (state == FP_SCAN_ALIGN_DRIVE || state == FP_SCAN_ALIGN_BRAKE)
+    {
+        // Stay beyond even a +250 mm longitudinal registration error plus
+        // sensor/cone reach. Reversals only use the checked free outer corridor.
+        if (millis()-scanAlignStartMs > 18000UL || scanAlignTurns > 4)
+        { abortParking("scan_alignment_limit"); return true; }
+        if (state == FP_SCAN_ALIGN_BRAKE)
+        {
+            if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return true;
+            stop(false);
+            if (linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
+            {
+                servo_disabled=false;set_steering(0);steer(0);
+                stateStartMs=millis();state=FP_SCAN_SETTLE;return true;
+            }
+            scanAlignSign=-scanAlignSign;
+            ++scanAlignTurns;
+            state=FP_SCAN_ALIGN_DRIVE;
+        }
+        driveFieldLine(scanAlignSign,OBSTACLE_FINAL_PARKING_SCAN_Y_MM,
+            OBSTACLE_FINAL_PARKING_SCAN_SPEED);
+        if (!scanCommandSafe(pose,motorDirectionForFieldMotion(scanAlignSign)))
+        { abortParking("scan_alignment_clearance"); return true; }
+        const bool boundary=scanAlignSign>0 ? pose.x_mm>=1080.0f : pose.x_mm<=900.0f;
+        const bool ready=pose.x_mm>=900.0f && linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM);
+        if (boundary || ready)
+        { stop(true);stateStartMs=millis();state=FP_SCAN_ALIGN_BRAKE; }
         return true;
     }
 
@@ -1187,6 +1240,10 @@ bool final_parking_update(int8_t turn_sign)
             { abortParking("entry_motion_clearance"); return true; }
             advanceParkingPose(predicted,segment.steering*routeTurnSign,segment.direction);
         }
+        // The main gyro gate can pause an already active segment with
+        // stop(false). Only restore servo writes after health and the swept
+        // motion checks above have accepted the resumed drive command.
+        servo_disabled = false;
         set_speed(segment.direction * OBSTACLE_FINAL_PARKING_ENTRY_SPEED);
         set_steering(segment.steering * routeTurnSign);
         if (distanceSince(stateStartDistance) >= segment.distanceMm)
@@ -1298,7 +1355,9 @@ void final_parking_sensor_resume()
 {
     if (!sensorHoldPending) return;
     // A sensor pause is not time spent attempting the current parking motion.
-    stateStartMs += uint32_t(millis() - sensorHoldStartMs);
+    const uint32_t paused = uint32_t(millis() - sensorHoldStartMs);
+    stateStartMs += paused;
+    if (scanAlignStartMs) scanAlignStartMs += paused;
     sensorHoldPending = false;
 }
 

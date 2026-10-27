@@ -11,6 +11,9 @@
 #include "position_estimator.h"
 #include "final_parking.h"
 #include "parking_exit_diagnostics.h"
+#include "parking_start_footprint.h"
+#include "obstacle_blob_validation.h"
+#include "ackermann_kinematics.h"
 
 #define Serial robot_logger
 
@@ -81,14 +84,35 @@ struct ParkingExitSegment
     float distanceMm;
 };
 
+static bool parkingExitMotionSafe(PositionEstimate pose, int steering,
+                                   int direction, float travelMm)
+{
+    if (!isfinite(travelMm) || travelMm < 0.0f) return false;
+    const float k = -1.0f / Ackermann::getTurnRadius(steering);
+    for (float travel=0.0f;travel<=travelMm;travel+=1.0f)
+    {
+        if (!parking_start_footprint::safe(pose.x_mm,pose.y_mm,
+                pose.heading_deg,(steering>0)-(steering<0),false,0.0f))
+            return false;
+        const float h=pose.heading_deg*PI/180.0f;
+        const float next=h+k*direction;
+        pose.x_mm+=(sinf(next)-sinf(h))/k;
+        pose.y_mm+=(cosf(h)-cosf(next))/k;
+        pose.heading_deg=next*180.0f/PI;
+    }
+    return true;
+}
+
 // Steering is expressed relative to the direction away from the outer wall,
 // so the same path mirrors automatically for CW and CCW starts.
 static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
     OBSTACLE_PARKING_EXIT_SEGMENT_COUNT] = {
-    {-1, -1, 20.0f},
-    {+1, +1, 25.0f},
-    {-1, -1, 20.0f},
-    {+1, +1, 90.0f},
+    {-1, -1, 30.0f},
+    // Rebalanced for513's higher start Y and independent curvature variation
+    // in each segment; keep the current-pose barrier guard enabled.
+    {+1, +1, 36.0f},
+    {-1, -1, 26.0f},
+    {+1, +1, 84.0f},
     {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
 
 static ParkingExitState oc_parking_exit_state =
@@ -1193,8 +1217,15 @@ static void processParkingEdgeLocalizationTof()
                         oc_parking_localization_last_piece_pose);
                     const float correction = OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM -
                         footprint.maximumX;
-                    const float remaining = samplePose.x_mm + correction -
-                        OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM;
+                    // Plan while braking,not while driving a stale command.
+                    stop(true);servo_disabled=false;set_steering(0);steer(0);
+                    const float entryX = parking_start_footprint::ccwObservationEntryX(
+                        samplePose.y_mm,samplePose.heading_deg,
+                        OBSTACLE_PARKING_CCW_FIRST_EDGE_MIN_ENTRY_X_MM,
+                        OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM,
+                        OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM,
+                        OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM);
+                    const float remaining = samplePose.x_mm + correction - entryX;
                     if (isfinite(correction) && isfinite(remaining) &&
                         fabsf(correction) <= OBSTACLE_PARKING_EXIT_MAX_X_CORRECTION_MM &&
                         remaining >= 0.0f && remaining <=
@@ -1205,6 +1236,7 @@ static void processParkingEdgeLocalizationTof()
                         oc_parking_localization_transition_found = true;
                         Serial.print("[CCW START] First-edge reference accepted; remaining reverse_mm=");
                         Serial.println(remaining, 1);
+                        Serial.print("[CCW START] Swept observation entry_x=");Serial.println(entryX,1);
                         return;
                     }
                 }
@@ -1744,6 +1776,21 @@ static bool updateParkingExit()
             return true;
         }
 
+        if (!isfinite(measured_speed) ||
+            fabsf(measured_speed) > SOFT_STOP_SPEED_THRESHOLD_MMS)
+        {
+            if (millis() - oc_parking_exit_brake_start_ms >=
+                OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS +
+                    OBSTACLE_FINAL_PARKING_BRAKE_SETTLE_TIMEOUT_MS)
+            {
+                stop(false);
+                parking_exit_diagnostics_finish("exit_brake_not_settled");
+                oc_parking_exit_state = PARKING_EXIT_TEST_HOLD;
+                Serial.println("[PARK EXIT] Brake did not settle - held");
+            }
+            return true;
+        }
+
         const float actualDistance =
             distanceSince(oc_parking_exit_state_distance);
         const ParkingExitSegment &completed =
@@ -1861,10 +1908,24 @@ static bool updateParkingExit()
     {
         if (dc_state != DC_DISABLED)
             stop(false);
+        if (oc_parking_exit_steering > 0 &&
+            !parkingExitMotionSafe(get_position_struct(),segmentSteering,0,0))
+        {
+            parking_exit_diagnostics_finish("exit_steering_footprint_abort");
+            oc_parking_exit_state=PARKING_EXIT_TEST_HOLD;
+            Serial.println("[PARK EXIT] Steering footprint unsafe - held");
+            return true;
+        }
         servo_disabled = false;
         set_steering(segmentSteering);
         steer(segmentSteering);
 
+        if (!isfinite(measured_speed) ||
+            fabsf(measured_speed) > SOFT_STOP_SPEED_THRESHOLD_MMS)
+        {
+            oc_parking_exit_settle_start_ms = millis();
+            return true;
+        }
         if (
             millis() - oc_parking_exit_settle_start_ms <
                 OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS)
@@ -1885,6 +1946,16 @@ static bool updateParkingExit()
         return true;
     }
 
+    if (oc_parking_exit_steering > 0 &&
+        !parkingExitMotionSafe(get_position_struct(),segmentSteering,
+            segment.direction,0.0f))
+    {
+        stop(false);
+        parking_exit_diagnostics_finish("exit_swept_footprint_abort");
+        oc_parking_exit_state=PARKING_EXIT_TEST_HOLD;
+        Serial.println("[PARK EXIT] Swept footprint unsafe - held before next movement");
+        return true;
+    }
     set_speed(
         segment.direction *
         OBSTACLE_PARKING_EXIT_SPEED);
@@ -2148,12 +2219,53 @@ void printVisionDebug()
 
     if (
         millis() - lastPrint <
-        500)
+        (obstacle_path_started() ? 1000U : 500U))
     {
         return;
     }
 
     lastPrint = millis();
+
+    if (obstacle_path_started() && !obstacle_path_complete())
+    {
+        // Keep normal-run camera evidence without filling the RAM log with
+        // repeated multi-line VISION dumps (log522 overflowed while held).
+        static uint16_t traceCount = 0;
+        static uint32_t previousMs = 0;
+        if (previousMs == 0 || lastPrint-previousMs > 5000) traceCount = 0;
+        previousMs = lastPrint;
+        if (traceCount >= 160) return;
+        ++traceCount;
+        CameraSyncDiagnostics sync;
+        camera.getCaptureSyncDiagnostics(sync);
+        const VisionResult &frame = vision.getResult();
+        Serial.print("[DRIVE_CAM] t="); Serial.print(lastPrint);
+        Serial.print(" frame/resync/errors="); Serial.print(camera.getCompletedFrameCount());
+        Serial.print("/"); Serial.print(camera.getAutoResyncCount());
+        Serial.print("/"); Serial.print(camera.getCaptureErrorCount());
+        Serial.print(" phase/good/bad="); Serial.print(sync.wordsRemaining);
+        Serial.print("/"); Serial.print(sync.goodPhaseStreak);
+        Serial.print("/"); Serial.print(sync.badPhaseStreak);
+        Serial.print(" lap/index/blocked="); Serial.print(obstacle_path_lap());
+        Serial.print("/"); Serial.print(obstacle_path_progress_index());
+        Serial.print("/"); Serial.print(obstacle_path_blocked_station());
+        Serial.print(" speed/steer/enabled="); Serial.print(target_speed);
+        Serial.print("/"); Serial.print(set_degree);
+        Serial.print("/"); Serial.print(servo_disabled ? 0 : 1);
+        const PositionEstimate pose = get_position_struct();
+        Serial.print(" pose="); Serial.print(pose.x_mm,1);
+        Serial.print(","); Serial.print(pose.y_mm,1);
+        Serial.print(","); Serial.print(pose.heading_deg,1);
+        for (const Blob *blob : {&frame.red, &frame.green})
+        {
+            Serial.print(blob == &frame.red ? " r=" : " g=");
+            Serial.print(blob->found ? blob->centerX : -1); Serial.print("/");
+            Serial.print(blob->maxY); Serial.print("/"); Serial.print(blob->width());
+            Serial.print("/"); Serial.print(blob->height());
+        }
+        Serial.println();
+        return;
+    }
 
     const VisionResult &v =
         vision.getResult();
@@ -2325,76 +2437,9 @@ void handleObstacleDetection()
 // VALIDATE OBSTACLE
 // ============================================================
 
-bool obstacle_blob_valid_for_acquisition(
-    const Blob *obstacle)
+bool obstacle_blob_valid_for_acquisition(const Blob *obstacle)
 {
-    if (obstacle == nullptr)
-    {
-        return false;
-    }
-
-    if (!obstacle->found)
-    {
-        return false;
-    }
-
-    if (
-        obstacle->color !=
-            ColorType::RED &&
-        obstacle->color !=
-            ColorType::GREEN)
-    {
-        return false;
-    }
-
-    const uint32_t minimumArea =
-        (obstacle->color == ColorType::RED)
-            ? OBSTACLE_RED_MIN_AREA
-            : OBSTACLE_GREEN_MIN_AREA;
-
-    const int minimumHeight =
-        (obstacle->color == ColorType::RED)
-            ? OBSTACLE_RED_MIN_HEIGHT
-            : OBSTACLE_GREEN_MIN_HEIGHT;
-
-    if (obstacle->area < minimumArea)
-    {
-        return false;
-    }
-
-    if (obstacle->height() < minimumHeight)
-    {
-        return false;
-    }
-
-    if (obstacle->maxY < OBSTACLE_MIN_BOTTOM_Y)
-    {
-        return false;
-    }
-
-    if (obstacle->minY > OBSTACLE_MAX_TOP_Y)
-    {
-        return false;
-    }
-
-    if (
-        obstacle->centerX < OBSTACLE_START_MIN_X ||
-        obstacle->centerX > OBSTACLE_START_MAX_X ||
-        obstacle->width() > OBSTACLE_MAX_START_WIDTH ||
-        obstacle->height() > OBSTACLE_MAX_START_HEIGHT)
-    {
-        return false;
-    }
-
-    if (
-        static_cast<float>(obstacle->width()) >
-        static_cast<float>(obstacle->height()) *
-            OBSTACLE_MAX_WIDTH_HEIGHT_RATIO)
-    {
-        return false;
-    }
-
-    return true;
+    return obstacle_blob_shape_valid(obstacle);
 }
 
 static bool validTrackedObstacle(

@@ -129,6 +129,18 @@ static volatile uint32_t dcmi_continuous_completed_us = 0;
 static volatile uint32_t dcmi_continuous_error_count = 0;
 static volatile uint8_t dcmi_continuous_completed_buffer = 0;
 static volatile bool dcmi_continuous_active = false;
+static volatile uint32_t dcmi_sync_vsync_count = 0;
+static volatile uint32_t dcmi_sync_dma_sequence = 0;
+static volatile uint32_t dcmi_sync_words = 0;
+static volatile uint32_t dcmi_sync_min_words = UINT32_MAX;
+static volatile uint32_t dcmi_sync_max_words = 0;
+static volatile uint32_t dcmi_sync_target = 0;
+static volatile uint32_t dcmi_sync_status = 0;
+static volatile uint32_t dcmi_sync_error_bits = 0;
+static volatile uint32_t dcmi_sync_good_phase_streak = 0;
+static volatile uint32_t dcmi_sync_bad_phase_streak = 0;
+static volatile uint32_t dcmi_sync_bad_phase_count = 0;
+static uint32_t dcmi_continuous_frame_words = 0;
 
 static void dcmiContinuousBufferComplete(uint8_t buffer)
 {
@@ -370,10 +382,46 @@ void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *handle)
         dcmi_frame_completed_us = micros();
 }
 
+void HAL_DCMI_VsyncEventCallback(DCMI_HandleTypeDef *handle)
+{
+    if (handle != &hdcmi || !dcmi_continuous_active)
+        return;
+    // VSYNC IRQ was already enabled by HAL_DCMI_Init. Observe phase only;
+    // do not stop/restart DMA, move its pointers or accept/reject an image.
+    DMA_Stream_TypeDef *const stream =
+        static_cast<DMA_Stream_TypeDef *>(hdma.Instance);
+    const uint32_t words = stream->NDTR;
+    dcmi_sync_words = words;
+    if (words < dcmi_sync_min_words) dcmi_sync_min_words = words;
+    if (words > dcmi_sync_max_words) dcmi_sync_max_words = words;
+    dcmi_sync_target = (stream->CR & DMA_SxCR_CT) ? 1U : 0U;
+    dcmi_sync_status = hdcmi.Instance->SR;
+    dcmi_sync_dma_sequence = dcmi_continuous_sequence;
+    // A full-frame DMA buffer must meet the sensor's frame boundary. A
+    // persistent remainder joins the end of one image to the next image.
+    if (words == 0 || words == dcmi_continuous_frame_words)
+    {
+        dcmi_sync_bad_phase_streak = 0;
+        if (dcmi_sync_good_phase_streak < UINT32_MAX)
+            ++dcmi_sync_good_phase_streak;
+    }
+    else
+    {
+        dcmi_sync_good_phase_streak = 0;
+        if (dcmi_sync_bad_phase_streak < UINT32_MAX)
+            ++dcmi_sync_bad_phase_streak;
+        ++dcmi_sync_bad_phase_count;
+    }
+    ++dcmi_sync_vsync_count;
+}
+
 void HAL_DCMI_ErrorCallback(DCMI_HandleTypeDef *handle)
 {
     if (handle == &hdcmi && dcmi_continuous_active)
+    {
+        dcmi_sync_error_bits |= hdcmi.ErrorCode;
         ++dcmi_continuous_error_count;
+    }
 }
 
 inline void pixelDataAssemble(uint8_t *framebuffer,uint32_t framesize)
@@ -831,6 +879,18 @@ int Camera::startContinuous(FrameBuffer &first, FrameBuffer &second)
     dcmi_continuous_completed_us = 0;
     dcmi_continuous_error_count = 0;
     dcmi_continuous_completed_buffer = 0;
+    dcmi_sync_vsync_count = 0;
+    dcmi_sync_dma_sequence = 0;
+    dcmi_sync_words = 0;
+    dcmi_sync_min_words = UINT32_MAX;
+    dcmi_sync_max_words = 0;
+    dcmi_sync_target = 0;
+    dcmi_sync_status = 0;
+    dcmi_sync_error_bits = 0;
+    dcmi_sync_good_phase_streak = 0;
+    dcmi_sync_bad_phase_streak = 0;
+    dcmi_sync_bad_phase_count = 0;
+    dcmi_continuous_frame_words = framesize / 4U;
     this->_continuousFramebuffers[0] = &first;
     this->_continuousFramebuffers[1] = &second;
 
@@ -901,6 +961,37 @@ bool Camera::acquireContinuousFrame(
 uint32_t Camera::continuousErrorCount() const
 {
     return dcmi_continuous_error_count;
+}
+
+void Camera::continuousSyncDiagnostics(CameraSyncDiagnostics &out) const
+{
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    out.vsyncCount = dcmi_sync_vsync_count;
+    out.dmaSequence = dcmi_sync_dma_sequence;
+    out.wordsRemaining = dcmi_sync_words;
+    out.minimumWords = dcmi_sync_vsync_count ? dcmi_sync_min_words : 0;
+    out.maximumWords = dcmi_sync_max_words;
+    out.currentTarget = dcmi_sync_target;
+    out.dcmiStatus = dcmi_sync_status;
+    out.errorBits = dcmi_sync_error_bits;
+    out.goodPhaseStreak = dcmi_sync_good_phase_streak;
+    out.badPhaseStreak = dcmi_sync_bad_phase_streak;
+    out.badPhaseCount = dcmi_sync_bad_phase_count;
+    if (!primask) __enable_irq();
+}
+
+void Camera::requestContinuousStop()
+{
+    // The peripheral finishes its current frame. Poll from the main loop;
+    // never wait here while gyro/motor service needs to keep running.
+    dcmi_continuous_active = false;
+    hdcmi.Instance->CR &= ~DCMI_CR_CAPTURE;
+}
+
+bool Camera::continuousStopReady() const
+{
+    return (hdcmi.Instance->CR & DCMI_CR_CAPTURE) == 0U;
 }
 
 int Camera::stopContinuous()

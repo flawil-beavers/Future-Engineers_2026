@@ -1,5 +1,6 @@
 #include "vision.h"
 #include "config.h"
+#include "obstacle_blob_validation.h"
 
 Vision::Vision()
 {
@@ -601,34 +602,28 @@ void Vision::processComponent(
         PIXEL_STEP *
         PIXEL_STEP;
 
-    // We only want the largest connected blob
-    // of each colour.
+    Blob component;
+    component.found = true;
+    component.color = color;
+    component.centerX = static_cast<int16_t>(sumX / sampleCount);
+    component.centerY = static_cast<int16_t>(sumY / sampleCount);
+    component.minX = minX;
+    component.minY = minY;
+    component.maxX = maxX;
+    component.maxY = maxY;
+    component.area = estimatedArea;
 
-    if (
-        best.found &&
-        estimatedArea <= best.area)
+    if (color == ColorType::RED || color == ColorType::GREEN)
     {
-        return;
+        Blob &pillar = color == ColorType::RED
+            ? result.redPillar : result.greenPillar;
+        if (obstacle_blob_shape_valid(&component) &&
+            (!pillar.found || component.maxY > pillar.maxY ||
+             (component.maxY == pillar.maxY && component.area > pillar.area)))
+            pillar = component;
     }
-
-    best.found = true;
-    best.color = color;
-
-    best.centerX =
-        static_cast<int16_t>(
-            sumX / sampleCount);
-
-    best.centerY =
-        static_cast<int16_t>(
-            sumY / sampleCount);
-
-    best.minX = minX;
-    best.minY = minY;
-
-    best.maxX = maxX;
-    best.maxY = maxY;
-
-    best.area = estimatedArea;
+    if (!best.found || component.area > best.area)
+        best = component;
 }
 
 // ============================================================

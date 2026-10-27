@@ -355,3 +355,151 @@ and good lateral clearance in 507's return past the bay.
 See `simulation/LAYOUT_B_C_FINAL_PARKING_506_507_REVIEW.md`. Final parking
 diagnostics are sampled, not a full-rate sensor or independent ground-truth
 pose recording. No new dedicated sensing test was requested.
+
+
+## 2026-10-26: four returned runs (508--511)
+
+Complete original source files copied unchanged before analysis; source/archive SHA-256 matched. Test date follows receipt date; USB filesystem dates are invalid (2098). Directions verified from diagnostic turn headers and match user order. Parking build `Oct_18_2026_20_08_55`; connector build `Oct 18 2026_20:08:41`. Installed binary was not read back. All four include RUN_END with truncated=0; this does not imply every sensor sample was logged.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261026_log_508_cw.txt` | `5c46c575e32dcf127baa9bb9a4fabd739e22aedd2a20df263c9558d192b36232` | Yes, 53161 | CW1: user reports stop after start; connector tracking rejects steering beyond42deg. No contact reported. |
+| `20261026_log_509_ccw.txt` | `14338878c0aaf21bf6408100500fddc8293af7225e3d559c9a528a22f8b735ed` | Yes, 32899 | CCW: user reports stop after start; scan/scout footprint preflight rejects. |
+| `20261026_log_510_cw.txt` | `4bba445ecff125c1758a70aa3d817fb8f42ea2ab96b43d1cf7035a1f75341c71` | Yes, 164022 | CW2: user reports all driving successful except final parking; three laps complete, dual_marker_scan_incomplete abort. |
+| `20261026_log_511_cw.txt` | `a063008e7ea19574bf60ffcbf0175af723bcbff9978cb63d29a86aa7fe88f78c` | Yes, 27499 | CW3: user confirms LEFT front wheel contacts FRONT parking barrier during exit. Exact contact instant not identified; no-progress watchdog triggers mode_pause in segment5. |
+
+
+## 2026-10-26: three new CW failures (512--514)
+
+Complete originals copied unchanged from the source archive before analysis;
+SHA-256 and byte counts verified. Receipt date used because source filesystem
+clock is invalid (2098). All diagnostic headers have turn=-1 and parking build
+`Oct_26_2026_16_57_33`; installed binary was not read back. All RUN_END records
+have truncated=0, which is not a full-rate sensor recording guarantee.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261026_log_512_cw.txt` | `078f39fe83bb7a44d7c3e331c4eafd060207ea0e723c1a5a25f84e42a61d954b` | Yes, 84732 | First CW: user reports missed GREEN after three quarters of lap1. Late seat23 GREEN injection after a CLEAR; ends stopped near estimated x1210/y-415. Exact physical pillar seat/contact not independently measured. |
+| `20261026_log_513_cw.txt` | `55335769760eb6a2fc9b0106cf4e2a5e43f31a39546af071072f8064727a2252` | Yes, 13729 | Second CW: user reports no exit. Current-pose footprint guard holds during reverse segment3; field-start estimate x393.3/y-1360, outside the earlier tested Y range. Encoder motion also occurs during the preceding steering settle. |
+| `20261026_log_514_cw.txt` | `17cfea0b6c7199a6c8967b6bd5c026722f1316f04cfaf68554497eaa51a73ddd` | Yes, 70622 | Third CW: user reports missed GREEN in section after start, then RED contact. CLEAR at S1 station1 despite rejected low GREEN; RED wrongly latches seat11 before closer projections favor seat10 and are discarded; subsequent no-progress watchdog stops. |
+
+Analysis and delivered candidate: `simulation/FIXES_512_514.md`. Camera frames
+for the failed sections were not saved; colour/exposure or true field-pose
+errors cannot be reconstructed from these logs alone. No dedicated ToF test.
+
+
+## 2026-10-26: CW518--520 and preceding stationary attempts515--517
+
+Complete source originals copied unchanged; bytes and SHA-256 verified.
+Receipt date used because source clock reads2098. User describes three CW
+runs;518--520 match the three substantive runs in sequence, each with turn=-1,
+build `Oct_26_2026_17_45_26`, targets30/36/26/84mm. Installed binary not read back.
+515--517 are complete additional stationary attempts found immediately before
+these runs: no direction/build diagnostic header, no recorded movement; the
+`cw` filename is batch context only, not independently confirmed direction.
+They are not substituted for the user's three described runs. All six include
+RUN_END,truncated=0; full camera frames were not logged.
+
+| File | SHA-256 | Complete bytes | Physical report / telemetry |
+| --- | --- | --- | --- |
+| `20261026_log_515_cw.txt` | `afc8057b0b279099cb8c07f2078d83fd3b02133561ff50d7d66e60a1b65d8679` | Yes, 889 | Ancillary stationary attempt3.765s;0mm. Direction/build unverified. Not one of the three described moving runs. |
+| `20261026_log_516_cw.txt` | `115698349db564e91b3a744d65b705f758d3877dfd57540fc1034c12f53089a1` | Yes, 888 | Ancillary stationary attempt6.310s;0mm. Direction/build unverified. |
+| `20261026_log_517_cw.txt` | `b3d26a306fb01326513e543360811a25c99786e5916cda5a1c02135f0c5bd047` | Yes, 887 | Ancillary stationary attempt6.588s;0mm. Direction/build unverified. |
+| `20261026_log_518_cw.txt` | `9c77a3161e674346997d01483f4650dca510e9669ba7f444ebdcb01d0a0f42ae` | Yes, 85526 | User CW1: exited, then held before RED in start section.123 RED projection records all outside_snap; late projected outer start seat5 is excluded in official inner-row mode. This is association rejection, not absent RED pixels. |
+| `20261026_log_519_cw.txt` | `bd96a993dc37ed501052923a8608fe680a1ccad51926a811df0c5845875e7463` | Yes, 50289 | User CW2: looked out of bay, stopped. Exit diagnostic completes; start scout ends Discovery unresolved and locks drive. No hardware camera failure established. |
+| `20261026_log_520_cw.txt` | `bacc04ed965a632e3395282aae2d68bd60aa892e6e564c55ddf1df721ce0c563` | Yes, 122889 | User CW3: reports missed RED/GREEN then stop. RED projection records exist; GREEN is production-valid in discovery traces but unassigned. Holds at S1station0; new unmapped_foreground_hold masks hold_expired trace reason, preventing the existing corner recovery trigger. Minimal subsequent source fix restores that existing trigger; no upload during camera comparison. |
+
+See `simulation/RETURNED_RUNS_518_520_CAMERA_REVIEW.md`. The subsequent stationary
+RED/GREEN comparison completed with drive enable OFF. Camera phase recovery and
+range calibration were implemented and final M7 uploaded successfully; camera
+originals and firmware hashes are in `../camera_diagnostics/README.md`. The
+table describes the returned original runs, before these changes. No new
+driving gates or HSV/shape widening; normal CW/CCW acceptance remains pending.
+
+## 2026-10-26: returned CW521--522, after camera calibration
+
+Both complete saved source files copied unchanged and SHA-256 checked against
+the USB originals. Receipt-date filenames; source clock is unreliable.
+Both turn=-1,build `Oct_26_2026_21_02_12`,targets30/36/26/84mm. This corresponds
+to the last uploaded M7 SHA-256
+`53a7bedc5e7b65849c267c568231a645db5a153d4e62b526793dcb1be1f77328`;
+installed flash was not read back. Both include RUN_END,truncated=0, but522
+has LOG BUFFER OVERFLOW: its saved file is complete,its telemetry is incomplete.
+
+| File | SHA-256 | Source bytes | Physical report / measured findings |
+| --- | --- | --- | --- |
+| `20261026_log_521_cw.txt` | `f1c899ab429ca8655a866b2d4a009e9432e748312e164f8d64e9d1f2d9bc0791` | 78189 | User: odd first corner,reverse/return,then contact with outer-row GREEN after first corner. GREEN7 confirmed during reverse observation; returns128.2mm to old stop pose before resuming. Stall follows. CW,40712ms to manual pause. |
+| `20261026_log_522_cw.txt` | `92c4297dab21f8c6021bdd8d5e86fdafe1576ad3431368155cc014fbcbaad115` | 196322 | User: repeated stops,finally held near GREEN in third section after start. Logged S3station2 UNKNOWN hold expires at100834ms; no middle/end recovery exists in returned firmware. GREEN at right edge,foot238;both expected seat ranges208/216mm are below230mm local view minimum. Paused at143680ms; buffer overflow prevents full late telemetry. |
+
+521/522 were initially inspected before copying; source stick was briefly
+removed. It was then reconnected and both full originals secured/verified.
+No reconstructed excerpts are substituted. Camera resync counts were not in
+these driving logs; do not attribute the failures to resync from missing data.
+
+## 2026-10-26: returned CCW523--524; third reported run not yet saved
+
+Original saved files secured FIRST,unchanged,and SHA-256 checked against USB.
+Both turn=1,parking-object build `Oct_26_2026_21_02_12`,targets30/36/26/84mm.
+Correction after525--527: this timestamp identifies one compilation unit and
+does not uniquely identify the whole incremental firmware. Exact whole-build
+identity/upload of `6a07252e...` is unverified; no installed-flash readback.
+Sequence-to-physical-report mapping is
+523:first,524:second based on receipt order and compatible observed outcomes;
+no third file525 was present. User says third may not have been saved.
+
+| Evidence file | Original source bytes | SHA-256 | Completeness / physical report |
+| --- | --- | --- | --- |
+| `20261026_log_523_ccw_excerpt.txt` | 38605 | `3250deee29e6d1757b10d777ddb2974eff8a858abcb301b6a21a9f7052ac2e1c` | Exact entire available source file log_523,not a complete run: RUN_START and completed exit diagnostics present,RUN_END/manual-stop tail missing. Excerpt suffix explicitly marks missing run ending. User:first CCW held while leaving. Logged physical exit completes26519ms; primary start observation and stationary retry both UNKNOWN; motor locked after retry. |
+| `20261026_log_524_ccw.txt` | 55647 | `8b58668e1f2051e3bfd38c17e0a6095b1af2344dc81e6325e58333da90e3de21` | Complete saved run,RUN_END/truncated0,no overflow. User:second CCW exits but operator physically obstructs driving; INVALID driving acceptance. GREEN5 confirmed,checked connector completes; later stall must not be used as evidence of autonomous route failure. |
+
+No third-run excerpt has been fabricated. User was asked whether normal save
+could recover its RAM log before a reset/new run. No vehicle movement,upload
+or firmware edits requested/performed during this read-only investigation.
+
+## 2026-10-26: CW525--527 repeated GREEN contact
+
+All three complete originals copied FIRST,unchanged,and USB/disk SHA checked.
+User reports three identical CW approaches straight into GREEN after first
+corner. All turn=-1,RUN_END/truncated0,no overflow. All confirm/inject GREEN7,
+resume from reverse observation,index16,then stall at routeindex28.
+
+| File | Bytes | SHA-256 | Report / evidence |
+| --- | --- | --- | --- |
+| `20261026_log_525_cw.txt` | 63707 | `37da5a65521b318fa03e301ae5c4b9403158f9ec4deea99aba7dc433ab960a22` | CW1: GREEN contact. After resolved view,gyro poll gap819ms; final stall260mm/s; RUN_END38963ms. |
+| `20261026_log_526_cw.txt` | 64235 | `fd6f894d79c516036f43b353281819dc8f118345503bc96ccc63ed06c0213883` | CW2: same contact. Poll gap812ms after resolved view; stall260mm/s; RUN_END40318ms. |
+| `20261026_log_527_cw.txt` | 68595 | `e261e80eaa1df8f0d198329cb8b6d37fcf2e882b1fdd67f5559cd9dc0bfbc5cf` | CW3: same contact. Poll gap814ms after resolved view; stall260mm/s; RUN_END42457ms. |
+
+Firmware identity caveat:unchanged parking diagnostic object still prints
+`Oct_26_2026_21_02_12`,while changed route prints `Oct 26 2026_21:34:48` and
+new DRIVE_CAM/resume-from-view features are present. __DATE__/__TIME__ identify
+translation-unit compilation,not a whole incremental build. This batch is
+compatible with6a07252e candidate;installed flash was not read back. A single
+old parking header must not be used to reject newer route identity.
+No complete images or direct servo-enable telemetry in these originals. Gyro
+gap correlation and source-level frozen-servo reproduction distinguish the
+new blocking preflight/actuator-resume regression from absent GREEN pixels.
+
+Delivered source correction and test limitations:`simulation/FIXES_525_527.md`.
+M7-only build SUCCESS,SHA-256
+`3c32252fb12c7f7afda474d717aa117a1377b1edaa2a2896ed3eb9991cda6559`;
+not uploaded by agent,user's personal-upload preference retained. Existing
+parking/pose/reversal/braking diagnostics preserved;no new sensor sweep.
+
+## 2026-10-26: CCW528--530 start approach failures
+
+All three saved originals secured FIRST,unchanged,and SHA-256 matched to USB.
+User:first/third unusual driven arc;all3fail. User suggests earlier reverse
+observation and notes front parking-section pillar can only occupy inner row.
+All turn=1,parking-object timestamp21:02:12 is not a whole-firmware identity.
+DRIVE_CAM lacks speed/steer/enabled fields added to3c32252e;exact returned image
+hash unverified. Do not equate earlier object timestamps with full firmware.
+
+| File | Source bytes | SHA-256 | Physical report / logged outcome |
+| --- | --- | --- | --- |
+| `20261026_log_528_ccw.txt` | 43794 | `69186f1022677f4d33c4eecd3163af2ff106c913914a89c7afd51a66f5931689` | CCW1 unusual arc. GREEN5 confirms,then connector turns to135.68deg before steering43.247deg tracking rejection at progress10/23. Gyro poll gaps372/314/216ms. RUN_END/truncated0,no overflow. |
+| `20261026_log_529_ccw_excerpt.txt` | 35823 | `547721e6da8648d3e37ef5bad51df86ecf99de45905be5de54c23f6358dda4e7` | Exact whole available source log_529;run ending/RUN_END missing,so excerpt suffix. CCW2 UNKNOWN at primary/retry,same view263.6,-1205.2,43.5deg;no_silhouette,then motor locked. No full-run ending claimed. |
+| `20261026_log_530_ccw.txt` | 44143 | `a1a7c351b0adbd21d4fae24e060e3d8a51dd89cbf9251659f64a224e63050bad` | CCW3 unusual arc. Local GREEN5 confirms3frames,x85/foot184,range267/snap23. Connector reaches144.33deg then steering42.007deg rejection10/24. Gyro poll gaps392/326/309/230ms. RUN_END/truncated0,no overflow. |
+
+Green row is already restricted to inner seats in official parking-section
+mapping. First/third associate GREEN correctly;do not force a new row inference
+to hide their subsequent connector/control failure. No failed-view full images.

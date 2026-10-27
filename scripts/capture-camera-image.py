@@ -17,6 +17,12 @@ def parse_header(line):
     for key in ('v', 'width', 'height', 'bytes', 'frame', 'exposure', 'msb_first', 'rotate180'):
         fields[key] = int(fields[key])
     fields['crc32'] = int(fields['crc32'], 16)
+    for key in ('sync_vsync', 'sync_dma', 'sync_words', 'sync_min',
+                'sync_max', 'sync_ct', 'sync_sr', 'sync_errors', 'sync_good',
+                'sync_bad', 'sync_bad_total', 'sync_resyncs', 'sync_last_fault',
+                'sync_resync_max_us'):
+        if key in fields:
+            fields[key] = int(fields[key])
     if (fields['v'] != 1 or fields['width'] != 320 or fields['height'] != 240 or
             fields['bytes'] != 153600 or fields['msb_first'] not in (0, 1) or
             fields['rotate180'] not in (0, 1)):

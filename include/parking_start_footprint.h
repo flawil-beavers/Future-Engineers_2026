@@ -74,13 +74,42 @@ inline bool safe(float x, float y, float headingDeg, int wheelSign,
     const Quad moved[2] = {rectangle(480-242.5f-10,-1400,15,100,0),
                           rectangle(480-252.5f-10,-1400,15,100,0)};
     for (Quad &q : bodies) {
+        float minimumY = INFINITY;
         for (Point &p : q.p) {
             if (p.y <= -1495 || (keepBehindNearSeat && p.x >= 500) ||
                 (keepAheadMiddleSeat && p.x <= 0)) return false;
+            minimumY = fminf(minimumY,p.y);
         }
+        // Every parking piece ends at y=-1300. A polygon entirely north of
+        // that plane cannot overlap one; all wall/half-plane checks above
+        // still apply. Avoid repeated SAT tests during a moving connector.
+        if (minimumY > -1300.0f) continue;
         if (overlaps(q,fixed) || overlaps(q,moved[0]) || overlaps(q,moved[1]))
             return false;
     }
     return true;
+}
+// Pure geometric selection; called while braking at the first marker edge.
+// Retain the established target if the extra reverse cannot fit. Final full
+// wall/pillar/parking preflight in the path builder still applies afterwards.
+inline float ccwObservationEntryX(float y,float headingDeg,float minimumX,
+                                 float fallbackX,float radius,float arcMm) {
+    if (!isfinite(y)||!isfinite(headingDeg)||radius<=0) return fallbackX;
+    constexpr float rad=0.017453292519943295f;
+    const int yOffsets[2]={-8,8},headingOffsets[3]={-1,0,1};
+    for(float target=minimumX;target<fallbackX;target+=20) {
+        bool accepted=true;
+        for(int dy : yOffsets) for(int dh : headingOffsets) {
+            float x=target-8,py=y+dy,h=(headingDeg+dh)*rad;
+            for(float travel=0;travel<=arcMm+8;travel+=2) {
+                if(!safe(x,py,h/rad,1,false,5,true)) {accepted=false;break;}
+                const float next=h+2/radius;
+                x-=radius*(sinf(next)-sinf(h));
+                py+=radius*(cosf(next)-cosf(h));h=next;
+            }
+        }
+        if(accepted)return target;
+    }
+    return fallbackX;
 }
 } // namespace parking_start_footprint

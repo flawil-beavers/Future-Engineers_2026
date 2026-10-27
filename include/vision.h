@@ -86,6 +86,10 @@ struct VisionResult
     Blob green;
     Blob orange;
     Blob blue;
+    // Preserve raw largest regions for diagnostics/occupancy. These separate
+    // components retain a smaller valid pillar behind a larger room region.
+    Blob redPillar;
+    Blob greenPillar;
 
     // Sparse samples of the obstacle ROI, diagnostic only (not detection gates).
     uint16_t qualitySamples = 0;
@@ -102,6 +106,8 @@ struct VisionResult
         green.reset(ColorType::GREEN);
         orange.reset(ColorType::ORANGE);
         blue.reset(ColorType::BLUE);
+        redPillar.reset(ColorType::RED);
+        greenPillar.reset(ColorType::GREEN);
 
         qualitySamples = darkSamples = clippedSamples = 0;
         meanValue = minValue = maxValue = 0;

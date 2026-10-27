@@ -83,7 +83,7 @@ int main(){int bad=0,total=0;
     !distantSeatSideAmbiguous(970,404,1119,11))++bad;
  total+=3;
  if(distantSeatSideAmbiguous(1100,500,1134,10)||
-    distantSeatSideAmbiguous(944,431,600,11))++bad;
+    !distantSeatSideAmbiguous(944,431,600,11))++bad;
  total+=2;
  for(int dx:{-5,0,5})for(int dy:{-5,0,5})for(int dh:{-2,0,2}){
   routeTurnSign=-1;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
