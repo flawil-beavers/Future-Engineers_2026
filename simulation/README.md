@@ -10,6 +10,7 @@ contact testing.
 
 | File | Description |
 |------|-------------|
+| `review_open_challenge_20261027.py` | Source-backed Open navigation audit: CW/CCW mission, frame freshness, servo resume and explicit unresolved corner/finish/mode-state findings; see `OPEN_CHALLENGE_REVIEW_20261027.md`. |
 | `visualize_robot_run.py` | Whole-run SVG/PNG images with logged pillar maps, field context and parking/merge detail; usage in `ROBOT_RUN_VISUALIZATION.md`. |
 | `corner_extra_view_check.py` | Additional90 mm reverse arc: both log398 scan poses,486 perturbed geometric cases, coast reserve, full-seat clearance and ideal reciprocal return; no camera or controller acceptance. |
 | `parking_exit_swept_search.py` | Standard-library swept-footprint search and validation for the parking-exit manoeuvre. |
@@ -132,3 +133,41 @@ resolve these reproduced findings; the expanded dynamic matrix now passes.
 `check_later_lap_dynamics.py --full-matrix` covers all 2191 uncapped layouts at
 10/20/50ms, `check_drive_profile_timing.py` preserves the historical normal ramp,
 and `check_bounded_tof_transport.py` exercises both generated vendor wrappers.
+
+Returned pre-fix runs 531–540 and the additional parking-edge correction:
+[RETURNED_RUNS_531_540_REVIEW_20261027.md](RETURNED_RUNS_531_540_REVIEW_20261027.md).
+`check_parking_mixed_edge_ranges.py` exercises mixed wall/marker returns against
+independent planar sensor geometry and keeps the old calculation as a negative
+control. Raw evidence is preserved unchanged in the parking diagnostic archive.
+
+Current CW layout-B failures 541–543 and the quick stationary camera check:
+[CW_CORNER_541_543_FIX_20261027.md](CW_CORNER_541_543_FIX_20261027.md).
+`check_cw_corner_541_543.py` covers the archived association geometries,
+mirrored joins and equivalent recovery clearance decisions; runtime-edge tests
+also cover consecutive slow-loop profile progress.
+
+CCW 544–546, the user-repaired sensor contact, late corner recognition and
+USB saving: [CCW_544_546_REVIEW_20261027.md](CCW_544_546_REVIEW_20261027.md).
+`check_corner_red_544.py` reproduces the relevance rejection and tests its bounded
+correction; `check_logger_directory_save.py` checks complete-file saving/retries.
+
+CW/CCW547--555: [CW_CCW_547_555_REVIEW_20261027.md](CW_CCW_547_555_REVIEW_20261027.md).
+`check_cw_ccw_547_555.py` covers edge aiming, scan/connector launch, distant-middle
+conflict, measured exit tails, watchdog progress and parking equivalence.
+
+CW556/558/559 and CCW560--562:
+[GREEN_556_562_REVIEW_20261027.md](GREEN_556_562_REVIEW_20261027.md).
+`check_cw_556_558.py` covers row resolution, middle aliases, false distant RED,
+retained far acquisition and early CW route geometry, including negative controls.
+
+CW563--566 / CCW567--569:
+[CW_CCW_563_569_REVIEW_20261027.md](CW_CCW_563_569_REVIEW_20261027.md).
+`check_green_563_566.py` couples first-corner acquisition to its unknown map and
+tests third-GREEN viewing/capture alignment. `check_ccw_567_569.py` covers early
+returning RED and independently sensed parking drift. CW565's unknown station6
+hold remains specifically pending physical revalidation.
+
+Follow-up scope correction for that hold:
+[CORNER_HOLD_565_FIX_20261027.md](CORNER_HOLD_565_FIX_20261027.md).
+`check_corner_hold_565.py` exercises actual RGB565 local silhouette detection,
+the coverage gates, the old-veto negative control and the unchanged safe join.

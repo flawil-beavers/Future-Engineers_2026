@@ -2,6 +2,10 @@
 
 ## Agent handoffs
 
+- When a test-log USB stick is connected, copy the newest complete original
+  files immediately, verify the copies by SHA-256 and immediately tell the
+  user the stick can be unplugged. Do this before reading project history,
+  analyzing logs or modifying code; finish portable evidence indexing next.
 - Read `AGENT_DOCUMENTATION.md` before continuing an existing investigation or
   robot-validation sequence.
 - Append durable engineering findings and exact next steps there after a

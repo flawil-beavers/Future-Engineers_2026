@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Stream.h>
 #include <stdio.h>
+#include "platform/mbed_retarget.h"
 #include "parking_exit_diagnostics_config.h"
 
 #define LOG_BUFFER_SIZE ROBOT_LOG_BUFFER_SIZE
@@ -62,6 +63,7 @@ private:
         LOGGER_CONNECT_EXTENDED_WAIT,
         LOGGER_CONNECT_EXTENDED,
         LOGGER_MOUNT,
+        LOGGER_SCAN_DIRECTORY,
         LOGGER_OPEN_FILE,
         LOGGER_WRITE,
         LOGGER_SUCCESS_FEEDBACK,
@@ -87,6 +89,7 @@ private:
     FILE *active_file;
     long active_file_start_size;
     bool filesystem_mounted;
+    DIR *directory_scan = nullptr;
     bool terminal_disconnect_protection;
     uint8_t terminal_tx_buffer[TERMINAL_TX_BUFFER_SIZE];
     size_t terminal_tx_head;

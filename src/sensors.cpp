@@ -113,7 +113,12 @@ void update_gyro()
     Serial.println("ms; deferring sensor timeout check.");
   }
 
-  if (digitalRead(BNO085_INT) == LOW) {
+  // SH2 services one transport packet per call. After a stopped preflight,
+  // a control/notification packet can precede the quaternion. Drain a small
+  // bounded batch instead of spending another whole control cycle on it.
+  const uint32_t service_start_ms = millis();
+  for (uint8_t packet = 0; packet < 4 && digitalRead(BNO085_INT) == LOW &&
+       uint32_t(millis()-service_start_ms) < 3U; ++packet) {
     const bool has_event = bno.getSensorEvent(&sensor_value);
     if (bno.wasReset()) {
       Serial.println("BNO085 was reset! Restarting SPI/SH2...");

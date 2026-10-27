@@ -51,22 +51,38 @@ bool drive_profile_restart_pending=false,speed_measurement_ready=false;
 float current_distance=0,measured_speed=0,commanded_acceleration=0;
 float pid_integral=0,accel_pid_integral=0,last_error=0;
 uint32_t cruise_candidate_start_us=0;
-void steer(int){}void service_motor_output(){}void pid_speed(){}
+int pidCalls=0;
+void steer(int){}void service_motor_output(){}void pid_speed(){++pidCalls;}
 float constrain(float v,float lo,float hi){return fminf(hi,fmaxf(lo,v));}
 ''' + block(motor, motor.index('void drive_loop()')) + r'''
 int main(){for(float dt:{.020f,.050f,.215f,.819f,1.2f}){
+ dc_state=DC_DISABLED;drive_loop();dc_state=DC_ENABLED;
  last_loop_time=dt;current_speed=current_acceleration=target_distance=0;drive_loop();
  if(dt>.100f && (current_speed!=0 || target_distance!=0))return 1;
  std::cout<<"RAMP dt="<<dt<<" profile="<<current_speed<<" virtual_distance="<<target_distance<<"\n";
 }
 // A delayed active loop accounts for real measured motion without retroactive
 // ramp distance. A disabled-to-driving restart starts at rest instead.
+ dc_state=DC_DISABLED;drive_loop();dc_state=DC_ENABLED;
  current_distance=500;measured_speed=120;current_speed=260;last_loop_time=.819f;
  drive_loop();if(current_speed!=120||target_distance!=500)return 2;
  drive_profile_restart_pending=true;drive_loop();
  if(current_speed!=0||target_distance!=500)return 3;
  last_loop_time=.020f;drive_loop();if(current_speed<=0||target_distance>501)return 4;
  std::cout<<"PASS delayed active motion, stopped restart, next normal ramp\n";
+ // A sequence of healthy slow updates previously reset the profile on EVERY
+ // pass, so the requested reverse motion never reached PID or the motor.
+ for(int sign:{-1,1})for(float dt:{.101f,.148f,.215f,.819f}){
+  target_speed=sign*70;measured_speed=current_speed=current_acceleration=0;
+  pidCalls=0;
+  current_distance=100;drive_profile_restart_pending=true;last_loop_time=dt;
+  drive_loop();
+  for(int i=0;i<40;++i){drive_loop();
+   if(fabsf(target_distance-current_distance)>3.501f)return 21;
+  }
+  if(fabsf(current_speed-sign*70)>0.01f||pidCalls<40)return 22;
+ }
+ std::cout<<"PASS repeated 101/148/215/819ms healthy updates: bounded forward/reverse ramp, no starvation\n";
 }
 '''
     observations['ramp'] = run('ramp_gap', ramp)
@@ -206,8 +222,9 @@ int main(){dc_state=DC_ENABLED;oneLoggerUpdate();if(probes)return 12;
 #include <cstring>
 #include <cassert>
 #include <iostream>
-constexpr int PA_15=15,LOW=0;void digitalWrite(int,int){}
+constexpr int PA_15=15,LOW=0,HIGH=1,LEDR=1,LEDG=2,LOGGER_IDLE=0;void digitalWrite(int,int){}
 class USBLogger{public:
+ int logger_state=0;
  bool busy=false,buffer_overflow=false;size_t buffer_head=12,tail_reserve=0,flush_target_length=0;
  int session_file_num=12,next_probe_number=13;char log_buffer[64]="saved bytes",session_filepath[64]="log_12";
  bool is_busy(){return busy;}void clear();

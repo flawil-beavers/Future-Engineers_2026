@@ -10,6 +10,7 @@
 #include <FATFileSystem.h>
 #include <USB/PluggableUSBSerial.h>
 #include <string.h>
+#include <errno.h>
 
 #define SERIAL_HW _UART_USB_
 
@@ -140,6 +141,10 @@ void USBLogger::clear()
     if (is_busy() || flush_target_length != 0)
         return;
 
+    logger_state = LOGGER_IDLE;
+    digitalWrite(LEDR, HIGH);
+    digitalWrite(LEDG, HIGH);
+
     buffer_head = 0;
     tail_reserve = 0;
     buffer_overflow = false;
@@ -152,7 +157,11 @@ void USBLogger::clear()
 
 bool USBLogger::is_busy() const
 {
-    return logger_state != LOGGER_IDLE;
+    // The file is already closed/unmounted during LED feedback. A cosmetic
+    // green/red indication must not postpone an otherwise valid new start.
+    return logger_state != LOGGER_IDLE &&
+        logger_state != LOGGER_SUCCESS_FEEDBACK &&
+        logger_state != LOGGER_ERROR_FEEDBACK;
 }
 
 void USBLogger::write_to_usb()
@@ -199,6 +208,10 @@ void USBLogger::remove_written_prefix(size_t count)
 
 void USBLogger::retry_or_fail(const char *reason)
 {
+    if (directory_scan != nullptr) {
+        closedir(directory_scan);
+        directory_scan = nullptr;
+    }
     if (!terminal_disconnect_protection && SERIAL_HW) {
         SERIAL_HW.print("[LOGGER] ");
         SERIAL_HW.println(reason);
@@ -335,7 +348,13 @@ void USBLogger::update()
         const int error = usb_fs.mount(&msd);
         if (error == 0) {
             filesystem_mounted = true;
-            logger_state = LOGGER_OPEN_FILE;
+            next_probe_number = 1;
+            directory_scan = opendir("/usb");
+            if (directory_scan == nullptr) {
+                retry_or_fail("Could not read USB log directory.");
+                return;
+            }
+            logger_state = LOGGER_SCAN_DIRECTORY;
             return;
         }
         ++mount_attempts;
@@ -344,6 +363,32 @@ void USBLogger::update()
             retry_or_fail("USB filesystem mount failed.");
         return;
     }
+
+    case LOGGER_SCAN_DIRECTORY:
+        // Walk the directory once instead of reopening log_1..log_N on every
+        // save. Each fopen caused another FAT name search, growing quadratically.
+        for (uint8_t entries = 0; entries < 16; ++entries) {
+            errno = 0;
+            struct dirent *entry = readdir(directory_scan);
+            if (entry == nullptr) {
+                if (errno != 0) {
+                    retry_or_fail("USB directory read failed.");
+                    return;
+                }
+                closedir(directory_scan);
+                directory_scan = nullptr;
+                logger_state = LOGGER_OPEN_FILE;
+                return;
+            }
+            unsigned long number = 0;
+            int consumed = 0;
+            if (sscanf(entry->d_name, "log_%lu.txt%n", &number, &consumed) == 1 &&
+                consumed > 0 && entry->d_name[consumed] == '\0' &&
+                number > 0 && number < 2147483647UL &&
+                number >= static_cast<unsigned long>(next_probe_number))
+                next_probe_number = static_cast<int>(number) + 1;
+        }
+        return;
 
     case LOGGER_OPEN_FILE:
         if (session_file_num < 1) {
@@ -422,7 +467,7 @@ void USBLogger::update()
             return;
         }
 
-        static const size_t CHUNK_SIZE = 512;
+        static const size_t CHUNK_SIZE = 4096;
         const size_t remaining = flush_target_length - flush_offset;
         const size_t requested =
             remaining < CHUNK_SIZE

@@ -155,7 +155,7 @@ bool run(bool legacy,int turn,int mask,float dead,float gap,float dx,float dy,fl
   if(legacy){float old[]={28,34,28,80,170};s.distanceMm=old[seg];}
   int steer=s.steeringRelativeToAway*(turn<0?50:-50);
   bool aligned=false;
-  for(float travel=0;travel<=220;travel+=2){
+  for(float travel=0;travel<=OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM;travel+=2){
    parking_start_footprint::Quad q[6];
    parking_start_footprint::robotQuads(x,y,h,(steer>0)-(steer<0),0,q);
    auto a=parking_start_footprint::rectangle(490,-1400,15,100,0);
@@ -165,8 +165,8 @@ bool run(bool legacy,int turn,int mask,float dead,float gap,float dx,float dy,fl
    if(!legacy&&turn<0&&!parkingExitMotionSafe({x,y,h},steer,s.direction,0))return false;
    if(seg<4&&travel>=s.distanceMm)break;
    float error=remainderf(h-(turn<0?180.f:0.f),360.f);
-   if(seg==4&&travel>=120&&fabsf(error)<=2){aligned=true;break;}
-   if(travel>=220)return false;
+   if(seg==4&&travel>=OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM&&fabsf(error)<=OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG){aligned=true;break;}
+   if(travel>=OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM)return false;
    float factor=(mask&(1<<(seg%4)))?1.05f:.8f;
    float k=travel<dead?0:-factor/Ackermann::getTurnRadius(steer);
    float angle=h*PI/180,ds=s.direction*2.f,next=angle+k*ds;

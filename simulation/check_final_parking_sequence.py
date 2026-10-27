@@ -23,6 +23,7 @@ PositionEstimate hostPose,truePose;float encoder=0;unsigned long hostTime=0;
 unsigned long framePeriod=30;
 enum {DC_DISABLED,DC_ENABLED,DC_HOLDING};int dc_state=DC_HOLDING,command=0,steeringCommand=0,set_degree=0;
 bool servo_disabled=true;float current_speed=0,measured_speed=0;
+float last_loop_time=.01f;
 struct Logger {std::ostringstream lines;int writes=0;
  template<class T>void print(T x){lines<<x;}template<class T>void print(T x,int){lines<<x;}
  template<class T>void println(T x){lines<<x<<"\n";}template<class T>void println(T x,int){lines<<x<<"\n";}void println(){lines<<"\n";}
@@ -36,9 +37,10 @@ void stop(bool hold){dc_state=hold?DC_HOLDING:DC_DISABLED;command=0;current_spee
 void set_speed(int speed){command=speed;dc_state=DC_ENABLED;current_speed=measured_speed=speed;}
 void set_steering(int angle){steeringCommand=set_degree=angle;}
 void steer(int angle){if(!servo_disabled)steeringCommand=set_degree=angle;}
-struct ObstacleSeatInfo {bool confirmed=false;};
+struct ObstacleSeatInfo {bool confirmed=false;float xMm=0,yMm=0;};
 uint8_t obstacle_path_seat_count(){return 24;}
-bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;return true;}
+bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
+void update_gyro(){}
 bool obstacle_path_sample_pose_clearance(uint8_t i,float x,float y,float h,ObstacleClearanceSample &s){return calculateClearanceAtPose(seats[i],x,y,h,s);}
 enum TofSensor {TOF_LEFT,TOF_RIGHT};
 struct TofObjectDiagnostic{int16_t distance_mm=0;bool hardware_valid=true,filter_accepted=true;};
@@ -49,7 +51,22 @@ void final_parking_sensor_hold();
 '''
     # Arduino/sensor headers are supplied by the host adapter above.
     fixture+=source[source.index('#define Serial robot_logger'):]
-    fixture+='\n}\n#undef Serial\n'
+    # Preserve the old radial-cone model only as a host sensor adapter and a
+    # negative control. Production now projects marker edges onto their plane.
+    fixture+=r'''
+BeamFootprint beamFootprint(TofSensor sensor,float rangeMm,const PositionEstimate &pose){
+ const float localX=sensor==TOF_LEFT?OBSTACLE_TOF_LEFT_LOCAL_X_MM:OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+ const float localY=sensor==TOF_LEFT?OBSTACLE_TOF_LEFT_LOCAL_Y_MM:OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+ const float h=pose.heading_deg*PI/180;
+ const float sx=pose.x_mm+cosf(h)*localX-sinf(h)*localY;
+ const float ray=h+(sensor==TOF_LEFT?.5f*PI:-.5f*PI);
+ const float half=.5f*OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG*PI/180;
+ const float x1=sx+rangeMm*cosf(ray-half),x2=sx+rangeMm*cosf(ray+half);
+ return {fminf(x1,x2),fmaxf(x1,x2)};
+}
+}
+#undef Serial
+'''
     fixture+=r'''
 bool get_tof_diagnostic_snapshot(TofSensor sensor,TofDiagnosticSnapshot &s){
  s.sequence=hostTime/framePeriod;s.sampled_ms=s.sequence*framePeriod;

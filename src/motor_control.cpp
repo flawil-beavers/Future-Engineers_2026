@@ -679,6 +679,7 @@ void pid_speed()
 
 void drive_loop()
 {
+  static bool delayed_profile_rebased = false;
   // Steering is also serviced while the drive motor is disabled. This is
   // required for the stationary obstacle bench test.
   steer(set_degree);
@@ -689,12 +690,14 @@ void drive_loop()
 
   if (last_loop_time == 0 || dc_state == DC_DISABLED)
   {
+    delayed_profile_rebased = false;
     return; // Don't run until timing is initialized
   }
 
   if (dc_state == DC_ENABLED)
   {
-    if (drive_profile_restart_pending || last_loop_time > 0.100f)
+    const bool delayed = last_loop_time > 0.100f;
+    if (drive_profile_restart_pending || (delayed && !delayed_profile_rebased))
     {
       // Elapsed time before a new command is not commanded motion. After a
       // delayed active loop, retain measured motion but discard artificial
@@ -707,10 +710,16 @@ void drive_loop()
       cruise_candidate_start_us = 0;
       speed_measurement_ready = false;
       drive_profile_restart_pending = false;
+      delayed_profile_rebased = delayed;
       return;
     }
+    // Consecutive slow, healthy updates must not repeatedly erase the ramp
+    // and skip PID forever. Rebase once, then permit bounded progress without
+    // integrating the missing wall time into the commanded distance.
+    if (delayed) target_distance = current_distance;
+    else delayed_profile_rebased = false;
     target_distance += DriveProfile::advance(current_speed,current_acceleration,
-        active_acceleration_limit,target_speed,last_loop_time,acc);
+        active_acceleration_limit,target_speed,delayed ? 0.050f : last_loop_time,acc);
   }
 
   pid_speed();

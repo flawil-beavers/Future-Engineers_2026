@@ -1,0 +1,23 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[RUN_START] v=1 t=2368 period_ms=0 detailed=0 total_bytes=2048
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=165.0 parking_length_mm=247.5
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK START WAIT] left/right=9999.0/9999.0 need=fresh_side_wall_reference; check_side_sensor_connection
+[PARK EXIT] Start wall left=9999 right=105
+[PARK EXIT] Away steering=-50
+[PARK REAR] Armed initial_range_mm=-1.0 target_range_mm=65.0 tolerance_mm=2.0
+[PARK_DIAG_CONFIG] v=2 build=Oct_27_2026_19_43_55 turn=1 center=80 mm_per_count=0.1154054 period_ms=200 sample_limit=150 byte_limit=65536 buffer=196608 sample_bytes=57000 event_bytes=8192 line_capacity=512 segments=5 exit_speed=80 brake_ms=150 rear_target=65.0 localize_max=430.0
+[PARK_DIAG] v=2 type=state t=2390 detail=rear_settle enc=0 emm=0.00 gyro=-0.08 steer=0 cmd=0
+[PARK_DIAG] v=2 type=sample t=2390 state=rear_settle seg=1 turn=1 target=30.0 enc=0 emm=0.00 cmd=0 speed=0.00 steer=0 dc=0 gyro=-0.08 pose=0.0,0.0,359.93 nominal=0.0,0.0,359.93 ref=rear_marker s0=3,6,808.0,9999.0,0.328,18.6,1,1 s1=3,2,105.0,105.0,17.094,1.9,1,1 s2=none
+[RUN_END] v=1 t=2464 elapsed_ms=96 outcome=stopped reason=mode_pause truncated=0 sample_bytes=0 route_bytes=0 event_bytes=64
+[STATE CHANGE] Manual disable -> IDLE
+  LEFT:  Dist: 9999 mm (Raw: 804) | Sig: 0.33 | Sigma: 15.86
+  RIGHT: Dist: 105 mm (Raw: 105) | Sig: 17.10 | Sigma: 1.52
+  Current angle: -0.0°
+  Distance since last state: -2 mm
+Navigation controller disabled
+Paused. Pending mode: OBSTACLE_CHALLENGE
+SYSTEM DISABLED

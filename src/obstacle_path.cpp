@@ -3341,12 +3341,14 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
 bool seatComfortablyVisible(
     uint8_t seatIndex,
     const PositionEstimate &pose);
+bool discoveryAimCommandSafe(const PositionEstimate &start, int steering);
 
 void applyDiscoveryTargetNudge(
     PathPoint &target,
     const PositionEstimate &pose)
 {
     float desiredNudgeDeg = 0.0f;
+    bool checkedGreenHint=false;
     const float currentDistance = baselinePath[progressIndex].distanceMm;
     float bestForward = OBSTACLE_LOOK_START_MM + 1.0f;
     int bestStation = -1;
@@ -3458,6 +3460,65 @@ void applyDiscoveryTargetNudge(
                 desiredNudgeDeg,
                 -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,
                 OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
+            const auto safeNudge = [&](float candidate) {
+                const float a=candidate*PI/180.0f;
+                const float dx=target.x-pose.x_mm, dy=target.y-pose.y_mm;
+                const float tx=dx*cosf(a)-dy*sinf(a);
+                const float ty=dx*sinf(a)+dy*cosf(a);
+                const float k=2.0f*(-tx*sinf(heading)+ty*cosf(heading)) /
+                    fmaxf(1.0f,tx*tx+ty*ty);
+                return discoveryAimCommandSafe(pose,
+                    static_cast<int>(clampFloat(pursuitServoForCurvature(k),
+                        -OBSTACLE_MAX_PURSUIT_STEERING_DEG,OBSTACLE_MAX_PURSUIT_STEERING_DEG)));
+            };
+            // 547/549/550: a genuine GREEN component was visible before its
+            // foot could snap, then left the image while the pair-centering
+            // rule requested only 2--3 degrees. Keep this evidence in view;
+            // it is an aiming hint, never a colour/seat confirmation.
+            const auto &observation = lastDiscoveryObservation;
+            bool greenHint=observation.productionValid &&
+                observation.color==ColorType::GREEN && observation.seatId<0 &&
+                observation.rangeMm>=OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
+                observation.rangeMm<=OBSTACLE_DISCOVERY_VIEW_MAX_MM;
+            float hintBearing=observation.bearingDeg, hintRange=observation.rangeMm;
+            // A component at a horizontal edge can steer the view inward,
+            // including when range carries the synthetic clipped170mm value.
+            // All other shape gates remain. This hint cannot vote/inject/clear.
+            const Blob *raw=getLargestObstacle();
+            if (!greenHint && raw && raw->found && raw->color==ColorType::GREEN &&
+                (raw->centerX<OBSTACLE_START_MIN_X || raw->centerX>OBSTACLE_START_MAX_X ||
+                 raw->minX<=2 || raw->maxX>=317))
+            {
+                Blob centred=*raw;
+                centred.centerX=static_cast<int16_t>(clampFloat(raw->centerX,
+                    OBSTACLE_START_MIN_X,OBSTACLE_START_MAX_X));
+                if (obstacle_blob_valid_for_acquisition(&centred))
+                {
+                    hintBearing=obstacle_camera_bearing_deg(raw);
+                    const float foot=raw->maxY-OBSTACLE_CAMERA_FOOT_EDGE_SLOPE*
+                        fabsf(raw->centerX-OBSTACLE_CAMERA_PRINCIPAL_X_PX);
+                    hintRange=foot>OBSTACLE_CAMERA_GROUND_HORIZON_Y+1.0f ?
+                        OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX /
+                        ((foot-OBSTACLE_CAMERA_GROUND_HORIZON_Y)*cosf(hintBearing*PI/180.0f)) : 0.0f;
+                    greenHint=true;
+                }
+            }
+            if (unresolved0 && unresolved1 && greenHint &&
+                hintRange >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
+                hintRange <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
+                fabsf(hintBearing) >= 20.0f &&
+                fminf(fabsf(wrap180(bearing[0]-hintBearing)),
+                      fabsf(wrap180(bearing[1]-hintBearing))) <= 6.0f)
+            {
+                const float candidate = clampFloat(hintBearing * taper,
+                    -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,
+                     OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
+                if (safeNudge(candidate))
+                {
+                    desiredNudgeDeg = candidate;
+                    checkedGreenHint=true;
+                }
+            }
         }
     }
     else
@@ -3481,6 +3542,19 @@ void applyDiscoveryTargetNudge(
     const float nudge = lastDiscoveryTargetNudgeDeg * PI / 180.0f;
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
+    if (checkedGreenHint)
+    {
+        // The slew-limited command can differ from the checked endpoint.
+        // Validate the actual clamped/quantized steering as well.
+        const float h=pose.heading_deg*PI/180.0f;
+        const float tx=dx*cosf(nudge)-dy*sinf(nudge);
+        const float ty=dx*sinf(nudge)+dy*cosf(nudge);
+        const float k=2.0f*(-tx*sinf(h)+ty*cosf(h))/fmaxf(1.0f,tx*tx+ty*ty);
+        const int steering=static_cast<int>(clampFloat(pursuitServoForCurvature(k),
+            -OBSTACLE_MAX_PURSUIT_STEERING_DEG,OBSTACLE_MAX_PURSUIT_STEERING_DEG));
+        if (!discoveryAimCommandSafe(pose,steering))
+        { lastDiscoveryTargetNudgeDeg=0.0f;return; }
+    }
     target.x = pose.x_mm + dx * cosf(nudge) - dy * sinf(nudge);
     target.y = pose.y_mm + dx * sinf(nudge) + dy * cosf(nudge);
 }
@@ -3627,6 +3701,20 @@ bool unmappedForegroundBlocksClear(const Blob *raw,
     if (observation.productionValid && observation.seatId >= 0 &&
         observation.color == raw->color)
         return false;
+    // 565: a lower-image GREEN fragment (top148, foot192) in another
+    // direction vetoed every UNKNOWN seat, even after a clear local search.
+    // Keep the global veto for full-height/upper silhouettes (512/514).
+    // For a late-starting fragment, retain a generous12deg angular guard;
+    // only an unrelated bearing may stop blocking this particular seat.
+    if (raw->minY>OBSTACLE_MAX_TOP_Y && isfinite(bearing))
+    {
+        const float a=atanf((OBSTACLE_CAMERA_PRINCIPAL_X_PX-raw->minX)/
+            OBSTACLE_CAMERA_FOCAL_X_PX)*180.0f/PI;
+        const float b=atanf((OBSTACLE_CAMERA_PRINCIPAL_X_PX-raw->maxX)/
+            OBSTACLE_CAMERA_FOCAL_X_PX)*180.0f/PI;
+        if (bearing<fminf(a,b)-12.0f || bearing>fmaxf(a,b)+12.0f)
+            return false;
+    }
     const float forward = range * cosf(bearing * PI / 180.0f);
     if (!isfinite(forward) || forward <= 0) return true;
     const float expectedFoot = OBSTACLE_CAMERA_GROUND_HORIZON_Y +
@@ -3927,16 +4015,48 @@ bool cornerViewSweepSafe(const PositionEstimate &start, float signedTravel)
             const float offset = rear ? OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM : 0.0f;
             const float x = start.x_mm + (travel - offset) * cosf(heading);
             const float y = start.y_mm + (travel - offset) * sinf(heading);
+            // The walls are identical for every pillar at this pose. Keep
+            // the same samples and 40-mm reserve without doing 24 wall scans.
+            ObstacleClearanceSample walls{};
+            if (!calculateClearanceAtPose(seats[0], x, y,
+                    start.heading_deg, walls) || walls.wallMm <= 40.0f)
+                return false;
+            const float endX = x + OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*cosf(heading);
+            const float endY = y + OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*sinf(heading);
             for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
             {
-                ObstacleClearanceSample sample{};
-                if (!calculateClearanceAtPose(seats[seat], x, y,
-                        start.heading_deg, sample) ||
-                    sample.wallMm <= 40.0f ||
-                    (cornerViewSeatMayBeOccupied(seat) && sample.pillarMm <= 40.0f))
+                if (!cornerViewSeatMayBeOccupied(seat)) continue;
+                const float clearance = pointSegmentDistance(seats[seat].x,seats[seat].y,
+                    x,y,endX,endY) - OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM -
+                    OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+                if (!isfinite(clearance) || clearance <= 40.0f)
                     return false;
             }
         }
+    }
+    return true;
+}
+
+bool discoveryAimCommandSafe(const PositionEstimate &start, int steering)
+{
+    // Aiming never grants a new drive permission. Retain 40-mm clearance to
+    // every still-possible pillar and wall over 80 mm of the actual CAD arc.
+    const float radius = Ackermann::getTurnRadius(static_cast<float>(steering));
+    const float k = fabsf(radius)>100000.0f ? 0.0f : -1.0f/radius;
+    const float h = start.heading_deg*PI/180.0f;
+    for (int step=0; step<=27; ++step)
+    {
+        const float travel = 80.0f*step/27.0f;
+        PositionEstimate p = start;
+        const float next = h+k*travel;
+        if (fabsf(k)>1.0e-6f) {
+            p.x_mm += (sinf(next)-sinf(h))/k;
+            p.y_mm += (cosf(h)-cosf(next))/k;
+        } else {
+            p.x_mm += travel*cosf(h); p.y_mm += travel*sinf(h);
+        }
+        p.heading_deg = next*180.0f/PI;
+        if (!cornerViewSweepSafe(p,0.0f)) return false;
     }
     return true;
 }
@@ -4212,6 +4332,10 @@ void collectCornerViewFrame(const PositionEstimate &pose, bool newFrame)
             Serial.print(raw->width()); Serial.print("/"); Serial.print(raw->height());
             Serial.print("/"); Serial.print(raw->maxY); Serial.print("/");
             Serial.print(obstacle_blob_valid_for_acquisition(raw)?1:0);
+            Serial.print(" bounds/centroid=");
+            Serial.print(raw->minX); Serial.print("/"); Serial.print(raw->minY);
+            Serial.print("/"); Serial.print(raw->maxX); Serial.print("/");
+            Serial.print(raw->maxY); Serial.print("/"); Serial.print(raw->centerX);
         }
         Serial.println();
     }
@@ -4666,6 +4790,12 @@ bool preflightCwStartArc(const PositionEstimate &start, float travelMm)
         {
             if (!parkingStartFootprintSafe(
                     x, y, heading * 180.0f / PI, routeTurnSign, 5.0f))
+                return false;
+            // The stopped scan must also allow the opposite wheel sweep at
+            // connector launch. 551/553/555 passed the scan-only footprint,
+            // then rejected every connector at travel=0.
+            if (parkingCcwFirstEdgeStart && travel >= travelMm-4.0f &&
+                !parkingStartFootprintSafe(x,y,heading*180.0f/PI,-routeTurnSign,5.0f))
                 return false;
             for (uint8_t seat = routeTurnSign > 0 ? 1 : 0; seat < 6; seat += 2)
             {
@@ -5215,7 +5345,10 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
             plannedTravel - (parkingShortStart() ? 3.0f :
                 OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM) &&
         finishError <= OBSTACLE_PARKING_ENTRY_FINISH_TOLERANCE_MM &&
-        finishHeadingError <= (parkingShortStart() ? 2.0f :
+        // Do not add 12--14 mm reverse just to acquire a two-degree model
+        // heading (551/553/555). The actual stopped pose is fully checked
+        // again by the connector; this only ends the camera observation arc.
+        finishHeadingError <= (parkingCcwFirstEdgeStart ? 12.0f : parkingShortStart() ? 2.0f :
             OBSTACLE_PARKING_ENTRY_FINISH_HEADING_DEG);
     const bool travelLimitReached =
         entryTravel >=
@@ -5891,7 +6024,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261026_ccw_adaptive_view_servo_resume");
+    Serial.println("[PATH] control_revision=20261027_corner565_clear_scope");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -6377,9 +6510,19 @@ void obstacle_path_update(bool new_camera_frame)
             static_cast<int>(steering));
     }
     if (parkingEntryConnectorActive)
+    {
         safeSpeed = fminf(
             safeSpeed,
             OBSTACLE_PARKING_ENTRY_RECOVERY_SPEED_MM_S);
+        // The tight parking-piece departure retains 80 mm/s. Once the full
+        // body has cleared the tips, a confirmed start GREEN does not require
+        // that recovery pace along the gentle, checked connector to RED.
+        if (routeTurnSign < 0 && seats[0].confirmed && !seats[0].red &&
+            pose.y_mm > -1200.0f && fabsf(steering) <= 20.0f)
+            safeSpeed = runtimeSpeedCapMmS > 0.0f
+                ? fminf(runtimeSpeedCapMmS,OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S)
+                : OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S;
+    }
     if (parkingEntryFarGreenFollowup && !parkingEntryConnectorActive)
         safeSpeed = fminf(
             safeSpeed,
@@ -6829,7 +6972,8 @@ bool mappedParkingSeatFootMatches(uint8_t seatIndex,
 void logRedSeatProjection(const ObstacleObservationResult &result,
                           const char *decision, bool force = false)
 {
-    if (!result.productionValid || result.color != ColorType::RED)
+    if (!result.productionValid ||
+        (result.color != ColorType::RED && result.color != ColorType::GREEN))
         return;
     static unsigned long lastLoggedMs = 0;
     const unsigned long now = millis();
@@ -6852,7 +6996,8 @@ void logRedSeatProjection(const ObstacleObservationResult &result,
             }
         }
     }
-    Serial.print("[RED SEAT] t="); Serial.print(now);
+    Serial.print(result.color == ColorType::RED ? "[RED SEAT] t=" : "[GREEN SEAT PRIMARY] t=");
+    Serial.print(now);
     Serial.print(" decision="); Serial.print(decision);
     Serial.print(" pose="); Serial.print(result.robotXmm, 0);
     Serial.print(","); Serial.print(result.robotYmm, 0);
@@ -6870,7 +7015,8 @@ void logRedSeatProjection(const ObstacleObservationResult &result,
     Serial.print(" accepted="); Serial.println(result.seatId);
 }
 
-bool distantSeatSideAmbiguous(float x, float y, float range, uint8_t seatId)
+bool distantSeatSideAmbiguous(float x, float y, float range, uint8_t seatId,
+                             float cameraX = NAN, float cameraY = NAN)
 {
     if (!isfinite(range) || range <= 0.0f ||
         seatId >= OBSTACLE_SEAT_COUNT || seats[seatId].confirmed) return false;
@@ -6878,10 +7024,109 @@ bool distantSeatSideAmbiguous(float x, float y, float range, uint8_t seatId)
     const float h=a.headingDeg*PI/180.0f;
     const float lateral=-(x-0.5f*(a.x+b.x))*sinf(h)+
                          (y-0.5f*(a.y+b.y))*cosf(h);
-    // Rails are +/-100 mm. Log514 also crossed the midpoint at only547mm:
-    // range alone does not remove yaw/position uncertainty. Keep the same
-    // 70mm ambiguity band at every range, for both colours/directions.
-    return fabsf(lateral)<70.0f;
+    // Retain the midpoint guard: distance alone cannot decide the row (514).
+    if (fabsf(lateral)>=70.0f) return false;
+    if (fabsf(lateral)<30.0f || !isfinite(cameraX) || !isfinite(cameraY) ||
+        range<OBSTACLE_DISCOVERY_VIEW_MIN_MM || range>OBSTACLE_DISCOVERY_VIEW_MAX_MM)
+        return true;
+    // Corner views can resolve the two rows by bearing even when the ground
+    // foot underestimates distance. 541--543: outer row differs by 1.9--5.9deg,
+    // other row by 19.7--23.7deg. Never decide aligned/far/central projections.
+    const float vx=x-cameraX, vy=y-cameraY;
+    const float ax=a.x-cameraX, ay=a.y-cameraY;
+    const float bx=b.x-cameraX, by=b.y-cameraY;
+    const float errorA=fabsf(atan2f(vx*ay-vy*ax,vx*ax+vy*ay))*180.0f/PI;
+    const float errorB=fabsf(atan2f(vx*by-vy*bx,vx*bx+vy*by))*180.0f/PI;
+    const float separation=fabsf(atan2f(ax*by-ay*bx,ax*bx+ay*by))*180.0f/PI;
+    const bool resolved=separation>=12.0f && errorA<=6.0f && errorB-errorA>=8.0f &&
+        fabsf(hypotf(ax,ay)-range)<=100.0f;
+    return !resolved;
+}
+
+int resolveSeatRowByBearing(const ObstacleObservationResult &observation, int nearest)
+{
+    // Only resolve the two rows of the same non-parking station. At an
+    // oblique corner the coloured foot can underestimate depth enough to
+    // snap to the nearer row (556/558). Range alone must not choose that row.
+    if (routeTurnSign >= 0 || nearest < 6 || nearest >= OBSTACLE_SEAT_COUNT ||
+        observation.color != ColorType::GREEN ||
+        observation.rangeMm < OBSTACLE_DISCOVERY_VIEW_MIN_MM ||
+        observation.rangeMm > OBSTACLE_DISCOVERY_VIEW_MAX_MM)
+        return -1;
+    const int first = nearest & ~1;
+    const float vx=observation.sightingXmm-observation.cameraXmm;
+    const float vy=observation.sightingYmm-observation.cameraYmm;
+    const float ax=seats[first].x-observation.cameraXmm;
+    const float ay=seats[first].y-observation.cameraYmm;
+    const float bx=seats[first+1].x-observation.cameraXmm;
+    const float by=seats[first+1].y-observation.cameraYmm;
+    const float errorA=fabsf(atan2f(vx*ay-vy*ax,vx*ax+vy*ay))*180.0f/PI;
+    const float errorB=fabsf(atan2f(vx*by-vy*bx,vx*bx+vy*by))*180.0f/PI;
+    const float separation=fabsf(atan2f(ax*by-ay*bx,ax*bx+ay*by))*180.0f/PI;
+    const bool firstBetter=errorA<errorB;
+    const float best=firstBetter ? errorA:errorB;
+    const float other=firstBetter ? errorB:errorA;
+    const float range=firstBetter ? hypotf(ax,ay):hypotf(bx,by);
+    if (best>4.5f) return -1;
+    const int bestSeat=first+(firstBetter ? 0:1);
+    const bool decisiveRange=range<=800.0f && range>=observation.rangeMm-80.0f &&
+        range<=observation.rangeMm+250.0f && range<=1.6f*observation.rangeMm;
+    // 563/566: the earlier, less separated views favour the other row too.
+    // Falling back to the depth snap here committed the wrong route before
+    // the later decisive bearing arrived. Defer this disputed row, not GREEN.
+    if (!decisiveRange || separation<7.0f || other-best<7.0f)
+    {
+        const bool plausibleAlternative=range<=1000.0f &&
+            range>=observation.rangeMm-80.0f && range<=observation.rangeMm+350.0f &&
+            range<=1.8f*observation.rangeMm;
+        return bestSeat!=nearest && plausibleAlternative ? -2 : -1;
+    }
+    return bestSeat;
+}
+
+bool officialMiddleConflictsWithEnd(uint8_t seatId)
+{
+    const uint8_t local=seatId%6U, first=seatId/6U*6U;
+    return sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+        (local==2 || local==3) &&
+        (seats[first].confirmed || seats[first+1].confirmed ||
+         seats[first+4].confirmed || seats[first+5].confirmed);
+}
+
+int resolveCcwReturnRedByBearing(const ObstacleObservationResult &observation)
+{
+    // 567/569: the visible RED after end GREEN22 underestimates depth by
+    // 200--300mm across the final corner. This is a returning course view,
+    // not the initial parking-boundary view that needs the strict foot gate.
+    if (routeTurnSign<=0 || completedLaps!=0 ||
+        sectionLayoutMode!=OBSTACLE_SECTION_LAYOUT_OFFICIAL ||
+        !parkingSectionInnerSeatsOnly || parkingEntryActive ||
+        parkingEntryObserving || parkingEntryScouting || parkingEntryConnectorActive ||
+        !seats[22].confirmed || seats[22].red ||
+        observation.color!=ColorType::RED || observation.rangeMm<400.0f ||
+        observation.rangeMm>600.0f || observation.robotXmm>-750.0f ||
+        observation.robotYmm<-500.0f || observation.robotYmm>100.0f)
+        return -1;
+    const uint8_t inner=seats[0].y>seats[1].y ? 0:1;
+    const float sx=seats[inner].x-observation.cameraXmm;
+    const float sy=seats[inner].y-observation.cameraYmm;
+    const float vx=observation.sightingXmm-observation.cameraXmm;
+    const float vy=observation.sightingYmm-observation.cameraYmm;
+    const float range=hypotf(sx,sy);
+    const float error=fabsf(atan2f(vx*sy-vy*sx,vx*sx+vy*sy))*180.0f/PI;
+    if (range>850.0f || range<observation.rangeMm-80.0f ||
+        range>observation.rangeMm+350.0f || range>1.8f*observation.rangeMm ||
+        error>4.5f) return -1;
+    // Other legal longitudinal positions must not explain the same ray.
+    for (uint8_t i=2; i<6; ++i)
+    {
+        if (seats[i].y<seats[i^1U].y) continue;
+        const float ax=seats[i].x-observation.cameraXmm;
+        const float ay=seats[i].y-observation.cameraYmm;
+        const float other=fabsf(atan2f(vx*ay-vy*ax,vx*ax+vy*ay))*180.0f/PI;
+        if (other<12.0f) return -1;
+    }
+    return inner;
 }
 
 ObstacleObservationResult obstacle_path_observe(const Blob *blob)
@@ -6944,6 +7189,14 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         result.sightingXmm,
         result.sightingYmm,
         &result.snapErrorMm));
+    const int returnSeat=resolveCcwReturnRedByBearing(result);
+    const bool returnBearingResolved=returnSeat>=0;
+    if (returnBearingResolved)
+    {
+        result.seatId=static_cast<int8_t>(returnSeat);
+        result.snapErrorMm=hypotf(result.sightingXmm-seats[returnSeat].x,
+                                 result.sightingYmm-seats[returnSeat].y);
+    }
     if (result.seatId < 0)
     {
         expirePendingVotes();
@@ -6952,7 +7205,25 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
-    if (!mappedParkingSeatFootMatches(static_cast<uint8_t>(result.seatId), pose, result.bottom))
+    const int bearingSeat=resolveSeatRowByBearing(result,result.seatId);
+    if (bearingSeat == -2 && !seats[result.seatId].confirmed)
+    {
+        expirePendingVotes();
+        result.status=OBSTACLE_OBSERVATION_NO_SEAT;
+        result.seatId=-1;
+        logRedSeatProjection(result,"row_bearing_pending");
+        return result;
+    }
+    const bool bearingResolved=bearingSeat>=0;
+    if (bearingResolved)
+    {
+        result.seatId=static_cast<int8_t>(bearingSeat);
+        result.snapErrorMm=hypotf(result.sightingXmm-seats[bearingSeat].x,
+                                 result.sightingYmm-seats[bearingSeat].y);
+    }
+
+    if (!returnBearingResolved &&
+        !mappedParkingSeatFootMatches(static_cast<uint8_t>(result.seatId), pose, result.bottom))
     {
         expirePendingVotes();
         result.status = OBSTACLE_OBSERVATION_NO_SEAT;
@@ -6961,14 +7232,34 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
-    if (distantSeatSideAmbiguous(result.sightingXmm,result.sightingYmm,
-            result.rangeMm,static_cast<uint8_t>(result.seatId)))
+    if (!bearingResolved && distantSeatSideAmbiguous(result.sightingXmm,result.sightingYmm,
+            result.rangeMm,static_cast<uint8_t>(result.seatId),
+            result.cameraXmm,result.cameraYmm))
     {
         expirePendingVotes();
         result.status=OBSTACLE_OBSERVATION_NO_SEAT;
         result.seatId=-1;
         logRedSeatProjection(result,"distant_side_ambiguous");
         return result;
+    }
+
+    // 561: the next section's distant RED projected onto the near end seat
+    // at range545/foot114, but its ray missed that seat by11.5 degrees.
+    // Do not commit a low-foot, distant RED from depth alone. Close views
+    // and the parking section retain their existing separate geometry gates.
+    if (result.seatId >= 6 && !seats[result.seatId].confirmed &&
+        result.color==ColorType::RED && result.bottom<=120 && result.rangeMm>=450.0f)
+    {
+        const float sx=seats[result.seatId].x-result.cameraXmm;
+        const float sy=seats[result.seatId].y-result.cameraYmm;
+        const float vx=result.sightingXmm-result.cameraXmm;
+        const float vy=result.sightingYmm-result.cameraYmm;
+        const float error=fabsf(atan2f(vx*sy-vy*sx,vx*sx+vy*sy))*180.0f/PI;
+        if (error>10.0f)
+        {
+            expirePendingVotes();result.status=OBSTACLE_OBSERVATION_NO_SEAT;
+            result.seatId=-1;logRedSeatProjection(result,"distant_ray_mismatch");return result;
+        }
     }
 
     if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
@@ -6984,10 +7275,23 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         const float observedForward = cyclicDistanceForward(
             currentDistance,
             seats[observedStation * COURSE_SEATS_PER_STATION].pathDistanceMm);
-        const float maximumRelevantForward =
+        float maximumRelevantForward =
             OBSTACLE_CAMERA_LOCAL_X_MM +
             OBSTACLE_DISCOVERY_VIEW_MAX_MM +
             OBSTACLE_SEAT_SNAP_RADIUS_MM;
+        // Across a corner the path distance exceeds the camera's straight
+        // range. 544 rejected the visible start RED as not_upcoming while
+        // still before the final corner, until it became oversized.
+        const CandidateSeat &observedSeat = seats[result.seatId];
+        const float sx = observedSeat.x-result.cameraXmm;
+        const float sy = observedSeat.y-result.cameraYmm;
+        const float vx = result.sightingXmm-result.cameraXmm;
+        const float vy = result.sightingYmm-result.cameraYmm;
+        const float bearingError = fabsf(atan2f(vx*sy-vy*sx,vx*sx+vy*sy))*180.0f/PI;
+        const float headingCos = cosf((observedSeat.headingDeg-pose.heading_deg)*PI/180.0f);
+        if (result.rangeMm <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
+            fabsf(headingCos) <= 0.7072f && bearingError <= 6.0f)
+            maximumRelevantForward += 0.5f*PI*OBSTACLE_CORNER_RADIUS_MM;
         if (observedForward <= 1.0f ||
             observedForward > maximumRelevantForward)
         {
@@ -7020,6 +7324,22 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         return result;
     }
 
+    // 554/556: range aliasing also occurs inside 600 mm. Apply the existing
+    // official end-pair constraint at acquisition, not only at lap2 validation.
+    // CHECK_ALL retains arbitrary layouts and independent station evidence.
+    const bool middle=(static_cast<uint8_t>(result.seatId)%6U)/2U==1U;
+    const bool transientFarMiddle=sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+        parkingEntryConnectorActive && middle &&
+        result.rangeMm>OBSTACLE_DISCOVERY_VIEW_MAX_MM;
+    if (!seats[result.seatId].confirmed &&
+        (officialMiddleConflictsWithEnd(static_cast<uint8_t>(result.seatId)) || transientFarMiddle))
+    {
+        expirePendingVotes();
+        result.status = OBSTACLE_OBSERVATION_NO_SEAT;
+        result.seatId = -1;
+        logRedSeatProjection(result,"official_middle_conflict");
+        return result;
+    }
     prepareConsecutiveVote(result.seatId, blob->color);
     CandidateSeat &seat = seats[result.seatId];
     if (seat.confirmed)
@@ -7125,6 +7445,8 @@ void processGreenSeatCandidates(
             continue;
         if (seat.confirmed || seats[seatIndex ^ 1U].confirmed)
             continue;
+        if (officialMiddleConflictsWithEnd(seatIndex))
+            continue;
         if (!seatComfortablyVisible(seatIndex, pose))
         {
             seat.greenSeatCandidateFrames = 0;
@@ -7184,7 +7506,7 @@ void processGreenSeatCandidates(
                 OBSTACLE_GREEN_SEAT_RANGE_TOLERANCE_MM ||
             nearestSeatIndex(sightingX, sightingY, &snapErrorMm) != seatIndex ||
             distantSeatSideAmbiguous(sightingX, sightingY, measuredRangeMm,
-                seatIndex) ||
+                seatIndex,cameraX,cameraY) ||
             (normalObservation.productionValid &&
              normalObservation.seatId == seatIndex &&
              normalObservation.color == ColorType::RED))

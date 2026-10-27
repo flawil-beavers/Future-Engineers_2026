@@ -281,11 +281,14 @@ constexpr auto STALL_DC_THRESHOLD = 0.99; // Trigger at 99% of max DC
 constexpr unsigned long STALL_DETECTION_WINDOW_US = 100000;
 // The fast detector above catches a hard stall only after the controller has
 // reached virtually maximum duty. Also stop when a real motion command makes
-// less than 10 mm of encoder progress in one second, regardless of duty. Both
+// less than 5 mm of encoder progress in one second, regardless of duty. Log552
+// was still moving (8.3 mm, measured 13.5 mm/s) when the former 10 mm gate
+// stopped it. Five millimetres is over 40 encoder counts; stationary/wrong-way
+// motion still stops after the same second, without increasing motor force. Both
 // target and ramped profile must be active, so acceleration startup, planned
 // braking, perception holds, and position holding do not arm this watchdog.
 constexpr float STALL_COMMAND_MIN_SPEED_MMS = 80.0f;
-constexpr float STALL_NO_PROGRESS_MIN_DISTANCE_MM = 10.0f;
+constexpr float STALL_NO_PROGRESS_MIN_DISTANCE_MM = 5.0f;
 constexpr unsigned long STALL_NO_PROGRESS_WINDOW_US = 1000000UL;
 constexpr float HOLD_MAX_DC = 110.0f;
 constexpr float HOLD_OVERLOAD_THRESHOLD = 0.95f;
@@ -517,8 +520,11 @@ constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM = 120.0f;
 // Five extra millimetres in the preceding away arc require about five more
 // millimetres in this gyro-terminated return arc. Together they move the
 // aligned exit pose about 10 mm farther past the pink parking-piece ends.
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 170.0f;
-constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 220.0f;
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM = 175.0f;
+// The extra away reserve must still permit alignment with the tested 0.8
+// return-curvature factor. Normal exits end on the existing gyro gate;
+// the per-step swept footprint guard remains authoritative throughout.
+constexpr auto OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM = 240.0f;
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG = 2.0f;
 // The side ToF must see the outer wall after rear positioning. A much shorter
 // return can be the nearby pink limit; accepting it as the wall corrupts the

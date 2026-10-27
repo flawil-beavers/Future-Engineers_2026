@@ -10,7 +10,7 @@ from check_connector_servo_resume import block
 from check_cw_start_planner import ROOT
 
 
-def main():
+def fixture_source():
     path = (ROOT/'src/obstacle_path.cpp').read_text()
     camera = (ROOT/'src/obstacle_vision.cpp').read_text()
     code = r'''
@@ -32,7 +32,7 @@ bool parkingEntryActive=false,parkingEntryObserving=false,parkingEntryScouting=f
  parkingEntryConnectorActive=false;
 constexpr int COURSE_SEATS_PER_STATION=2;
 bool oppositeSeatConflictReported[OBSTACLE_SEAT_COUNT]={};
-int sectionLayoutMode=0,completedLaps=0,injectionCount=0,progressIndex=0;
+int sectionLayoutMode=0,completedLaps=0,injectionCount=0,progressIndex=0,routeTurnSign=-1;
 struct Point {float distanceMm=0;}baselinePath[1];
 float loopLengthMm=10000;unsigned long clockMs=1000;
 unsigned long millis(){return clockMs;}
@@ -54,8 +54,15 @@ void finalizeConfirmedSeat(ObstacleObservationResult &r){
     for signature in ('int nearestSeatIndex(', 'bool recordSeatVote(',
                       'void prepareConsecutiveVote(', 'void expirePendingVotes(',
                       'float cyclicDistanceForward(', 'bool distantSeatSideAmbiguous(',
+                      'int resolveSeatRowByBearing(', 'bool officialMiddleConflictsWithEnd(',
+                      'int resolveCcwReturnRedByBearing(',
                       'ObstacleObservationResult obstacle_path_observe('):
         code += block(path, path.index(signature)) + '\n'
+    return code
+
+
+def main():
+    code = fixture_source()
     code += r'''
 void reset(float range, int row){
  for(auto &s:seats){s={};s.x=9000;s.y=9000;}

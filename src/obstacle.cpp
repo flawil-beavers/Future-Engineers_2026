@@ -112,7 +112,9 @@ static constexpr ParkingExitSegment PARKING_EXIT_SEGMENTS[
     // in each segment; keep the current-pose barrier guard enabled.
     {+1, +1, 36.0f},
     {-1, -1, 26.0f},
-    {+1, +1, 84.0f},
+    // Restore about 10 mm more clearance past the pink tips: five extra
+    // millimetres here also extend the existing gyro-aligned return arc.
+    {+1, +1, 89.0f},
     {+1, -1, OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MODEL_MM}};
 
 static ParkingExitState oc_parking_exit_state =
@@ -123,6 +125,7 @@ static float oc_parking_exit_start_heading = 0.0f;
 static float oc_parking_exit_start_left_mm = 0.0f;
 static float oc_parking_exit_start_right_mm = 0.0f;
 static int oc_parking_exit_steering = 0;
+static uint32_t oc_parking_start_wait_logged_ms = 0;
 static uint32_t oc_parking_exit_brake_start_ms = 0;
 static uint32_t oc_parking_exit_settle_start_ms = 0;
 static uint8_t oc_parking_exit_segment = 0;
@@ -269,6 +272,7 @@ static void resetParkingExit()
     oc_parking_exit_start_left_mm = 0.0f;
     oc_parking_exit_start_right_mm = 0.0f;
     oc_parking_exit_steering = 0;
+    oc_parking_start_wait_logged_ms = 0;
     oc_parking_exit_brake_start_ms = 0;
     oc_parking_exit_settle_start_ms = 0;
     oc_parking_exit_segment = 0;
@@ -1848,6 +1852,14 @@ static bool updateParkingExit()
             // identify the outer wall reliably.
             set_speed(0);
             set_steering(0);
+            const uint32_t now = millis();
+            if (oc_parking_start_wait_logged_ms == 0 ||
+                now-oc_parking_start_wait_logged_ms >= 1000U) {
+                oc_parking_start_wait_logged_ms = now;
+                Serial.print("[PARK START WAIT] left/right=");
+                Serial.print(left,1); Serial.print("/"); Serial.print(right,1);
+                Serial.println(" need=fresh_side_wall_reference; check_side_sensor_connection");
+            }
             return true;
         }
 
@@ -2252,6 +2264,8 @@ void printVisionDebug()
         Serial.print(" speed/steer/enabled="); Serial.print(target_speed);
         Serial.print("/"); Serial.print(set_degree);
         Serial.print("/"); Serial.print(servo_disabled ? 0 : 1);
+        Serial.print(" loop_ms/profile="); Serial.print(last_loop_time*1000.0f,1);
+        Serial.print("/"); Serial.print(current_speed,1);
         const PositionEstimate pose = get_position_struct();
         Serial.print(" pose="); Serial.print(pose.x_mm,1);
         Serial.print(","); Serial.print(pose.y_mm,1);

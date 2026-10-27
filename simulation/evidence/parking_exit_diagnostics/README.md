@@ -503,3 +503,217 @@ hash unverified. Do not equate earlier object timestamps with full firmware.
 Green row is already restricted to inner seats in official parking-section
 mapping. First/third associate GREEN correctly;do not force a new row inference
 to hide their subsequent connector/control failure. No failed-view full images.
+
+
+## 2026-10-27: newly received logs 531--540
+
+All ten originals copied before analysis and SHA-256 verified against source.
+Archive date is receipt date; removable-media filesystem dates are invalid
+(year 2098), so actual run dates are not inferred from them. Direction comes
+from PARK_DIAG_CONFIG: turn=-1 CW, turn=1 CCW. Each has RUN_START and RUN_END;
+truncated=0. Object compilation timestamps are not whole-image identities.
+531--534 connector object Oct 26 2026_21:54:57; 535--540 Oct 26 2026_22:15:28.
+User confirms these are yesterday's previously described runs, BEFORE the latest
+M7/M4 corrections, not a test of the latest images. Exact flashed hashes and
+individual CCW contact/operator-intervention mapping remain unverified.
+Earlier user report tentatively matches 531--534: four CW, second GREEN stop,
+three failed parking entries; sequence assignment remains provisional.
+
+| Evidence file | Source bytes | SHA-256 | Completeness / outcome |
+| --- | --- | --- | --- |
+| `20261027_log_531_cw.txt` | 149613 | `255f924381d05e28d10b5bf75f5967281eea22dc9b2ad590c50af4ad9152f264` | Complete original source, RUN_END/truncated=0; aborted reason=dual_marker_geometry. Physical outcome mapping pending. |
+| `20261027_log_532_cw.txt` | 91607 | `89f73cd3449f791337c0ea16ea0a6282725e2f684fef7e4cc5644bc634daa8ae` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_533_cw.txt` | 163618 | `9c494241effb7992a329fcbf6fe1f6f0946a471d82a8914083b6ebf68e704704` | Complete original source, RUN_END/truncated=0; aborted reason=dual_marker_geometry. Physical outcome mapping pending. |
+| `20261027_log_534_cw.txt` | 176586 | `2f448b278b3f95527f541ab48c2a83d67b7c2e96584edb6a21662dd9f446a456` | Complete original source, RUN_END/truncated=0; aborted reason=dual_marker_geometry. Physical outcome mapping pending. |
+| `20261027_log_535_ccw.txt` | 51584 | `9ca005f00ac24d3099ac1b8ed7c781a3a823c9447983d31f34e035a7d0e16a71` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_536_ccw.txt` | 50629 | `f40894ad0b8924f9538376c96c8ccfb40a934705291e25caee490334ffd0a1ec` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_537_ccw.txt` | 60027 | `87e1e4f6edb3ff7320b5d34b4aa30097db539812377d8570bfe5c60d0757a98b` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_538_ccw.txt` | 6082 | `627a1a17798aa86381cb48e640c795742510ca30a907ed8084e730ba60164d3f` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_539_ccw.txt` | 55361 | `b5e0f4040a36d44bd4b14fdc8ffe264b2b765839e9029153183ec0b47f84648c` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+| `20261027_log_540_ccw.txt` | 74786 | `ede221da3169b3f14a9358a9df6f92602a0a9ac1ccc94377d37f330f8687bb25` | Complete original source, RUN_END/truncated=0; stopped reason=mode_pause. Physical outcome mapping pending. |
+
+Batch assessment: `../../RETURNED_RUNS_531_540_REVIEW_20261027.md`. Nine exits
+complete without diagnostic truncation; 538 ends during rear positioning.
+No log overflow or missing run ending in this batch. No active ToF correction,
+servo-centre change, extra sensing sweep, agent upload or drive command.
+
+
+## 2026-10-27: CW541--543 layout B
+
+Originals secured FIRST with SHA-256 verification before analysis; user
+notified immediately that media could be removed. Layout B unchanged from
+yesterday; all three repeat unwanted bend towards GREEN after start section,
+recovery and permanent stop. Object build timestamps only, whole flashed M7/M4
+hashes not read back. Run endings and direction verified below.
+
+| Evidence file | Source bytes | SHA-256 | Completeness / physical report |
+| --- | --- | --- | --- |
+| `20261027_log_541_cw.txt` | 62370 | `3ffe2ef3f32ba24cecf560697992c32d9c7bcf2eacc660d38af8dba557c9c51f` | Complete RUN_START/RUN_END, truncated=0; user: layout B unchanged, all three stop before GREEN after start section after unwanted bend/recovery. |
+| `20261027_log_542_cw.txt` | 64211 | `95791c994279aa29d7eb0dcd491113c62144d7f6bc3fe67737a3c5f20b70e121` | Complete RUN_START/RUN_END, truncated=0; user: layout B unchanged, all three stop before GREEN after start section after unwanted bend/recovery. |
+| `20261027_log_543_cw.txt` | 64943 | `08661f62a3170cbf291ead87b4efded1f26d3958eaae3bc17619e67acae2bce9` | Complete RUN_START/RUN_END, truncated=0; user: layout B unchanged, all three stop before GREEN after start section after unwanted bend/recovery. |
+
+Assessment and correction: `../../CW_CORNER_541_543_FIX_20261027.md`.
+All three completed exits; GREEN early valid but rail mapping rejected.
+541/542 reverse command with zero encoder delta; 543 view preflight rejection.
+No gyro restart or long-poll warning. New M7 correction built, not uploaded;
+source reproduction does not substitute for a new physical acceptance run.
+
+
+## 2026-10-27: CCW544 and stalled start attempts 545--546
+
+All originals copied FIRST, unchanged, SHA-256 checked; user notified immediately
+that media could be removed. User confirms these runs occurred DURING the prior
+CW correction work, BEFORE its new M7 image. Not a validation of455d7a77.
+544 old control_revision/14:01:27 path object; exact flashed image hash unknown.
+545/546 have no direction/config header: filenames reflect intended CCW from
+user context, not a firmware-determined direction. No run tail missing.
+
+| Evidence file | Bytes | SHA-256 | Completeness / physical report |
+| --- | --- | --- | --- |
+| `20261027_log_544_ccw.txt` | 75852 | `feeb368d78742f965b0c5ae93949b2de903ccc40621ce196e67cd5de23147852` | Complete RUN_START/RUN_END, truncated=0. CCW confirmed turn=1. User: first GREEN bypassed as RED, late RED hold. |
+| `20261027_log_545_ccw.txt` | 889 | `ac8ae79862ea2ad7d0bde071ef50cea595abb175a6ebedd680db31441f3f35a2` | Complete RUN_START/RUN_END, truncated=0. CCW start attempt by user context; firmware never selected direction. No movement; right ToF unavailable. |
+| `20261027_log_546_ccw.txt` | 890 | `ccafbd8fb1ced71fce9f3d8502baf2d0e596bcf9e60e3337071f23cca0fb68d1` | Complete RUN_START/RUN_END, truncated=0. CCW start attempt by user context; firmware never selected direction. No movement; right ToF unavailable. |
+
+Stationary cached-value excerpts (drive release off, v/P only; no motion,
+reset, firmware upload, or dedicated ToF mode). Before contact fix: RIGHT=-1
+five times; after user fixes loose contact: RIGHT=161 then fresh9999 gaps,
+not unavailable. User confirms start fault physically repaired. Automatic
+sensor recovery experiment removed; original startup/sensing control retained.
+
+| Diagnostic excerpt | Bytes | SHA-256 | Scope |
+| --- | --- | --- | --- |
+| `20261027_tof_contact_before_excerpt.txt` | 613 | `9c7113531839d5c86fb89f6bd76bcc127ab18d6a13193c4a99dd3163c36ae395` | Exact stationary serial capture; diagnostic excerpt, not a run. |
+| `20261027_tof_contact_after_excerpt.txt` | 119 | `a49fd992f5c10a98e19b159c4650788702c43ee901de1dea4f20a195f176cbaf` | Exact stationary serial capture; diagnostic excerpt, not a run. |
+
+
+## 2026-10-27: CW547--550 repeated third-section GREEN and parking difficulty
+
+All four newest originals copied FIRST and verified against source SHA-256;
+user immediately notified that media could be removed. User reports three CW
+runs with improved first GREEN bypass, late third-section GREEN requiring
+reverse, slow first RED approach, less visible exit offset and manual stop
+during final parking. Four files exist; map the additional shorter attempt
+from telemetry rather than assuming four complete laps. Full flashed hashes
+not read back.
+
+| Evidence file | Bytes | SHA-256 | Completeness / physical report |
+| --- | --- | --- | --- |
+| `20261027_log_547_cw.txt` | 164846 | `a27a023f43ebb2463eccc17d3a43bf47274ca718631799c484053449f183fae3` | Complete original saved file; RUN_START/RUN_END present, truncated=0. Intended CW; per-file outcome assessed below. |
+| `20261027_log_548_cw.txt` | 30647 | `5f8208e81bd0c35a9110dcfd2d7507af22754278378f59991fa9bac330ad7a7d` | Complete original saved file; RUN_START/RUN_END present, truncated=0. Intended CW; per-file outcome assessed below. |
+| `20261027_log_549_cw.txt` | 156826 | `157727ce47aefa43a462bfe39b808f0b3f108d0a9e20fcf6294d60108b228630` | Complete original saved file; RUN_START/RUN_END present, truncated=0. Intended CW; per-file outcome assessed below. |
+| `20261027_log_550_cw.txt` | 180173 | `5f655e7a736956d7cb4da0e125daf16fee03c91f8d364ae943bf8ddde0cf6d93` | Complete original saved file; RUN_START/RUN_END present, truncated=0. Intended CW; per-file outcome assessed below. |
+
+
+## 2026-10-27: CCW551--555 follow-up batch
+
+Copied FIRST and SHA-256 verified; user immediately notified of safe removal.
+User reports repeated stops during exit/GREEN view, penultimate run proceeds
+but reverses before second GREEN and stops in start section; final run stops
+after parking exit. Firmware changes being prepared were not uploaded by agent.
+
+| Evidence file | Bytes | SHA-256 | Completeness / physical report |
+| --- | --- | --- | --- |
+| `20261027_log_551_ccw.txt` | 103799 | `a3dbb836bf546c1519ebda69f90468e2c83c2b38a3aee3d90a0817b995dda312` | Complete saved original; CCW reported by user; detailed outcome below. |
+| `20261027_log_552_ccw.txt` | 15468 | `0ec519cc1981625d365e8d2ed6c7d2eea35c25bfe2c928fd2649610174cdacec` | Complete saved original; CCW reported by user; detailed outcome below. |
+| `20261027_log_553_ccw.txt` | 97769 | `d186513abf4688b728624c1464f5fe1aa3a8b6fa867651140743c495bd2c76c4` | Complete saved original; CCW reported by user; detailed outcome below. |
+| `20261027_log_554_ccw.txt` | 115074 | `afd707a06a57885f04170fadb541c17e040fb4bf9c828af0b82be29d2658d23e` | Complete saved original; CCW reported by user; detailed outcome below. |
+| `20261027_log_555_ccw.txt` | 129822 | `da9e3d39fc820fedcab24c4b4d08945b7c5025627b731a1053c10979f307d804` | Complete saved original; CCW reported by user; detailed outcome below. |
+
+All nine files: RUN_START/RUN_END, truncated=0, no overflow; directions confirmed
+by turn=-1 (547--550) and turn=1 (551--555). Old path revision
+20261027_ccw_corner_usb_save, parking build Oct_27_2026_18_52_33; exact flashed
+hash unknown. 547/549/550 finish three laps then parking is manually stopped;
+548 aborts fifth exit on swept geometry. 551/553/555 confirm GREEN5 but reject
+connector at its initial parking-piece footprint. 552 watchdog pauses exit
+segment2 despite 8.3mm progress in one second. 554 returns after one lap but
+contradictory GREEN7/RED9/RED10 prevents lap2. Seven complete/untruncated exits;
+552 diagnostic finish absent because watchdog pauses, not because file is partial.
+Assessment: `../../CW_CCW_547_555_REVIEW_20261027.md`. Normal next-run physical
+acceptance pending; no agent drive/upload or dedicated sensing sweep.
+
+
+## 2026-10-27: CW556--558 repeated early GREEN failures
+
+Originals copied FIRST and SHA-256 verified; user immediately notified of safe
+removal. User reports first attempt wrong GREEN bypass after start corner and
+late GREEN hold; subsequent attempts stop at early GREEN. File mapping verified
+from telemetry below; 557 is a short exit-only attempt. New firmware revision
+20261027_cw_ccw_scan_parking, parking build19:43:55; flashed image hash unknown.
+
+| Evidence file | Bytes | SHA-256 | Completeness |
+| --- | --- | --- | --- |
+| `20261027_log_556_cw.txt` | 91933 | `f70d676aaedf77b59e9f128831bcde4198fe4873efab03e9692ec3c0e5b5ca1b` | Complete saved original, RUN_START/RUN_END, truncated=0; CW turn=-1. |
+| `20261027_log_557_cw.txt` | 11857 | `f7f44f0b9556b1d12064e2cc6fcf84cf1a3c26f58cb989627bd20f5502642c34` | Complete saved original, RUN_START/RUN_END, truncated=0; CW turn=-1. |
+| `20261027_log_558_cw.txt` | 82235 | `6b1d3f98f6cca9ceaf726b0aa4983b32995a15cd0e5b9ed288c947a5b10f57f9` | Complete saved original, RUN_START/RUN_END, truncated=0; CW turn=-1. |
+
+
+## 2026-10-27: CW559 and CCW560--562 after successful departures
+
+Originals copied FIRST and SHA-256 verified; immediate safe-removal notice.
+User reports all departures succeed; third-section steering strongly left after
+RED, late GREEN hold in first/third reported runs, contact with GREEN in second.
+Four saved files exist; map individual attempts from telemetry. Firmware not
+changed/uploaded by agent between these tests.
+
+| Evidence file | Bytes | SHA-256 | Completeness |
+| --- | --- | --- | --- |
+| `20261027_log_559_cw.txt` | 93922 | `272fcc098e45beb1c5da89df0ae02581c331a2ec2cf1198dd1cbf8493d8e8a69` | Complete saved original; direction CW from telemetry; early GREEN recovery hold. |
+| `20261027_log_560_ccw.txt` | 93160 | `974884d4123de61f1f381b8d1a86108bde01a7ca6b34ee89119f49298115a332` | Complete saved original; user CCW report; outcome below. |
+| `20261027_log_561_ccw.txt` | 84083 | `92ab23565965df79cf624a0955fe605a92424e8d732aa088d1e3023b088a94e6` | Complete saved original; user CCW report; outcome below. |
+| `20261027_log_562_ccw.txt` | 123213 | `f1963a24cce2c2e7be38b3cc7383d51a95e4a12985f20bbb5da54780db58bfa4` | Complete saved original; user CCW report; outcome below. |
+
+556: early GREEN row rejection/wrong bypass; later phantom GREEN20 and hold.
+557: interrupted exit segment2; no complete driven-lap outcome inferred.
+558/559: early GREEN acquisition/recovery hold. 560/562: phantom GREEN20 after
+RED19, late GREEN22 recovery hold. 561: phantom RED23 and opposite-GREEN conflict,
+then low-progress watchdog stop, consistent with reported contact. All seven
+files have RUN_START/RUN_END and truncated=0; six exits complete,557 interrupted.
+All identify revision20261027_cw_ccw_scan_parking, parking build19:43:55;
+flashed binary hash unknown. Full assessment and verification:
+[GREEN_556_562_REVIEW_20261027.md](../../GREEN_556_562_REVIEW_20261027.md).
+Normal physical validation of the new revision remains pending.
+
+
+## 2026-10-27: CW563--566 first/third GREEN and parking
+
+Originals copied FIRST and SHA-256 verified before safe-removal notice.
+User reports early GREEN contacts/near passes, late third GREEN recovery,
+a corner stop and one parallel parking approach that did not enter.
+
+| Evidence file | Bytes | SHA-256 | Completeness |
+| --- | --- | --- | --- |
+| `20261027_log_563_cw.txt` | 64347 | `78719cf9847ca4addb1c0c97df4651cbf44873d668822ad4fefbe5ad6c369651` | Complete saved original; analysis below. |
+| `20261027_log_564_cw.txt` | 171447 | `72fb479284dc4f81e2ea222b8aa5c7ae8386b063a9a2ad1752c82a92a75b2df4` | Complete saved original; analysis below. |
+| `20261027_log_565_cw.txt` | 112873 | `351d9338199391250d15f10653813d19e634b87d98d0a3edde92b743d65c0e36` | Complete saved original; analysis below. |
+| `20261027_log_566_cw.txt` | 65293 | `62ffb6c44f1eeb549cf29a0d751ddf36c9c6a8a21e620ef53e8efa99789f839c` | Complete saved original; analysis below. |
+
+
+## 2026-10-27: subsequent CCW567--569
+
+Originals copied FIRST and SHA-256 verified; immediate safe-removal notice.
+User reports third-section GREEN and following RED require reversals; late RED
+holds in later attempts; first attempt did not approach the parking bay correctly.
+Firmware same as CW batch; file/attempt mapping must follow telemetry.
+
+| Evidence file | Bytes | SHA-256 | Completeness |
+| --- | --- | --- | --- |
+| `20261027_log_567_ccw.txt` | 161011 | `e1cbb0c6089e114677a8987e7912ea9926aa9aa8b54ba428dfeb637b61563915` | Complete saved original; mapping/outcome below. |
+| `20261027_log_568_ccw.txt` | 1795 | `82db3ab1f3c5a457ce72a17278509266889989c16fb87c3ed0c32af1d1b0e59d` | Complete saved original; mapping/outcome below. |
+| `20261027_log_569_ccw.txt` | 125562 | `65f64a08183672fd2ceac6cf77b40af09da599463dbc5aae076ff31bac9045ee` | Complete saved original; mapping/outcome below. |
+
+563/566: wrong firstGREEN seat6, contact consistent with user report and later
+stall.564: correct7, thirdGREEN reverse recovery, three-lap return reaches parking
+but capture_pose_gate aborts after registration.565: firstGREEN recovered; then
+unknown station6 remains unresolved after110mm reverse and locks.567: completes
+route then initial_outer_wall_reference abort;569: GREEN22 recovery then lateRED1
+confirmation, recovery join unsafe and locks.568:96ms interrupted rear-positioning
+start, not a complete CCW lap. No mapping of three full CCW reports to these
+three files is asserted. All have saved boundaries/truncated0; six exits complete.
+Path revision20261027_green_row_bearing_layout, park header19:43:55, flashedSHA
+unknown. Report: [CW_CCW_563_569_REVIEW_20261027.md](../../CW_CCW_563_569_REVIEW_20261027.md).
+Physical validation of the next revision and CW565 unknown-seat hold pending.
+
+CW565 follow-up (same original/hash; no new run): scoped the lower-image fragment
+veto to individual seat bearings while preserving upper-silhouette and local
+occupancy guards. [Assessment](../../CORNER_HOLD_565_FIX_20261027.md).
+Software reproducer and27 safe joins pass; actual scene acceptance still pending.

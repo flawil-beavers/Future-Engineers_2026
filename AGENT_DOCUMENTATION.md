@@ -11421,3 +11421,402 @@ logs FIRST, hash and track metadata/handoff before analysis. Camera thresholds,
 parking/exit segment geometry and their speeds unchanged. Live DMA ownership
 and queued gyro timestamp risks remain unproven topics; no speculative HSV
 tightening or global unmapped stop added. Preserve braking/reversal/pose diagnostics.
+
+## 2026-10-27: Open Challenge audit at cc0bc59
+
+Review only; no firmware edit/upload, commit/push or new physical batch.
+Report simulation/OPEN_CHALLENGE_REVIEW_20261027.md; source-backed reproduction
+simulation/review_open_challenge_20261027.py executes full navigation plus
+actual actuator commands/ToF accessors, with simulated frames/heading/motion.
+New independent3frame confirmation plus existing300ms discovery budget delays
+first turn600ms AFTER first positive frame for modeled300ms arrivals in CW/CCW;
+180mm more travel at300mm/s, acquisition phase/real latency not measured.
+Frozen861ed8e confirms same cached frame after2ms instead. Preserve fresh-frame
+validation; jointly review first-corner timing and available spatial reserve.
+
+Pre-existing finish defect reproduced current+861ed8e:12corners/3rounds and
+501mm with fresh gaps starts13th turn; unavailable wall also prevents finish.
+Completion gate is nested inside valid wall correction and after corner gate.
+Further risks:actual Open start inherits220speed after Obstacle versus300 at
+cold start; healthy-but-unchanging injected gyro leaves turn active10s/3000mm;
+abort during discovery leaves300ms sensorbudget/searchflag. No physical cause
+assigned. Next separate finish target from wall availability, bound unfinished
+turns and define/reset mode-owned speed/sensor state; then normal CW/CCW checks.
+
+Both nominal12corner directions/softstop/single save, fresh/stale/bus handling
+and actual servo restoration after gyro stop PASS. Runtime safety/edge suites
+and40000 historical ramp comparisons PASS. Startup remains Obstacle; serial l
+selects Open temporarily. M7-only IDE incremental SUCCESS,RAM442408/523624,
+flash524296/786432; SHA256
+5542896c58ca0c36b2c389c0be2d63471b2a0dbeeb27a1cbedee4b44ab7b22d8.
+M4 unchanged/notbuilt. Working generated files ignored below
+local_workspace/open_challenge_review_20261027/. Missing fourCW originals from
+earlier investigation still pending; this Open audit receives no new evidence.
+
+
+## 2026-10-27: returned pre-fix logs 531--540 and parking-edge correction
+
+All ten complete originals copied FIRST from removable source, unchanged,
+SHA-256 verified source/backup/evidence. Tracked portable evidence paths
+`simulation/evidence/parking_exit_diagnostics/20261027_log_531_cw.txt` through
+`20261027_log_540_ccw.txt`; full individual hashes/bytes in that directory README.
+531--534 CW,535--540 CCW; receipt date used because media timestamps are2098.
+All RUN_START/RUN_END,truncated0,no overflow; nine complete exit diagnostics,
+538 manual pause during rear positioning. User explicitly confirms yesterday's
+previously described runs BEFORE latest M7/M4 version,not new-image validation.
+Old per-object timestamps do not identify whole flashed image. FourCW sequence
+compatible with earlier report(second GREEN stop,three parking failures);
+individualCCW physical contacts/operator interventions remain unmapped.
+
+531/533/534 reach final dual-marker phase5 then reject gaps289.3/285.6/284.5mm.
+532 S3station2 UNKNOWN then reverse requested-70,servo disabled,~2.2mm travel,
+gyro holds/time-limit lock: current accepted-command/timer corrections already
+address this reproduced mechanism.535/536/537/539/540 stall despite100--260mm/s
+commands and enabled servo; no camera image/independent pose/contact mapping.
+Do not relabel these as perception stop or prove a defective camera.
+Detailed per-run findings/limits and reproduction:
+simulation/RETURNED_RUNS_531_540_REVIEW_20261027.md.
+
+Fixed remaining parking source defect:raw mixed wall/piece edge ranges were
+used as cone length,overestimating gap. Now intersect both rays with known
+marker-tip plane; preserve actual occupancy sequence,fresh-frame gating,
+15mm gap tolerance,pose-correction limits,all motion/speeds/clearance tests.
+Added two bounded EDGE lines andgeometry=tip_plane_v1; old radial helper only
+in host simulator/negativecontrol. Archived200ms traces lack exact edge frames:
+mechanism reproduced and compatible,not exact physical successful-entry replay.
+864 independent planar/mixedrange casesPASS,162 legacy false rejections;
+1540 robustness scenarios unsafe0,all990 known arrivals parked;396sequence
++5registrationPASS;42segment-resume+negativecontrolPASS;runtimeedgesPASS.
+Offline exit/ToF-fan reports below local_workspace/batch_20261027_531_540/pose.
+Rear encoder-ToF median1.51,maxabsolute9.35mm,9/9within existing uncertainty;
+no servo-neutral/backlash/ToF correction or added sensing movement.
+
+Final M7 IDE incrementalSUCCESS,RAM442408/523624,flash524712/786432,SHA256
+d3f65f7fad458849edd2c0b192b6b265b7b5d33ee868695945b81a1d00a32c30.
+M4 unchanged/notbuilt;updated prior M4 binary remains
+fbc3da65845172d9be1405ec56b626da1b716999ce2fd31e591a4c3a14057215.
+No upload/drive/commit/push. Next useruploads latestM7,also previousupdatedM4
+if not already installed;normalCW/CCW/save only. Archive new originalsFIRST,
+verifytip_plane_v1 edges,gap and actual parking pose,and establish whether
+oldCCW stall locations recur before altering HSV,routegeometry or motorforce.
+
+
+## 2026-10-27: CW541--543 repeated GREEN corner stop; quick camera check
+
+User requests ALWAYScopyincominglogs immediately then notify removalFIRST;
+performed before history/source reads,added durable instruction toAGENTS.md.
+Three complete original CW logs,layoutBunchanged,userreports repeated bend
+towards GREEN afterstartsection,recovery andstop. Original evidence paths
+simulation/evidence/parking_exit_diagnostics/20261027_log_541_cw.txt through
+20261027_log_543_cw.txt; individualSHA256541
+3ffe2ef3f32ba24cecf560697992c32d9c7bcf2eacc660d38af8dba557c9c51f;542
+95791c994279aa29d7eb0dcd491113c62144d7f6bc3fe67737a3c5f20b70e121;543
+08661f62a3170cbf291ead87b4efded1f26d3958eaae3bc17619e67acae2bce9.
+All RUN_START/RUN_END,truncated0,nooverflow,all3exitdiagnosticscomplete;
+objectbuild13:48:27/14:01:27,wholeflashidentityunverified. NoGyrorestarts/gaps.
+541/542reverse110mmrequested,servoenabled,butencoder0untiltimeout;543no safe
+viewpreflight. Genuine earlyGREEN components405--409mmprojectseat7 with63--75mm
+snaperror,but70mmrailambiguityrejects. Correctrowbearingerror1.9--5.9deg versus
+other19.7--23.7deg. Later oversized GREEN and-45deg discovery nudge precede hold.
+Detailed report simulation/CW_CORNER_541_543_FIX_20261027.md.
+
+Near-view angular disambiguation now only230--600mm,outsidecentral30mm,
+row separation>=12deg,chosenerror<=6deg,angularadvantage>=8deg,rangeerror<=100mm.
+Retains HSV/shape/snap/upcoming/two-primary-or-three-localfreshvotes andfar
+acquisition.12archivedgeometry/mirror/bothcolourchecksPASS;historical514wrong
+row,middle/far/alignedguardsretained.162earlyjoinrollouts+/-10mm/+/-1degPASS,
+minwall117.626/pillar75.9523mm,idealCADnotphysicalslip/lag. Recoverywallwork
+24xless,same40mm/front+rear/allpossibleseats/steps;3920frozencc0bc59decisions
+match. Addedloop_ms/profile diagnostics,newcontrol_revision
+20261027_corner_bearing_and_recovery.
+
+Reproduced introducedprofilebug:consecutivehealthy>100ms loopsresetprofileand
+skipPIDforever;actualcc0bc59negativecontrolfailsnewregression(exit22). Now
+rebaseonce,subsequentdelayedupdatesadvanceatmost50ms,withdistanceanchoredto
+encoder.101/148/215/819msforward/reverse70mm/swithPIDcontinuationPASS;normal
+40000rampcomparisonszerochange,runtimeedges+safetyallPASS;far48PASS;historical
+512--514camera6/perception12/exit2304/brake10PASS;C/join173PASS. Exactphysical
+reversecauseunprovenbecauseoldloop/profiletelemetryabsent;nofalsecertainty.
+
+Useraskedveryquickstationarycameramountcheck;USBdetectedCOM7,currentfirmware
+c0/camshot/c400only,nomotion/upload. Userlens-front400mm,frontaxle-front425mm,
+frontaxle-blockcentre455mm:camera25mmforwardof frontaxle agrees125mmrearaxle.
+OriginalimageCRCverified;visiblecleanGREEN,x164,foot138,bearing0.1deg,range390.7,
+error-9.3mm. Noobviousmountshiftatthispoint;singlepointnotpitchfit,noconstants
+changed.5rawimage/metadata/serial/PNG/livefilesarchivedunchangedunder
+simulation/evidence/camera_diagnostics/20261027_green_400mm*,hashesinREADME.
+TemporalCAMERA_CALIBRATIONremainsuntilrestart;userinformedresultimmediately.
+Exit/ToF-fananalysiscachedonlybelowlocal_workspace/cw-corner-541-543/exit;rear
+residualmax2.47mmwithinuncertainty;541oneorderingwarningpreserved,noactivepose
+orbacklash/neutralcorrection.
+
+FinalM7IDEbuildSUCCESS,RAM442408/523624,flash525608/786432,SHA256
+455d7a7729047916a1102b18f7e975bc1becda96af63972ba8c24e40d386141d.
+M4unchanged/notbuilt;noupload/drive/commit/push. Physicalacceptancepending.
+NextuseruploadsM7,restartsoutofcameramode,normalCWlayoutB/save;immediately
+secureoriginalsFIRST+notifyremoval,verifynewrevision,earlyseat7confirmation,
+correctbypass,loop/profileandnonzeroencoderifnormalrecoveryisneeded. Noextra
+ToFtest/sweep/movements requested.
+
+## 2026-10-27: CCW544–546, physical contact, corner gate and saving
+
+Complete originals copied FIRST, hashes verified, user immediately notified.
+Evidence: simulation/evidence/parking_exit_diagnostics/20261027_log_544_ccw.txt
+SHA256 feeb368d78742f965b0c5ae93949b2de903ccc40621ce196e67cd5de23147852;
+545 ac8ae79862ea2ad7d0bde071ef50cea595abb175a6ebedd680db31441f3f35a2;
+546 ccafbd8fb1ced71fce9f3d8502baf2d0e596bcf9e60e3337071f23cca0fb68d1.
+545/546 filenames express intended CCW; no direction selected. All three have
+complete run endings, truncated=0. User confirms pre-latest-CW-fix firmware;
+544 older revision/path object 14:01:27, flashed image hash unknown.
+User reports first GREEN bypassed incorrectly, late RED hold, start difficulty.
+545/546 unavailable RIGHT=-1 explains no exit. User repaired loose contact;
+stationary cached-value before/after excerpts archived in same directory,
+SHA256 respectively 9c7113531839d5c86fb89f6bd76bcc127ab18d6a13193c4a99dd3163c36ae395
+and a49fd992f5c10a98e19b159c4650788702c43ee901de1dea4f20a195f176cbaf.
+Sensor/start control unchanged; only existing wait gains throttled diagnostic.
+No automatic sensor recovery delivered, no agent motion/upload/reset/sweep.
+
+544 first GREEN7 unconfirmed, RED9 confirmed; no images prove HSV colour swap.
+Prior angular association correction retained; GREEN primary projection now
+shares existing 150ms diagnostic throttle. Late RED1 at 491–511mm was rejected
+as not_upcoming because corner path distance 985–1035mm exceeded optical horizon.
+Bounded quarter-corner allowance for <=600mm view, 45–135deg corner direction,
+bearing error<=6deg; existing snap/foot/votes/ambiguity retained. Eight mirrored/
+colour archived-geometry checks plus old-code negative control and 54 CAD bypass
+rollouts pass; min wall/pillar 287.8/117.946mm. No physical-slip guarantee.
+USB logger scans directory once in 16-entry slices, uses checked 4096-byte chunks,
+retains complete-file retry/RAM protection; cosmetic LED feedback permits start.
+Actual-method host test: 546 logs, 3 file opens, 20 flushes for 75852 bytes;
+short-write recovery/directory-error retention pass. Not hardware timing.
+CW12/162/3920, far48, runtime edges/safety pass. Cached exit/fan analysis only:
+544 exit complete, rear residual +3.66mm within uncertainty; no active pose or
+neutral correction. 545/546 have no motion diagnostic stream.
+Report simulation/CCW_544_546_REVIEW_20261027.md. M7 build SUCCESS,
+RAM442416/523624 flash526624/786432, revision20261027_ccw_corner_usb_save,
+binary SHA256 babf0d4dc3f9f00d43c1509f3a0d6b0cdc4f49ca581cf12f1f8d83664ce6c2a5.
+M4 unchanged/notbuilt; no upload/commit/push. Next user uploads M7, normal
+CW/CCW/save; copy originals FIRST+notify, verify revision, GREEN7/RED1 and save
+duration. First GREEN cause and physical acceptance remain pending new evidence.
+
+## 2026-10-27: CW547--550 and CCW551--555 corrections
+
+Both batches copied FIRST, unchanged SHA256 verified, user immediately told
+stick removable. Complete originals in simulation/evidence/parking_exit_diagnostics/:
+20261027_log_547_cw.txt a27a023f43ebb2463eccc17d3a43bf47274ca718631799c484053449f183fae3;
+548_cw 5f8208e81bd0c35a9110dcfd2d7507af22754278378f59991fa9bac330ad7a7d;
+549_cw 157727ce47aefa43a462bfe39b808f0b3f108d0a9e20fcf6294d60108b228630;
+550_cw 5f655e7a736956d7cb4da0e125daf16fee03c91f8d364ae943bf8ddde0cf6d93;
+551_ccw a3dbb836bf546c1519ebda69f90468e2c83c2b38a3aee3d90a0817b995dda312;
+552_ccw 0ec519cc1981625d365e8d2ed6c7d2eea35c25bfe2c928fd2649610174cdacec;
+553_ccw d186513abf4688b728624c1464f5fe1aa3a8b6fa867651140743c495bd2c76c4;
+554_ccw afd707a06a57885f04170fadb541c17e040fb4bf9c828af0b82be29d2658d23e;
+555_ccw da9e3d39fc820fedcab24c4b4d08945b7c5025627b731a1053c10979f307d804.
+Same portable date/log filename format for all; exact bytes/metadata in README.
+All RUN_START/RUN_END/truncated0/nooverflow; old revisionccw_corner_usb_save,
+parkbuild18:52:33, full flashed hashes unknown. User: three full CW firstGREEN
+improved, lateGREEN reverse, slow firstRED, parking manually stopped. 547/549/550
+three laps then parking gyro restarts30/26/42; 548 additional fifth-exit swept
+abort. CCW551/553/555 GREEN5 confirmed but connector step0 pink footprint rejects;
+552 pauses segment2 on8.3mm/1001ms despite13.5mm/s; 554 returns after recovery
+but phantom farRED9 with GREEN7/RED10 contradicts map and holds lap2.
+
+Corrections: valid unassigned edgeGREEN can centre pair only with bearing match,
+bounded target/slew and80mm CAD sweep/40mm possible-seat+wall reserve. No HSV,
+snap/vote/empty-space relaxation. CCWfirstedge scan can stop planned travel with
+12deg modelheading error instead of driving12--14mm extra for2deg; opposite
+wheel endpoint checked, complete actual-pose connector preflight retained.
+Far middle/end conflict deferred to closer view; compatible far/CHECK_ALL kept.
+Exit fourth84->89, fifthmodel170->175, gyroalignmentmax220->240 for low-curvature
+case; min120/+/-2deg/current-pose footprint remain. About10mm extra tip reserve,
+2304independent exit cases PASS, eight measured tail anchors PASS with548 old
+obstruction negative control. No active pose/backlash/neutral compensation.
+Watchdog10->5mm/s removes moving552 false stop; stationary/wrong-way1s unchanged,
+no additional motor force. After CWGREEN0 and full tip clearance/gentle<=20deg
+connector may100 instead80mm/s, runtimecap retained. Lap speeds unchanged.
+Parking walls calculated once/pose, all confirmed pillar distances kept;
+4608old/new equivalent decisions. Service gyro after stopped search and bounded
+four queued packets/3ms between calls; vendor call can itself block. Physical
+cause of repeated gyro restarts remains unproven; added parking loop_ms.
+81scan/connector perturbed cases,18edge aims,396parking+5registration,far48,
+corner12/162/3920,lateRED54, runtime safety/edges PASS. Original camera images
+absent; ideal models exclude physical lag/slip/reflections. Cached exit/fan only
+under local_workspace/cw-547-550/exit:7complete exits/9 sessions, rear maxresidual
+2.31mm within uncertainty;548 abort and552 missing diagnostic finish distinguished.
+
+Report simulation/CW_CCW_547_555_REVIEW_20261027.md; source-backed regression
+simulation/check_cw_ccw_547_555.py. FinalM7IDEbuildSUCCESS,RAM442416/523624,
+flash528104/786432, revision20261027_cw_ccw_scan_parking, binary SHA256
+75deead32e2e69043d94cde869f940f7ce3c2911501b20eefaafe115ffeedb7e.
+M4 unchanged/notbuilt; no upload/drive/commit/push. Next useruploadsM7, normal
+CW/CCW/save; copy originals FIRST+notify. Verify revision, earlyGREEN11, scan
+travel, connector acceptance, no phantomRED9, physical tip gap, loaded progress
+and gyro restart count through complete parking. Physical acceptance pending;
+no special ToF sweep/movement requested. User asked finished; informed code,
+build and tests complete, documentation/evidence check being finalized.
+
+## 2026-10-27: CW556--559 / CCW560--562 GREEN association regression
+
+Copied originals FIRST, SHA/bytes verified, immediately notified safe removal.
+Portable evidence below simulation/evidence/parking_exit_diagnostics/:
+
+| File | SHA-256 |
+| --- | --- |
+| 20261027_log_556_cw.txt | f70d676aaedf77b59e9f128831bcde4198fe4873efab03e9692ec3c0e5b5ca1b |
+| 20261027_log_557_cw.txt | f7f44f0b9556b1d12064e2cc6fcf84cf1a3c26f58cb989627bd20f5502642c34 |
+| 20261027_log_558_cw.txt | 6b1d3f98f6cca9ceaf726b0aa4983b32995a15cd0e5b9ed288c947a5b10f57f9 |
+| 20261027_log_559_cw.txt | 272fcc098e45beb1c5da89df0ae02581c331a2ec2cf1198dd1cbf8493d8e8a69 |
+| 20261027_log_560_ccw.txt | 974884d4123de61f1f381b8d1a86108bde01a7ca6b34ee89119f49298115a332 |
+| 20261027_log_561_ccw.txt | 92ab23565965df79cf624a0955fe605a92424e8d732aa088d1e3023b088a94e6 |
+| 20261027_log_562_ccw.txt | f1963a24cce2c2e7be38b3cc7383d51a95e4a12985f20bbb5da54780db58bfa4 |
+
+All complete saved boundaries/truncated0. Six complete exits;557 interrupted
+seg2, not missing file tail.559 is CW per telemetry, not another CCW attempt.
+All identify revision20261027_cw_ccw_scan_parking, park build19:43:55;
+actual flashed binary hashes unknown. User CW reports early GREEN wrong bypass/
+holds and late third GREEN. New CCW reports departure good in all, strong left
+after third-section RED; first/third hold, second GREEN contact. No exact
+three-full-CW-to556--558 mapping:557 never reaches that corner.
+
+556/558 valid GREEN rays snap inner6 instead of outer7 due short ground range;
+old angle check only rejects. Added CW-only same-station row resolution with
+7deg separation/improvement,4.5deg best error and bounded230--600 estimated /
+800 geometric range. Two fresh votes/other gates retained.556 and560/562 inject
+phantom middleGREEN20 afterRED19 at504--512mm. Apply existing official end/middle
+constraint to primary at all ranges and GREEN fallback; CHECK_ALL retained.
+560--562 phantomfarRED9 precedesGREEN7 during connector; defer new>600 middle
+there, compatible far on normal route retained.561falseRED23 at57678ms misses
+seat ray11.5deg; new low-foot<=120/range>=450 RED guard10deg rejects it and leaves
+realGREEN22 acquirable. Close562RED10 retained despite10.1deg error. False RED
+source plausibly next section, not proven without images. No HSV/speed/force/
+watchdog/exit/final-parking changes for this batch. No extra stop mechanism.
+
+Report simulation/GREEN_556_562_REVIEW_20261027.md and source regression
+simulation/check_cw_556_558.py. PASS108 observation perturbations,54 CW routes,
+alias/retained-acquisition tests, two independent removed-guard negative controls.
+UpcomingGREEN/wall model minima76.75/117.77mm; priorRED preserves seed reserve
+within1mm at2mm steps (some perturbed seeds initially<30). Not a physical gap
+guarantee; mirrored observations not dynamicCCW validation. Existing corner12,
+recovery3920, joins162, lateRED8/routes54, far48, edgeaim18, CCWjoin81,
+parkingequivalence4608, exittail8 and watchdog regressions PASS.
+Cached exit/fan regenerated local_workspace/cw-556-558/exit:6complete/7sessions,
+rear maxabsolute residual3.30mm,6/6 within conservative uncertainty; oblique
+fan exclusions retained, no automatic pose correction or special movement.
+
+Final IDE M7 SUCCESS RAM442416/523624 flash529272/786432; revision
+20261027_green_row_bearing_layout, binarySHA256
+7aca55c689b2443266f9b77bee83fef352f72e3eab74d0db17ebbab796356480.
+M4 unchanged/notbuilt. No upload/drive/commit/push. Next user uploadsM7 and
+performs normal CW/CCW/save. Copy originals FIRST+notify. Verify revision, early
+CW7, no phantom9/20/23, early thirdGREEN22 and physical reserve; inspect complete
+parking later, not exercised here. Physical acceptance pending; no100% claim.
+
+## 2026-10-27: CW563--566 / CCW567--569 first GREEN, return RED, parking
+
+Copied both batches FIRST and verified SHA before immediate safe-removal notice.
+Portable originals in simulation/evidence/parking_exit_diagnostics/:
+
+| File | SHA-256 |
+| --- | --- |
+| 20261027_log_563_cw.txt | 78719cf9847ca4addb1c0c97df4651cbf44873d668822ad4fefbe5ad6c369651 |
+| 20261027_log_564_cw.txt | 72fb479284dc4f81e2ea222b8aa5c7ae8386b063a9a2ad1752c82a92a75b2df4 |
+| 20261027_log_565_cw.txt | 351d9338199391250d15f10653813d19e634b87d98d0a3edde92b743d65c0e36 |
+| 20261027_log_566_cw.txt | 62ffb6c44f1eeb549cf29a0d751ddf36c9c6a8a21e620ef53e8efa99789f839c |
+| 20261027_log_567_ccw.txt | e1cbb0c6089e114677a8987e7912ea9926aa9aa8b54ba428dfeb637b61563915 |
+| 20261027_log_568_ccw.txt | 82db3ab1f3c5a457ce72a17278509266889989c16fb87c3ed0c32af1d1b0e59d |
+| 20261027_log_569_ccw.txt | 65f64a08183672fd2ceac6cf77b40af09da599463dbc5aae076ff31bac9045ee |
+
+All saved boundaries/truncated0; six full exits,568 manual interruption96ms.
+Only two driven CCW logs, not three: do not invent third-attempt evidence.
+Observed revision20261027_green_row_bearing_layout; park header19:43:55,
+corner build21:12:29; flashedSHAunknown. User CW firstGREEN contacts/nearpass,
+thirdGREEN reverse, corner hold, parallel park stop. CCW departure good, third
+GREEN/following RED reverse/hold, first parking looked wrong; user explicitly
+asks careful targeted changes. No firmware uploaded by agent between batches.
+
+563/566 early ambiguous ray favours7 but old fallback accepts6, injecting wrong
+route. New pending result vetoes wrong vote without relaxing selection; alternate
+range<=1000/+350/1.8 for deferral only, old800/+250/1.6 for actual row selection.
+564/569 thirdGREEN lost at image edge; clipped170mm sentinel becomes~190mm ray
+range. Horizontally clipped otherwise-valid shape can aim using ground foot/ray,
+not vote/inject/clear. Match6deg, range230--600, full80mm CAD sweep/40mm reserve,
+check both candidate and actual slew/clamped steering. Aim actual feature rather
+than pair midpoint. Prior confirmed-pillar passage lock unchanged.
+567/569 returnRED1 seen early but outside snap284mm/initial-foot gate, then late
+confirmation569 has unsafe recovery join. New CCW-only lap1 return anchor after
+GREEN22, bounded corridor/legal inner start seat, range400--600 estimated/850
+geometric,+350/1.8, error4.5deg and alternate longitudinal rays>=12deg. Two votes,
+relevance/conflict guards kept; initial parking view protected.
+564 marker registration leaves10.6mm lateral error but16.9mm to capture, aborts
+atX210.6/Y-1195.5/h183.4. Preflight bounded line alignment then capture return,
+original5mm/1deg gates/seven entry segments retained. 567 actually follows learned
+GREEN bypass then reachesX1051.9/Y-1206.7/h359.4; wall360--365 vs predicted257.9,
+initial80mm gate aborts. Allow120 onlyX>=900 with two consistent fresh accepted
+frames and full corrected-pose scan-alignment preflight; other limits unchanged.
+Observed drift plausible, not externally proven. No speed/force/HSV/exit/watchdog
+changes or blind empty-space release. Larger corrections remain bounded/checked.
+
+IMPORTANT remaining CW565 unknown station6: after firstGREEN recovery, one seat
+CLEAR but other untrusted;110mm reverse still unresolved then locks. No original
+images, cannot prove rawGREEN safe to ignore. Do not claim this additional halt
+conclusively fixed or disable its hold. Specifically check it in next normal run.
+
+Report simulation/CW_CCW_563_569_REVIEW_20261027.md. Tests new
+simulation/check_green_563_566.py and simulation/check_ccw_567_569.py PASS:
+8 disputed geometries;27 actual-acquisition/unknown-map/pursuit firstGREEN cases
+(min model reserve44.72mm);54 ideal thirdGREEN CW/CCW view/routes(min80.84mm,
+latest model confirmation camera range302.54mm);18 registered-capture and18
+independent sensed-drift alignments;13 archived returnRED geometries. Four
+removed-guard controls reproduce failures. Expanded lateRED108 routes check
+bothGREEN22/RED1(min84.38mm). Prior corner12/recovery3920/joins162, far48,
+GREEN108/routes54, edgeaim18/scan81, parking396 and mixededge864 PASS.
+Models exclude hardware lag/slip/real segmentation; no full camera replay.
+ThirdGREEN map dispatch is ideal visibility/snap model; firstGREEN uses actual
+production acquisition, with rebuild dispatch adapted by host. Do not conflate.
+Cached exit/fan local_workspace/cw-563-ccw-569/exit:6complete/7sessions,
+rear maxabsresidual4.78mm,6/6 within conservative uncertainty; no auto correction,
+dedicated sensor sweep/movement/pause. Existing route/reversal/correction reports
+retained alongside sensing-fan assessment.
+
+Final IDE M7 SUCCESS RAM442416/523624 flash531928/786432, revision
+20261027_green_corner_view_capture; binarySHA256
+dcea6467517d2c67243aa942819647d78d66f68cd2c9de884dd6a96ecb8dcc66.
+M4 unchanged/notbuilt; existingSerialmacro warning. No upload/drive/commit/push.
+Next user uploadsM7, normal CW/CCW/save. Copy FIRST+notify. Verify revision,
+no false6, thirdGREEN before clip/height loss, early returnRED1, CW565 station6,
+then complete parking through wall registration, capture alignment and entry.
+Physical acceptance pending; told user the additional565 halt remains open.
+
+## 2026-10-27: scoped correction for CW565 corner hold
+
+User requests fixing the remaining corner hold. Reused tracked original
+simulation/evidence/parking_exit_diagnostics/20261027_log_565_cw.txt,
+SHA256351d9338199391250d15f10653813d19e634b87d98d0a3edde92b743d65c0e36;
+no new USB/test batch, upload or movement. Previous physical report/revision
+remain those of563--569. Stopped pose(-782.7,771.1,54.29) gives remaining seat13
+bearing-6.98/range309.36; stopped GREEN width19/height45/foot192 implies top148,
+nearby camera centroid271--273. Global unmappedForegroundBlocksClear ignored
+bearing and could veto the locally empty seat indefinitely after110mm reverse.
+
+Scoped only lower fragments(top>100) to their full angular interval plus12deg.
+Upper/complete512/514 silhouettes retain global veto. Existing local silhouette,
+geometry230--600, rejected angular blob, observation and repeated CLEAR gates
+remain. No route/speed/colour/snap/stop/join changes. Added stopped-view bounds/
+centroid diagnostics, so next normal run verifies exact spatial hypothesis.
+Actual original images/bounds unavailable: fragment physical source/true empty
+scene unproven, do not call synthetic reconstruction an original image replay.
+
+New simulation/check_corner_hold_565.py:10 evidence cases through production
+coverage and real Vision RGB565 local search PASS; occupied unknown-colour pole,
+overlapping lower fragment and full-height silhouette refuse CLEAR. Removing
+only scope reproduces failed CLEAR.27 perturbed poses pass existing700mm CAD
+resume preflight with actual known signs; no join relaxation. Prior512/514
+perception12 PASS; first-GREEN27/third-GREEN54/capture18 regression PASS.
+Report simulation/CORNER_HOLD_565_FIX_20261027.md; evidence manifest links it.
+Code-level cause corrected; physical scene acceptance pending. Next normal
+CW/CCW logs copied FIRST+notify, verify new revision, remaining13 after reverse
+if needed, exact raw bounds/local occupancy, safe continuation and parking.
+
+IDE M7 SUCCESS RAM442416/523624 flash532264/786432; revision
+20261027_corner565_clear_scope; binarySHA256
+68f093f0f6fd0c03a6e86217336b32b16d92e8d09429c16c3176f0c9f83b11c1.
+M4 unchanged/notbuilt. No agent upload/drive/commit/push or special ToF test.

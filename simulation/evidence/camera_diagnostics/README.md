@@ -465,3 +465,23 @@ with the legacy model; these are training references,not independent accuracy
 proof. Final new-view400mm telemetry estimates373.4..373.5mm. Two actual live
 recoveries support acquisition recovery; moving-run reliability,phase latency
 effects and geometric seat association still need normal-run acceptance.
+
+
+## 2026-10-27: quick stationary GREEN 400-mm mount check
+
+User setup: lens to front surface400mm,front axle to front surface425mm,
+front axle to pillar centre455mm; drive release off as requested. Existing
+firmware, stationary c400/camshot only; no upload or motion. ImageCRC verified.
+Live primary GREEN valid,x164,foot138,bearing0.1deg,range390.7mm,error-9.3mm.
+Clean image,continuous76.5ms frames,no capture errors; sync38400/good.
+One auto-resync had occurred before capture,last fault293words; this snapshot
+does not establish moving timing. One distance does not fit a new camera pitch.
+No camera constants changed. Evidence retained unchanged:
+
+| File | Bytes | SHA-256 |
+| --- | --- | --- |
+| `20261027_green_400mm_01.json` | 472 | `833c25f9d051e3460b13af8c8a813918cb6515386fd6fc3d3938232528c90483` |
+| `20261027_green_400mm_01.png` | 72231 | `25d80eb0f13ad715934185ae85a8874c36bc2c04bffc080589f1b7b4657e4bc5` |
+| `20261027_green_400mm_01.rgb565` | 153600 | `29017858e4811e4fffcc906aefd6c8085b7ec34a5ab22a85f3539bbee77f753a` |
+| `20261027_green_400mm_01.serial.bin` | 156931 | `550697ca4567fb12d94e5b74add9783b1806cbb925aac413c4d4f9551d8ab570` |
+| `20261027_green_400mm_live.txt` | 1289 | `8c06a3a1beabea1e5bce4ec2d4b1aa0f3478c46935fc6b8fe44957fbe224fa08` |

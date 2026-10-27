@@ -36,7 +36,9 @@ enum FinalParkingState : uint8_t
     FP_HOLD,
     FP_ABORT,
     FP_SCAN_ALIGN_DRIVE,
-    FP_SCAN_ALIGN_BRAKE
+    FP_SCAN_ALIGN_BRAKE,
+    FP_CAPTURE_ALIGN_DRIVE,
+    FP_CAPTURE_ALIGN_BRAKE
 };
 
 struct ParkingSegment
@@ -97,6 +99,7 @@ float measuredMovingInsideX = 0.0f;
 float measuredGapMm = 0.0f;
 float captureTargetX = 0.0f;
 int8_t captureFieldMotionSign = 1;
+bool captureAlignPending = false;
 bool completed = false;
 bool aborted = false;
 bool practiceMode = false;
@@ -171,27 +174,29 @@ struct BeamFootprint
     float maximumX;
 };
 
-BeamFootprint beamFootprint(
-    TofSensor sensor,
-    float rangeMm,
-    const PositionEstimate &pose)
+BeamFootprint markerEdgeFootprint(TofSensor sensor, const PositionEstimate &pose)
 {
+    // At a piece edge the accepted range can mix the nearby piece and the
+    // wall. Its value classifies occupancy, but is not the depth of the tip.
+    // Intersect both cone rays with the known marker-tip plane instead of
+    // expanding the cone with that mixed range (531/533/534: oversized gap).
     const float localX = sensor == TOF_LEFT
-        ? OBSTACLE_TOF_LEFT_LOCAL_X_MM
-        : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
+        ? OBSTACLE_TOF_LEFT_LOCAL_X_MM : OBSTACLE_TOF_RIGHT_LOCAL_X_MM;
     const float localY = sensor == TOF_LEFT
-        ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM
-        : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
-    const float heading = pose.heading_deg * PI / 180.0f;
-    const float sensorX = pose.x_mm + cosf(heading) * localX -
-                          sinf(heading) * localY;
-    const float rayHeading = heading +
-        (sensor == TOF_LEFT ? 0.5f * PI : -0.5f * PI);
-    const float halfFov = 0.5f *
-        OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG * PI / 180.0f;
-    const float edge1 = sensorX + rangeMm * cosf(rayHeading - halfFov);
-    const float edge2 = sensorX + rangeMm * cosf(rayHeading + halfFov);
-    return {fminf(edge1, edge2), fmaxf(edge1, edge2)};
+        ? OBSTACLE_TOF_LEFT_LOCAL_Y_MM : OBSTACLE_TOF_RIGHT_LOCAL_Y_MM;
+    const float h = pose.heading_deg * PI / 180.0f;
+    const float sx = pose.x_mm + cosf(h)*localX - sinf(h)*localY;
+    const float sy = pose.y_mm + sinf(h)*localX + cosf(h)*localY;
+    const float tipY = OBSTACLE_SOUTH_OUTER_WALL_Y_MM + OBSTACLE_PARKING_WIDTH_MM;
+    const float ray = h + (sensor == TOF_LEFT ? 0.5f*PI : -0.5f*PI);
+    const float half = 0.5f*OBSTACLE_PARKING_EXIT_TOF_DETECTION_FOV_DEG*PI/180.0f;
+    const float dy1 = sinf(ray-half), dy2 = sinf(ray+half);
+    if (!isfinite(sx) || !isfinite(sy) || fabsf(dy1)<0.1f || fabsf(dy2)<0.1f)
+        return {NAN, NAN};
+    const float r1 = (tipY-sy)/dy1, r2 = (tipY-sy)/dy2;
+    if (r1<=0.0f || r2<=0.0f) return {NAN, NAN};
+    const float x1 = sx+r1*cosf(ray-half), x2 = sx+r2*cosf(ray+half);
+    return {fminf(x1,x2), fmaxf(x1,x2)};
 }
 
 float expectedOuterWallRange(
@@ -234,6 +239,7 @@ float parkingOuterRange(const TofDiagnosticSnapshot &snapshot)
 
 // Only fresh, wall-consistent returns may correct scan-line odometry. Marker
 // edges mix wall/piece returns, so they deliberately do not move the pose.
+bool scanAlignmentPreflight(PositionEstimate pose);
 bool updateOuterWallReference(bool initial)
 {
     TofDiagnosticSnapshot snapshot;
@@ -246,7 +252,8 @@ bool updateOuterWallReference(bool initial)
     const float raw = parkingOuterRange(snapshot);
     const float expected = expectedOuterWallRange(outerSensor, pose);
     const float residual = raw - expected;
-    const float maxResidual = initial ? 80.0f : 10.0f;
+    const float maxResidual = initial && pose.x_mm>=900.0f ? 120.0f :
+        (initial ? 80.0f : 10.0f);
     if (!isfinite(raw) || raw < OBSTACLE_FINAL_PARKING_WALL_MIN_MM ||
         raw > (initial ? 700.0f : OBSTACLE_FINAL_PARKING_WALL_MAX_MM) || expected <= 0.0f ||
         fabsf(residual) > maxResidual ||
@@ -267,6 +274,15 @@ bool updateOuterWallReference(bool initial)
     const float correction = -rayY * (initial
         ? 0.5f*(residual+initialWallCorrection)
         : clampFloat(residual*0.2f,-1.0f,1.0f));
+    if (initial && fabsf(residual)>80.0f)
+    {
+        // 567: stable wall361mm versus predicted258mm after three laps.
+        // Only the cleared outer corridor may register this larger drift,
+        // and only if its complete bounded line alignment has a safe sweep.
+        PositionEstimate corrected=pose;
+        corrected.y_mm+=correction;
+        if (!scanAlignmentPreflight(corrected)) return false;
+    }
     position_apply_xy_correction(0.0f,correction);
     lastWallCorrection = correction;
     if (correction != 0.0f) ++wallCorrectionSequence;
@@ -297,6 +313,7 @@ void traceParking(bool force = false)
     Serial.print(" steering="); Serial.print(set_degree);
     Serial.print(" distance/speed="); Serial.print(get_distance(),1);
     Serial.print("/"); Serial.print(current_speed,1);
+    Serial.print(" loop_ms="); Serial.print(last_loop_time*1000.0f,1);
     Serial.print(" tof_seq/age/raw/expected="); Serial.print(snapshot.sequence);
     Serial.print("/"); Serial.print(available ? millis()-snapshot.sampled_ms : 9999);
     Serial.print("/"); Serial.print(parkingOuterRange(snapshot),1);
@@ -308,28 +325,33 @@ void traceParking(bool force = false)
 
 bool connectorClearanceSafe(const PositionEstimate &pose)
 {
+    // Walls do not depend on the selected pillar. Scan them once, rather
+    // than repeating the same wall geometry for every confirmed seat at
+    // every 2-mm approach-preflight sample.
+    ObstacleClearanceSample walls;
+    if (!obstacle_path_sample_pose_clearance(0, pose.x_mm, pose.y_mm,
+            pose.heading_deg, walls) || !walls.valid || walls.wallMm < 5.0f)
+        return false;
+    const float h = pose.heading_deg * PI / 180.0f;
+    const float dx = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * cosf(h);
+    const float dy = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * sinf(h);
+    const float lengthSquared = dx*dx + dy*dy;
     float minimumPillar = 1.0e9f;
-    float minimumWall = 1.0e9f;
-    bool sampled = false;
     for (uint8_t seatId = 0; seatId < obstacle_path_seat_count(); ++seatId)
     {
         ObstacleSeatInfo seat;
-        if (!obstacle_path_get_seat(seatId, seat) || (!seat.confirmed && seatId != 0))
+        if (!obstacle_path_get_seat(seatId, seat) || !seat.confirmed)
             continue;
-        ObstacleClearanceSample sample;
-        if (!obstacle_path_sample_pose_clearance(
-                seatId,
-                pose.x_mm,
-                pose.y_mm,
-                pose.heading_deg,
-                sample) || !sample.valid)
-            return false;
-        sampled = true;
-        if (seat.confirmed) minimumPillar = fminf(minimumPillar, sample.pillarMm);
-        minimumWall = fminf(minimumWall, sample.wallMm);
+        const float t = clampFloat(((seat.xMm-pose.x_mm)*dx +
+            (seat.yMm-pose.y_mm)*dy) / fmaxf(lengthSquared,1.0e-6f),0.0f,1.0f);
+        const float clearance = hypotf(seat.xMm-pose.x_mm-t*dx,
+            seat.yMm-pose.y_mm-t*dy) - OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM -
+            OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+        if (!isfinite(clearance)) return false;
+        minimumPillar = fminf(minimumPillar, clearance);
     }
     // The three-lap path cannot complete until every station is resolved.
-    return sampled && minimumPillar >= 10.0f && minimumWall >= 5.0f;
+    return minimumPillar >= 10.0f;
 }
 
 void abortParking(const char *reason)
@@ -379,12 +401,11 @@ bool checkMotionHealth(const PositionEstimate &pose)
     return true;
 }
 
-void driveFieldLine(
+int fieldLineSteering(
+    const PositionEstimate &pose,
     int8_t fieldMotionSign,
-    float targetY,
-    int speed)
+    float targetY)
 {
-    const PositionEstimate pose = get_position_struct();
     const float lateralError = targetY - pose.y_mm;
     const float lateralAngle = fieldMotionSign * atan2f(
         lateralError,
@@ -400,9 +421,15 @@ void driveFieldLine(
             OBSTACLE_FINAL_PARKING_LINE_HEADING_KP,
         -OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING,
         OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING);
+    return static_cast<int>(steering);
+}
+
+void driveFieldLine(int8_t fieldMotionSign, float targetY, int speed)
+{
+    const int motorDirection = motorDirectionForFieldMotion(fieldMotionSign);
     servo_disabled = false;
     set_speed(motorDirection * speed);
-    set_steering(static_cast<int>(steering));
+    set_steering(fieldLineSteering(get_position_struct(),fieldMotionSign,targetY));
 }
 
 bool linePoseReady(const PositionEstimate &pose, float targetY)
@@ -554,6 +581,49 @@ bool scanCommandSafe(PositionEstimate pose, int direction)
     return true;
 }
 
+bool captureAlignmentPreflight(PositionEstimate pose)
+{
+    // Registration can leave only17mm to capture (564), insufficient to remove
+    // a10mm lateral error. Establish the line farther along +X, then return.
+    // Check the entire out-and-back against the measured bay and known pillars.
+    bool returning=false;
+    int returnStart=-1;
+    const int limit=static_cast<int>(OBSTACLE_FINAL_PARKING_CAPTURE_MAX_MM);
+    for (int mm=0; mm<=2*limit; ++mm)
+    {
+        if (!returning && linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM) &&
+            pose.x_mm>=captureTargetX+80.0f)
+        { returning=true;returnStart=mm; }
+        if ((!returning && mm>limit) || (returning && mm-returnStart>limit))
+            return false;
+        const int direction=motorDirectionForFieldMotion(returning ? -1 : 1);
+        const int steering=fieldLineSteering(pose,returning ? -1 : 1,
+            OBSTACLE_FINAL_PARKING_SCAN_Y_MM);
+        if (!parkingEntryPoseSafe(pose,steering)) return false;
+        if (returning && pose.x_mm<=captureTargetX+1.5f)
+            return linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM);
+        advanceParkingPose(pose,steering,static_cast<float>(direction));
+    }
+    return false;
+}
+
+bool scanAlignmentPreflight(PositionEstimate pose)
+{
+    int sign=pose.x_mm<1000.0f ? 1:-1;
+    int turns=0;
+    for (int mm=0; mm<=1080; mm+=2)
+    {
+        if (pose.x_mm>=900.0f && linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
+            return true;
+        if ((sign>0 && pose.x_mm>=1080.0f) || (sign<0 && pose.x_mm<=900.0f))
+        { sign=-sign;if (++turns>4) return false; }
+        const int steering=fieldLineSteering(pose,sign,OBSTACLE_FINAL_PARKING_SCAN_Y_MM);
+        if (!parkingEntryPoseSafe(pose,steering)) return false;
+        advanceParkingPose(pose,steering,2.0f*motorDirectionForFieldMotion(sign));
+    }
+    return false;
+}
+
 void resetScanClassFrames()
 {
     classFrames = 0;
@@ -612,10 +682,11 @@ void processScanFrame(const TofDiagnosticSnapshot &snapshot)
             ++classFrames;
             if (classFrames >= OBSTACLE_FINAL_PARKING_CLASS_CONFIRM_FRAMES)
             {
-                measuredFixedInsideX = beamFootprint(
-                    outerSensor,
-                    lastFixedMarkerRange,
-                    lastFixedMarkerPose).maximumX;
+                measuredFixedInsideX = markerEdgeFootprint(
+                    outerSensor, lastFixedMarkerPose).maximumX;
+                Serial.print("[FINAL PARK EDGE] fixed_x/raw_mm=");
+                Serial.print(measuredFixedInsideX, 1); Serial.print("/");
+                Serial.println(lastFixedMarkerRange, 1);
                 scanPhase = 3;
                 resetScanClassFrames();
             }
@@ -638,10 +709,11 @@ void processScanFrame(const TofDiagnosticSnapshot &snapshot)
             ++classFrames;
             if (classFrames >= OBSTACLE_FINAL_PARKING_CLASS_CONFIRM_FRAMES)
             {
-                measuredMovingInsideX = beamFootprint(
-                    outerSensor,
-                    firstMovingMarkerRange,
-                    firstMovingMarkerPose).minimumX;
+                measuredMovingInsideX = markerEdgeFootprint(
+                    outerSensor, firstMovingMarkerPose).minimumX;
+                Serial.print("[FINAL PARK EDGE] moving_x/raw_mm=");
+                Serial.print(measuredMovingInsideX, 1); Serial.print("/");
+                Serial.println(firstMovingMarkerRange, 1);
                 scanPhase = 4;
                 classFrames = 0;
             }
@@ -807,6 +879,7 @@ void final_parking_reset()
     measuredGapMm = 0.0f;
     captureTargetX = 0.0f;
     captureFieldMotionSign = 1;
+    captureAlignPending = false;
     completed = false;
     aborted = false;
     practiceMode = false;
@@ -898,6 +971,10 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
+        // The stopped geometric search may outlast the 200-ms sensor age.
+        // Service queued reports before attempting the first motion; a
+        // genuinely stale/missing report still follows the normal hold.
+        update_gyro();
         Serial.print("[FINAL PARK] Outward shift x="); Serial.println(approachOuterShiftX,1);
         runStartDistance = get_distance();
         stateStartDistance = runStartDistance;
@@ -1032,7 +1109,7 @@ bool final_parking_update(int8_t turn_sign)
         stateStartDistance = get_distance();
         stateStartMs = millis();
         state = FP_SCAN_DRIVE;
-        Serial.println("[FINAL PARK] Reverse field scan started");
+        Serial.println("[FINAL PARK] Reverse field scan started geometry=tip_plane_v1");
         return true;
     }
 
@@ -1121,6 +1198,10 @@ bool final_parking_update(int8_t turn_sign)
             abortParking("dual_marker_geometry");
             return true;
         }
+        captureAlignPending=!linePoseReady(get_position_struct(),
+            OBSTACLE_FINAL_PARKING_SCAN_Y_MM);
+        if (captureAlignPending && !captureAlignmentPreflight(get_position_struct()))
+        { abortParking("capture_alignment_preflight"); return true; }
         servo_disabled = false;
         set_steering(0);
         steer(0);
@@ -1136,9 +1217,39 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         stateStartDistance = get_distance();
         stateStartMs = millis();
-        state = FP_CAPTURE_DRIVE;
+        state = captureAlignPending ? FP_CAPTURE_ALIGN_DRIVE : FP_CAPTURE_DRIVE;
         Serial.print("[FINAL PARK] Capture target x=");
         Serial.println(captureTargetX, 2);
+        return true;
+    }
+
+    if (state == FP_CAPTURE_ALIGN_DRIVE)
+    {
+        pose=get_position_struct();
+        driveFieldLine(+1,OBSTACLE_FINAL_PARKING_SCAN_Y_MM,
+            OBSTACLE_FINAL_PARKING_CAPTURE_SPEED);
+        if (!scanCommandSafe(pose,motorDirectionForFieldMotion(+1)))
+        { abortParking("capture_alignment_clearance"); return true; }
+        if (linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM) &&
+            pose.x_mm>=captureTargetX+80.0f)
+        { stop(true);stateStartMs=millis();state=FP_CAPTURE_ALIGN_BRAKE; }
+        else if (distanceSince(stateStartDistance)>=OBSTACLE_FINAL_PARKING_CAPTURE_MAX_MM ||
+                 millis()-stateStartMs>=OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS)
+            abortParking("capture_alignment_limit");
+        return true;
+    }
+
+    if (state == FP_CAPTURE_ALIGN_BRAKE)
+    {
+        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return true;
+        stop(false);
+        if (!linePoseReady(get_position_struct(),OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
+        { abortParking("capture_alignment_pose"); return true; }
+        captureAlignPending=false;
+        captureFieldMotionSign=-1;
+        servo_disabled=false;set_steering(0);steer(0);
+        stateStartMs=millis();state=FP_CAPTURE_SETTLE;
+        Serial.println("[FINAL PARK] Registered capture line aligned; return to entry");
         return true;
     }
 

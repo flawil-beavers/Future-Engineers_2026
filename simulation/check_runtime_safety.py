@@ -77,7 +77,8 @@ constexpr int BNO085_INT=1,HIGH=1,LOW=0,SH2_GAME_ROTATION_VECTOR=7;
 int pin=LOW,restarts=0;int digitalRead(int){return pin;}
 struct Quaternion {float real=1,i=0,j=0,k=0;};
 struct Event {int sensorId=7;struct {Quaternion gameRotationVector;} un;} sensor_value;
-struct Bno {bool event=true,reset=false;bool getSensorEvent(Event*){return event;}
+struct Bno {bool event=true,reset=false;int pendingNotifications=0;
+ bool getSensorEvent(Event*){if(pendingNotifications){--pendingNotifications;return false;}return event;}
  bool wasReset(){bool r=reset;reset=false;return r;}} bno;
 float current_degree=0,current_heading=0;bool gyro_stream_healthy=false;
 uint32_t gyro_last_valid_report_ms=0;
@@ -110,6 +111,11 @@ int main(){
  assert(gyro_is_healthy()&&fabs(current_degree-retained)<.001);
  yaw(-175);tick(10);assert(fabs(current_degree-retained-15)<.001);
  nowMs+=201;assert(!gyro_is_healthy());
+ // Slow geometry loops must consume notification packets ahead of the next
+ // vector in the same bounded poll, without renewing age on an empty event.
+ tick(10);prior=restarts;
+ for(int i=0;i<20;++i){bno.pendingNotifications=2;tick(100);assert(gyro_is_healthy());}
+ assert(restarts==prior);
  std::cout<<"PASS actual gyro: stuck LOW/HIGH, unrelated events, NaN, loop pause, fresh recovery\n";
 }
 '''
