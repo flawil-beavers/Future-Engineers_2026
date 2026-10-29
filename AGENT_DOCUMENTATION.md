@@ -11895,3 +11895,35 @@ M4 unchanged/notbuilt, no upload/drive/commit/push. Next normal CW/CCW/save afte
 user uploadsM7: copy originals FIRST+notify, archive/hash, verify no ambiguous
 early correction near rails, later stable reference, two edges/gap, capture,
 all7 segments and physical containment/contact. No special ToF movement/test.
+
+## 2026-10-28: Open inner-wall follow-up, review only
+
+User requests careful recheck for regressions, preserving simple inner-wall
+following. Current HEAD 16db81b plus existing staged parking work preserved;
+no firmware edit/upload/commit/push. Attached USB newest files remain 563--569:
+all seven already archived originals match source SHA-256, indexed/tracked;
+immediate safe-removal notice given after verification. No new test batch.
+
+Extended simulation/OPEN_CHALLENGE_REVIEW_20261027.md. New reproducible
+check_open_wall_following_20261028.py compares 560 scenarios / 11200 actual
+navigation commands against 861ed8e: identical wall steering, speed and
+reacquisition, correct left/right correction signs. Existing staged parking
+states are not called by normal Open. Current runtime safety/edge suites and
+40000 historical ramp comparisons pass. Nominal injected CW/CCW missions and
+servo resume pass; these are state tests, not a physical full-course model.
+
+Actual read_single_tof plus navigation confirms new timing regression: current
+first corner requires 3 fresh gap frames versus 1 effective historical frame.
+With assumed 300 ms arrivals this adds about 600 ms / 180 mm at 300 mm/s.
+Also reproduced older 100 mm/frame filter delay: accepted 300->2000 mm jump
+needs 15 frames currently versus 13 historically (about 4.2/3.6 s after first
+wide frame). Empty/quality-rejected frames bypass this clamp as 9999 gaps.
+No measured sensor latency or physical collision claimed. Finish-without-wall
+defect remains reproduced. Next jointly address first-corner sensing/timing
+and independent finish gate, preserving wall controller and avoiding shared
+ToF changes without Obstacle validation. No new planner or blind global rollback.
+
+IDE M7 incremental SUCCESS, RAM 442416/523624, flash 532888/786432, SHA-256
+ca500e0d2b6127929fa0ac99cf98164cd8e510be535fc7c708b3b12425a0f4d9.
+M4 unchanged/notbuilt. Generated fixtures stay in ignored
+local_workspace/open_wall_following_20261028/. Physical Open acceptance pending.

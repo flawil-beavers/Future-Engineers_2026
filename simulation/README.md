@@ -10,6 +10,7 @@ contact testing.
 
 | File | Description |
 |------|-------------|
+| `check_open_wall_following_20261028.py` | Compares 11200 wall-following commands in 560 scenarios with the pre-change Open controller and executes actual ToF filtering for first-corner timing; unresolved findings documented in `OPEN_CHALLENGE_REVIEW_20261027.md`. |
 | `review_open_challenge_20261027.py` | Source-backed Open navigation audit: CW/CCW mission, frame freshness, servo resume and explicit unresolved corner/finish/mode-state findings; see `OPEN_CHALLENGE_REVIEW_20261027.md`. |
 | `visualize_robot_run.py` | Whole-run SVG/PNG images with logged pillar maps, field context and parking/merge detail; usage in `ROBOT_RUN_VISUALIZATION.md`. |
 | `corner_extra_view_check.py` | Additional90 mm reverse arc: both log398 scan poses,486 perturbed geometric cases, coast reserve, full-seat clearance and ideal reciprocal return; no camera or controller acceptance. |
