@@ -33,7 +33,7 @@ def main():
 int main(){int total=0,bad=0;
  for(int dir:{-1,1})for(int phase:{parking_module::FP_IDLE,parking_module::FP_APPROACH_BRAKE,
      parking_module::FP_SCAN_BRAKE,parking_module::FP_CAPTURE_BRAKE,parking_module::FP_SEGMENT_BRAKE,
-     parking_module::FP_SCAN_ALIGN_BRAKE})
+     parking_module::FP_SCAN_ALIGN_BRAKE,parking_module::FP_CAPTURE_ALIGN_BRAKE})
  for(float speed:{20.f,-20.f,NAN}){
   routeTurnSign=dir;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
   learned();buildOptimizedPath();

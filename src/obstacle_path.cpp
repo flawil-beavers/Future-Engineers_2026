@@ -6024,7 +6024,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261027_corner565_clear_scope");
+    Serial.println("[PATH] control_revision=20261028_parking_wall_reference");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");

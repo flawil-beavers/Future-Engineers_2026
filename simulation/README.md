@@ -171,3 +171,15 @@ Follow-up scope correction for that hold:
 [CORNER_HOLD_565_FIX_20261027.md](CORNER_HOLD_565_FIX_20261027.md).
 `check_corner_hold_565.py` exercises actual RGB565 local silhouette detection,
 the coverage gates, the old-veto negative control and the unchanged safe join.
+
+Final parking in both directions after the third lap:
+[FINAL_PARKING_CAPTURE_REVIEW_20261027.md](FINAL_PARKING_CAPTURE_REVIEW_20261027.md).
+`check_parking_direct_capture.py` compares the checked direct capture with the
+previous alignment, retains the short CW recovery and tests the new states'
+health gates. Full sequence, robustness and braking checks cover completion
+and bounded rejection; physical validation remains pending.
+
+Complete approaches from recorded CW564/CCW567 arrivals, including modeled
+brake coast and ambiguous early wall references:
+[PARKING_ARRIVAL_AUDIT_20261028.md](PARKING_ARRIVAL_AUDIT_20261028.md).
+Run `check_parking_arrival_564_567.py` after regenerating the later-lap fixture.

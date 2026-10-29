@@ -11820,3 +11820,78 @@ IDE M7 SUCCESS RAM442416/523624 flash532264/786432; revision
 20261027_corner565_clear_scope; binarySHA256
 68f093f0f6fd0c03a6e86217336b32b16d92e8d09429c16c3176f0c9f83b11c1.
 M4 unchanged/notbuilt. No agent upload/drive/commit/push or special ToF test.
+
+## 2026-10-27: full final-parking review, direct capture when feasible
+
+User requests efficient/reliable parking after lap3 in both directions. No new
+batch/upload/movement. Reused tracked564 CW and567 CCW with original SHA hashes
+listed in the preceding batch and simulation/FINAL_PARKING_CAPTURE_REVIEW_20261027.md.
+Third-lap handover, current enabled/armed configuration and full parking state
+machine reviewed. Existing564 short-capture alignment and567 bounded wall-drift
+registration preserved. No new physical success evidence.
+
+Registered off-line poses previously always selected out-and-back, including
+CCW with ample ordinary capture distance. New captureDirectPreflight checks
+actual controller/1mm CAD sweep/measured gap/known obstacles, original endpoint
+gates AND full subsequent entry. Only accepted direct cases skip extra alignment.
+Added appended capture-align drive/brake states to module health gate; global
+main-loop gyro guard already existed, so do not call omission a proven log cause.
+Speeds, entry arcs, departure and clearance/containment limits unchanged.
+
+Current-source tests PASS: full sequence396 parked; broad known arrivals990
+parked;132 unknown-pose cases88 parked/44 rejected;360 arbitrary starts112 parked/
+248 rejected;40 other-section starts,16 bad-sensor and2 wrong-gap cases rejected;
+no modeled unsafe case. Boundary46/quality5. New72 capture comparisons64 parked,
+8 previous clearance rejections retained,36 shorter by up to162mm/4.32s. No lost
+previous success; short564 CW still aligns. Health12 plus removed-guard negative
+control, braking90, prior567 wall-drift18 and association13 pass. Regenerated
+later-lap fixture2807 pass. Model timings/geometry exclude physical lag/slip/
+reflections; heading-bias refusals remain. New test check_parking_direct_capture.py.
+
+IDE M7 SUCCESS RAM442416/523624 flash532600/786432; revision
+20261027_parking_direct_capture; binarySHA256
+7ccf911449dd8d50a19c4b959fd40d6ca1d1e80f200653ba84e958678b029c94.
+M4 unchanged/notbuilt; no upload/drive/commit/push. Next user uploadsM7, normal
+CW/CCW through all3 laps/parking/save; copy FIRST+notify and archive hashes.
+Verify direct-preflight message where appropriate, retained shortCW alignment,
+both marker registrations,7 segments, physical containment/contact and stopped
+completion. No dedicated sensor sweep or altered physical test procedure.
+
+## 2026-10-28: recorded parking arrivals and early wall-reference ambiguity
+
+User asks to recalculate full approach, apparent wrong side and stopping beside
+rails. No new batch/upload/drive. Read existing564 CW and567 CCW, unchanged SHA
+values in simulation/PARKING_ARRIVAL_AUDIT_20261028.md and evidence README.
+Their first parking poses152.4/-1018.4/165.7 and-150.4/-1072.1/30.8, plus actual
+confirmed maps, seed new check_parking_arrival_564_567.py. The preceding graphic
+under local_workspace/parking-top-view shows entry only, not full approach.
+CCW567 learned GREEN5 bypass explains inward bend; not proof of wrong direction.
+
+564 applies early Y-46.6mm nearX480; two stable mixed pink/wall returns can pass
+old80mm initial residual gate. New earlyWallReferenceClearOfMarkers applies ONLY
+while FP_APPROACH_LANE: entire modeled fan from rail tips to wall must miss
+possible rails with existing250mm X uncertainty before applying an early pose
+correction. Otherwise skip correction and continue existing route. Later stopped
+registration/CCW bounded drift alignment/scan/capture unchanged. Marker footprint
+helper accepts optional planeY; default tip projection unchanged. Actual source
+of564 raw returns unknown; injected mixed-return reproduction is mechanism proof,
+not a recorded scene replay or conclusive cause of that run's final failure.
+
+PASS:162 full approaches/entries from recorded anchors with XY+/-10mm, heading
++/-2deg and0/10/25mm extra forward coast. Capture maxX/Y/heading errors1.498mm/
+0.780mm/0.169deg; minimum modeled wall/pillar45.55/65.16mm; pink polygons separately
+checked.12 reference cases plus removed-guard negative control. Approach2970,
+full sequence396, known-arrival990, boundary46, quality5 and mixed-edge864 pass.
+Broader132 unknown-pose cases88 parked/44 rejected;360 arbitrary starts112 parked/
+248 rejected;40 other-section,16 sensor-fault,2 wrong-gap refused; no unsafe model
+case. Six narrow-gap/extreme-pose entry refusals retained. Models exclude real
+lag/slip/reflections; no universal completion claim. Existing lap/entry speeds,
+routes, departure and margins unchanged; no new stopping state.
+
+IDE M7 SUCCESS RAM442416/523624 flash532888/786432. Revision
+20261028_parking_wall_reference; binarySHA256
+ca500e0d2b6127929fa0ac99cf98164cd8e510be535fc7c708b3b12425a0f4d9.
+M4 unchanged/notbuilt, no upload/drive/commit/push. Next normal CW/CCW/save after
+user uploadsM7: copy originals FIRST+notify, archive/hash, verify no ambiguous
+early correction near rails, later stable reference, two edges/gap, capture,
+all7 segments and physical containment/contact. No special ToF movement/test.
