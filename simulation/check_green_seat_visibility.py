@@ -48,7 +48,37 @@ cases=[('green_dark',[(214,80,246,142,(25,70,25))],1,1),
 for name,rects,color,occupied in cases:
  path=p/(name+'.rgb565');path.write_bytes(raw(rects));r=run(path,230,142)
  print(name,r);assert r[:2]==[color,occupied],(name,r)
+
+#576: a dark green candidate's actual208px foot is44px below the164px
+#projection of the middle place. The old function still returned it, allowing
+#three false middle votes and inference that skipped the preceding scout.
+path=p/'wrong_middle_foot.rgb565'
+path.write_bytes(raw([(246,96,280,208,(25,70,25))]))
+r=run(path,265,164);print('576_wrong_middle_foot',r);assert r[:2]==[0,0]
+r=run(path,265,208);print('same_close_green_correct_foot',r);assert r[:2]==[1,1]
+
+# Negative control keeps every other colour/shape condition and removes only
+# the actual mapped-foot rejection added for576.
+vision_source=(ROOT/'src/vision.cpp').read_text()
+guard='''        else
+            continue;
+        // Count existing HSV-green pixels'''
+assert guard in vision_source
+old=p/'vision_without_foot_gate.cpp'
+old.write_text(vision_source.replace(guard,'        // Count existing HSV-green pixels',1))
+old_exe=p/'without_foot_gate.exe'
+subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(p),'-I',str(ROOT/'include'),
+               str(old),str(p/'check.cpp'),'-o',str(old_exe)],check=True)
+old_result=list(map(int,subprocess.check_output([str(old_exe),str(path),'265','164'],text=True).split()))
+print('576_removed_foot_gate_negative_control',old_result);assert old_result[0]==1
 evidence=ROOT/'simulation/evidence/camera_diagnostics'
+same=0;accepted=0
+for image in sorted(evidence.glob('20261026_green*400mm*.rgb565')):
+ current=run(image,160,136)
+ previous=list(map(int,subprocess.check_output([str(old_exe),str(image),'160','136'],text=True).split()))
+ assert current==previous,(image.name,current,previous)
+ same+=1;accepted+=current[0]
+print('Archived Oct26 400mm fixed-query old/new matches',same,'accepted',accepted)
 for name,color in [('20261005_green_middle_same_pose_01',1),('20261005_red_green_room_same_pose_01',0)]:
  r=run(evidence/(name+'.rgb565'),196,124);print(name,r);assert r[0]==color
 # These images contain a distant rear GREEN and an empty front: a false close

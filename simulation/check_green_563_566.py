@@ -11,8 +11,8 @@ from check_final_parking_sequence import fixture_source as parking_fixture
 
 def main():
     rows=[]
-    for n in (563,566):
-        for line in (ROOT/f'simulation/evidence/parking_exit_diagnostics/20261027_log_{n}_cw.txt').read_text().splitlines():
+    for date,n in ((20261027,563),(20261027,566),(20261029,582),(20261029,583)):
+        for line in (ROOT/f'simulation/evidence/parking_exit_diagnostics/{date}_log_{n}_cw.txt').read_text().splitlines():
             if '[GREEN SEAT PRIMARY]' not in line:continue
             f=dict(t.split('=',1) for t in line.split() if '=' in t)
             x,y,h=map(float,f['pose'].split(','))
@@ -157,7 +157,7 @@ bool parkingSectionInnerSeatsOnly=false;
 int injectionCount=0;
 bool oppositeSeatConflictReported[OBSTACLE_SEAT_COUNT]={};
 int stationIndexForSeat(uint8_t i){return i/2;}
-bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int){return true;}
+bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int,bool){return true;}
 void logRedSeatProjection(const ObstacleObservationResult &,const char *,bool=false){}
 void finalizeConfirmedSeat(ObstacleObservationResult &r){
  r.status=OBSTACLE_OBSERVATION_CONFIRMED;seats[r.seatId].injected=true;++injectionCount;rebuildLivePath();}

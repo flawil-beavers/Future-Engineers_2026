@@ -184,3 +184,35 @@ Complete approaches from recorded CW564/CCW567 arrivals, including modeled
 brake coast and ambiguous early wall references:
 [PARKING_ARRIVAL_AUDIT_20261028.md](PARKING_ARRIVAL_AUDIT_20261028.md).
 Run `check_parking_arrival_564_567.py` after regenerating the later-lap fixture.
+
+CW570--571 / CCW572--575 acquired views, CAD recovery and stopped parking wall:
+[CW_CCW_570_575_REVIEW_20261029.md](CW_CCW_570_575_REVIEW_20261029.md).
+Run `check_cw_570_571.py` and `check_ccw_572_575.py`; originals and SHA-256
+metadata are in the parking-exit evidence directory. Physical acceptance of
+the new revision remains pending normal runs.
+
+CW576 false middle GREEN and skipped start scout:
+[CW_576_START_REGRESSION_20261029.md](CW_576_START_REGRESSION_20261029.md).
+`check_cw_576.py` tests the actual scout transition with a removed-guard negative
+control; `check_green_seat_visibility.py` checks the missing mapped-foot gate,
+archived-image comparisons and a second negative control.
+
+CCW577--581 successful course runs versus pre-scan holds:
+[CCW_577_581_REVIEW_20261029.md](CCW_577_581_REVIEW_20261029.md).
+`check_ccw_580_581.py` covers the measured refused poses, shorter safe arc
+selection, subsequent views/joins and the old-search-floor negative control.
+Final parking is deferred for this batch.
+
+CW582--586 and returned CCW/CW587--593 distant start evidence:
+[RETURNED_RUNS_582_593_REVIEW_20261030.md](RETURNED_RUNS_582_593_REVIEW_20261030.md).
+`check_green_563_566.py` now includes the disputed 582/583 row views;
+`check_parking_seat_foot.py` preserves the false471/576 controls while admitting
+the returned end-GREEN residual; `check_green_occupancy_hold_589.py` verifies
+that one matched upright candidate cannot become CLEAR 192 ms later. Colour
+thresholds, blob dimensions, speeds, parking and later-lap geometry are unchanged.
+
+First-lap unknown-station recovery:
+[LAP1_ACTIVE_SEARCH_REVIEW_20261030.md](LAP1_ACTIVE_SEARCH_REVIEW_20261030.md).
+`check_active_lap1_search.py` verifies that a missed station alternates the two
+swept-safe reverse parallax views and continues fresh observation instead of
+entering an evidence-only permanent lock. Motion-safety stops remain active.

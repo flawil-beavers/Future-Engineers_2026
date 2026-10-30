@@ -180,6 +180,8 @@ bool Vision::findGreenSeatCandidate(
         const int footError = abs(footY - expectedFootY);
         if (footError <= OBSTACLE_SEAT_SILHOUETTE_FOOT_TOLERANCE_PX)
             candidate.silhouetteFound = true;
+        else
+            continue;
         // Count existing HSV-green pixels in the lower pillar band without
         // demanding that they join the wall or one another into a blob.
         uint16_t greenSamples = 0;

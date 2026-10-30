@@ -41,7 +41,7 @@ PositionEstimate get_position_struct(){return hostPose;}
 float distanceSquared(float x,float y,float a,float b){return (x-a)*(x-a)+(y-b)*(y-b);}
 int stationIndexForSeat(uint8_t seat){return seat/2;}
 bool obstacle_blob_valid_for_acquisition(const Blob *b){return obstacle_blob_shape_valid(b);}
-bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int){return true;}
+bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int,bool){return true;}
 void logRedSeatProjection(const ObstacleObservationResult &,const char *,bool=false){}
 void finalizeConfirmedSeat(ObstacleObservationResult &r){
  r.status=OBSTACLE_OBSERVATION_CONFIRMED;seats[r.seatId].injected=true;++injectionCount;

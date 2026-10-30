@@ -114,6 +114,9 @@ uint32_t sensorHoldStartMs = 0;
 float initialWallCorrection = 0.0f;
 float lastWallCorrection = 0.0f;
 uint32_t wallCorrectionSequence = 0;
+uint32_t stoppedWallSequence = 0;
+uint8_t stoppedWallFrames = 0;
+float stoppedWallRange = 0.0f;
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -784,6 +787,32 @@ void processScanFrame(const TofDiagnosticSnapshot &snapshot)
     }
 }
 
+bool refreshStoppedScanWallReference()
+{
+    TofDiagnosticSnapshot snapshot{};
+    if (!get_tof_diagnostic_snapshot(outerSensor,snapshot) ||
+        snapshot.sequence==stoppedWallSequence || millis()-snapshot.sampled_ms>250 ||
+        static_cast<int32_t>(snapshot.sampled_ms-stateStartMs)<
+            static_cast<int32_t>(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return false;
+    stoppedWallSequence=snapshot.sequence;
+    const PositionEstimate pose=get_position_struct();
+    const float raw=parkingOuterRange(snapshot);
+    const float expected=expectedOuterWallRange(outerSensor,pose);
+    if (!isfinite(raw) || raw<OBSTACLE_FINAL_PARKING_WALL_MIN_MM ||
+        raw>OBSTACLE_FINAL_PARKING_WALL_MAX_MM || expected<=0.0f ||
+        fabsf(raw-expected)>OBSTACLE_FINAL_PARKING_MAX_POSE_CORRECTION_MM)
+    { stoppedWallFrames=0;return false; }
+    if (stoppedWallFrames==0 || fabsf(raw-stoppedWallRange)>8.0f)
+    { stoppedWallRange=raw;stoppedWallFrames=1;return false; }
+    //571: the first two wall-like edge returns gave -17.6mm, while the
+    //stopped wall was261mm versus258mm predicted. Never register Y from that
+    //transitional edge sample after a newer stationary reference is available.
+    latestWallPose=pose;
+    latestWallRange=0.5f*(raw+stoppedWallRange);
+    Serial.print("[FINAL PARK WALL] stopped_scan_range_mm=");Serial.println(latestWallRange,1);
+    return true;
+}
+
 bool applyScanLocalization()
 {
     measuredGapMm = measuredFixedInsideX - measuredMovingInsideX;
@@ -934,6 +963,7 @@ void final_parking_reset()
     initialWallCorrection = 0.0f;
     lastWallCorrection = 0.0f;
     wallCorrectionSequence = 0;
+    stoppedWallSequence=0;stoppedWallFrames=0;stoppedWallRange=0.0f;
     sensorHoldTraceCount = 0;
     sensorHoldPending = false;
     sensorHoldStartMs = 0;
@@ -1218,6 +1248,7 @@ bool final_parking_update(int8_t turn_sign)
         if (scanPhase == 5)
         {
             stop(true);
+            stoppedWallSequence=0;stoppedWallFrames=0;
             stateStartMs = millis();
             state = FP_SCAN_BRAKE;
         }
@@ -1238,6 +1269,11 @@ bool final_parking_update(int8_t turn_sign)
         if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         stop(false);
+        if (!refreshStoppedScanWallReference())
+        {
+            if (millis()-stateStartMs>2500UL) abortParking("stopped_scan_wall_reference");
+            return true;
+        }
         if (!applyScanLocalization())
         {
             abortParking("dual_marker_geometry");

@@ -11927,3 +11927,250 @@ IDE M7 incremental SUCCESS, RAM 442416/523624, flash 532888/786432, SHA-256
 ca500e0d2b6127929fa0ac99cf98164cd8e510be535fc7c708b3b12425a0f4d9.
 M4 unchanged/notbuilt. Generated fixtures stay in ignored
 local_workspace/open_wall_following_20261028/. Physical Open acceptance pending.
+
+## 2026-10-29: CW570--571 and CCW572--575 view/parking failures
+
+Both USB batches copied FIRST, originals unchanged, SHA-256 verified and immediate
+safe-removal notices sent. Portable evidence paths:
+simulation/evidence/parking_exit_diagnostics/20261029_log_570_cw.txt through
+20261029_log_571_cw.txt and20261029_log_572_ccw.txt through20261029_log_575_ccw.txt.
+Full hashes/bytes/completeness are in that directory's README; SHA-256 respectively:
+deed70efa781e8faf0ce6965f1d6afc1302b668b3d62c9a5213132cda28370c9,
+2c1186ea7501a53271e848d071d47c1abdd18ac945d959771398c1996d306ca4,
+25d8d3d98d65232bf6c46a8c2ccc8acfd23c6c12a3671f452cfea661371be9ef,
+32080ebc1d85a3f59591577e6561efe9beb177159b4a5c64577253d627cc222c,
+b16742bf377977628ee8791b1df282f99a3314162a35f8e10f41da8c9a389740,
+deacf7d82f1d415882e95ea1e396dbd696320d572b7bea300a199cca911704bd.
+All report20261028_parking_wall_reference; diagnostic timestamp19:43:55 is not
+full binary identity; installedSHA unknown.570 ends at scout lock/save without
+RUN_END;571 aborts capture_alignment_preflight;572--575 manually paused with
+RUN_END truncated0. All6 exit diagnostics complete/untruncated.
+
+Physical reports:570 green not confirmed, asks more reverse;571 rest perfect,
+reaches pink rails then stops.572 leaves well/reaches opposite-start single outer
+green, reverses twice then stops;573--575 initial green unresolved. Logs map570
+to start scout GREEN0, not later corner.130.4mm scout leaves predicted-29.9deg/
+287mm, intermittent primary hits, fallback outside_view.571 dual edges578.2/
+330.6 give247.6mm gap; old mixed edge wall reference appliesX-98.2/Y-17.6 despite
+fresh stopped257--261 versus predicted258; capture preflight then rejects.
+CCW573--575 GREEN5 predicted292--327mm and15.5--22.5deg; upper fragments project
+about514mm and fail snap, local path no_silhouette. Images absent, exact pixel
+cause unproved.572 wide GREEN125px fails80px cap; extra-arc model mistakenly uses
+servo as wheel angle/100mm wheelbase. Rounded logged anchor gives old yaw error
+4.995deg at5deg gate versus shared calibrated CAD1.348deg.
+
+Changes: unresolved CW scout bounded extra30mm toward18deg central view, full
+measured encoder baseline/return retained. Unresolved CCW front gets one checked
+forward-50servo view correction toward10deg (max35mm), after400ms observation;
+steer/brake holds,2.5s drive/direction/travel guards,8mm stopping reserve,
+heading+/-1deg,5mm footprint reserve/both wheel sweeps/all3 possible inner seats.
+Extra reverse option was rejected by rail sweep; not shipped. Resolved views
+unchanged. Extra corner arc uses shared CAD mapping, existing safety gates kept.
+Final scan requires2 fresh accepted stable stopped wall samples forY; old rail
+edge samples no longer registerY. Existing correction/capture/entry bounds kept.
+No HSV/vote/lap-speed/hardware/ordinary successful-route changes.
+
+PASS: CW27 perturbed scout anchors maxextra20mm; CCW81 view/state sequences,
+extra5--25mm,162 GREEN/RED connector preflights from resulting poses;27 CAD
+recovery sweeps/view/retrace. Parking54 mirrored571-anchor completions and fresh/
+stale/unaccepted/duplicate/unstable reference tests; removed-reference-guard
+negative control reproduces capture_alignment_preflight. Existing396 full parks,
+5 registrations,4158 CCW starts/33 returns/135 prefixes pass. First-edge fixture
+updated to existing dynamicX selection/host stubs; selection/fallback/freshness
+passes. Six-run offline ToF fan analysis:1290 unique/214 eligible under both fans,
+33 class changes; eligibility not external accuracy. Reports remain ignored under
+local_workspace/cw-ccw-570-575/exit/. Detailed review:
+simulation/CW_CCW_570_575_REVIEW_20261029.md. No physical new-version validation.
+
+IDE M7 SUCCESS RAM442456/523624 flash536784/786432; revision
+20261029_start_view_park_reference; binarySHA256
+5fc641209dbc6d447d96593dddcf3443f46a6884c2d47d7c41643e85dde2b9de.
+M4 unchanged/notbuilt; no agent upload/drive/commit/push. Existing staged Open
+review preserved. Next tester uploadsM7, normal CW/CCW/all3laps/parking/save;
+copy originals FIRST+notify, archive/hash/index. Verify GREEN0/5 and S2station1,
+view correction/arc-return, stopped-wall registration, capture/all7segments and
+physical rail/contact/containment. No special sensor sweep or extra test pauses.
+
+## 2026-10-29: CW576 wrong start / false middle and inference gap
+
+USB original copied FIRST+source/copySHA verified+immediate safe-removal notice.
+Portable simulation/evidence/parking_exit_diagnostics/20261029_log_576_cw.txt,
+83786bytes,SHA256
+9bde5b821ded2d659f3c1f84257e7788f2749475b3691d6bf2e084d5910c0a5a.
+Complete saved original, full untruncated exit; RUN_END mode_pause/truncated0,
+elapsed70311ms, ends lap/index1/38. Path20261029_start_view_park_reference;
+installedSHA unknown. User reports completely wrong CW start, green not properly
+inspected, red missed, poor overall driving; exact contacts not reported.
+
+576 confirms middleGREEN2 from3 local fallback frames at248028ms: foot208 versus
+expected~164px, range232 versus317mm, snap86mm, green samples26/contrast47.
+Vision set silhouetteFound only for12px foot agreement but still returned a
+green candidate outside that gate; broader140mm range allowance let it confirm.
+Run image absent; actual pixel/reflection source unknown. Primary-result clears
+observing/active flags before scout: normal middle-layout inference briefly
+enables, stationResolved(0)=true, scout skipped. New CW extension never executes
+in576. Previous known-colour planner/view tests missed this learned-map/state gap.
+RED4 has one accepted vote252211ms/no confirmation; inferred layout skips normal
+unknown-place hold. No explicit RED4 conflict rejection recorded; later logged
+official_middle_conflict concernsGREEN20 inS3. Do not claim this proves every
+later driving deviation or that a mechanical/camera issue is excluded.
+
+Fix: local green candidate must satisfy existing12px mapped-foot tolerance;
+ordinary blobs/HSV thresholds unchanged. New stationDirectlyResolved means
+observed-clear/confirmed. Initial preceding scout uses direct evidence, retaining
+direct clear/occupied bypasses. Normal route inference retained. Existing bounded
+CW/CCW view moves/CAD recovery/fresh parking wall fixes retained. No exit geometry,
+lap-speed or hardware changes. Revision20261029_start_foot_scout_evidence.
+
+PASS source tests: synthetic208/164 wrong foot rejects, same green208/208 accepts;
+removed-foot-gate negative control accepts wrong candidate withsilhouette=false.
+Ten archived Oct26green400mm fixed-query old/new identical9accepted/1same prior
+rejection; archived Oct5green/red, empty-front distant-green and synthetic
+brightness/background cases pass. Actual scout transition now arms for inferred
+empty; direct-clear/confirmed bypass retained; old predicate negative control
+reproduces skipped scout. Regenerated later-lap2807 pass. CCW81view/state,
+162resulting GREEN/RED connectors and27CAD recovery sweeps pass. Details:
+simulation/CW_576_START_REGRESSION_20261029.md. Normal-exit/fan analysis remains
+ignored underlocal_workspace/cw-576/exit/:174unique/27eligible bothfans/3changes,
+eligibility not measured position accuracy. Physical new-revision success pending.
+Additional current-source passes: old CW row ambiguity8/third-green54/coupled
+first-green27/registered parking18 plus negative controls; CW570view27 and
+CW571fresh-reference/parking54 plus removed-reference negative control.
+
+IDE M7 SUCCESS RAM442456/523624 flash536784/786432, binarySHA256
+dc2fca543d96bb30a1c8b5eaa957ad7ad717fe2aeca7e2011d56220a37184f60.
+M4 unchanged/notbuilt; no agent upload/drive/commit/push. Next tester uploadsM7,
+normal CW/CCW/save. Secure originals FIRST+notify, archive/hash/index. Verify no
+false middle vote with incompatible foot, explicit GREEN0 scout unless directly
+resolved, GREEN0/RED4 confirmation, contact-free normal route and final parking.
+No special sensor movement or extra test pause requested.
+
+## 2026-10-29: CCW577--581, two good routes / pre-scan holds
+
+Five originals copied FIRST+source/copySHA verified+immediate safe-removal notice.
+Portable originals simulation/evidence/parking_exit_diagnostics/20261029_log_577_ccw.txt
+through20261029_log_581_ccw.txt; bytes149113/4609/174609/45419/44823, SHA256:
+d8dbb0c2d047eb860ac6f56899873c263507e99dc113d2c7d808e317f6bcf5fd,
+39e40351286551c60bca83eb51f1e9787cfc56ae853afe7329a19c96e5cd040f,
+ccf9e3d8e6b1ed01d69599d3a7ecc3e852702ded8d1c87244ddb007e48cc1ed1,
+131e305fee9e590870cf67f467cacce22a21757a781182346c0df937492598d8,
+71c1d168eb48cd00ee1f40f1654f5b72a023f77c9cfe64b9474b87bb6963361e.
+All complete saved files/RUN_END truncated0.577/579/580/581 path revision
+20261029_start_view_park_reference, before576 correction;578 no path header,
+exact path identity unproved; installedSHA unknown. Four full exits.578 is a
+1143ms interrupted attempt at first exit drive, not a completed exit or excerpt.
+
+User: two excellent course runs except parking; others leave then stop. Parking
+explicitly deferred.577/579 confirmGREEN5 using primary votes after5/20mm view
+refinement and reach third-lap parking. Parking abort reasons only indexed:
+initial_outer_wall_reference / scan_alignment_limit; no parking edit this batch.
+580/581 stop BEFORE observation at complete scan/scout footprint preflight.
+Settled poses267.6/-1206.9/1.5 and266.8/-1204.9/0.8; old planner tried84..68mm
+only. Actual production sweep accepts60/66mm; no camera miss at this hold.
+
+Change only CCW first-edge observation-arc search floor68->40mm, longest safe
+candidate retained, one bounded fitted-length log. Existing full footprint,
+all3 possible inner pillars, heading+/-1deg,5mm footprint reserve,8mm stop budget
+and later forward-view/connector checks retained. No safe candidate still holds.
+Good577/579 anchors retain84mm. Existing exit/localization targets/normal route,
+speeds, camera gates and final parking unchanged;576 corrections retained.
+
+PASS new check_ccw_580_581.py: exact anchors60/66, good anchors84;54 perturbed
+bad-start poses XY+/-5mm,heading+/-2deg select safe44..84mm, usable modeled view,
+at most35mm checked forward refine and108GREEN/RED joins. Old68mm-floor negative
+control reproduces580 refusal. Existing CCW4158starts/33returns/135prefixes,
+81view/state/162joins/27CAD recovery cases pass. Models exclude unavailable run
+images, servo lag/slip; physical acceptance pending. Five-run offline exit/fan
+analysis underignored local_workspace/ccw-577-581/exit/:4 complete exits,578
+incomplete;1028unique/178eligible bothfans/17class changes, not external accuracy.
+Review simulation/CCW_577_581_REVIEW_20261029.md, evidence README metadata tracked.
+
+IDE M7 SUCCESS RAM442456/523624 flash536880/786432; new revision
+20261029_ccw_scan_fit; binarySHA256
+b88c5e45fd98cf4839ba7ff273edf2512a07ee78f621c7d8ea28e86c8ef2e918.
+M4 unchanged/notbuilt; no agent upload/drive/commit/push. Next tester uploadsM7,
+normal CW/CCW/save; secure originals FIRST+notify/archive/hash/index. Check
+fitted scan length, actual scan endpoint/GREEN5/refinement/safe join and course;
+preserve good routes. Parking remains deferred. No special sensor sweep/pauses.
+
+## 2026-10-30: CW582--586 / CCW587--589 / CW590--593 distant evidence
+
+Twelve complete saved originals copied unchanged into
+simulation/evidence/parking_exit_diagnostics/ as 20261029_log_582_cw.txt through
+20261030_log_593_cw.txt (including the CCW587--589 names). Source/copy SHA-256
+was verified before analysis; exact bytes and hashes are in that directory's
+README. Log592 is a complete saved 1.99s interrupted attempt, not a complete
+exit/course. Installed binary hashes remain unknown. Logs582--586 identify
+20261029_start_foot_scout_evidence; 587--593 identify 20261029_ccw_scan_fit when
+the header exists. User reports mixed CW/CCW failures in the first arrangement
+and success in a later changed arrangement. Exact physical report-to-log mapping
+is unavailable. Phone photos document geometry only; they are not robot RGB565
+frames and colour thresholds were intentionally excluded from this adjustment.
+
+Measured findings: CW583 prematurely confirms inner seat6 while an outer-row
+solution remains plausible, then rejects the decisive outer-seat7 view. CW584--
+586 contain usable but time-separated seat7 evidence and broad close blobs;
+without robot images those blob gates were not relaxed. CCW587/589 repeatedly
+produce production-valid end-station GREEN observations with 22--28px mapped
+foot residual, rejected only by the 18px gate. In589 a matched upright GREEN
+candidate is followed 192ms later by a camera dropout, five-frame CLEAR and an
+unprotected connector. CCW588 later sees a broad RED region; its colour/width
+cause is unresolved and unchanged. CW590/593 map and complete three laps before
+deferred parking aborts. CW591 stalls on lap2 with zero encoder progress; logs
+cannot distinguish physical obstruction/contact from a drive fault.
+
+Scoped M7 correction: only GREEN at legal end stations receives a 30px mapped-
+foot tolerance; RED and middle stations retain18px. A matched upright candidate
+holds occupancy for600ms so a short dropout cannot create CLEAR, without
+confirming colour or seat. Ambiguous two-row views remain pending until one row
+is decisive. HSV/blob limits, speeds, exit, later-lap path and parking stay
+unchanged. Revision20261030_far_start_row_evidence. Source tests pass for the
+582/583 row regression, 589 occupancy dropout, false RED471/false middle
+GREEN576 controls, archived visibility, far acquisition, CCW return/wall drift,
+CW576 scout, CCW580/581 scan fit and2807 later-lap cases.
+
+IDE M7 SUCCESS RAM442552/523624 flash538712/786432; firmware.bin bytes542360,
+SHA256 195b01565b7b7589d7317d8f30dcaa003b4a1642c41462690b3c5aa241b9fc4f.
+M4 unchanged/notbuilt; no upload/drive/commit/push. Next tester uploads this M7,
+runs normal unchanged CW and CCW and saves normally. Secure originals FIRST and
+notify before analysis. Verify the new revision header, earlier end-GREEN
+confirmation, no false CLEAR after a short dropout, outer-seat7 assignment and
+contact-free completion. If broad RED/green still blocks, obtain the normal run
+log; do not loosen colour/blob gates without matching robot-frame evidence.
+Parking remains deferred and unchanged.
+
+## 2026-10-30: active lap-1 search instead of evidence-only dead stop
+
+User requires that an unrecognized station during mapping lap1 must not leave
+the robot stationary for the rest of the run. No USB files newer than593 were
+present; 582--593 were already source/copySHA verified and tracked with exact
+hashes in simulation/evidence/parking_exit_diagnostics/README.md. Supplied phone
+photographs remain geometry context, not robot colour evidence.
+
+Root cause: the existing station hold used an800ms settled evidence window, a
+swept straight reverse and at most one swept90mm/-20or+20deg parallax reverse.
+If still UNKNOWN it returned and called the permanent corner-view lock. Change
+revision20261030_active_lap1_search preserves the normal successful path and
+starts only after that evidence miss. It alternates both individually swept-
+safe90mm reverse parallax views, retains clear evidence for either seat, keeps
+processing fresh frames and begins another checked cycle until that exact
+station is directly observed empty or a colour/seat is confirmed; section
+inference alone cannot end an active recovery. If no movement is currently preflight-safe, it keeps
+observing/retrying and does not drive blindly. Invalid pose/encoder, wrong-way
+travel, heading/cross-track, clearance and unsafe-rejoin failures still lock.
+Speeds remain reverse70/return60mm/s. Colour/blob gates, ordinary confirmation,
+normal first-lap route, later laps, exit and parking are unchanged.
+
+PASS: production selector alternating/search-cycle/preserved-clear/no-motion
+tests;25 discovery-state cases;3557 rejoin checks;565 evidence and27 perturbed
+rejoins;173 C/join,3920 recovery-equivalence,162 early-corner joins; CW/CCW
+recovery/runtime edges;48 far acquisitions; log589 occupancy; later laps2807
+failed0. Review simulation/LAP1_ACTIVE_SEARCH_REVIEW_20261030.md.
+
+IDE M7 SUCCESS RAM442560/523624 flash539064/786432. firmware.bin bytes542712,
+SHA256 e3e805a4a6353d28c1cb8aaa2d475af875b5ad224e2630d2ad32ff3c416ee924.
+M4 unaffected/notbuilt; no upload/drive/commit/push. Next tester uploads M7 and
+runs normal unchanged CW/CCW. Secure any new originals FIRST+notify. Verify no
+search on normally resolved stations; on a miss, Active-parallax cycles followed
+by Resolved/resume. Treat any remaining Locked record as a separate motion,
+geometry or sensor-state safety rejection. Parking remains deferred.

@@ -957,6 +957,11 @@ constexpr auto OBSTACLE_GREEN_SEAT_SEARCH_HALF_WIDTH_PX = 18;
 // Close start-seat projections must have a plausible ground foot. This
 // rejects tall pink-boundary projections such as the false RED in log471.
 constexpr auto OBSTACLE_PARKING_SEAT_FOOT_TOLERANCE_PX = 18;
+// Returned CW587/589 repeatedly saw the real end-station GREEN with a
+// 22--28 px foot residual while the independently mapped sighting still landed
+// on that legal end seat. Keep RED and the middle station on the proven 18 px
+// gate (including the false close RED471 and false middle GREEN576).
+constexpr auto OBSTACLE_PARKING_END_GREEN_FOOT_TOLERANCE_PX = 30;
 constexpr auto OBSTACLE_GREEN_SEAT_MIN_COLOR_SAMPLES = 15;
 // Local, silhouette-validated fallback only: accommodate brighter exposure.
 // Full-frame green thresholds stay independent of this mapped-seat check.
@@ -972,6 +977,11 @@ constexpr auto OBSTACLE_GREEN_SEAT_MAX_DARK_ROW_GAP_PX = 12;
 constexpr auto OBSTACLE_GREEN_SEAT_CONFIRM_FRAMES = 3;
 constexpr auto OBSTACLE_GREEN_SEAT_RANGE_TOLERANCE_MM = 140.0f;
 constexpr uint32_t OBSTACLE_GREEN_SEAT_VOTE_WINDOW_MS = 350;
+// One geometrically matched upright candidate must outlive the five-frame
+// parking-entry clear sequence. Log589 otherwise changed OCCUPIED evidence to
+// CLEAR 192 ms later after a single camera dropout and drove the unprotected
+// connector. This hold blocks CLEAR only; it never confirms a colour or seat.
+constexpr uint32_t OBSTACLE_GREEN_SEAT_OCCUPANCY_HOLD_MS = 600;
 constexpr uint8_t OPEN_CORNER_CONFIRM_SAMPLES = 3;
 
 // Desired obstacle positions inside the 320 px image

@@ -25,6 +25,7 @@ using std::isfinite;
 constexpr int A0=0,A1=1,A2=2;
 constexpr float PI=3.14159265358979323846f;
 #include "config.h"
+#include "parking_start_footprint.h"
 enum TofSensor{TOF_LEFT,TOF_RIGHT};
 enum ParkingLocalizationPhase{PARKING_LOCALIZE_SEEK_FIRST_MARKER,
  PARKING_LOCALIZE_ON_FIRST_MARKER,PARKING_LOCALIZE_BETWEEN_MARKERS,
@@ -50,6 +51,8 @@ int oc_parking_exit_steering=-50,layoutMode=0;
 PositionEstimate currentPose;
 TofDiagnosticSnapshot currentSnapshot;
 bool snapshotAvailable=true;
+bool servo_disabled=false;
+void stop(bool){} void set_steering(int){} void steer(int){}
 bool get_tof_diagnostic_snapshot(TofSensor,TofDiagnosticSnapshot &s){s=currentSnapshot;return snapshotAvailable;}
 PositionEstimate get_position_struct(){return currentPose;}
 float distanceSince(float){return 50;}
@@ -81,7 +84,13 @@ bool check(bool eligible,bool badGeometry=false){
   const auto wall=oc_parking_localization_wall_range;
   const float correction=480-parkingBeamFootprint(TOF_RIGHT,70,frozen).maximumX;
   const float finalX=420-oc_parking_localization_first_edge_continue_mm+correction;
-  if(fabsf(finalX-OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM)>.01f)return false;
+  const float expectedX=parking_start_footprint::ccwObservationEntryX(
+      currentPose.y_mm,currentPose.heading_deg,
+      OBSTACLE_PARKING_CCW_FIRST_EDGE_MIN_ENTRY_X_MM,
+      OBSTACLE_PARKING_CCW_FIRST_EDGE_ENTRY_X_MM,
+      OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM,
+      OBSTACLE_PARKING_CCW_FIRST_EDGE_SCAN_ARC_MM);
+  if(fabsf(finalX-expectedX)>.01f)return false;
   frames(200,65,4);
   return oc_parking_localization_last_piece_pose.x_mm==frozen.x_mm &&
          oc_parking_localization_wall_range==wall;

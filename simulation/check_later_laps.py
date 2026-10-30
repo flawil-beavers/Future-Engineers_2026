@@ -42,7 +42,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
     fixture += '\n#include "ackermann_kinematics.h"\n'
     signatures = (
         'bool parkingReturnMotionSafe(', 'float recordedLapSpeed(',
-        'uint8_t sectionInferredEmpty(', 'bool stationResolved(', 'bool allStationsResolved(',
+        'uint8_t sectionInferredEmpty(', 'bool stationDirectlyResolved(', 'bool stationResolved(', 'bool allStationsResolved(',
         'bool withinCornerGate(', 'bool nearCorner(', 'bool isExtremeAdjacentPair(',
         'bool targetsOuterExtreme(', 'bool hasConfirmedExtremeAdjacentPair(',
         'bool isSecondExtremeAdjacentSeat(', 'bool upcomingAdjacentStationUnresolved(',

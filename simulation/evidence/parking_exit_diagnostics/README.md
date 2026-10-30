@@ -717,3 +717,101 @@ CW565 follow-up (same original/hash; no new run): scoped the lower-image fragmen
 veto to individual seat bearings while preserving upper-silhouette and local
 occupancy guards. [Assessment](../../CORNER_HOLD_565_FIX_20261027.md).
 Software reproducer and27 safe joins pass; actual scene acceptance still pending.
+
+## 2026-10-29: CW570--571 and CCW572--575
+
+Complete original files copied before analysis; SHA-256 verified against the
+source and the portable archive. Safe-removal notices sent immediately for
+both batches. All six report path revision `20261028_parking_wall_reference`;
+diagnostic build header `Oct_27_2026_19_43_55` alone is not firmware identity.
+Installed binary hash is unknown. No robot upload or movement by the agent.
+
+| Evidence file | Bytes | SHA-256 | Completeness / observed outcome |
+| --- | ---: | --- | --- |
+| `20261029_log_570_cw.txt` | 42220 | `deed70efa781e8faf0ce6965f1d6afc1302b668b3d62c9a5213132cda28370c9` | Complete saved original, full exit diagnostics; scout unresolved/locked; no RUN_END record. |
+| `20261029_log_571_cw.txt` | 157372 | `2c1186ea7501a53271e848d071d47c1abdd18ac945d959771398c1996d306ca4` | Complete saved original, full exit; three laps then capture_alignment_preflight abort; RUN_END truncated=0. |
+| `20261029_log_572_ccw.txt` | 105924 | `25d8d3d98d65232bf6c46a8c2ccc8acfd23c6c12a3671f452cfea661371be9ef` | Complete saved original; reaches S2 station1, extra-arc tracking lock; manually paused; RUN_END truncated=0. |
+| `20261029_log_573_ccw.txt` | 46693 | `32080ebc1d85a3f59591577e6561efe9beb177159b4a5c64577253d627cc222c` | Complete saved original; front GREEN5 unresolved after stationary retry; manually paused; RUN_END truncated=0. |
+| `20261029_log_574_ccw.txt` | 45737 | `b16742bf377977628ee8791b1df282f99a3314162a35f8e10f41da8c9a389740` | Complete saved original; front GREEN5 unresolved after stationary retry; manually paused; RUN_END truncated=0. |
+| `20261029_log_575_ccw.txt` | 70218 | `deacf7d82f1d415882e95ea1e396dbd696320d572b7bea300a199cca911704bd` | Complete saved original; front GREEN5 unresolved after stationary retry; manually paused; RUN_END truncated=0. |
+
+Physical reports: CW570 green not acquired and stopped, user requests a little
+more reverse; CW571 remaining route perfect, reaches pink rails then stops.
+CCW572 leaves well and reaches the single outer GREEN opposite the start,
+reverses twice then stops. CCW573--575 stop after leaving because GREEN is not
+confirmed. Complete saved file does not imply a completed challenge. Images of
+these attempts were not recorded; segmentation causes cannot be fully replayed.
+Review and next steps: [CW_CCW_570_575_REVIEW_20261029.md](../../CW_CCW_570_575_REVIEW_20261029.md).
+
+## 2026-10-29: CW576 false middle confirmation / skipped scout
+
+Copied original before analysis, SHA-256 verified, immediate safe-removal notice
+sent. Complete saved original `20261029_log_576_cw.txt`,83786bytes, SHA-256
+`9bde5b821ded2d659f3c1f84257e7788f2749475b3691d6bf2e084d5910c0a5a`.
+Revision `20261029_start_view_park_reference`, connector build
+`Oct 29 2026_19:21:10`; installed binary hash unknown. Full exit diagnostics;
+RUN_END manually paused, truncated0, elapsed70311ms, lap/index1/38 near end.
+Physical report: CW start completely wrong, green not inspected, red missed,
+poor driving overall. No exact contact location or image supplied.
+
+At248028ms local green fallback confirms middle seat2, measured foot208px
+versus roughly164px expected, range232mm versus317mm expected, snap86mm.
+At the primary-result/scout transition the phase flags briefly allow layout
+inference: the middle confirmation infers station0 empty and skips its scout.
+RED4 gets one accepted vote at252211ms but no confirmation; the inferred layout
+also removes the normal unresolved-place hold. No explicit RED4 conflict
+rejection is logged. The new CW extension
+never runs in this file. Original source of those green pixels is unrecorded.
+Review: [CW_576_START_REGRESSION_20261029.md](../../CW_576_START_REGRESSION_20261029.md).
+
+## 2026-10-29: CCW577--581, two good routes and two pre-scan holds
+
+Copied originals FIRST, SHA-256 compared source/copies, immediate safe-removal
+notice sent. All are complete saved files with RUN_END truncated0. Installed
+binary hash unknown.577/579/580/581 path revision is
+`20261029_start_view_park_reference`: these runs predate the later576 foot/scout
+correction.578 never reaches a path header; its exact path revision is unproved.
+
+| Evidence file | Bytes | SHA-256 | Run outcome |
+| --- | ---: | --- | --- |
+| `20261029_log_577_ccw.txt` | 149113 | `d8dbb0c2d047eb860ac6f56899873c263507e99dc113d2c7d808e317f6bcf5fd` | Full exit, first GREEN confirmed, three laps; parking initial_outer_wall_reference abort. |
+| `20261029_log_578_ccw.txt` | 4609 | `39e40351286551c60bca83eb51f1e9787cfc56ae853afe7329a19c96e5cd040f` | Manually paused1143ms after RUN_START at first exit drive; exit sequence incomplete. |
+| `20261029_log_579_ccw.txt` | 174609 | `ccf9e3d8e6b1ed01d69599d3a7ecc3e852702ded8d1c87244ddb007e48cc1ed1` | Full exit, first GREEN confirmed, three laps; parking scan_alignment_limit abort. |
+| `20261029_log_580_ccw.txt` | 45419 | `131e305fee9e590870cf67f467cacce22a21757a781182346c0df937492598d8` | Full exit; first observation arc preflight rejected; manually paused after hold. |
+| `20261029_log_581_ccw.txt` | 44823 | `71c1d168eb48cd00ee1f40f1654f5b72a023f77c9cfe64b9474b87bb6963361e` | Full exit; first observation arc preflight rejected; manually paused after hold. |
+
+Physical report: two excellent runs through course except parking; other runs
+leave then stop. Parking investigation explicitly deferred by user. Log578 is
+a complete saved original of an interrupted attempt, not a complete exit or
+an excerpt.580/581 stop before camera scan, not because a scan failed to see
+GREEN. Detailed comparison: [CCW_577_581_REVIEW_20261029.md](../../CCW_577_581_REVIEW_20261029.md).
+
+## 2026-10-29/30: CW582--586 and CCW/CW587--593
+
+Originals copied before analysis, verified source-to-copy by SHA-256, and the
+safe-removal notice was sent immediately for the newly returned batch. All
+582--591 and 593 files have saved RUN_END/truncated0 boundaries. 592 is a complete
+saved 1.99 s interrupted attempt, not a complete exit or course run. Installed
+binary hashes are unknown.582--586 report `20261029_start_foot_scout_evidence`;
+587--593 report `20261029_ccw_scan_fit` where a path header exists.
+
+| Evidence file | Bytes | SHA-256 | Run outcome |
+| --- | ---: | --- | --- |
+| `20261029_log_582_cw.txt` | 176869 | `2b81ad9ad3814d9cda03ed753fbc6cbcf1736222606f67ba92eedb54360a456b` | Full exit and three laps; first post-start GREEN ultimately confirms outer seat7; parking segment_pose_gate abort. |
+| `20261029_log_583_cw.txt` | 78860 | `7b7673bdc1a43b99cd7806676ef4042a3d9aac261976d52fa1fccad82f955ff1` | Full exit; ambiguous early view confirms inner seat6, later outer-seat7 view rejected; manually paused. |
+| `20261029_log_584_cw.txt` | 91525 | `e7ae5fce1061614809f62bb6fcd5c71f00abe37855a33968bc989cf0fa8bf627` | Full exit; separated seat7 votes and broad close GREEN, recovery unresolved; manually paused. |
+| `20261029_log_585_cw.txt` | 89680 | `35feb75f82dbde59c423e63843711f4143a2730d30affd06792af2c4779bb3db` | Full exit; separated seat7 votes, no safe recovery view; manually paused. |
+| `20261029_log_586_cw.txt` | 111374 | `08e1a904e6c81096558a5904b1511e4bd90908401a8b1abea66df6c82cc21741` | Full exit; seat7 vote then broad close GREEN, no safe recovery view; manually paused. |
+| `20261030_log_587_ccw.txt` | 42181 | `8912b07e387519aacb51aed9d8779e0a3f54a570b8cf80310d0d4612fb2a837c` | Completed/untruncated exit; true end GREEN repeatedly rejected by start-foot gate; stationary retry unresolved. |
+| `20261030_log_588_ccw.txt` | 94651 | `87dcbf5d8314c3fe95cd930c6f324f81ed88139564ab9b2358932f822dbe3201` | Completed/untruncated exit; several correct confirmations, then broad RED at deferred start station remains unresolved after bounded recovery. |
+| `20261030_log_589_ccw.txt` | 53279 | `001909634ef6c8aafe53e5d6bab642dfa484d05d1c4257a756eaeee22ffcd12b` | Completed/untruncated exit; one matched GREEN candidate followed by false CLEAR and unprotected connector; later stall/manual pause. |
+| `20261030_log_590_cw.txt` | 174528 | `d77d85e26f84073e97f0a3a0296803a4eedeb108970f20509d0c646b2b05b237` | Completed/untruncated exit, complete first-lap map and three laps; parking capture_pose_gate abort. |
+| `20261030_log_591_cw.txt` | 85807 | `d751049490d655adfbea8ead7947c4ada71e5fe77ca0bbe1eb6609fcbf57ef0b` | Completed/untruncated exit and lap1; later lap2 zero-progress stall, physical cause not identifiable from log alone. |
+| `20261030_log_592_cw.txt` | 4759 | `799ddbf6eb0223c87158effad88ee98706ace5abbc354c41a4dd9e6659bf7cd8` | Complete saved interrupted attempt; manually paused after1.99s during rear settle, exit incomplete. |
+| `20261030_log_593_cw.txt` | 186247 | `6521046a2309498e5c1bf07296d09a7ac7aa0709c25c97473e5c6ff6cb13b2bc` | Completed/untruncated exit, complete first-lap map and three laps; parking entry_motion_clearance abort. |
+
+User reports mixed CW/CCW failures in the first arrangement and a successful
+course in a later different arrangement; exact report-to-file mapping was not
+provided. Phone photos are geometry context, not robot RGB565 evidence. Detailed
+analysis and scoped correction:
+[RETURNED_RUNS_582_593_REVIEW_20261030.md](../../RETURNED_RUNS_582_593_REVIEW_20261030.md).

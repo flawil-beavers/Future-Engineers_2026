@@ -20,7 +20,7 @@ def main():
             rows.append((x,y,h,cx,foot))
     path=(ROOT/'src/obstacle_path.cpp').read_text()
     source=fixture_source().replace(
-        'bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int){return true;}',
+        'bool mappedParkingSeatFootMatches(uint8_t,const PositionEstimate &,int,bool){return true;}',
         block(path,path.index('float wrap180('))+'\n'+
         block(path,path.index('void seatCameraGeometry('))+'\n'+
         block(path,path.index('bool mappedParkingSeatFootMatches(')))

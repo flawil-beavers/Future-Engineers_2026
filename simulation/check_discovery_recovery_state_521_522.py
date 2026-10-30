@@ -24,8 +24,13 @@ bool runtimeTestMode=false,lapFinishPending=false,parkingEntryConnectorActive=fa
  parkingEntryFarGreenFollowup=false,parkingEntryJoining=false;
 int completedLaps=0;float curvature=0,steering=0,commandedSpeed=100;
 bool discoveryHolding=false,discoveryBlocked=false,cornerViewAttempted[12]={},cornerViewExtraUsed=false;
+struct Seat{bool confirmed=false,red=false;}seats[24];
+struct Pose{float y_mm=0;}pose;
+int routeTurnSign=1;float runtimeSpeedCapMmS=0;
 int discoveryHoldStation=-1,discoveryBlockedStation=-1,cornerViewStation=-1,cornerViewPhase=0,cornerViewObservationTraceCount=0;
 uint32_t nowMs=1000,discoveryHoldStartMs=0,cornerViewPhaseMs=0;
+uint8_t cornerViewExtraTriedMask=0;uint16_t cornerViewSearchCycle=0;
+uint32_t cornerViewLastNoSafeTraceMs=0;
 float cornerViewRequestedMinRange=0;
 int selectedStation=-1;float selectedForward=335;int motorSpeed=-9;
 uint32_t millis(){return nowMs;}
