@@ -12,7 +12,7 @@ def main():
     final=(ROOT/'src/final_parking.cpp').read_text()
     fixture+=block(path,path.index('bool obstacle_path_parking_approach_target('))
     fixture+=final[final.index('struct ParkingSegment'):final.index('FinalParkingState state =')]
-    fixture+='\nint scanPhase=5;float measuredGapMm=247.5f,approachOuterShiftX=OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM,approachLaneY=OBSTACLE_FINAL_PARKING_APPROACH_LANE_Y_MM;\n'
+    fixture+='\nint scanPhase=5;bool approachDirectLane=false;float entrySafetyMargin=3.0f,measuredGapMm=247.5f,approachOuterShiftX=OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM,approachLaneY=OBSTACLE_FINAL_PARKING_APPROACH_LANE_Y_MM;\n'
     fixture+=block(final,final.index('float movingInsideFaceX('))+'\n'
     fixture+=block(final,final.index('void localToField('))+'\n'
     fixture+='\nfloat baseHeadingDeg(){return routeTurnSign>0?0:180;}\nint motorDirectionForFieldMotion(int sign){return sign*routeTurnSign;}\n'
@@ -23,7 +23,7 @@ bool connectorClearanceSafe(const PositionEstimate &p){
  return true;
 }
 '''
-    for signature in ('bool linePoseReady(', 'bool parkingApproachSteering(',
+    for signature in ('int fieldLineSteering(', 'bool linePoseReady(', 'bool parkingApproachSteering(',
                       'void advanceParkingPose(', 'bool parkingApproachPoseSafe(',
                       'bool parkingApproachPreflight(', 'bool chooseParkingApproach(', 'bool parkingEntryPoseSafe(',
                       'bool parkingEntryPreflight('):

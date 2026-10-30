@@ -216,3 +216,11 @@ First-lap unknown-station recovery:
 `check_active_lap1_search.py` verifies that a missed station alternates the two
 swept-safe reverse parallax views and continues fresh observation instead of
 entering an evidence-only permanent lock. Motion-safety stops remain active.
+
+Final parking after three laps, direct staging and pose-based continuation:
+[FINAL_PARKING_POSE_REPLAN_REVIEW_20261030.md](FINAL_PARKING_POSE_REPLAN_REVIEW_20261030.md).
+`check_parking_final_arrivals_20261030.py` compares six archived arrivals with
+the learned bypass and exercises the measured wall residuals.
+`check_parking_adaptive_completion.py` uses recorded entry anchors, both turns
+and a plant radius different from the planning model, including final wheel
+centering and recovery health checks. Physical acceptance remains pending.

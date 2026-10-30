@@ -8,7 +8,7 @@ and mixed wall/marker returns. Nominal longitudinal poses must park; large
 longitudinal perturbations may be safely rejected, but must never collide or
 claim completion outside the bay. Hardware lag/slip/reflections are excluded.
 """
-import shutil,subprocess
+import shutil,subprocess,sys
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
 
@@ -125,7 +125,9 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
    parking_module::final_parking_update(dir);
    if(dc_state==DC_ENABLED){
     if(servo_disabled&&steeringCommand!=0)frozenServo=true;
-    if(!parking_module::parkingEntryPoseSafe(truePose,servo_disabled?0:steeringCommand))physicalCollision=true;
+    if(!parking_module::parkingEntryPoseSafe(truePose,servo_disabled?0:steeringCommand)){
+     if(!physicalCollision)std::cout<<"COLLISION state/segment/true/estimated/margin="<<int(parking_module::state)<<"/"<<int(parking_module::segmentIndex)<<"/"<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<"/"<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<parking_module::entrySafetyMargin<<"\n";
+     physicalCollision=true;}
     float ds=command*.02f;encoder+=ds;
     parking_module::advanceParkingPose(hostPose,servo_disabled?0:steeringCommand,ds);
     parking_module::advanceParkingPose(truePose,servo_disabled?0:steeringCommand,ds);
@@ -143,11 +145,14 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
  std::cout<<"FINAL SEQUENCE "<<total<<" PARKED "<<parked<<" SAFE_REJECTED "<<safeRejected<<" FAILED "<<bad<<"\n";return bad?1:0;
 }
 '''
-    destination=ROOT/'local_workspace/final-parking-sequence';destination.mkdir(exist_ok=True)
+    if '--quick' in sys.argv:
+        fixture=fixture.replace('  framePeriod=period;',
+            '  if(xBias!=0 || !((dir==-1&&layout==2&&poseBias==-40&&period==30)||(dir==1&&layout==3&&poseBias==40&&period==30)||(dir==-1&&layout==3&&poseBias==40&&period==100)))continue;\n  framePeriod=period;')
+    destination=ROOT/'local_workspace'/('final-parking-sequence-quick' if '--quick' in sys.argv else 'final-parking-sequence');destination.mkdir(exist_ok=True)
     cpp=destination/'check.cpp';exe=destination/'check.exe';cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'local_workspace/later-laps'),str(cpp),'-o',str(exe)],check=True)
     r=subprocess.run([str(exe)],capture_output=True,text=True);(destination/'output.txt').write_text(r.stdout)
-    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','SEQUENCE FAIL','FINAL SEQUENCE'))))
+    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','COLLISION','SEQUENCE FAIL','FINAL SEQUENCE'))))
     raise SystemExit(r.returncode)
 
 if __name__=='__main__':main()

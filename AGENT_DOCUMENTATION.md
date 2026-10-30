@@ -12174,3 +12174,69 @@ runs normal unchanged CW/CCW. Secure any new originals FIRST+notify. Verify no
 search on normally resolved stations; on a miss, Active-parallax cycles followed
 by Resolved/resume. Treat any remaining Locked record as a separate motion,
 geometry or sensor-state safety rejection. Parking remains deferred.
+
+## 2026-10-30: final parking continuation and direct staging
+
+User now authorizes final-parking repair in both directions: CW reaches the
+bay but does not finish; CCW follows an unnecessary bypass/corner and stops.
+All 21 archived logs with a final-parking start were inspected. No newer source
+than 593 was available. Before continuing, originals 574--593 were copied again
+unchanged, source/copy SHA-256 verified and the user told to unplug the stick.
+All 20 match their tracked portable evidence and exact hashes in
+`simulation/evidence/parking_exit_diagnostics/README.md`. Representative evidence:
+`20261029_log_577_ccw.txt`, SHA-256
+`d8dbb0c2d047eb860ac6f56899873c263507e99dc113d2c7d808e317f6bcf5fd`;
+`20261030_log_593_cw.txt`, SHA-256
+`6521046a2309498e5c1bf07296d09a7ac7aa0709c25c97473e5c6ff6cb13b2bc`.
+These are existing full saved originals, not new physical tests of this change.
+Installed binary hashes remain unknown; the logs identify the earlier
+20261029_start_foot_scout_evidence / 20261029_ccw_scan_fit course revisions.
+
+Measured causes: 577 has about 129 mm stable wall residual, beyond the old
+120 mm allowance. 579 accepts 107.9 mm then exhausts its narrow alignment.
+582 aborts at 13.3 mm / 6.5 deg endpoint error. 590 rejects an otherwise
+registered capture at 1.4 deg error. 593 starts entry segment4 at local
+105.0/177.6/58.5 deg instead of 116.85/163.62/63.08 deg; its old remaining
+fixed arc correctly fails the pink-clearance forecast. Both first reverse
+arcs imply roughly 9--11% larger effective radius than CAD. Slip, steering
+lag and encoder play are not independently separated by those logs.
+
+Scoped M7 revision `20261030_pose_replan`: direct staging is swept with
+confirmed obstacles and +/-40 mm lateral uncertainty before trying the learned
+bypass. Six logged-arrival simulations save 611.8--627.2 mm CCW and 14--16.8 mm
+CW. The required dual-marker registration remains. Stable outer references up
+to 150 mm at x>=900 require a complete checked alignment; its corridor is now
+x800--1080, bounded to 6 reversals / 24 s. Parking entries are solved from the
+registered measured pose/gap, including short final alignment or a complete
+checked alternative with an outward escape prefix. Opposite collinear controls
+cancel. Arc heading and settled full/partial arc curvature guide continuation;
+the run-local radius correction is limited to 0.85--1.20 and affects only final
+parking. Ordinary reserve is searched before tight 1 mm body/piece inflation
+at 40 mm/s; modeled overlap remains prohibited. Final containment stays at
+5 mm margin / 2 deg, with actual neutral steering and a 400 ms servo settle.
+Each reserve level has a 60000-sample search budget and gyro service continues.
+Recovery brakes before replanning; 8 attempts, invalid-pose, gyro, braking and
+clearance protections remain. Course, perception, later-lap speed/path, exit,
+M4 code and shared protocols are unchanged.
+
+Final production-source tests PASS: 396/396 complete sequences, 70/70 varying-
+curvature entry/recovery cases (including the 593 partial-entry pose), 8 recovery
+health checks; 2970 approaches; 102 braking and 42 segment-resume checks;
+864 mixed-edge cases; 6 logged-arrival and 8 measured-wall-offset cases.
+Direct-capture test: 72 cases, 49 parked / 23 retained safe rejections, 12 health
+checks and negative controls pass. Varying-radius maximum: 4 replans / 387.2 mm
+travel. These are CAD/synthetic-sensor tests with independent physical and
+estimated poses, not a claim of powered reliability. Review and limitations:
+`simulation/FINAL_PARKING_POSE_REPLAN_REVIEW_20261030.md`.
+
+IDE-managed M7 build SUCCESS: RAM 442784/523624; flash 545832/786432.
+`firmware.bin`: 549480 bytes; SHA-256
+`30879c1228ded8ab9c5444c79ed27e25386141ec23e01e1cc5bf0cd433d303a3`.
+Only the existing Serial macro warning. M4 unaffected/not built. No agent
+upload, drive, commit or push. Next: tester uploads M7, performs normal unchanged
+CW and CCW three-lap runs and allows automatic parking. Save normally. Secure
+originals FIRST, verify hashes and notify before analysis; confirm parking
+revision, PLAN/CURVATURE/REPLAN, contact-free neutral-wheel containment and any
+manual intervention by log number. Hardware compute latency, sensor reflections,
+unobserved localization bias and actual tire/actuator behavior still need these
+normal runs. No dedicated ToF sweep or extra sensor movements/pauses.
