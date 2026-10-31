@@ -3,6 +3,7 @@
 The plant uses a distinct radius from the planning model and reports its yaw
 through the pose estimator. This tests correction of measured motion error;
 it does not model an unknown gyro bias or prove physical contact-free parking.
+Gap sizes cover the full accepted measured range, including its endpoints.
 """
 from pathlib import Path
 import shutil
@@ -24,6 +25,7 @@ void plant(PositionEstimate &p,int steering,float ds,float scale){
  p.heading_deg=parking_module::wrap180(next*180.f/PI);
 }
 int main(){int total=0,parked=0,failed=0;float maxTravel=0;int maxReplans=0;
+ for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})
  for(int direction:{-1,1})for(float scale:{.95f,1.f,1.05f,1.10f,1.15f})
  for(auto anchor:{PositionEstimate{270.26f,294.6f,0},
                   PositionEstimate{269.1f,296.f,1.4f},
@@ -33,7 +35,7 @@ int main(){int total=0,parked=0,failed=0;float maxTravel=0;int maxReplans=0;
                   PositionEstimate{81.25f,120.f,8.f},
                   PositionEstimate{81.25f,120.f,-8.f}}){
   ::routeTurnSign=direction;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
-  final_parking_reset();parking_module::routeTurnSign=direction;scanPhase=5;measuredGapMm=247.5f;
+  final_parking_reset();parking_module::routeTurnSign=direction;scanPhase=5;measuredGapMm=gap;
   localToField(anchor.x_mm,anchor.y_mm,anchor.heading_deg,hostPose.x_mm,hostPose.y_mm,hostPose.heading_deg);
   truePose=hostPose;hostTime=1000;encoder=0;hostGyroHealthy=true;framePeriod=30;
   stop(false);robot_logger.lines.str("");robot_logger.lines.clear();robot_logger.writes=0;
@@ -55,7 +57,7 @@ int main(){int total=0,parked=0,failed=0;float maxTravel=0;int maxReplans=0;
   }
   ++total;bool ok=final_parking_complete()&&finalFootprintContained()&&!collision&&robot_logger.writes==1&&steeringCommand==0;
   parked+=ok;failed+=!ok;maxTravel=fmaxf(maxTravel,travel);maxReplans=std::max(maxReplans,int(entryReplans));
-  if(!ok)std::cout<<"ADAPTIVE FAIL dir/scale/anchor="<<direction<<"/"<<scale<<"/"<<anchor.x_mm<<"/"<<anchor.y_mm<<"/"<<anchor.heading_deg<<" collision="<<collision<<"\n"<<robot_logger.lines.str();
+  if(!ok)std::cout<<"ADAPTIVE FAIL gap="<<gap<<" dir/scale/anchor="<<direction<<"/"<<scale<<"/"<<anchor.x_mm<<"/"<<anchor.y_mm<<"/"<<anchor.heading_deg<<" collision="<<collision<<"\n"<<robot_logger.lines.str();
  }
  int health=0;
  for(int dir:{-1,1})for(auto phase:{FP_REPLAN_BRAKE,FP_VERIFY}){
@@ -75,6 +77,8 @@ int main(){int total=0,parked=0,failed=0;float maxTravel=0;int maxReplans=0;
 }
 '''
     if '--quick' in sys.argv:
+        source=source.replace('for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})',
+                              'for(float gap:{247.5f})')
         source=source.replace('for(int direction:{-1,1})for(float scale:{.95f,1.f,1.05f,1.10f,1.15f})',
                               'for(int direction:{1})for(float scale:{1.15f})')
     dest=ROOT/'local_workspace'/('parking-adaptive-quick' if '--quick' in sys.argv else 'parking-adaptive-completion')

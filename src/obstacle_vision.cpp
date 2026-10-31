@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "logger.h"
+#include "parking_exit_observer.h"
 
 #define Serial robot_logger
 
@@ -103,6 +104,7 @@ void printCalibrationBlob(
 
 bool updateCameraVision()
 {
+    parking_exit_observer_sample_pose();
     // Polling is non-blocking. A completed frame is published only after DMA
     // has switched to the other SDRAM buffer.
     if (!camera.capture())
@@ -114,6 +116,7 @@ bool updateCameraVision()
         camera.getHeight());
     if (updated)
     {
+        parking_exit_observer_capture();
         const VisionResult &result = vision.getResult();
         ++camera_test_frames;
         camera_test_red_valid +=

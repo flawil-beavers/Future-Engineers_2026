@@ -1110,7 +1110,10 @@ bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
         // Reserve an additional3mm on both footprint and pieces while
         // planning for localization/endpoint rounding. Runtime retains margin.
         entrySafetyMargin=margin+(margin>=3.0f ? 3.0f:0.0f);
-        if (!parkingEntryPoseSafe(field,0,margin)) continue;
+        // ENTRY_FIRST_STEERING_CHECKED_BY_SWEEP
+        // A partly parked robot may fit with its current steering but not
+        // with neutral wheels. Do not require an uncommanded neutral pose:
+        // each candidate checks its first steering and entire swept path.
         // Already entering the bay: try the short remaining alignment first.
         for (int direction:{-1,1})
         {
@@ -1390,7 +1393,7 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
-        Serial.println("[FINAL PARK] revision=20261030_pose_replan");
+        Serial.println("[FINAL PARK] revision=20261030_tight_completion");
         // The stopped geometric search may outlast the 200-ms sensor age.
         // Service queued reports before attempting the first motion; a
         // genuinely stale/missing report still follows the normal hold.
@@ -1927,7 +1930,11 @@ bool final_parking_update(int8_t turn_sign)
         stop(false);
         if (entryReplanHadMotion) updateEntryRadiusFromMotion();
         entryReplanHadMotion=false;
-        if (finalFootprintContained()) { state=FP_VERIFY;return true; }
+        // Containment alone can pass at5.5mm while the normal inflated
+        // neutral-wheel check needs more room. Returning straight to VERIFY
+        // in that case loops forever without ever searching a centring move.
+        if (finalFootprintContained() && parkingEntryPoseSafe(get_position_struct(),0))
+        { state=FP_VERIFY;return true; }
         if (++entryReplans>8 || !planParkingEntry(get_position_struct()))
         {
             abortParking(entryReplans>8 ? "entry_replan_limit":"entry_no_collision_free_plan");

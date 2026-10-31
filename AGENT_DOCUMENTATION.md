@@ -12240,3 +12240,87 @@ revision, PLAN/CURVATURE/REPLAN, contact-free neutral-wheel containment and any
 manual intervention by log number. Hardware compute latency, sensor reflections,
 unobserved localization bias and actual tire/actuator behavior still need these
 normal runs. No dedicated ToF sweep or extra sensor movements/pauses.
+
+## 2026-10-30: early camera observations during unchanged CW/CCW exit
+
+User requests using the diagonal views already present during normal unparking,
+then retaining colour/seat knowledge through localization and the first-lap
+handover; uncertain observations must leave the normal scan available. No new
+powered tests supplied. Originals574--593 copied FIRST again, SHA-256 verified,
+user notified to unplug; all20 match the already tracked portable originals and
+README hashes in simulation/evidence/parking_exit_diagnostics/. Representative
+577CCW SHA256 d8dbb0c2d047eb860ac6f56899873c263507e99dc113d2c7d808e317f6bcf5fd;
+593CW SHA256 6521046a2309498e5c1bf07296d09a7ac7aa0709c25c97473e5c6ff6cb13b2bc.
+Installed firmware identity remains that of the earlier batches; these are not
+tests of this new observer. Working ingest/reports remain under local_workspace/.
+
+New M7 observer revision20261030_corrected_pose buffers production-valid red/green
+blobs and interpolated historical poses during the existing exit. DMA completion
+and half the measured frame interval approximate exposure time; long/stale frames,
+history gaps, repeats and excessive movement are rejected. Initial field seed
+starts a fresh buffer. Both actual exit XY corrections translate all prior frames
+and pose history; no seat is assigned before obstacle_path_start initializes its
+geometry. Confirmation requires3 frames over>=120ms, <=400ms gaps, stable colour/
+projection and same seat under+/-20mmXY,+/-3deg. Contradictory colour/row or official
+middle/end batches are rejected. Only complete confirmed evidence is imported;
+no pending live votes and no cached CLEAR. Existing finalizeConfirmedSeat owns
+route injection and deferred behind-seat storage. Normal short scan geometry and
+retry remain; this is not a promise to remove the scan. Last handover image is
+not reused with the final pose; normal live processing resumes on the next frame.
+No exit motion/speed/ToF correction, HSV, final parking, M4 or shared-protocol edits.
+
+Production buffer/import630 checks and actual handover12 checks PASS. Archived
+pose-only ideal-blob projection finds>=3 eligible poses in9/10 logs for each of
+CCWfront,CWmiddle,CWfront; interrupted578/592 account for the missing views.
+CWrear has no such window.577front is visible geometrically during exitsegments4/5;
+593middle during3/4/5 andfront during5, not necessarily after exactly1or2 steering
+changes. These are possible views, not real-image or occlusion acceptance.
+Regressions:8943CW+4158CCW scan/connector/passing,33returns+135prefix,2400footprint/
+stored lifecycle,48far acquisition,connector servo positive/negative,471/576foot,
+589occupancy and42segment-resume PASS. Review:
+simulation/PARKING_EXIT_CAMERA_REVIEW_20261030.md.
+
+Final IDE M7 build SUCCESS RAM453688/523624,flash548728/786432. Fixed buffer10904B,
+no heap allocation. firmware.bin552268B,SHA256
+b61b493418be465eb449168d5c7e0cd21e400b858349e2741b4c078a575847d4.
+M4 unaffected/not built; no agent upload/drive/commit/push. Next tester uploadsM7,
+normal unchanged CW/CCW runs and normal save. Secure originalsFIRST+notify, verify
+EXIT VIEW revision,frame/rejection counts,confirmedseat/colour/correctedpose and
+import_us; compare physical placement and first-lap transition/passing. Inspect
+camera/processing timing, residual odometry/occlusion and any manual intervention
+by log number. No dedicated ToF sweep, new pauses or extra movements requested.
+
+## 2026-10-30: tight final-parking completion follow-up
+
+User requests 10 mm clearance rather than assumed 30 mm and no unnecessary
+parking aborts. No new physical runs. USB574--593 copied FIRST to ignored
+local_workspace/usb_ingest_20261030_parking_margin, SHA-256 checked, immediate
+unplug notice sent. All20 match tracked originals and individual hashes in
+simulation/evidence/parking_exit_diagnostics/README.md; no duplicate evidence
+or new physical result. Latest593 SHA256
+6521046a2309498e5c1bf07296d09a7ac7aa0709c25c97473e5c6ff6cb13b2bc;
+installed binary unknown, archived revision remains20261029_ccw_scan_fit.
+
+Found/reproduced two distinct final-entry bugs: contained pose failing neutral
+clearance loops VERIFY/REPLAN forever without searching; neutral-wheel initial
+search prerequisite rejects a valid continuation with already steered wheels.
+Fix only these decisions in final_parking.cpp. All commanded steering/path
+sweeps remain checked. Revision20261030_tight_completion. No margin reduction:
+3 means3mm per polygon, not3cm; normal runtime approx6mm, planning approx12mm,
+existing last-resort approx2mm at40mm/s, final containment5mm. Exactly10mm
+straight end clearance passes completion. This is not a physical10mm guarantee.
+
+New targeted tests30/30 pass (old firmware12/30; isolated old neutral gate24/30,
+old finish loop18/30). Expanded adaptive gaps232.5--262.5mm350/350 +8health,
+full sequences396/396 +5registration, segment resume42 and braking102 pass.
+Host cases, not observed causes in the archived runs; unknown pose bias, slip,
+steering transients and physical rail positions remain unvalidated. Review:
+simulation/FINAL_PARKING_TIGHT_COMPLETION_REVIEW_20261030.md.
+
+IDE M7 SUCCESS RAM453688/523624,flash548704/786432; binary552244B SHA256
+7718361204f8903bc3bba499f22e0d7dacd84f4178d839178c941ee87af7a618.
+M4 unchanged/not built; earlier staged exit-camera observer preserved. No
+upload/drive/commit/push. Next tester uploadsM7, normal CW/CCW three-lap runs,
+normal saves; secure originalsFIRST, confirm revision and PLAN/REPLAN/RESULT,
+complete physical containment/neutral wheels, contact/manual stop by log number.
+No dedicated ToF sweep, extra pauses or movements requested.

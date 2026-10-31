@@ -11,6 +11,7 @@
 #include "position_estimator.h"
 #include "final_parking.h"
 #include "parking_exit_diagnostics.h"
+#include "parking_exit_observer.h"
 #include "parking_start_footprint.h"
 #include "obstacle_blob_validation.h"
 #include "ackermann_kinematics.h"
@@ -261,6 +262,7 @@ static void resetParkingExit()
     oc_lap_finish_braking = false;
     oc_lap_finish_brake_ms = 0;
     parking_exit_diagnostics_reset();
+    parking_exit_observer_reset();
     oc_parking_exit_state =
         OBSTACLE_PARKING_EXIT_ENABLED &&
                 !OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED
@@ -374,6 +376,7 @@ static bool initializeParkingFieldPose(float rearTofRangeMm)
     const float startHeading = turnSign > 0 ? 0.0f : 180.0f;
 
     position_reset(startX, startY, startHeading);
+    parking_exit_observer_begin(turnSign);
     parking_exit_diagnostics_rebase("field_start");
     oc_parking_field_pose_initialized = true;
 
@@ -829,6 +832,8 @@ static void finishParkingExit(bool stagedTest)
         const PositionEstimate beforeCorrection = fieldPose;
         position_apply_xy_correction(0.0f, tofCorrectionY);
         fieldPose = get_position_struct();
+        parking_exit_observer_translate(fieldPose.x_mm - beforeCorrection.x_mm,
+                                        fieldPose.y_mm - beforeCorrection.y_mm);
         parking_exit_diagnostics_correction(
             "parking_end_y", beforeCorrection, fieldPose);
     }
@@ -1056,6 +1061,8 @@ static void finishParkingEdgeLocalization()
     }
 
     const PositionEstimate finalPose = get_position_struct();
+    parking_exit_observer_translate(finalPose.x_mm - correctionBefore.x_mm,
+                                    finalPose.y_mm - correctionBefore.y_mm);
     if (applyX || applyY)
         parking_exit_diagnostics_correction(
             "edge_localization", correctionBefore, finalPose);
@@ -3286,6 +3293,12 @@ void obstacle_challenge_update(
             OBSTACLE_PARKING_EXIT_ENABLED &&
                 OBSTACLE_PARKING_ENTRY_DISCOVERY_ENABLED,
             oc_parking_localization_first_edge_reference);
+        parking_exit_observer_apply();
+        // This image preceded the exit-to-path handover and may precede its
+        // XY correction. Its buffered historical pose is authoritative; do
+        // not vote a second time using the current pose. Resume on a new frame.
+        if (OBSTACLE_PARKING_EXIT_ENABLED)
+            newCameraFrame = false;
     }
 
     if (!obstacle_path_complete())

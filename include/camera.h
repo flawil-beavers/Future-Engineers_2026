@@ -53,6 +53,7 @@ public:
     uint16_t getExposureLines();
     uint32_t getLastServiceTimeUs() const;
     uint32_t getCompletedFrameCount() const;
+    uint32_t getLastFrameCompletedTimeUs() const { return previousFrameCompletedUs; }
 
     uint16_t getWidth() const;
     uint16_t getHeight() const;

@@ -14,6 +14,7 @@
 #include "logger.h"
 #include "run_telemetry.h"
 #include "parking_start_footprint.h"
+#include "parking_exit_observer.h"
 #include "ackermann_kinematics.h"
 #include "drive_profile.h"
 
@@ -7898,6 +7899,149 @@ void processGreenSeatCandidates(
             lastDiscoveryObservation = result;
     }
     lastGreenSeatProcessingUs = micros() - startedUs;
+}
+
+// Buffered exit frames use their corrected historical pose, never the current
+// end-of-exit pose. This is deliberately stricter than live acquisition: three
+// agreeing frames plus a stable association under pose perturbations are needed.
+int parkingExitObservationSeat(const Blob &blob, const PositionEstimate &pose,
+                               ObstacleObservationResult &result)
+{
+    if (!obstacle_blob_valid_for_acquisition(&blob)) return -1;
+    result = ObstacleObservationResult{};
+    result.color = blob.color;
+    result.productionValid = true;
+    result.left = blob.minX; result.right = blob.maxX;
+    result.top = blob.minY; result.bottom = blob.maxY;
+    result.bearingDeg = obstacle_camera_bearing_deg(&blob);
+    result.rangeMm = obstacle_estimate_camera_range_mm(&blob);
+    if (!isfinite(result.rangeMm) || result.rangeMm < 120.0f ||
+        result.rangeMm > 900.0f || fabsf(result.bearingDeg) > 28.0f) return -1;
+    const float heading = pose.heading_deg * PI / 180.0f;
+    result.robotXmm = pose.x_mm; result.robotYmm = pose.y_mm;
+    result.robotHeadingDeg = pose.heading_deg;
+    result.cameraXmm = pose.x_mm + OBSTACLE_CAMERA_LOCAL_X_MM * cosf(heading) -
+        OBSTACLE_CAMERA_LOCAL_Y_MM * sinf(heading);
+    result.cameraYmm = pose.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM * sinf(heading) +
+        OBSTACLE_CAMERA_LOCAL_Y_MM * cosf(heading);
+    const float ray = heading + result.bearingDeg * PI / 180.0f;
+    result.sightingXmm = result.cameraXmm + result.rangeMm * cosf(ray);
+    result.sightingYmm = result.cameraYmm + result.rangeMm * sinf(ray);
+    const int seat = nearestSeatIndex(result.sightingXmm, result.sightingYmm,
+                                      &result.snapErrorMm);
+    if (seat < 0 || seat >= 6 || result.snapErrorMm > 100.0f ||
+        !mappedParkingSeatFootMatches(seat, pose, blob.maxY, blob.color == ColorType::GREEN) ||
+        distantSeatSideAmbiguous(result.sightingXmm, result.sightingYmm, result.rangeMm,
+            seat, result.cameraXmm, result.cameraYmm)) return -1;
+    float expectedBearing = 0.0f, expectedRange = 0.0f;
+    seatCameraGeometry(seat, pose, expectedBearing, expectedRange);
+    if (fabsf(wrap180(expectedBearing - result.bearingDeg)) > 6.0f ||
+        fabsf(expectedRange - result.rangeMm) > 100.0f) return -1;
+    result.seatId = seat;
+    return seat;
+}
+
+bool parkingExitObservationStable(const Blob &blob, const PositionEstimate &pose,
+                                  ObstacleObservationResult &result)
+{
+    const int seat = parkingExitObservationSeat(blob, pose, result);
+    if (seat < 0) return false;
+    // Allow for exposure-time approximation and residual exit odometry drift.
+    // These margins test the association; they do not change the estimator.
+    for (float dx : {-20.0f, 0.0f, 20.0f})
+        for (float dy : {-20.0f, 0.0f, 20.0f})
+            for (float dh : {-3.0f, 0.0f, 3.0f}) {
+                PositionEstimate varied = pose;
+                varied.x_mm += dx; varied.y_mm += dy; varied.heading_deg += dh;
+                // Perturbations must retain the same seat, but nominal ray/foot
+                // residuals must not be charged the uncertainty a second time.
+                const float h = varied.heading_deg * PI / 180.0f;
+                const float cx = varied.x_mm + OBSTACLE_CAMERA_LOCAL_X_MM*cosf(h) -
+                    OBSTACLE_CAMERA_LOCAL_Y_MM*sinf(h);
+                const float cy = varied.y_mm + OBSTACLE_CAMERA_LOCAL_X_MM*sinf(h) +
+                    OBSTACLE_CAMERA_LOCAL_Y_MM*cosf(h);
+                const float ray = h + result.bearingDeg*PI/180.0f;
+                const float x = cx + result.rangeMm*cosf(ray);
+                const float y = cy + result.rangeMm*sinf(ray);
+                if (nearestSeatIndex(x,y,nullptr) != seat ||
+                    hypotf(x-seats[seat ^ 1U].x,y-seats[seat ^ 1U].y) -
+                    hypotf(x-seats[seat].x,y-seats[seat].y) < 40.0f) return false;
+            }
+    return true;
+}
+
+void obstacle_path_apply_exit_observations(const ParkingExitCameraBuffer &buffer)
+{
+    if (!running || runtimeTestMode || completedLaps != 0 ||
+        !parkingSectionInnerSeatsOnly || !parkingEntryActive || parkingEntryTestHold ||
+        buffer.direction() != routeTurnSign) return;
+    struct Evidence {
+        ObstacleObservationResult result{};
+        uint32_t firstUs = 0, lastUs = 0;
+        uint8_t colors = 0, count = 0;
+        bool qualified = false;
+    } evidence[6];
+    bool conflict[3] = {};
+    const uint32_t now = micros();
+    for (uint16_t i = 0; i < buffer.size(); ++i) {
+        const ParkingExitCameraFrame &frame = buffer.frame(i);
+        if (now - frame.sampledUs > 20000000U) continue;
+        for (const Blob *blob : {&frame.red, &frame.green}) {
+            ObstacleObservationResult observation;
+            if (!parkingExitObservationStable(*blob, frame.pose, observation)) continue;
+            const uint8_t seat = static_cast<uint8_t>(observation.seatId);
+            Evidence &e = evidence[seat];
+            const uint8_t color = blob->color == ColorType::RED ? 1 : 2;
+            e.colors |= color;
+            if (e.colors == 3 || evidence[seat ^ 1U].colors) conflict[seat / 2] = true;
+            if (e.qualified) continue;
+            if (!e.count || frame.sampledUs - e.lastUs > OBSTACLE_SEAT_VOTE_WINDOW_MS*1000U ||
+                observation.color != e.result.color ||
+                hypotf(observation.sightingXmm - e.result.sightingXmm,
+                       observation.sightingYmm - e.result.sightingYmm) > 60.0f) {
+                e.count = 0;
+                e.firstUs = frame.sampledUs;
+                e.result = observation;
+            }
+            e.lastUs = frame.sampledUs;
+            if (e.count < 255) ++e.count;
+            e.qualified = e.count >= 3 && e.lastUs - e.firstUs >= 120000U;
+        }
+    }
+    // Reject a contradictory official middle/end batch in its entirety;
+    // import order must never decide which placement becomes authoritative.
+    const bool middle = evidence[2].qualified || evidence[3].qualified;
+    const bool end = evidence[0].qualified || evidence[1].qualified ||
+        evidence[4].qualified || evidence[5].qualified;
+    if (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL && middle && end) {
+        Serial.println("[EXIT VIEW] Conflicting middle/end evidence; normal scan retained");
+        return;
+    }
+    uint8_t accepted = 0;
+    for (uint8_t i = 0; i < 6; ++i) {
+        Evidence &e = evidence[i];
+        if (!e.qualified || conflict[i/2] || seats[i].confirmed ||
+            seats[i ^ 1U].confirmed || officialMiddleConflictsWithEnd(i)) continue;
+        CandidateSeat &seat = seats[i];
+        seat.confirmed = true;
+        seat.red = e.result.color == ColorType::RED;
+        seat.redVotes = seat.red ? e.count : 0;
+        seat.greenVotes = seat.red ? 0 : e.count;
+        seat.lastVoteMs = millis();
+        finalizeConfirmedSeat(e.result);
+        ++accepted;
+        Serial.print("[EXIT VIEW] Confirmed seat/color/frames="); Serial.print(i);
+        Serial.print("/"); Serial.print(seat.red ? "RED" : "GREEN");
+        Serial.print("/"); Serial.print(e.count);
+        Serial.print(" corrected_pose="); Serial.print(e.result.robotXmm,1);
+        Serial.print("/"); Serial.print(e.result.robotYmm,1);
+        Serial.print("/"); Serial.print(e.result.robotHeadingDeg,1);
+        Serial.print(" bearing/range/snap="); Serial.print(e.result.bearingDeg,1);
+        Serial.print("/"); Serial.print(e.result.rangeMm,1);
+        Serial.print("/"); Serial.println(e.result.snapErrorMm,1);
+    }
+    Serial.print("[EXIT VIEW] Imported="); Serial.print(accepted);
+    Serial.println("; normal scan geometry retained, no cached CLEAR votes");
 }
 
 uint8_t obstacle_path_seat_count()

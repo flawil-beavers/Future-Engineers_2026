@@ -224,3 +224,16 @@ the learned bypass and exercises the measured wall residuals.
 `check_parking_adaptive_completion.py` uses recorded entry anchors, both turns
 and a plant radius different from the planning model, including final wheel
 centering and recovery health checks. Physical acceptance remains pending.
+
+Camera observations during the unchanged parking exit:
+[PARKING_EXIT_CAMERA_REVIEW_20261030.md](PARKING_EXIT_CAMERA_REVIEW_20261030.md).
+`check_parking_exit_observer.py` verifies historical-pose interpolation, later
+XY corrections, conservative multi-frame seat import and fallback. It also
+reports possible view windows from the tracked exit logs; synthetic projections
+are not proof of detection in real camera images.
+
+Tight final parking completion and 10 mm end-clearance review:
+[FINAL_PARKING_TIGHT_COMPLETION_REVIEW_20261030.md](FINAL_PARKING_TIGHT_COMPLETION_REVIEW_20261030.md).
+`check_parking_tight_completion.py` reproduces the neutral-wheel search rejection
+and containment/verification loop, including separate negative controls.
+`check_parking_adaptive_completion.py` now covers five measured gap sizes.
