@@ -20,6 +20,8 @@ constexpr float PI=3.14159265358979323846f;
 #include "obstacle_path.h"
 #include "position_estimator.h"
 using std::isfinite;
+struct NullLog{template<class T>void print(T){} template<class T>void print(T,int){}
+template<class T>void println(T){} template<class T>void println(T,int){}} Serial;
 struct DiscoveryStation {
  uint8_t clearFrames[COURSE_SEATS_PER_STATION]={};
  bool seatObservedClear[COURSE_SEATS_PER_STATION]={};
@@ -33,8 +35,9 @@ uint8_t completedLaps=0;bool parkingEntryActive=true,parkingEntryObserving=true;
 int8_t parkingEntryTargetStation=2;uint32_t clockMs=1000;
 uint32_t millis(){return clockMs;}
 bool stationResolved(uint8_t){return false;}
-bool seatComfortablyVisible(uint8_t seat,const PositionEstimate &){return seat==5;}
-void seatCameraGeometry(uint8_t,const PositionEstimate &,float &bearing,float &range){bearing=0;range=309;}
+int visibleSeat=5;float visibleRange=309;
+bool seatComfortablyVisible(uint8_t seat,const PositionEstimate &){return seat==visibleSeat;}
+void seatCameraGeometry(uint8_t,const PositionEstimate &,float &bearing,float &range){bearing=0;range=visibleRange;}
 bool rejectedGreenBehindSeat(const Blob *,float,float){return false;}
 bool unmappedForegroundBlocksClear(const Blob *,const ObstacleObservationResult &,float,float){return false;}
 bool rejectedBlobBlocksSeatClear(const Blob *,float){return false;}
@@ -56,6 +59,16 @@ int main(){
  for(int i=0;i<5;++i){clockMs=1700+76*i;updateDiscoveryCoverage(observation,pose,nullptr);}
  if(!discoveryStations[2].seatObservedClear[1]||discoveryStations[2].clearFrames[1]<5)return 2;
  std::cout<<"LOG589 OCCUPANCY HOLD PASS: no 192ms false CLEAR; normal five-frame clear resumes after 600ms\n";
+ visibleSeat=6;visibleRange=600;parkingEntryActive=false;
+ for(int i=0;i<10;++i){clockMs+=80;updateDiscoveryCoverage(observation,pose,nullptr);}
+ if(discoveryStations[3].seatObservedClear[0])return 3;
+ visibleRange=450;
+ for(int i=0;i<10;++i){clockMs+=80;updateDiscoveryCoverage(observation,pose,nullptr);}
+ if(!discoveryStations[3].seatObservedClear[0])return 4;
+ visibleSeat=8;visibleRange=600;
+ for(int i=0;i<10;++i){clockMs+=80;updateDiscoveryCoverage(observation,pose,nullptr);}
+ if(!discoveryStations[4].seatObservedClear[0])return 5;
+ std::cout<<"621 CLEAR PASS: first station needs nearer view; other stations unchanged\n";
 }
 '''
     out = ROOT / "local_workspace" / "green-occupancy-hold-589"

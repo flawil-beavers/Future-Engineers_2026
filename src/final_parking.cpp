@@ -122,16 +122,35 @@ uint8_t stoppedWallFrames = 0;
 float stoppedWallRange = 0.0f;
 constexpr uint8_t ENTRY_PLAN_CAPACITY = 8;
 ParkingSegment adaptiveEntry[ENTRY_PLAN_CAPACITY]{};
+bool entryQuickRecipe = false;
 PositionEstimate adaptiveEndpoints[ENTRY_PLAN_CAPACITY]{};
 uint8_t adaptiveEntryCount = 0;
 uint8_t entryReplans = 0;
+uint8_t entryStalledReplans = 0;
+float entryBestReplanError = INFINITY;
 float entrySafetyMargin = 3.0f;
 const char *entryReplanReason = nullptr;
 float entryRadiusScale = 1.0f;
 float entryStartHeading = 0.0f;
 bool entryRadiusMeasured = false;
 bool entryReplanHadMotion = false;
+float entryBrakeStartDistance = 0.0f;
+float entryBrakeTravelMm = 0.0f;
+int8_t entryBrakeDirection = 1;
 uint32_t entryPlanningBudget = 0;
+uint32_t entryPlannerLastPollMs = 0;
+uint32_t rearBrakeEpoch=0,rearReferenceSequence=0;
+uint8_t rearReferenceFrames=0;
+float rearReferenceAxleMm=0;
+
+void serviceEntryPlanner()
+{
+    // Geometry samples vary greatly in cost on the MCU. Poll by elapsed time,
+    // not every256 samples (594/596: >200ms gaps and SH2 restarts while stopped).
+    const uint32_t now=millis();
+    if (now-entryPlannerLastPollMs>=10U)
+    { entryPlannerLastPollMs=now;update_gyro(); }
+}
 
 float clampFloat(float value, float minimum, float maximum)
 {
@@ -284,6 +303,11 @@ bool updateOuterWallReference(bool initial)
         return false;
     wallSequence = snapshot.sequence;
     const PositionEstimate pose = get_position_struct();
+    // Once both pieces are registered, keep that reference during capture.
+    //612: mixed returns close to a pink edge repeatedly shifted Y and the
+    //line controller steered away from an already good alignment.
+    if (!initial && (scanPhase == 5 || !earlyWallReferenceClearOfMarkers(pose)))
+        return false;
     if (initial && state==FP_APPROACH_LANE && !earlyWallReferenceClearOfMarkers(pose))
     {
         initialWallFrames=0;
@@ -292,8 +316,7 @@ bool updateOuterWallReference(bool initial)
     const float raw = parkingOuterRange(snapshot);
     const float expected = expectedOuterWallRange(outerSensor, pose);
     const float residual = raw - expected;
-    const float maxResidual = initial && pose.x_mm>=900.0f ? 150.0f :
-        (initial ? 80.0f : 10.0f);
+    const float maxResidual = initial ? 150.0f : 10.0f;
     if (!isfinite(raw) || raw < OBSTACLE_FINAL_PARKING_WALL_MIN_MM ||
         raw > (initial ? 700.0f : OBSTACLE_FINAL_PARKING_WALL_MAX_MM) || expected <= 0.0f ||
         fabsf(residual) > maxResidual ||
@@ -338,7 +361,9 @@ bool updateOuterWallReference(bool initial)
 // Bounded on-stick diagnostics replace unrelated vision chatter while parking.
 void traceParking(bool force = false)
 {
+    if(!force && run_telemetry_pose_capture_active())return;
     if (finalTraceCount >= 240 ||
+        (!force && robot_logger.remaining()<8192U) ||
         (!force && millis()-finalTraceMs < 200)) return;
     finalTraceMs = millis();
     ++finalTraceCount;
@@ -365,18 +390,31 @@ void traceParking(bool force = false)
 
 bool connectorClearanceSafe(const PositionEstimate &pose)
 {
+    if (!isfinite(pose.x_mm) || !isfinite(pose.y_mm) || !isfinite(pose.heading_deg)) return false;
+    const float h = pose.heading_deg * PI / 180.0f;
+    const float dx = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * cosf(h);
+    const float dy = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * sinf(h);
+    const float outer=OBSTACLE_CENTERLINE_HALF_EXTENT_MM+OBSTACLE_CORRIDOR_HALF_WIDTH_MM;
+    const float inner=OBSTACLE_CENTERLINE_HALF_EXTENT_MM-OBSTACLE_CORRIDOR_HALF_WIDTH_MM;
+    const float reserve=OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM+5.0f;
+    // In the south parking strip the whole inflated axis capsule is below
+    // the inner square and inside all outer walls. This exact sufficient
+    // bound avoids repeating eight wall/four corner distance calculations
+    // at every millimetre of a stopped entry search. Else use the old test.
+    const bool southStrip=fminf(pose.x_mm,pose.x_mm+dx)>=-outer+reserve &&
+        fmaxf(pose.x_mm,pose.x_mm+dx)<=outer-reserve &&
+        fminf(pose.y_mm,pose.y_mm+dy)>=-outer+reserve &&
+        fmaxf(pose.y_mm,pose.y_mm+dy)<=-inner-reserve;
     // Walls do not depend on the selected pillar. Scan them once, rather
     // than repeating the same wall geometry for every confirmed seat at
     // every 2-mm approach-preflight sample.
     ObstacleClearanceSample walls;
-    if (!obstacle_path_sample_pose_clearance(0, pose.x_mm, pose.y_mm,
-            pose.heading_deg, walls) || !walls.valid || walls.wallMm < 5.0f)
+    if (!southStrip && (!obstacle_path_sample_pose_clearance(0, pose.x_mm, pose.y_mm,
+            pose.heading_deg, walls) || !walls.valid || walls.wallMm < 5.0f))
         return false;
-    const float h = pose.heading_deg * PI / 180.0f;
-    const float dx = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * cosf(h);
-    const float dy = OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM * sinf(h);
     const float lengthSquared = dx*dx + dy*dy;
-    float minimumPillar = 1.0e9f;
+    const float pillarReserve=OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM+
+        OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM+10.0f;
     for (uint8_t seatId = 0; seatId < obstacle_path_seat_count(); ++seatId)
     {
         ObstacleSeatInfo seat;
@@ -384,14 +422,12 @@ bool connectorClearanceSafe(const PositionEstimate &pose)
             continue;
         const float t = clampFloat(((seat.xMm-pose.x_mm)*dx +
             (seat.yMm-pose.y_mm)*dy) / fmaxf(lengthSquared,1.0e-6f),0.0f,1.0f);
-        const float clearance = hypotf(seat.xMm-pose.x_mm-t*dx,
-            seat.yMm-pose.y_mm-t*dy) - OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM -
-            OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
-        if (!isfinite(clearance)) return false;
-        minimumPillar = fminf(minimumPillar, clearance);
+        const float px=seat.xMm-pose.x_mm-t*dx,py=seat.yMm-pose.y_mm-t*dy;
+        const float squared=px*px+py*py;
+        if (!isfinite(squared) || squared<pillarReserve*pillarReserve) return false;
     }
     // The three-lap path cannot complete until every station is resolved.
-    return minimumPillar >= 10.0f;
+    return true;
 }
 
 void abortParking(const char *reason)
@@ -612,13 +648,40 @@ bool parkingEntryPoseSafe(const PositionEstimate &pose, int steering, float marg
     using namespace parking_start_footprint;
     Quad bodies[6];
     robotQuads(pose.x_mm,pose.y_mm,pose.heading_deg,
-               steering>0 ? 1 : (steering<0 ? -1 : 0),safetyMargin,bodies);
+               steering>0 ? 1 : (steering<0 ? -1 : 0),safetyMargin,bodies,
+               OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,
+               OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM);
     const Quad fixed=rectangle(490.0f,-1400.0f,10.0f+safetyMargin,100.0f+safetyMargin,0.0f);
     const Quad moving=rectangle(movingInsideFaceX()-10.0f,-1400.0f,10.0f+safetyMargin,100.0f+safetyMargin,0.0f);
-    for (const Quad &body:bodies)
+    // Extra nose room while steering is a swept-motion reserve, not a new
+    //parked X target. Check the real footprint AND a forward-shifted copy;
+    //the ordinary rear clearance remains unchanged.
+    const float h=pose.heading_deg*PI/180.0f;
+    // A tight escape must still be possible if the current pose already
+    //lacks this preferred nose reserve;1mm mode retains the physical sweep.
+    for(int offset=0;offset<(steering && safetyMargin>=3.0f ? 2:1);++offset)
+    for (Quad body:bodies)
     {
+        if(offset)for(Point &p:body.p)
+        {
+            p.x+=OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM*cosf(h);
+            p.y+=OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM*sinf(h);
+        }
+        float minimumY=INFINITY,minimumX=INFINITY,maximumX=-INFINITY;
         for (const Point &p:body.p) if (p.y<=OBSTACLE_SOUTH_OUTER_WALL_Y_MM+safetyMargin) return false;
-        if (overlaps(body,fixed) || overlaps(body,moving)) return false;
+        for (const Point &p:body.p)
+        {
+            minimumY=fminf(minimumY,p.y);
+            minimumX=fminf(minimumX,p.x);maximumX=fmaxf(maximumX,p.x);
+        }
+        // Most approach/first-arc polygons are entirely beyond both rail tips.
+        // Avoid expensive SAT tests there; wall and pillar checks still apply.
+        if (minimumY>OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM+safetyMargin) continue;
+        // A separating X axis proves no overlap just like the SAT itself.
+        // Most samples inside/beside the gap need no further SAT axes.
+        if ((maximumX>=480.0f-safetyMargin && minimumX<=500.0f+safetyMargin && overlaps(body,fixed)) ||
+            (maximumX>=movingInsideFaceX()-20.0f-safetyMargin &&
+             minimumX<=movingInsideFaceX()+safetyMargin && overlaps(body,moving))) return false;
     }
     return true;
 }
@@ -842,10 +905,13 @@ bool refreshStoppedScanWallReference()
     const float expected=expectedOuterWallRange(outerSensor,pose);
     if (!isfinite(raw) || raw<OBSTACLE_FINAL_PARKING_WALL_MIN_MM ||
         raw>OBSTACLE_FINAL_PARKING_WALL_MAX_MM || expected<=0.0f ||
-        fabsf(raw-expected)>OBSTACLE_FINAL_PARKING_MAX_POSE_CORRECTION_MM)
+        fabsf(raw-expected)>40.0f)
     { stoppedWallFrames=0;return false; }
     if (stoppedWallFrames==0 || fabsf(raw-stoppedWallRange)>8.0f)
     { stoppedWallRange=raw;stoppedWallFrames=1;return false; }
+    if (stoppedWallFrames<3) ++stoppedWallFrames;
+    if (fabsf(raw-expected)>OBSTACLE_FINAL_PARKING_MAX_POSE_CORRECTION_MM &&
+        stoppedWallFrames<3) return false;
     //571: the first two wall-like edge returns gave -17.6mm, while the
     //stopped wall was261mm versus258mm predicted. Never register Y from that
     //transitional edge sample after a newer stationary reference is available.
@@ -869,8 +935,8 @@ bool applyScanLocalization()
         fabsf(xCorrection) <=
             OBSTACLE_FINAL_PARKING_MAX_X_POSE_CORRECTION_MM &&
         expectedWall > 0.0f &&
-        fabsf(yCorrection) <=
-            OBSTACLE_FINAL_PARKING_MAX_POSE_CORRECTION_MM;
+        fabsf(yCorrection) <= (stoppedWallFrames>=3 ? 40.0f:
+            OBSTACLE_FINAL_PARKING_MAX_POSE_CORRECTION_MM);
 
     Serial.print("[FINAL PARK SCAN] fixed/moving/gap_mm=");
     Serial.print(measuredFixedInsideX, 1);
@@ -1004,30 +1070,119 @@ PositionEstimate entryLocalPose(const PositionEstimate &field)
         wrap180(routeTurnSign > 0 ? field.heading_deg : 180.0f-field.heading_deg)};
 }
 
+bool entryEndReserveReady()
+{
+    const PositionEstimate p=entryLocalPose(get_position_struct());
+    const float h=p.heading_deg*PI/180.0f;
+    const float extra=0.5f*OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*fabsf(sinf(h));
+    const float rear=p.x_mm-OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM*cosf(h)-extra;
+    const float front=measuredGapMm-p.x_mm-OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM*cosf(h)-extra;
+    return rear>=10.0f && front>=30.0f;
+}
+
+void sampleRearEntryReference(const PositionEstimate &pose)
+{
+    if(rearBrakeEpoch!=stateStartMs)
+    {rearBrakeEpoch=stateStartMs;rearReferenceFrames=0;rearReferenceSequence=0;}
+    if(!isfinite(measured_speed)||fabsf(measured_speed)>SOFT_STOP_SPEED_THRESHOLD_MMS)
+    {rearReferenceFrames=0;return;}
+    const PositionEstimate p=entryLocalPose(pose);
+    if(fabsf(p.heading_deg)>12 || p.y_mm<30 || p.y_mm>185)
+    {rearReferenceFrames=0;return;}
+    const float h=p.heading_deg*PI/180.0f;
+    const float sx=p.x_mm-OBSTACLE_REAR_TOF_BEHIND_AXLE_MM*cosf(h);
+    const float sy=p.y_mm-OBSTACLE_REAR_TOF_BEHIND_AXLE_MM*sinf(h);
+    // Entire conservative30deg fan must hit the rear pink plane, away from
+    // both tips. At larger yaw it may see a wall/gap: never interpret that as
+    // available reverse space. Uses cached M4 samples, no extra acquisition.
+    for(float offset:{-15.0f,15.0f})
+    {
+        const float ray=h+offset*PI/180.0f;
+        const float range=sx/cosf(ray),hitY=sy-range*sinf(ray);
+        if(range<20 || range>REAR_TOF_MAX_RELIABLE_DISTANCE_MM || hitY<15 || hitY>185)
+        {rearReferenceFrames=0;return;}
+    }
+    TofDiagnosticSnapshot s{};
+    if(!get_tof_diagnostic_snapshot(TOF_REAR,s)||millis()-s.sampled_ms>200)
+    {rearReferenceFrames=0;return;}
+    if(s.sequence==rearReferenceSequence)return;
+    rearReferenceSequence=s.sequence;
+    // The rear RPC diagnostic has no object list; use its transport-validated
+    // selected range and quality plus agreement with the M4 filtered value.
+    const float raw=s.selected_raw_distance_mm;
+    if(!isfinite(raw)||raw<20 || raw>REAR_TOF_MAX_RELIABLE_DISTANCE_MM ||
+       !isfinite(s.filtered_distance_mm)||fabsf(raw-s.filtered_distance_mm)>8 ||
+       !isfinite(s.selected_signal_mcps)||s.selected_signal_mcps<=0 ||
+       !isfinite(s.selected_sigma_mm)||s.selected_sigma_mm<0 || s.selected_sigma_mm>15)
+    {rearReferenceFrames=0;return;}
+    const float axle=(raw+OBSTACLE_REAR_TOF_BEHIND_AXLE_MM)*cosf(h);
+    for(float offset:{-15.0f,15.0f})
+    {
+        const float ray=h+offset*PI/180.0f;
+        const float distance=(axle-OBSTACLE_REAR_TOF_BEHIND_AXLE_MM*cosf(h))/cosf(ray);
+        const float hitY=sy-distance*sinf(ray);
+        if(hitY<15 || hitY>185){rearReferenceFrames=0;return;}
+    }
+    if(!rearReferenceFrames || fabsf(axle-rearReferenceAxleMm)>4)
+    {rearReferenceAxleMm=axle;rearReferenceFrames=1;return;}
+    rearReferenceAxleMm=(rearReferenceAxleMm*rearReferenceFrames+axle)/(rearReferenceFrames+1);
+    if(rearReferenceFrames<3)++rearReferenceFrames;
+}
+
+bool applyRearEntryReference()
+{
+    if(rearReferenceFrames<3)return false;
+    const PositionEstimate pose=get_position_struct();
+    const float correction=rearReferenceAxleMm-entryLocalPose(pose).x_mm;
+    rearReferenceFrames=0;
+    if(!isfinite(correction)||fabsf(correction)<1 || fabsf(correction)>45)return false;
+    PositionEstimate corrected=pose;corrected.x_mm+=routeTurnSign*correction;
+    if(!parkingEntryPoseSafe(corrected,set_degree,1.0f))return false;
+    position_apply_xy_correction(routeTurnSign*correction,0);
+    Serial.print("[FINAL PARK REAR] accepted_local_x_correction_mm=");Serial.println(correction,2);
+    return true;
+}
+
 bool entryCandidateSafe(const EntryCandidate &candidate, PositionEstimate field,
                         PositionEstimate *endpoints = nullptr, float sampleStep=1.0f)
 {
-    if (!endpoints && sampleStep==1.0f && candidate.count && candidate.segments[0].steering)
+    if (!endpoints && sampleStep==1.0f && candidate.count)
     {
-        const ParkingSegment &first=candidate.segments[0];
         const float spread=entryRadiusMeasured ? 0.05f:0.15f;
         const float margin=entrySafetyMargin>=4.0f ? entrySafetyMargin-3.0f:entrySafetyMargin;
-        // A complete nominal path is not useful if its first arc is rejected
-        // immediately by the runtime radius envelope. Reject it here and try
-        // another family, instead of returning to the same blocked pose.
-        for (float factor:{1.0f-spread,1.0f+spread})
+        PositionEstimate segmentStart=field;
+        // A straight prefix must not hide an unusable following arc. Check
+        //the same short radius envelope at every steering transition, not
+        //just when the very first segment happens to be an arc.
+        for(uint8_t i=0;i<candidate.count;++i)
         {
-            PositionEstimate predicted=field;
-            const float length=fminf(15.0f,first.distanceMm*factor);
-            for (float travel=0;travel<length;travel+=1.0f)
+            const ParkingSegment &first=candidate.segments[i];
+            // Tiny positioning prefixes can disappear into brake/settle
+            // tolerance (632). Check the following arc from a position up
+            // to 2mm short as well, rather than accepting the same trap again.
+            for(float shortfall:{0.0f,2.0f})
             {
-                if (!entryPlanningBudget) return false;
-                --entryPlanningBudget;
-                if (!parkingEntryPoseSafe(predicted,first.steering*routeTurnSign,margin)) return false;
-                advanceEntryModel(predicted,first.steering*routeTurnSign,
-                    first.direction*fminf(1.0f,length-travel),entryRadiusScale*factor);
+                if(shortfall && (!i || candidate.segments[i-1].steering ||
+                    candidate.segments[i-1].distanceMm>=5.0f))continue;
+                if(first.steering)for(float factor:{1.0f-spread,1.0f+spread})
+                {
+                    PositionEstimate predicted=segmentStart;
+                    if(shortfall)advanceEntryModel(predicted,0,
+                        -candidate.segments[i-1].direction*fminf(shortfall,candidate.segments[i-1].distanceMm),entryRadiusScale);
+                    const float length=fminf(15.0f,first.distanceMm*factor);
+                    for(float travel=0;travel<length;travel+=1.0f)
+                    {
+                        if(!entryPlanningBudget)return false;
+                        --entryPlanningBudget;serviceEntryPlanner();
+                        if(!parkingEntryPoseSafe(predicted,first.steering*routeTurnSign,margin))return false;
+                        advanceEntryModel(predicted,first.steering*routeTurnSign,
+                            first.direction*fminf(1.0f,length-travel),entryRadiusScale*factor);
+                    }
+                    if(!parkingEntryPoseSafe(predicted,first.steering*routeTurnSign,margin))return false;
+                }
             }
-            if (!parkingEntryPoseSafe(predicted,first.steering*routeTurnSign,margin)) return false;
+            advanceEntryModel(segmentStart,first.steering*routeTurnSign,
+                first.direction*first.distanceMm,entryRadiusScale);
         }
     }
     // Reject obviously blocked families cheaply. Every surviving candidate is
@@ -1047,7 +1202,7 @@ bool entryCandidateSafe(const EntryCandidate &candidate, PositionEstimate field,
             {
                 if (!entryPlanningBudget) return false;
                 --entryPlanningBudget;
-                if ((entryPlanningBudget%256)==0) update_gyro();
+                serviceEntryPlanner();
             }
             const float margin=entrySafetyMargin-extraReserve*
                 (1.0f-clampFloat(walked/20.0f,0.0f,1.0f));
@@ -1090,14 +1245,208 @@ float entryCandidateCost(const EntryCandidate &candidate)
     return cost;
 }
 
+// Measured-pose free travel, including stationary wheel clearance and every
+// intermediate footprint. This is a usable path length, not gap minus length:
+// outside the rail tips a diagonal vehicle can have additional room.
+float entryFreeTravel(const PositionEstimate &field, int direction, int steering,
+                      float maximum=80.0f)
+{
+    PositionEstimate predicted=field;
+    const float reserve=fmaxf(2.0f,entryBrakeTravelMm);
+    float walked=0;
+    while(walked<=maximum)
+    {
+        serviceEntryPlanner();
+        if(!parkingEntryPoseSafe(predicted,steering*routeTurnSign))break;
+        if(walked==maximum)return fmaxf(0,walked-reserve);
+        advanceEntryModel(predicted,steering*routeTurnSign,direction,entryRadiusScale);
+        walked+=1;
+    }
+    return fmaxf(0,walked-1.0f-reserve);
+}
+
+bool planShortEntry(const PositionEstimate &field)
+{
+    const PositionEstimate start=entryLocalPose(field);
+    if(start.y_mm<250 || fabsf(start.heading_deg)>10)return false;
+    const uint32_t started=millis();
+    for(float margin:{3.0f})
+    {
+        entrySafetyMargin=margin+(margin>=3 ? 3:0);
+        entryPlanningBudget=3500;entryPlannerLastPollMs=millis();
+        EntryCandidate best;float cost=1.0e9f;
+        // Two reverse arcs with a solved diagonal straight. No forward
+        // correction arc is needed when this complete swept path fits.
+        for(float high:{60.0f,65.0f,55.0f,70.0f,75.0f,80.0f})
+        for(float initial:{0.0f,10.0f,20.0f})
+        {
+            if(!entryPlanningBudget)goto shortEntrySelected;
+            PositionEstimate local=start;EntryCandidate arcs;
+            appendEntry(arcs,local,-1,0,initial);
+            appendEntryArc(arcs,local,-1,50,high);
+            appendEntryArc(arcs,local,-1,-50,0);
+            const float distance=(local.y_mm-OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM)/sinf(high*PI/180);
+            if(distance<0 || distance>160)continue;
+            local=start;EntryCandidate candidate;
+            appendEntry(candidate,local,-1,0,initial);
+            appendEntryArc(candidate,local,-1,50,high);
+            appendEntry(candidate,local,-1,0,distance);
+            appendEntryArc(candidate,local,-1,-50,0);
+            const float dx=OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM-local.x_mm;
+            if(fabsf(dx)>100)continue;
+            appendEntry(candidate,local,dx>0?1:-1,0,fabsf(dx));
+            const float score=entryCandidateCost(candidate);
+            if(score>=cost || !entryCandidateSafe(candidate,field))continue;
+            best=candidate;cost=score;
+        }
+shortEntrySelected:
+        if(!best.count)continue;
+        entryCandidateSafe(best,field,adaptiveEndpoints);
+        adaptiveEntryCount=best.count;
+        for(uint8_t i=0;i<best.count;++i)adaptiveEntry[i]=best.segments[i];
+        segmentIndex=0;entrySafetyMargin=margin;entryQuickRecipe=false;
+        Serial.print("[FINAL PARK PLAN] Two-arc entry segments/margin/search_ms=");
+        Serial.print(best.count);Serial.print("/");Serial.print(margin);
+        Serial.print("/");Serial.println(millis()-started);
+        return true;
+    }
+    entrySafetyMargin=3.0f;
+    return false;
+}
+
+bool planEntryTail(const PositionEstimate &field, float targetY,
+                   float oldMiddle, float oldLow, bool allowPrefix)
+{
+    const uint32_t startedMs=millis();
+    const PositionEstimate local=entryLocalPose(field);
+    if(local.heading_deg<12.0f || local.heading_deg>85.0f)return false;
+    const float margin=entrySafetyMargin;
+    // Try the accepted tail first, then nearby analytic tails. A measured
+    // first arc can make the original intermediate headings infeasible.
+    // Share a bounded budget across alternatives instead of restarting the
+    // large general search for every small curvature correction.
+    for(float checkedMargin:{margin,1.0f})
+    {
+        entryPlanningBudget=12000;entryPlannerLastPollMs=millis();
+        entrySafetyMargin=checkedMargin+(checkedMargin>=3 ? 3:0);
+        for(float initial:{0.0f,10.0f,-10.0f,20.0f,-20.0f})
+        for(float high:{local.heading_deg,70.0f,80.0f})
+        for(float middle:{oldMiddle,20.0f,30.0f,40.0f,10.0f,0.0f})
+        for(float low:{oldLow,10.0f,0.0f,20.0f})
+        for(float solvedY:{targetY,125.0f,120.0f,115.0f,110.0f})
+        {
+            if(!entryPlanningBudget)break;
+            if(!allowPrefix && initial!=0)continue;
+            if(high<local.heading_deg || middle>high || low>middle)continue;
+            PositionEstimate end=entryLocalPose(field);EntryCandidate arcs;
+            appendEntry(arcs,end,initial>0?1:-1,0,fabsf(initial));
+            appendEntryArc(arcs,end,-1,50,high);
+            appendEntryArc(arcs,end,-1,-50,middle);
+            appendEntryArc(arcs,end,1,50,low);
+            appendEntryArc(arcs,end,-1,-50,0);
+            const float distance=(end.y_mm-solvedY)/sinf(high*PI/180.0f);
+            if(distance<0 || distance>160)continue;
+            EntryCandidate candidate;end=entryLocalPose(field);
+            appendEntry(candidate,end,initial>0?1:-1,0,fabsf(initial));
+            appendEntryArc(candidate,end,-1,50,high);
+            appendEntry(candidate,end,-1,0,distance);
+            appendEntryArc(candidate,end,-1,-50,middle);
+            appendEntryArc(candidate,end,1,50,low);
+            appendEntryArc(candidate,end,-1,-50,0);
+            const float dx=OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM-end.x_mm;
+            if(fabsf(dx)>100)continue;
+            appendEntry(candidate,end,dx>0?1:-1,0,fabsf(dx));
+            if(!candidate.count || !entryCandidateSafe(candidate,field))continue;
+            entryCandidateSafe(candidate,field,adaptiveEndpoints);
+            adaptiveEntryCount=candidate.count;
+            for(uint8_t i=0;i<candidate.count;++i)adaptiveEntry[i]=candidate.segments[i];
+            segmentIndex=0;entryQuickRecipe=false;entrySafetyMargin=checkedMargin;
+            Serial.print("[FINAL PARK PLAN] Remaining recipe adapted; full swept preflight PASS search_ms=");
+            Serial.println(millis()-startedMs);
+            return true;
+        }
+    }
+    entrySafetyMargin=margin;
+    return false;
+}
+
 bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
                       float requestedMargin=0.0f)
 {
+    const uint32_t planningStartedMs=millis();
+    entryQuickRecipe=false;
     const PositionEstimate start=entryLocalPose(field);
     if (!isfinite(start.heading_deg) || fabsf(start.heading_deg)>85.0f)
         return false;
+    if(allowEscape && requestedMargin==0 && planShortEntry(field))return true;
+    // Partial entries use the same bounded continuation family before the
+    // expensive general search. Prefixes are ordinary checked alternatives.
+    if(allowEscape && requestedMargin==0 && entryRadiusMeasured && start.y_mm>220.0f && start.y_mm<250.0f &&
+       planEntryTail(field,OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,30,20,true))
+        return true;
     EntryCandidate best;
     float bestCost=1.0e9f;
+    // Try a small repeatable parking recipe before the expensive general
+    //search. Solve its straight and final X from the measured pose/gap;
+    //every accepted recipe still passes the full1mm swept preflight.
+    if (allowEscape && requestedMargin==0.0f)
+    {
+        for (float margin:{3.0f,1.0f})
+        {
+            // Tight quick recipes are for the normal capture only; partial
+            //entry recovery retains the general escape search ordering.
+            if(margin<3.0f && start.y_mm<250.0f)continue;
+            entryPlanningBudget=6000;entryPlannerLastPollMs=millis();
+            entrySafetyMargin=margin+(margin>=3.0f ? 3.0f:0.0f);
+            EntryCandidate quickBest;float quickCost=1.0e9f;
+            for(float high:{55.0f,60.0f,70.0f,50.0f,80.0f})
+            for(float middle:{30.0f,20.0f,40.0f})
+            for(float low:{20.0f,10.0f,0.0f})
+            for(float initial:{margin>=3.0f ? -OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM:-8.0f,-20.0f,0.0f})
+            for(float targetY:{127.0f,125.0f})
+            {
+                if(!entryPlanningBudget)goto quickEntrySelected;
+                if(high<start.heading_deg)continue;
+                EntryCandidate arcs;PositionEstimate end=start;
+                appendEntry(arcs,end,-1,0,fabsf(initial));
+                appendEntryArc(arcs,end,-1,50,high);
+                appendEntryArc(arcs,end,-1,-50,middle);
+                appendEntryArc(arcs,end,1,50,low);
+                appendEntryArc(arcs,end,-1,-50,0);
+                const float length=(end.y_mm-targetY)/sinf(high*PI/180.0f);
+                if(length<0 || length>160)continue;
+                EntryCandidate candidate;PositionEstimate local=start;
+                appendEntry(candidate,local,-1,0,fabsf(initial));
+                appendEntryArc(candidate,local,-1,50,high);
+                appendEntry(candidate,local,-1,0,length);
+                appendEntryArc(candidate,local,-1,-50,middle);
+                appendEntryArc(candidate,local,1,50,low);
+                appendEntryArc(candidate,local,-1,-50,0);
+                const float dx=OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM-local.x_mm;
+                if(fabsf(dx)>100)continue;
+                appendEntry(candidate,local,dx>0?1:-1,0,fabsf(dx));
+                const float score=entryCandidateCost(candidate);
+                if(!candidate.count || score>=quickCost || !entryCandidateSafe(candidate,field))continue;
+                // Improve the first safe recipe within a small additional
+                // budget; never exhaust the broad search just to rank it.
+                if(!quickBest.count && entryPlanningBudget>1500)entryPlanningBudget=1500;
+                quickBest=candidate;quickCost=score;
+            }
+quickEntrySelected:
+            if(quickBest.count)
+            {
+                adaptiveEntryCount=quickBest.count;
+                for(uint8_t i=0;i<quickBest.count;++i)adaptiveEntry[i]=quickBest.segments[i];
+                entryCandidateSafe(quickBest,field,adaptiveEndpoints);
+                entrySafetyMargin=margin;segmentIndex=0;
+                entryQuickRecipe=true;
+                Serial.print("[FINAL PARK PLAN] Checked quick recipe segments/margin/search_ms=");
+                Serial.print(quickBest.count);Serial.print("/");Serial.print(margin,1);
+                Serial.print("/");Serial.println(millis()-planningStartedMs);
+                update_gyro();return true;
+            }
+        }
+    }
     // First exhaust the ordinary reserve. Tight mode still preserves positive
     // body/rail clearance and the normal final containment margin.
     for (float margin:{3.0f,1.0f})
@@ -1106,7 +1455,7 @@ bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
         // Bound worst-case work while stopped, including escape children.
         // Each reserve level gets its own budget, so a difficult normal search
         // cannot prevent the requested last-resort tight-clearance attempt.
-        if (requestedMargin==0.0f) entryPlanningBudget=60000;
+        if (requestedMargin==0.0f) { entryPlanningBudget=20000;entryPlannerLastPollMs=millis(); }
         // Reserve an additional3mm on both footprint and pieces while
         // planning for localization/endpoint rounding. Runtime retains margin.
         entrySafetyMargin=margin+(margin>=3.0f ? 3.0f:0.0f);
@@ -1132,26 +1481,34 @@ bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
         // Analytic multi-point families. The high-angle straight is solved
         // from the desired final Y; the last straight centres between rails.
         // The bounded enumeration needs only a small candidate on the stack.
-        uint16_t serviced=0;
         const float highs[]={start.heading_deg,10,20,30,40,50,55,60,65,70,75,80};
-        for (float initial:{0.0f,-10.0f,-20.0f,-30.0f,-40.0f,10.0f,20.0f,30.0f,40.0f})
+        const float rearRoom=entryFreeTravel(field,-1,0,measuredGapMm);
+        const float frontRoom=entryFreeTravel(field,1,0,measuredGapMm);
+        for (float initial:{0.0f,-10.0f,-20.0f,-30.0f,-40.0f,10.0f,20.0f,30.0f,40.0f,
+                           -rearRoom,frontRoom,-rearRoom*0.5f,frontRoom*0.5f})
         for (float high:highs)
         for (float middle:{0.0f,5.0f,10.0f,15.0f,20.0f,25.0f,30.0f,35.0f,40.0f})
         for (float low:{0.0f,5.0f,10.0f,15.0f,20.0f,25.0f})
         {
-            if (!entryPlanningBudget || (allowEscape && requestedMargin==0.0f && entryPlanningBudget<30000))
+            if (!entryPlanningBudget || (allowEscape && requestedMargin==0.0f && entryPlanningBudget<10000))
                 goto entryPlanSelected;
             if (high<start.heading_deg-0.1f || high<middle || middle<low || high<1.0f)
                 continue;
-            if ((++serviced%64)==0) update_gyro();
+            serviceEntryPlanner();
             EntryCandidate arcs; PositionEstimate arcEnd=start;
             appendEntry(arcs,arcEnd,initial>0?1:-1,0,fabsf(initial));
             appendEntryArc(arcs,arcEnd,-1,50,high);
             appendEntryArc(arcs,arcEnd,-1,-50,middle);
             appendEntryArc(arcs,arcEnd,1,50,low);
             appendEntryArc(arcs,arcEnd,-1,-50,0);
-            for (float targetY:{110.0f,115.0f,120.0f,125.0f})
+            // Prefer the shallow12.5mm-edge pose from the approach. A late
+            // recovery retains the original family ordering for escape room.
+            const bool late=!allowEscape || requestedMargin>0.0f || start.y_mm<250.0f;
+            const float targetYs[]={late ? 110.0f:125.0f,late ? 115.0f:120.0f,
+                late ? 120.0f:115.0f,late ? 125.0f:110.0f};
+            for (uint8_t targetIndex=0;targetIndex<4;++targetIndex)
             {
+                const float targetY=targetYs[targetIndex];
                 const float length=(arcEnd.y_mm-targetY)/sinf(high*PI/180.0f);
                 if (length<0 || length>160) continue;
                 EntryCandidate candidate; PositionEstimate local=start;
@@ -1181,7 +1538,8 @@ entryPlanSelected:
             segmentIndex=0;
             Serial.print("[FINAL PARK PLAN] segments/margin/cost=");
             Serial.print(best.count);Serial.print("/");Serial.print(margin,1);
-            Serial.print("/");Serial.println(bestCost,1);
+            Serial.print("/");Serial.print(bestCost,1);
+            Serial.print(" search_ms=");Serial.println(millis()-planningStartedMs);
             update_gyro();
             return true;
         }
@@ -1199,6 +1557,7 @@ entryPlanSelected:
             PositionEstimate end=field; bool safe=true;
             for (int mm=0;mm<=static_cast<int>(distance);++mm)
             {
+                serviceEntryPlanner();
                 if (!parkingEntryPoseSafe(end,steering*routeTurnSign)) {safe=false;break;}
                 if (mm<distance) advanceEntryModel(end,steering*routeTurnSign,static_cast<float>(direction),entryRadiusScale);
             }
@@ -1219,7 +1578,8 @@ entryPlanSelected:
             adaptiveEntryCount=combined.count;
             for (uint8_t i=0;i<combined.count;++i) adaptiveEntry[i]=combined.segments[i];
             segmentIndex=0;
-            Serial.println("[FINAL PARK PLAN] Complete swept alternative with escape prefix");
+            Serial.print("[FINAL PARK PLAN] Complete swept alternative with escape prefix search_ms=");
+            Serial.println(millis()-planningStartedMs);
             return true;
         }
     }
@@ -1233,6 +1593,82 @@ const ParkingSegment &activeEntrySegment()
     return adaptiveEntryCount ? adaptiveEntry[segmentIndex] : PARKING_SEGMENTS[segmentIndex];
 }
 
+// After the first recipe arc, solve the remaining straight from the actual
+//pose and measured radius.616 otherwise restarted the general8.8s search.
+bool refreshRemainingEntry(const PositionEstimate &field);
+bool adaptRemainingEntryRecipe(const PositionEstimate &field)
+{
+    if(!entryQuickRecipe)
+        return refreshRemainingEntry(field) ||
+            planEntryTail(field,OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,30,20,false);
+    if(!entryQuickRecipe || segmentIndex>1 || segmentIndex+3>=adaptiveEntryCount ||
+       !adaptiveEntry[segmentIndex].steering ||
+       adaptiveEntry[segmentIndex+1].steering ||
+       adaptiveEntry[segmentIndex+1].direction!=-1)return false;
+    const float targetY=entryLocalPose(adaptiveEndpoints[adaptiveEntryCount-1]).y_mm;
+    PositionEstimate local=entryLocalPose(field);
+    const float sine=sinf(local.heading_deg*PI/180.0f);
+    if(sine<0.2f)return false;
+    return planEntryTail(field,targetY,
+        entryLocalPose(adaptiveEndpoints[segmentIndex+2]).heading_deg,
+        entryLocalPose(adaptiveEndpoints[segmentIndex+3]).heading_deg,false);
+}
+
+// Reuse the already accepted remaining steering sequence after a measured
+// deviation. Re-solve its first diagonal straight and final centring movement;
+// accept only a complete fresh sweep, never blindly keep stale endpoints.
+bool refreshRemainingEntry(const PositionEstimate &field)
+{
+    if(!adaptiveEntryCount || segmentIndex+1>=adaptiveEntryCount)return false;
+    const uint8_t first=segmentIndex+1;
+    const float targetY=entryLocalPose(adaptiveEndpoints[adaptiveEntryCount-1]).y_mm;
+    const bool solveStraight=!adaptiveEntry[first].steering && first+1<adaptiveEntryCount;
+    PositionEstimate end=entryLocalPose(field);EntryCandidate arcs;
+    for(uint8_t i=first;i<adaptiveEntryCount;++i)
+    {
+        const ParkingSegment &segment=adaptiveEntry[i];
+        if(segment.steering)appendEntryArc(arcs,end,segment.direction,segment.steering,
+            entryLocalPose(adaptiveEndpoints[i]).heading_deg);
+        else if(i+1<adaptiveEntryCount && !(solveStraight && i==first))
+            appendEntry(arcs,end,segment.direction,0,segment.distanceMm);
+    }
+    float solved=0;
+    if(solveStraight)
+    {
+        const float dy=adaptiveEntry[first].direction*sinf(entryLocalPose(field).heading_deg*PI/180);
+        if(fabsf(dy)<0.2f)return false;
+        solved=(targetY-end.y_mm)/dy;
+        if(solved<0 || solved>160)return false;
+    }
+    EntryCandidate candidate;end=entryLocalPose(field);
+    for(uint8_t i=first;i<adaptiveEntryCount;++i)
+    {
+        const ParkingSegment &segment=adaptiveEntry[i];
+        if(segment.steering)appendEntryArc(candidate,end,segment.direction,segment.steering,
+            entryLocalPose(adaptiveEndpoints[i]).heading_deg);
+        else if(i+1<adaptiveEntryCount)
+            appendEntry(candidate,end,segment.direction,0,solveStraight&&i==first ? solved:segment.distanceMm);
+    }
+    if(fabsf(end.heading_deg)>1.0f)return false;
+    const float dx=OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM-end.x_mm;
+    if(fabsf(dx)>100)return false;
+    appendEntry(candidate,end,dx>0?1:-1,0,fabsf(dx));
+    const float margin=entrySafetyMargin;
+    for(float check:{margin,1.0f})
+    {
+        entrySafetyMargin=check+(check>=3 ? 3:0);
+        entryPlanningBudget=2500;entryPlannerLastPollMs=millis();
+        if(!candidate.count || !entryCandidateSafe(candidate,field))continue;
+        entryCandidateSafe(candidate,field,adaptiveEndpoints);
+        adaptiveEntryCount=candidate.count;
+        for(uint8_t i=0;i<candidate.count;++i)adaptiveEntry[i]=candidate.segments[i];
+        segmentIndex=0;entrySafetyMargin=check;entryQuickRecipe=false;
+        Serial.println("[FINAL PARK PLAN] Remaining steering sequence refreshed; full swept preflight PASS");
+        return true;
+    }
+    entrySafetyMargin=margin;return false;
+}
+
 bool updateEntryRadiusFromMotion()
 {
     const ParkingSegment &segment=activeEntrySegment();
@@ -1240,16 +1676,27 @@ bool updateEntryRadiusFromMotion()
     const float travel=distanceSince(stateStartDistance);
     if (!segment.steering || travel<=15.0f || angle<=0.08f) return false;
     const float scale=clampFloat(travel/(angle*fabsf(Ackermann::getTurnRadius(
-        static_cast<float>(segment.steering)))),0.85f,1.20f);
+        static_cast<float>(segment.steering)))),0.80f,1.50f);
     const bool changed=fabsf(scale-entryRadiusScale)>0.025f;
     entryRadiusScale=scale;entryRadiusMeasured=true;
     Serial.print("[FINAL PARK CURVATURE] measured_radius_scale=");Serial.println(scale,3);
     return changed;
 }
 
+void updateEntryBrakeTravel()
+{
+    // A hold controller may pull back after braking. Only settled movement
+    // in the preceding drive direction is an overrun, not an opposite rebound.
+    const float travel=(get_distance()-entryBrakeStartDistance)*entryBrakeDirection;
+    entryBrakeTravelMm=isfinite(travel) ? clampFloat(travel,0.0f,8.0f):0.0f;
+    Serial.print("[FINAL PARK BRAKE] settled_lead_mm=");Serial.println(entryBrakeTravelMm,2);
+}
+
 void requestEntryReplan(const char *reason)
 {
     entryReplanHadMotion=state==FP_SEGMENT_DRIVE;
+    if (entryReplanHadMotion)
+    { entryBrakeStartDistance=get_distance();entryBrakeDirection=activeEntrySegment().direction; }
     stop(true);
     entryReplanReason=reason;
     stateStartMs=millis();
@@ -1306,12 +1753,16 @@ void final_parking_reset()
     lastWallCorrection = 0.0f;
     wallCorrectionSequence = 0;
     stoppedWallSequence=0;stoppedWallFrames=0;stoppedWallRange=0.0f;
-    adaptiveEntryCount=0;entryReplans=0;entrySafetyMargin=3.0f;
+    adaptiveEntryCount=0;entryReplans=0;entrySafetyMargin=3.0f;entryQuickRecipe=false;
+    entryStalledReplans=0;entryBestReplanError=INFINITY;
     entryReplanReason=nullptr;
     entryRadiusScale=1.0f;entryStartHeading=0.0f;
     entryRadiusMeasured=false;
     entryReplanHadMotion=false;
+    entryBrakeStartDistance=entryBrakeTravelMm=0.0f;
+    entryBrakeDirection=1;
     entryPlanningBudget=0;
+    rearBrakeEpoch=rearReferenceSequence=0;rearReferenceFrames=0;rearReferenceAxleMm=0;
     sensorHoldTraceCount = 0;
     sensorHoldPending = false;
     sensorHoldStartMs = 0;
@@ -1345,6 +1796,35 @@ void final_parking_start_practice(int8_t turn_sign)
     Serial.print(fieldHeading, 1);
     Serial.print(" full_approach_scan=yes segment_limit=");
     Serial.println(OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT);
+}
+
+void final_parking_start_entry_practice(int8_t turn_sign)
+{
+    final_parking_reset();
+    practiceMode=true;
+    routeTurnSign=turn_sign<0 ? -1:1;
+    outerSensor=routeTurnSign>0 ? TOF_RIGHT:TOF_LEFT;
+    // The tester sets the measured rail gap and axle pose from the setup
+    // sheet. Unlike normal parking, this mode deliberately omits localization.
+    scanPhase=5;
+    measuredGapMm=OBSTACLE_FINAL_PARKING_GAP_MM;
+    PositionEstimate start{};
+    localToField(OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_X_MM,
+        OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM,0,
+        start.x_mm,start.y_mm,start.heading_deg);
+    position_reset(start.x_mm,start.y_mm,start.heading_deg);
+    captureTargetX=start.x_mm;
+    runStartDistance=stateStartDistance=get_distance();
+    stateStartMs=millis();
+    state=FP_CAPTURE_BRAKE;
+    stop(true);
+    Serial.println("[FINAL PARK] revision=20261101_efficient_entry");
+    Serial.print("[FINAL PARK PRACTICE] entry_only=yes turn=");
+    Serial.print(routeTurnSign>0 ? "CCW":"CW");
+    Serial.print(" gap_mm=");Serial.print(measuredGapMm,1);
+    Serial.print(" local_axle_x_y_mm=");
+    Serial.print(OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_X_MM,2);Serial.print("/");
+    Serial.println(OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM,2);
 }
 
 bool final_parking_update(int8_t turn_sign)
@@ -1393,7 +1873,7 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
-        Serial.println("[FINAL PARK] revision=20261030_tight_completion");
+        Serial.println("[FINAL PARK] revision=20261101_efficient_entry");
         // The stopped geometric search may outlast the 200-ms sensor age.
         // Service queued reports before attempting the first motion; a
         // genuinely stale/missing report still follows the normal hold.
@@ -1576,7 +2056,13 @@ bool final_parking_update(int8_t turn_sign)
         driveFieldLine(-1, OBSTACLE_FINAL_PARKING_SCAN_Y_MM,
                        OBSTACLE_FINAL_PARKING_SCAN_SPEED);
         if (!scanCommandSafe(pose,motorDirectionForFieldMotion(-1)))
-        { abortParking("scan_motion_clearance"); return true; }
+        {
+            // A small line error can make the steered wheel sweep unsafe
+            // although a neutral retreat still clears the tips (601).
+            set_steering(0);
+            if (!scanCommandSafe(pose,motorDirectionForFieldMotion(-1)))
+            { abortParking("scan_motion_clearance"); return true; }
+        }
         if (!scanArmed)
         {
             scanArmed = true;
@@ -1712,7 +2198,10 @@ bool final_parking_update(int8_t turn_sign)
                      OBSTACLE_FINAL_PARKING_CAPTURE_MAX_MM ||
                  millis() - stateStartMs >=
                      OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS)
-            abortParking("capture_distance");
+            //615: a slow but progressing capture hit the old15s timer.
+            //Brake and solve a complete entry from the registered actual
+            //pose instead of discarding the measured bay at a timer gate.
+            requestEntryReplan("capture_distance");
         return true;
     }
 
@@ -1783,16 +2272,31 @@ bool final_parking_update(int8_t turn_sign)
     if (state == FP_SEGMENT_DRIVE)
     {
         const ParkingSegment &segment = activeEntrySegment();
-        bool reached=distanceSince(stateStartDistance)>=segment.distanceMm-0.5f;
+        const float travelled=distanceSince(stateStartDistance);
+        // Use only this entry's measured, settled brake overrun. Retain a
+        // small commanded movement for tiny corrections; never skip an arc
+        // merely because its length is smaller than the learned overrun.
+        const float brakeLead=adaptiveEntryCount && travelled>=0.5f ? entryBrakeTravelMm:0.0f;
+        bool reached=travelled>=segment.distanceMm-0.5f-brakeLead;
         if (adaptiveEntryCount && segment.steering!=0)
         {
             const float target=adaptiveEndpoints[segmentIndex].heading_deg;
             const float rate=-segment.direction/Ackermann::getTurnRadius(
                 static_cast<float>(segment.steering*routeTurnSign));
-            reached=wrap180(target-pose.heading_deg)*(rate>0?1.0f:-1.0f)<=0.75f;
+            // A sub-degree final correction must actually move. A fixed
+            //0.75deg allowance previously skipped the whole small arc and
+            // repeatedly planned the same impossible final alignment.
+            const float turn=fabsf(wrap180(target-entryStartHeading));
+            const float tolerance=fminf(0.75f,fmaxf(0.1f,0.15f*turn));
+            const float radius=fabsf(Ackermann::getTurnRadius(
+                static_cast<float>(segment.steering*routeTurnSign))*entryRadiusScale);
+            reached=wrap180(target-pose.heading_deg)*(rate>0?1.0f:-1.0f)<=
+                tolerance+brakeLead/radius*180.0f/PI;
         }
         if (reached)
         {
+            entryBrakeStartDistance=get_distance();
+            entryBrakeDirection=segment.direction;
             stop(true);stateStartMs=millis();state=FP_SEGMENT_BRAKE;
             return true;
         }
@@ -1829,7 +2333,9 @@ bool final_parking_update(int8_t turn_sign)
         servo_disabled = false;
         set_speed(segment.direction * (entrySafetyMargin<3.0f ? 40:OBSTACLE_FINAL_PARKING_ENTRY_SPEED));
         set_steering(segment.steering * routeTurnSign);
-        if (distanceSince(stateStartDistance)>segment.distanceMm+35.0f ||
+        const float travelLimit=adaptiveEntryCount && segment.steering ?
+            fmaxf(segment.distanceMm+35.0f,segment.distanceMm*1.6f+10.0f):segment.distanceMm+35.0f;
+        if (distanceSince(stateStartDistance)>travelLimit ||
             millis()-stateStartMs>=OBSTACLE_FINAL_PARKING_SEGMENT_TIMEOUT_MS)
             requestEntryReplan("segment_progress");
         return true;
@@ -1837,15 +2343,21 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_SEGMENT_BRAKE)
     {
+        sampleRearEntryReference(pose);
         if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
             return true;
         stop(false);
+        updateEntryBrakeTravel();
         const bool radiusChanged=updateEntryRadiusFromMotion();
-        if (finalFootprintContained())
+        const bool rearCorrected=applyRearEntryReference();
+        if (finalFootprintContained() && entryEndReserveReady())
         {
             state=FP_VERIFY;
             return true;
         }
+        if(rearCorrected){requestEntryReplan("rear_marker_reference");return true;}
+        if(radiusChanged && adaptRemainingEntryRecipe(get_position_struct()))
+        {stateStartMs=millis();state=FP_SEGMENT_SETTLE;return true;}
         const bool withinLegacyGate=adaptiveEntryCount ? true:endpointWithinGate(segmentIndex);
         PositionEstimate expected{};
         if (adaptiveEntryCount) expected=adaptiveEndpoints[segmentIndex];
@@ -1858,7 +2370,11 @@ bool final_parking_update(int8_t turn_sign)
         { requestEntryReplan("next_steering_clearance");return true; }
         if (radiusChanged || !withinLegacyGate || hypotf(pose.x_mm-expected.x_mm,pose.y_mm-expected.y_mm)>5.0f ||
             fabsf(wrap180(pose.heading_deg-expected.heading_deg))>1.5f)
-        { requestEntryReplan("segment_pose");return true; }
+        {
+            if(refreshRemainingEntry(pose))
+            {stateStartMs=millis();state=FP_SEGMENT_SETTLE;return true;}
+            requestEntryReplan("segment_pose");return true;
+        }
         ++segmentIndex;
         if (segmentIndex >= (adaptiveEntryCount ? adaptiveEntryCount:OBSTACLE_FINAL_PARKING_SEGMENT_COUNT))
         {
@@ -1909,6 +2425,8 @@ bool final_parking_update(int8_t turn_sign)
         Serial.println(distanceSince(runStartDistance), 1);
         if (!contained && stopped)
         { requestEntryReplan("final_alignment");return true; }
+        if (contained && stopped && !entryEndReserveReady())
+        { requestEntryReplan("front_end_reserve");return true; }
         if (!contained || !stopped)
         {
             abortParking(
@@ -1926,18 +2444,36 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state==FP_REPLAN_BRAKE)
     {
+        sampleRearEntryReference(pose);
         if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return true;
         stop(false);
-        if (entryReplanHadMotion) updateEntryRadiusFromMotion();
+        if (entryReplanHadMotion)
+        {
+            updateEntryBrakeTravel();
+            updateEntryRadiusFromMotion();
+        }
         entryReplanHadMotion=false;
+        applyRearEntryReference();
         // Containment alone can pass at5.5mm while the normal inflated
         // neutral-wheel check needs more room. Returning straight to VERIFY
         // in that case loops forever without ever searching a centring move.
-        if (finalFootprintContained() && parkingEntryPoseSafe(get_position_struct(),0))
+        if (finalFootprintContained() && parkingEntryPoseSafe(get_position_struct(),0) && entryEndReserveReady())
         { state=FP_VERIFY;return true; }
-        if (++entryReplans>8 || !planParkingEntry(get_position_struct()))
+        const PositionEstimate local=entryLocalPose(get_position_struct());
+        const float error=hypotf(local.x_mm-OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM,
+            local.y_mm-OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM)+
+            fabsf(Ackermann::getTurnRadius(50.0f))*entryRadiusScale*
+                fabsf(local.heading_deg)*PI/180.0f;
+        // Count consecutive failures to make net progress, not all corrections
+        // since entry. A robot that is steadily parking must not hit an
+        // arbitrary eight-correction lifetime limit.
+        if(error+3.0f<entryBestReplanError)
+        {entryBestReplanError=error;entryStalledReplans=0;}
+        else if(entryStalledReplans<255)++entryStalledReplans;
+        if(entryReplans<255)++entryReplans;
+        if (entryStalledReplans>8 || !planParkingEntry(get_position_struct()))
         {
-            abortParking(entryReplans>8 ? "entry_replan_limit":"entry_no_collision_free_plan");
+            abortParking(entryStalledReplans>8 ? "entry_no_progress":"entry_no_collision_free_plan");
             return true;
         }
         Serial.print("[FINAL PARK REPLAN] accepted attempt=");Serial.print(entryReplans);

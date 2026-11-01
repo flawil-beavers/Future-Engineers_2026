@@ -34,7 +34,7 @@ int main(){int total=0,passed=0;
  for(int direction:{-1,1})for(float scale:{.95f,1.f,1.15f})
  for(auto anchor:{PositionEstimate{110,120,35},PositionEstimate{45.5f,120,0},
                   PositionEstimate{117,120,0},PositionEstimate{50,120,0},
-                  PositionEstimate{112,120,0}}){
+                  PositionEstimate{112,120,0},PositionEstimate{81.35f,131.8f,.55f}}){
   ::routeTurnSign=direction;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
   final_parking_reset();parking_module::routeTurnSign=direction;scanPhase=5;measuredGapMm=247.5f;
   localToField(anchor.x_mm,anchor.y_mm,anchor.heading_deg,hostPose.x_mm,hostPose.y_mm,hostPose.heading_deg);

@@ -66,6 +66,24 @@ def connector_plans(text: str) -> list[list[tuple[float, float, float]]]:
     return versions
 
 
+def dense_pose_segments(text: str):
+    """v2 cached estimates; never join local/field frames or correction jumps."""
+    groups = {}
+    previous = None
+    for m in re.finditer(r'\[RUN_POSE\] v=2 t=(\d+) lap=(\d+) frame=(\d+) space=([LF]) pose=([\d.,-]+)', text):
+        t, lap, frame = map(int, m.group(1, 2, 3))
+        point = triple(m[5])
+        if m[4] != 'F' or not all(math.isfinite(v) for v in point):
+            previous = None
+            continue
+        key = (lap, frame)
+        if previous is None or previous[0] != key or not 0 <= t-previous[1] <= 2000:
+            groups.setdefault(lap, []).append([])
+        groups[lap][-1].append(point)
+        previous = (key, t)
+    return groups
+
+
 def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
     import matplotlib
     matplotlib.use('Agg')
@@ -92,6 +110,7 @@ def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
             if m:
                 sparse.append((int(m[1]), triple(m[2])))
     sparse = sorted(set(sparse))
+    dense = dense_pose_segments(text)
     fig = plt.figure(figsize=(16, 10), facecolor='white')
     gs = fig.add_gridspec(1, 2, left=.055, right=.96, bottom=.25, top=.82,
                          width_ratios=[1.35, 1], wspace=.18)
@@ -100,6 +119,11 @@ def render(log: ParsedLog, output_dir: Path) -> tuple[Path, Path]:
         if points:
             ax.plot([p[0] for p in points], [p[1] for p in points], **kwargs)
     def draw(ax):
+        for lap, parts in dense.items():
+            for i, part in enumerate(parts):
+                line(ax, part, color={1:'#2176ae',2:'#e08b1c',3:'#4c9b45'}.get(lap,'#555'),
+                     lw=1.5, marker='.', markersize=2,
+                     label=f'Dense estimated poses, lap {lap}' if i == 0 else None)
         for samples, color, label in [(exit_samples, '#1769aa', 'Parking exit: logged poses'),
                                       (loc, '#008b80', 'Localization: logged poses')]:
             # Corrections are estimator changes, never connect them as driving.

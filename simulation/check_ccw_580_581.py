@@ -11,6 +11,7 @@ from check_connector_servo_resume import block
 def main():
     path=(ROOT/'src/obstacle_path.cpp').read_text()
     code=fixture_source().split('int main()')[0].replace('anchor.heading_deg=180;', 'anchor.heading_deg=0;')
+    code+='\nint8_t parkingCcwRefineDirection=1,parkingCcwRefineSteering=-50;bool parkingCcwViewAlternate=false,parkingCcwRefineRecovery=false;\n'
     for sig in ('void seatCameraGeometry(', 'bool seatComfortablyVisible(',
                 'bool preflightCcwFrontView(', 'float ccwFrontViewExtensionMm('):
         code+=block(path,path.rindex(sig))+'\n'
@@ -44,7 +45,7 @@ int main(){
   float bearing,range;seatCameraGeometry(5,view,bearing,range);
   float extra=ccwFrontViewExtensionMm(view);maxRefine=fmaxf(maxRefine,extra);
   if(extra>0){
-   float k=pursuitCurvatureForServo(-50),h=view.heading_deg*PI/180,n=h+k*extra;
+   float k=pursuitCurvatureForServo(parkingCcwRefineSteering),h=view.heading_deg*PI/180,n=h+k*parkingCcwRefineDirection*extra;
    view.x_mm+=(sinf(n)-sinf(h))/k;view.y_mm+=(cosf(h)-cosf(n))/k;view.heading_deg=n*180/PI;
   }
   seatCameraGeometry(5,view,bearing,range);

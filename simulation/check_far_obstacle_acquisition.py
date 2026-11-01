@@ -92,6 +92,12 @@ int main(){int checks=0;
    completedLaps=1;obstacle_path_observe(&b);++checks;if(injectionCount!=1)return 4;
   }
   Blob b=pillar(color,104);float range=obstacle_estimate_camera_range_mm(&b);
+  // A far pillar aligned with its seat retains the calibrated depth tolerance.
+  // Only simultaneous angular AND depth disagreement rejects the new GREEN
+  // end aliases; an80mm depth discrepancy alone must not force close scanning.
+  reset(range,row);hostPose.x_mm-=80;
+  obstacle_path_observe(&b);clockMs+=80;auto noisy=obstacle_path_observe(&b);++checks;
+  if(!noisy.confirmed||noisy.seatId!=6+row)return 7;
   reset(range,row);hostPose.y_mm=100; // rail midpoint is ambiguous at any range.
   for(int i=0;i<3;++i){clockMs+=80;auto r=obstacle_path_observe(&b);++checks;
    if(r.confirmed||r.seatId!=-1||injectionCount)return 5;}

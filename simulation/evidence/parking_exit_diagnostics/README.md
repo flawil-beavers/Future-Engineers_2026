@@ -815,3 +815,258 @@ course in a later different arrangement; exact report-to-file mapping was not
 provided. Phone photos are geometry context, not robot RGB565 evidence. Detailed
 analysis and scoped correction:
 [RETURNED_RUNS_582_593_REVIEW_20261030.md](../../RETURNED_RUNS_582_593_REVIEW_20261030.md).
+
+## 2026-10-31: CW594--597 and CCW598--601
+
+Collection date is used in filenames; removable-media timestamps are unreliable.
+Complete original files copied FIRST and verified by SHA-256 before analysis;
+the user was immediately notified that the stick could be unplugged. All eight
+saved originals have RUN_END/truncated=0, including interrupted attempts; this
+does not mean the physical course or parking completed.
+PARK_DIAG_CONFIG reports the translation-unit build Oct_30_2026_20_04_33;
+CORNER_VIEW reports Oct30_20:09:49 where present. Installed binary not read back.
+Revisions: path20261030_active_lap1_search, exit20261030_corrected_pose,
+parking20261030_tight_completion. Physical report and scoped corrections:
+[RETURNED_594_601_REVIEW_20261031.md](../../RETURNED_594_601_REVIEW_20261031.md).
+
+| Evidence file | Bytes | SHA-256 | Observed ending |
+| --- | ---: | --- | --- |
+| `20261031_log_594_cw.txt` | 148955 | `37205da6db23cc9881dc8fde6cfebfb07e8c5add40abbc23d442598270ed3ecb` | Three laps, manual pause after two parking replans; repeated gyro restarts during stopped search. |
+| `20261031_log_595_cw.txt` | 49612 | `c128190df7610b7269f449823753532093933994c2611e93b0de1180fc9365f7` | CW scout unknown, motor locked; manually paused. |
+| `20261031_log_596_cw.txt` | 193844 | `a352954edc3289b0ee85adf805201864dbb48e210a64f57aed729d488e172aef` | Three laps, parking replans then connector_clearance_gate abort. |
+| `20261031_log_597_cw.txt` | 189159 | `e277bfd70343eab57ebf6ba8a5808d425de9fdf591192ba2395fec20f056800b` | Three laps, stopped_scan_wall_reference abort at stable residual about33mm. |
+| `20261031_log_598_ccw.txt` | 54721 | `adaa67b3cade5d4c407995a658c3217726320542bf75cc21fefd895f33d58d85` | GREEN5 confirmed, then CCW front-view travel guard; manually paused. |
+| `20261031_log_599_ccw.txt` | 86606 | `1406d52ec8ca69d407e4fc0d5e16b1bf8181d71056f75e297154d3bb17c0b859` | CCW primary unknown after stationary retry, motor locked; manually paused. |
+| `20261031_log_600_ccw.txt` | 144320 | `2226de0c54a2fedb9b131178c8e21bab8e5409e386e2e78e303dcce8fcf8957f` | Three laps; end GREEN12 inferred middle empty; initial_outer_wall_reference abort at about120mm residual. |
+| `20261031_log_601_ccw.txt` | 172650 | `659896556cf8b8474d0413b1a7f6f800716243ce8040525539ccff6c804a6a04` | Three laps; same end GREEN12 inference; scan_motion_clearance abort near first piece. |
+
+## 2026-10-31: follow-up CW603; mixed/open602 excluded
+
+Copied complete originals FIRST, before analysis, with source-before/source-after
+and local SHA-256 verification; immediate unplug notice sent. Collection date
+used. User reports two obstacle runs, only one saved; the unsaved run cannot be
+reconstructed. Open laps are excluded from obstacle/parking conclusions.
+603 records path20261031_view_recovery, exit20261031_frame_bracket and
+parking20261031_brake_completion. PARK_DIAG_CONFIG translation-unit build is
+Oct_30_2026_20_04_33, not a whole-binary identity; installed binary not read back.
+
+| Evidence file | Bytes | SHA-256 | Observed ending |
+| --- | ---: | --- | --- |
+| `20261031_log_602_cw.txt` | 26385 | `1f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326` | Mixed file ending OPEN_CHALLENGE completed; excluded per user instruction. Original preserved for provenance. |
+| `20261031_log_603_cw.txt` | 171521 | `2d6d19d667c1400830f9638e054d10f573c839a49cd23067a4d2d5bf31c462c8` | Three laps; user reports outer-middle GREEN wrongly assigned first outer seat and parking stall. Saved RUN_END mode_pause/truncated0 after first entry arc and accepted replan; no successful parking record. |
+
+## 2026-10-31: CCW604--606, course recovery and parking contact
+
+Complete saved originals copied FIRST and source-before/source-after/local SHA-256
+verified; user immediately told USB can be unplugged. Collection date used.
+User:604 missed second GREEN on next straight, stationary unresolved recovery;
+605 course otherwise good with reversals, front parking rail contact prevented
+completion;606 course good, brushed rail but parked, final photo supplied.
+Firmware records view_recovery/frame_bracket/brake_completion, predating the
+clipped-depth/practice changes. Installed binary not read back.
+605/606 contain logger overflow: these are complete original saved files, but
+later detailed telemetry is missing. RUN_END retained separately does not make
+their missing parking trace complete or prove contact-free success.
+
+| Evidence file | Bytes | SHA-256 | Observed ending |
+| --- | ---: | --- | --- |
+| `20261031_log_604_ccw.txt` | 89075 | `58b9c20f1331f13365a08b519fbff81190e30762cb5d5bb3d9ab2f538beba554` | Repeated stationary unresolved corner view, manual pause; RUN_END truncated0. |
+| `20261031_log_605_ccw.txt` | 196018 | `4bd9b95f798c632f3103c86fb6916c903fcaa5f244c9d5ff5f671e3489967192` | Three laps; retained RUN_END abort entry_replan_limit; detailed parking tail lost to overflow. User reports front rail contact. |
+| `20261031_log_606_ccw.txt` | 196181 | `88dd03ed5ab885812d702933a1400a898c2ad656df062c376c1eb2e9441cbffe` | Three laps; retained RUN_END completed final_parking_stop; detailed parking tail lost to overflow. User reports brushing rail, then parked; photo of final pose. |
+
+Findings, scoped corrections and limitations:
+[CCW604--606 review](../../RETURNED_604_606_REVIEW_20261031.md).
+
+## 2026-10-31: successful isolated CW607--609
+
+Complete originals copied FIRST, source-before/source-after/copy SHA-256 checked;
+immediate unplug notice sent. Collection date used. User reports parking worked,
+but prefers less rear and more front space for steering. Saved files all record
+entry-only CW practice, rear_space revision, completed final_parking_stop;
+no log overflow. Contact-free status was not individually specified per log.
+Installed binary not read back; this is entry-only evidence, not full-course
+approach localization or CCW validation.
+
+| Evidence file | Bytes | SHA-256 | Observed ending |
+| --- | ---: | --- | --- |
+| `20261031_log_607_cw.txt` | 20810 | `ef30ce221d781961e9b6609b9b163b41c56a080c09ce98fbd5fca8c99f1690ab` | Completed CW practice,24.168s,5replans, rear X correction+20.76mm; maximum logged search7201ms. |
+| `20261031_log_608_cw.txt` | 17237 | `0554b83b31eb184da68d521770a1856e9bb5a99736da59f566ca59eb70f7e7bf` | Completed CW practice,22.489s,4replans, rear X correction+11.19mm; search7122ms observed. |
+| `20261031_log_609_cw.txt` | 18556 | `de8b7f8ccdb4b97397e8598e612f3e410e37dbaa1aba1c0569f8875a40a49a68` | Completed CW practice,20.481s,3replans, rear X corrections-3.42/+4.85mm; escape search5604ms observed. |
+
+Review and return-to-course changes:
+[CW607--609 handoff](../../RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md).
+
+## Returned log610: normal-course halt (2026-10-31)
+
+Complete unchanged source archive, 96172 bytes, SHA-256
+`f4630b160912c74fc01850b23f64d31dc59133ea78988b4dc05f4a07404ef7bc`.
+[Original log610](20261031_log_610_cw.txt). Filename reflects first CW exit
+turn=-1; archive also contains later restart(s), including turn=1.
+Build reports Oct 31 2026 13:37:20. User reports halt in middle after one lap;
+segment attribution and cause under review. No independent installed-binary readback.
+Source-before/source-after/copy hashes matched; unplug notice delivered immediately.
+Analysis: [log610 boundary review](../../RETURNED_610_LAP_BOUNDARY_20261031.md).
+First CW run: cached middle GREEN plus freshly confirmed end pair caused
+explicit lap-boundary map hold; manual pause120.505s. Later turn=1 restart
+failed rear-positioning verification; placement not known. No evidence overflow.
+
+## Returned full-course batch611--615 (2026-10-31)
+
+Complete unchanged originals; source-before/source-after/copy hashes verified; unplug notice sent before analysis. Report: CW third-section GREEN recovery trouble; CW approach worsens alongside pink pieces; CCW obstacle runs good, one parking successful, last stopped before lot. Parking front tight, rear >=30mm reported; user requests shallower and faster parking. Path exit_vote_hint, parking front_swing_space; installed binary not independently read back.
+
+| Evidence | Bytes | SHA-256 | Direction |
+| --- | ---: | --- | --- |
+| 20261031_log_611_cw.txt | 87192 | 7ed28a9f16601037c7b41e323dd09a10594e65d9746a364fcf7a4373dd426278 | cw |
+| 20261031_log_612_cw.txt | 161033 | b61e60b907b8301e24b9873b994a32f04edb137b3e2916ef578bf0f05412faad | cw |
+| 20261031_log_613_cw.txt | 171672 | 243d51f31bd9c3efdd9c2a6cc095361277955fa447770cc9216053481f271590 | cw |
+| 20261031_log_614_ccw.txt | 171041 | 8a15b5c9b738eab76236b945c59b43112a032a8526a35d91be9d5eb0083c3485 | ccw |
+| 20261031_log_615_ccw.txt | 167872 | d33f0d5353e8002adb32d5b5e2159100500f9fd8567a1d4952513d39328ab52f | ccw |
+
+[611--615 review and validation](../../RETURNED_611_615_REVIEW_20261031.md).
+611: CW manual pause after search-arc tracking lock.612: CW manual pause during
+parking recovery.613: CW completed,6parking replans,max8825ms search.
+614: CCW completed,4parking replans,max8769ms search.615: CCW capture_distance
+abort at old15s capture timer. No buffer overflow found in this batch.
+
+## Returned616 (2026-10-31): clearance clarification and GREEN stop
+
+Complete unchanged [log616](20261031_log_616_cw.txt),157693bytes,
+SHA-256 `1c68941851e2bb7dfde788998edc1abeccc8e0565993816784f74c29a524df82`.
+Source-before/source-after/copy matched; immediate unplug notice delivered.
+User: latest parking depth looks better; only about5mm shallower requested.
+Straight outside wheel width corrected to123mm. During steering allow about8mm
+more front room, use available rear room; do not confuse this with parked-X target.
+Abrupt GREEN stop reported; exact event under review.
+
+[616 clearance/latency review](../../RETURNED_616_CLEARANCE_REVIEW_20261031.md).
+Recorded CW completion149.001s, no overflow; quick recipe100ms, later radius
+replan8806ms. Abrupt approach pause coincides with gyro report timeout and
+SPI/SH2 restart (1601ms post-restart poll gap); no corner-view lock recorded.
+Firmware path view_reobserve/parking checked_recipe, buildOct31 14:40:53.
+
+## Returned617--618 (2026-10-31), stored without driving analysis
+
+User: first run too far in section2 between GREEN and RED on laps2/3; second CW run perfect. Request pending: another8mm front manoeuvre reserve/use less rear room. Do not investigate or change routes yet; next run is for dense portable pose capture. Source-before/source-after/copy hashes matched; immediate unplug notice delivered.
+
+| Evidence | Bytes | SHA-256 |
+| --- | ---: | --- |
+| 20261031_log_617_cw.txt | 94809 | 6204b033ca6d5feff0aace85252b714288f3e44753a93137a71669e2ccc4c460 |
+| 20261031_log_618_cw.txt | 169762 | cbdc8b2d771cb462e62330636e0e997b528dfccfbe8a501cb232520142291995 |
+
+Header metadata (no route analysis): both logsCW turn=-1, buildOct31 15:03:51,
+path view_reobserve;618 reports parking front8_123mm. Installed binary not readback.
+Capture instructions: [single-run pose capture](../../POSITION_CAPTURE_ONCE_20261031.md).
+
+## Returned619 (2026-10-31), pending-change followup
+
+Complete unchanged [log619](20261031_log_619_cw.txt),147241bytes,
+SHA-256 `03fc9ab424631c2702a25921424422607481c1c9d18db02d5eea1da402a84577`.
+Source-before/source-after/copy verified; unplug notice delivered.
+No individual physical report yet. User now authorizes implementing previously
+pending parking front8mm addition and investigating617 route issue against618.
+Metadata: buildOct31 15:24:55,turn=-1,path20261031_view_reobserve,
+parking20261031_front8_123mm; installed binary not read back.
+Footer completed/final_parking_stop,182798ms,truncated=1.1041 poses but none
+for laps2/3; maximum gap171364ms caused by phase-triggered duplicate capture.
+Original complete; trajectory incomplete. No independent physical completion
+report. Findings and current correction: [617-619 review](../../RETURNED_617_619_REVIEW_20261031.md).
+
+## Returned620-621 (2026-10-31)
+
+| Complete unchanged original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [620 CW](20261031_log_620_cw.txt) | 80329 | 9826d6c908f06dc900e6939ca46876e7c73790adec7d3568c0b6cedf1e7f0c12 |
+| [621 CW](20261031_log_621_cw.txt) | 148179 | 9df133d711c3b7349560a8776bbffac93887b15f535f69fafd7f786e88a94215 |
+
+Source-before/source-after/copy SHA-256 verified FIRST; immediate unplug notice.
+User reports CW first GREEN after first corner: first run approached then did
+nothing, second did not pass there as expected. Parking unfinished; user confirms
+rear physical space and authorizes using10mm more rearward during manoeuvring.
+Firmware metadata and measured findings follow after analysis; installed binary
+not independently read back.
+
+620/621 metadata: bothCW turn=-1,path20261031_inward_response;
+diagnosticmodule buildOct31 15:49:10,connectormodule15:57:18;
+621parking20261031_front16_123mm.620 stopped/mode_pause52501ms,
+621aborted/entry_replan_limit218739ms;bothtruncated=0.
+[Findings and correction](../../RETURNED_620_621_REVIEW_20261031.md).
+
+## Returned622/623 (2026-10-31), normal-mode restoration
+
+| Complete unchanged original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [622 CW](20261031_log_622_cw.txt) | 106929 | e25973171c3a02ad384ada3e5748851565fb274d20ebb89c2fbfdc5d41c8b3f3 |
+| [623 CW](20261031_log_623_cw.txt) | 109544 | e7bae2554a70241993093ef0cb7baebfd5792addecf95f4c3dfa1956c86bfd2a |
+
+Copied FIRST; source-before/source-after/copy SHA-256 verified, immediate unplug
+notice. User: first run serious scanning difficulty, second later-lap curve wrong;
+requests disabling dense capture and returning to normal safe driving. Metadata
+and measured findings follow; installed binary not read back.
+
+Both CW, diagmoduleOct31 15:49:10,path20261031_settled_view,
+corner module16:25:32; no finalparking reached.622 stopped/mode_pause97286ms,
+623 stopped/mode_pause104033ms,bothtruncated=0. Original pixels unavailable.
+[Normal logging handoff and measured limits](../../NORMAL_DRIVING_HANDOFF_20261031.md).
+
+## Returned624-627 (2026-10-31), measured30mm rear overhang
+
+| Complete unchanged original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [624 CW](20261031_log_624_cw.txt) | 171236 | 86d99692dca3bc6a430f57eace8e905a5ce19fc0a1679d94a07ba9a6a8dbec24 |
+| [625 CW](20261031_log_625_cw.txt) | 92310 | d019d1b4ba0448c82ce06414da01e40d7429980b64b843774e78c420edb58c0c |
+| [626 CW](20261031_log_626_cw.txt) | 88488 | 95e28acd1414d5c5e79d1d4459a251e29e5539b7ef88d6d7c651e3bec988e2ba |
+| [627 CCW](20261031_log_627_ccw.txt) | 89409 | 1dbbbfcdf7b751410cbf2bc85e30150b3099b499a24ffc7291038a9384086a72 |
+
+Source-before/source-after/copy SHA-256 verified; immediate unplug notice.
+Header diagnosticmoduleOct31 16:38:46; pathsettled_view,624parkingrear10_escape.
+No installedbinary readback.624 footer completed191942ms;625/626/627 manual
+mode_pause82194/77290/107270ms; alltruncated=0,sample_bytes=0 (normal logging).
+User measured rear axle centre to rearmost robot part including sensor:30mm.
+Earlier physical frontpinkcontact/~40mm rearroom not assigned to an exact file.
+
+User correction: NONE of624-627 was physically good despite624 firmwarecompleted.
+Same layout throughout; secondGREEN afterRED in thirdsection passedwrongside.
+625 explicitly confirms seat22 RED at617mm/foot112; actual GREEN per physical
+report. See [corrected analysis](../../RETURNED_624_627_REVIEW_20261031.md).
+
+## Returned628 CW (2026-10-31), remove superseded extra10mm preference
+
+Complete unchanged [628](20261031_log_628_cw.txt),171194B,
+SHA-256c62f3f7995e30f4ec8e33d17571c63f65c2e5f27caad52fb0b9cfb8b8c641379.
+Source-before/source-after/copy verified; immediate unplug notice. Header
+Oct31 17:20:17,turn=-1,pathfar_green_rear30,parkingrear30_123mm. Installedbinary
+not readback. Firmware footercompleted189835ms/truncated0,normal logging.
+User: too much front room and repeated rearward movement while parking; shorter
+30mm rear means the earlier extra10mm request no longer applies. Use available
+room on both ends. Physical correctness/contact not established by footer.
+[Analysis and cancellation of extra10mm preference](../../RETURNED_628_BALANCED_PARKING_20261031.md).
+
+## Returned629-631 (2026-10-31), parking stalls
+
+| Complete unchanged original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [629 CW](20261031_log_629_cw.txt) | 171862 | 1a0c95af9b3ef10c760f02d230d75db4c1bbb7f695d48090ab2c728f08dcdc8b |
+| [630 CCW](20261031_log_630_ccw.txt) | 38690 | 916d03f7dba09df9493e77f5458810d957a19c6ca30a9d6bb7867a7acce962dc |
+| [631 CW](20261031_log_631_cw.txt) | 168822 | 7f511c356c18e3d988131a7f717033a95e2566ecfb488c488b2a0b5f53bbfa53 |
+
+Source-before/source-after/copy SHA-256 verified; immediate unplug notice.
+User reports latest parking barely progressed despite space, wants a clean
+sequence without long stationary intervals. Firmware/source findings follow.
+Do not assign this report to630: it stopped before final parking.
+
+## Returned632-634 (2026-11-01), parking corrections
+
+Complete unchanged originals, source-before/source-after/copy SHA-256 verified.
+630/631 supplied again and byte-identical to existing indexed originals.
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [632 CW](20261101_log_632_cw.txt) | 172083 | 3e2bd3e85a436c7ae1f9076c9cae9097f9d185bc9c497b083313fe3b943f225e |
+| [633 CCW](20261101_log_633_ccw.txt) | 173125 | 069666c69da124d83fce97efa0b7e40654898ea14f111c25872731f67c1a1813 |
+| [634 CW](20261101_log_634_cw.txt) | 171761 | ec36d786488a266067586dfe4c21de8df10905a8b8f3adec93fecfe245a3cd42 |
+
+All three report parking revision20261031_rear30_balanced, pathfar_green_rear30.
+632 CW aborted entry_replan_limit;633 CCW and634 CW report completed.
+All footers truncated=0; completion is an estimator result, not physical contact proof.
+
+[Combined629?634 analysis and validation](../../RETURNED_629_634_PARKING_MOTION_20261101.md).

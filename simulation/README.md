@@ -237,3 +237,25 @@ Tight final parking completion and 10 mm end-clearance review:
 `check_parking_tight_completion.py` reproduces the neutral-wheel search rejection
 and containment/verification loop, including separate negative controls.
 `check_parking_adaptive_completion.py` now covers five measured gap sizes.
+
+Returned CW594--597 / CCW598--601:
+[RETURNED_594_601_REVIEW_20261031.md](RETURNED_594_601_REVIEW_20261031.md).
+`check_returned_594_601.py` exercises the logged end-place aliases, next-colour
+selection, confirmed CCW refinement and unknown CW scout retry.
+`check_parking_returned_594_601.py` covers stopped wall registration and a
+checked neutral scan alternative. Adaptive entry additionally supports
+`--extended-radius`; tight completion includes a sub-degree final correction.
+
+Returned603 and direct entry practice:
+[review](RETURNED_603_AND_PARKING_PRACTICE_20261031.md),
+[Aufstellung und Bedienung](PARKING_ENTRY_PRACTICE_DE.md).
+`check_returned_603_and_parking_practice.py` checks clipped-depth association,
+wall/rail shortcut equivalence, actual entry-only startup and603 replanning.
+Use `--without-clipped-depth-gate` for the wrong-end negative control.
+
+CCW604--606: [retreat and rear-space review](RETURNED_604_606_REVIEW_20261031.md).
+`check_returned_604_606.py` checks the14mm-reserve escape and the angled rear-ToF
+reference, including rejected stale/ambiguous input and front-crowded parking.
+
+CW607--609 completed entry practice; small rearward adjustment and restored
+full-course startup: [handoff](RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md).

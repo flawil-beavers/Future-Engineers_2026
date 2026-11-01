@@ -18,6 +18,7 @@ def main():
 uint32_t hostTime=0,parkingEntryObserveStartMs=0,parkingCcwRefineMs=0;
 uint8_t parkingCcwRefinePhase=0;
 bool parkingCcwRefineUsed=false,parkingEntryPathFailed=false,parkingEntryTestHold=false;
+int8_t parkingCcwRefineDirection=1,parkingCcwRefineSteering=-50;bool parkingCcwViewAlternate=false,parkingCcwRefineRecovery=false;
 float parkingCcwRefineEncoder=0,parkingCcwRefineTravel=0,encoder=0;
 bool servo_disabled=true;int command=0,steeringCommand=0;
 uint32_t millis(){return hostTime;}float get_distance(){return encoder;}
@@ -28,7 +29,7 @@ bool cornerViewSeatMayBeOccupied(uint8_t seat){return !seats[seat^1].confirmed;}
 '''
     for sig in ('void seatCameraGeometry(', 'bool seatComfortablyVisible(',
                 'bool preflightCcwFrontView(', 'float ccwFrontViewExtensionMm(', 'bool updateCcwFrontViewRefinement(',
-                'PositionEstimate cornerViewArcPose(', 'bool cornerViewArcSafe('):
+                'bool cornerViewRetreatSafe(', 'PositionEstimate cornerViewArcPose(', 'bool cornerViewArcSafe('):
         code += block(path, path.rindex(sig)) + '\n'
     code += r'''
 int main(){
@@ -41,7 +42,7 @@ int main(){
  for(float dx:{-5.f,0.f,5.f})for(float dy:{-5.f,0.f,5.f})for(float dh:{-2.f,0.f,2.f}){
   PositionEstimate pose=anchor;pose.x_mm+=dx;pose.y_mm+=dy;pose.heading_deg+=dh;
   float extra=ccwFrontViewExtensionMm(pose);
-  if(extra<=0||extra>35||!preflightCcwFrontView(pose,extra)){
+  if(extra<=0||extra>35||!preflightCcwFrontView(pose,extra,parkingCcwRefineDirection,parkingCcwRefineSteering)){
    std::cout<<"VIEW FAIL "<<pose.x_mm<<" "<<pose.y_mm<<" "<<pose.heading_deg<<" extra "<<extra<<"\n";
    for(float e:{5.f,10.f,15.f,20.f,25.f,30.f,35.f}){
     float k=-1.f/OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM,h=pose.heading_deg*PI/180,n=h-k*e;
@@ -62,7 +63,7 @@ int main(){
    if(parkingEntryTestHold)return 2;
    if(!active&&parkingCcwRefineUsed){completed=true;break;}
    if(command){
-    if(servo_disabled||steeringCommand!=-50||command<=0)return 3;
+    if(servo_disabled||steeringCommand!=parkingCcwRefineSteering||command*parkingCcwRefineDirection<=0)return 3;
     float ds=command*.02f;encoder+=ds;
     // This uses the independently shared CAD mapping consumed by normal pursuit.
     const float k=pursuitCurvatureForServo(steeringCommand);

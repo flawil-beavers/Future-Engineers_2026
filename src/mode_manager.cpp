@@ -35,6 +35,12 @@ static unsigned long debug_last_print_time = 0;
 static int pending_manual_speed_mm_s = 0;
 static bool obstacle_ready_led_on = false;
 static bool resume_after_save = false;
+static int8_t parking_practice_turn_sign=OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN;
+
+void mode_parking_practice_set_turn_sign(int8_t turn_sign)
+{
+    parking_practice_turn_sign=turn_sign<0 ? -1:1;
+}
 
 RobotMode current_mode = MODE_NONE;
 RobotMode pending_mode = MODE_NONE;
@@ -67,6 +73,11 @@ static bool obstacle_camera_setup()
 static void stop_mode(RobotMode mode)
 {
     switch (mode) {
+    case MODE_FINAL_PARKING_PRACTICE:
+        run_telemetry_finish("stopped","parking_practice_stop");
+        stop(false);
+        final_parking_reset();
+        break;
     case MODE_MANUAL:
         pending_manual_speed_mm_s = 0;
         stop(false);
@@ -146,6 +157,12 @@ static void stop_mode(RobotMode mode)
 static bool start_mode(RobotMode mode)
 {
     switch (mode) {
+    case MODE_FINAL_PARKING_PRACTICE:
+        stop(false);
+        obstacle_path_reset();
+        run_telemetry_start();
+        final_parking_start_entry_practice(parking_practice_turn_sign);
+        break;
     case MODE_MANUAL:
         stop(false);
         // stop(false) de-energizes both actuators. Manual mode must restore
@@ -255,7 +272,7 @@ void mode_switch(RobotMode new_mode)
         resume_after_save = false;
         pending_mode = MODE_NONE;
     }
-    if (new_mode != MODE_OBSTACLE_CHALLENGE && obstacle_ready_led_on)
+    if (new_mode != MODE_OBSTACLE_CHALLENGE && new_mode != MODE_FINAL_PARKING_PRACTICE && obstacle_ready_led_on)
         set_obstacle_ready_led(false);
 
     if (new_mode != MODE_MANUAL)
@@ -297,6 +314,7 @@ void mode_switch(RobotMode new_mode)
 #endif
 
     if (!system_enabled) {
+        if (new_mode==MODE_FINAL_PARKING_PRACTICE) set_obstacle_ready_led(true);
         if (new_mode == MODE_OBSTACLE_CHALLENGE)
         {
             // Finish the expensive camera initialization while motion is
@@ -346,6 +364,11 @@ void mode_switch(RobotMode new_mode)
 static ModeResult update_active_mode()
 {
     switch (current_mode) {
+    case MODE_FINAL_PARKING_PRACTICE:
+        final_parking_update(parking_practice_turn_sign);
+        drive_loop();
+        if (final_parking_complete()) return MODE_RESULT_COMPLETED;
+        return final_parking_aborted() ? MODE_RESULT_FAILED:MODE_RESULT_RUNNING;
     case MODE_MANUAL:
         drive_loop();
         return MODE_RESULT_RUNNING;
@@ -364,9 +387,9 @@ static ModeResult update_active_mode()
     case MODE_OBSTACLE_CHALLENGE: {
         const bool new_camera_frame = updateCameraVision();
         obstacle_challenge_update(system_enabled, new_camera_frame);
-        if (RUN_TELEMETRY_DETAILED) {
+        if (RUN_TELEMETRY_DETAILED || run_telemetry_pose_capture_active()) {
         if(final_parking_active()) {
-            run_telemetry_phase(final_parking_trace_phase(),obstacle_path_lap());
+            run_telemetry_phase(final_parking_trace_phase(),3);
             run_telemetry_route("final_parking_control",nullptr,0,3*sizeof(float),false);
         }
         else if(obstacle_parking_exit_active())
@@ -497,7 +520,7 @@ void mode_update()
     const bool wait_for_right_turn_cal =
         updated_mode == MODE_TURN_RADIUS_CAL &&
         turn_radius_cal_waiting_for_right();
-    if (updated_mode == MODE_OBSTACLE_CHALLENGE &&
+    if ((updated_mode == MODE_OBSTACLE_CHALLENGE || updated_mode == MODE_FINAL_PARKING_PRACTICE) &&
         result == MODE_RESULT_COMPLETED && final_parking_complete()) {
         // Keep the verified parking target and motor hold. MODE_HOLD still
         // services drive_loop; an explicit pause/stop/mode change can release it.
@@ -520,13 +543,15 @@ void mode_pause()
         // A camera-distance calibration can only start while the pillar is
         // touching the configured robot-front plane. After any movement, a
         // generic resume would establish a false distance origin.
-        pending_mode = paused_mode == MODE_CAMERA_DISTANCE_CAL
+        pending_mode = (paused_mode == MODE_CAMERA_DISTANCE_CAL || paused_mode == MODE_FINAL_PARKING_PRACTICE)
             ? MODE_NONE
             : paused_mode;
         stop_mode(current_mode);
         current_mode = MODE_NONE;
 
-        if (paused_mode == MODE_CAMERA_DISTANCE_CAL)
+        if (paused_mode == MODE_FINAL_PARKING_PRACTICE)
+            Serial.println("Parking practice stopped; reposition at the marked axle pose and select park cw/ccw again.");
+        else if (paused_mode == MODE_CAMERA_DISTANCE_CAL)
             Serial.println("Camera calibration cancelled; return to pillar contact and send camdrive again.");
         else {
             Serial.print("Paused. Pending mode: ");
@@ -603,6 +628,7 @@ const char* mode_name(RobotMode mode)
 {
     switch (mode) {
     case MODE_NONE:               return "NONE";
+    case MODE_FINAL_PARKING_PRACTICE: return "FINAL_PARKING_PRACTICE";
     case MODE_MANUAL:             return "MANUAL";
     case MODE_HOLD:               return "HOLD";
     case MODE_OPEN_CHALLENGE:     return "OPEN_CHALLENGE";

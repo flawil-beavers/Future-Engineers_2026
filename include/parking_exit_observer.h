@@ -19,7 +19,7 @@ public:
     static constexpr uint8_t HISTORY_CAPACITY = 32;
     void reset();
     void begin(int8_t turnSign);
-    void samplePose(uint32_t nowUs, const PositionEstimate &pose);
+    void samplePose(uint32_t nowUs, const PositionEstimate &pose, bool frameBoundary=false);
     bool capture(uint32_t nowUs, uint32_t completedUs, uint32_t intervalUs,
                  uint32_t sequence, const VisionResult &vision);
     void translate(float dx, float dy);
@@ -51,4 +51,6 @@ void parking_exit_observer_apply();
 
 // Called once, after obstacle_path_start has initialized the corrected field
 // geometry. Never drives and never infers that an unobserved position is empty.
+// Historical matches seed pending votes; a fresh normal observation must
+// corroborate them before map confirmation or route injection.
 void obstacle_path_apply_exit_observations(const ParkingExitCameraBuffer &buffer);

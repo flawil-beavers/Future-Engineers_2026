@@ -36,6 +36,8 @@ int selectedStation=-1;float selectedForward=335;int motorSpeed=-9;
 uint32_t millis(){return nowMs;}
 int nearestUpcomingUnresolvedStation(float &f){f=selectedForward;return selectedStation;}
 float laterLapTrackingSpeed(float s,float,int){return s;}
+int progressIndex=0;int *path=nullptr;
+template<class A,class B>float laterLapInwardTrackingSpeed(float s,const A&,B,int){return s;}
 void set_speed(int s){motorSpeed=s;}
 void holdCornerViewCentered(){motorSpeed=0;}
 int getLargestObstacle(){return 0;}

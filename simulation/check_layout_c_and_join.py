@@ -15,7 +15,7 @@ def main():
     fixture+='enum class ColorType {NONE, RED, GREEN};struct Blob {bool found=true;ColorType color=ColorType::GREEN;int minX=0,maxX=100,minY=80,maxY=110;int width()const{return maxX-minX+1;}int height()const{return maxY-minY+1;}};\n'
     for signature in ('void seatCameraGeometry(', 'bool seatComfortablyVisible(\n',
                       'bool rejectedGreenBehindSeat(', 'bool cornerViewSeatMayBeOccupied(',
-                      'bool cornerViewSweepSafe(', 'float cornerViewReverseDistance(', 'float cornerViewMinimumRange(',
+                      'bool cornerViewRetreatSafe(', 'bool cornerViewSweepSafe(', 'float cornerViewReverseDistance(', 'float cornerViewMinimumRange(',
                       'int cornerViewStraightSteering(', 'bool cornerViewSteeredCommandSafe(',
                       'bool distantSeatSideAmbiguous('):
         # seatComfortablyVisible also has a forward declaration.

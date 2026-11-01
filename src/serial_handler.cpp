@@ -321,7 +321,9 @@ static bool handle_camera_drive_command(const char *message)
 static void print_serial_command_info()
 {
   Serial.println("\n===== SERIAL COMMANDS =====");
-  Serial.println("Mode letters are temporary until reset; reset defaults to OBSTACLE.");
+  Serial.println("Mode selection is temporary until reset; reset uses config.h STARTUP_ROBOT_MODE.");
+  Serial.println("park cw / park ccw : Entry-only parking practice; drive OFF, surveyed axle pose required");
+  Serial.println("park stop  : Stop parking practice; reposition before a new start");
   Serial.println("i          : Show this command list");
   Serial.println("m          : Select MANUAL mode");
   Serial.println("l          : Start OPEN CHALLENGE mode");
@@ -480,6 +482,26 @@ void parseMessage(char *msg)
     return;
   if (tof_pose_diagnostic_handle_command(msg))
     return;
+
+  if (strncmp(msg,"park",4)==0) {
+    if (strcmp(msg,"park stop")==0) {
+      if (current_mode==MODE_FINAL_PARKING_PRACTICE || pending_mode==MODE_FINAL_PARKING_PRACTICE)
+        mode_stop_all();
+      return;
+    }
+    if (strcmp(msg,"park cw")!=0 && strcmp(msg,"park ccw")!=0) {
+      Serial.println("Usage: park cw / park ccw / park stop");
+      return;
+    }
+    if (system_enabled) {
+      Serial.println("Switch drive OFF and place the rear axle at the parking-practice marks first.");
+      return;
+    }
+    mode_stop_all();
+    mode_parking_practice_set_turn_sign(strcmp(msg,"park cw")==0 ? -1:1);
+    select_temporary_mode(MODE_FINAL_PARKING_PRACTICE);
+    return;
+  }
 
   char command = '\0';
   int value = 0;

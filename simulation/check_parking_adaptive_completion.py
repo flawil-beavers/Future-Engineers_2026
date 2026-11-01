@@ -81,7 +81,40 @@ int main(){int total=0,parked=0,failed=0;float maxTravel=0;int maxReplans=0;
                               'for(float gap:{247.5f})')
         source=source.replace('for(int direction:{-1,1})for(float scale:{.95f,1.f,1.05f,1.10f,1.15f})',
                               'for(int direction:{1})for(float scale:{1.15f})')
+    if '--extended-radius' in sys.argv:
+        source=source.replace('for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})',
+                              'for(float gap:{247.5f})')
+        source=source.replace('for(float scale:{.95f,1.f,1.05f,1.10f,1.15f})',
+                              'for(float scale:{1.30f,1.45f})')
+        # Deep partial entries have already supplied a measured preceding arc.
+        # Retain a 3% estimate error instead of granting exact plant knowledge.
+        source=source.replace('state=FP_REPLAN_BRAKE;stateStartMs=0;',
+            'if(anchor.y_mm<200){entryRadiusScale=scale*.97f;entryRadiusMeasured=true;}\n  state=FP_REPLAN_BRAKE;stateStartMs=0;')
+    if '--brake-overrun' in sys.argv:
+        # Deliberately pessimistic settled overrun at every drive-to-hold
+        # transition. Encoder and gyro both observe the extra motion; this is
+        # a host sensitivity test, not a measured robot deceleration model.
+        source=source.replace('for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})',
+                              'for(float overrun:{0.f,1.5f,3.f})for(float gap:{247.5f})')
+        source=source.replace('for(float scale:{.95f,1.f,1.05f,1.10f,1.15f})',
+                              'for(float scale:{1.f,1.15f})')
+        source=source.replace('   final_parking_update(direction);',r'''
+   const bool wasMoving=dc_state==DC_ENABLED;
+   const int oldCommand=command,oldSteering=steeringCommand;
+   final_parking_update(direction);
+   if(wasMoving && dc_state!=DC_ENABLED){
+    for(float left=overrun;left>.0001f;){float step=fminf(1.f,left);left-=step;
+     float ds=oldCommand<0?-step:step;encoder+=ds;travel+=step;
+     plant(hostPose,oldSteering,ds,scale);plant(truePose,oldSteering,ds,scale);
+     if(!parkingEntryPoseSafe(truePose,oldSteering,0))collision=true;
+    }
+   }''')
+    if '--without-brake-lead' in sys.argv:
+        source=source.replace(' ? entryBrakeTravelMm:0.0f;', ' ? 0.0f:0.0f;')
     dest=ROOT/'local_workspace'/('parking-adaptive-quick' if '--quick' in sys.argv else 'parking-adaptive-completion')
+    if '--extended-radius' in sys.argv: dest=ROOT/'local_workspace/parking-adaptive-extended'
+    if '--brake-overrun' in sys.argv: dest=ROOT/'local_workspace/parking-adaptive-brake-overrun'
+    if '--without-brake-lead' in sys.argv: dest=ROOT/'local_workspace/parking-adaptive-brake-negative'
     dest.mkdir(parents=True,exist_ok=True)
     cpp,exe=dest/'check.cpp',dest/'check.exe'
     cpp.write_text(source)

@@ -171,7 +171,8 @@ enum CornerViewPhase : uint8_t { CORNER_VIEW_IDLE, CORNER_VIEW_SETTLE,
     CORNER_VIEW_REVERSE, CORNER_VIEW_OBSERVE, CORNER_VIEW_RETURN,
     CORNER_VIEW_RETURN_BRAKE, CORNER_VIEW_EXTRA_SETTLE, CORNER_VIEW_EXTRA_REVERSE,
     CORNER_VIEW_EXTRA_OBSERVE, CORNER_VIEW_EXTRA_RETURN_SETTLE,
-    CORNER_VIEW_EXTRA_FORWARD, CORNER_VIEW_EXTRA_BRAKE, CORNER_VIEW_LOCKED };
+    CORNER_VIEW_EXTRA_FORWARD, CORNER_VIEW_EXTRA_BRAKE, CORNER_VIEW_LOCKED,
+    CORNER_VIEW_REBASE_BRAKE };
 CornerViewPhase cornerViewPhase = CORNER_VIEW_IDLE;
 bool cornerViewAttempted[OBSTACLE_SEAT_COUNT / 2] = {};
 uint8_t cornerViewStation = 0;
@@ -212,6 +213,9 @@ bool parkingCcwRefineUsed = false;
 uint32_t parkingCcwRefineMs = 0;
 float parkingCcwRefineEncoder = 0.0f;
 float parkingCcwRefineTravel = 0.0f;
+int8_t parkingCcwRefineDirection = 1, parkingCcwRefineSteering = -50;
+bool parkingCcwViewAlternate = false;
+bool parkingCcwRefineRecovery = false, parkingEntryNeedsJoinView = false;
 // Separate station bits: the left/back and middle/back may both be observed
 // even in a surprise diagnostic. One scalar seat would lose the first record.
 uint8_t parkingCcwStoredSeatMask = 0;
@@ -2051,6 +2055,19 @@ float validatedClearanceForSeat(uint8_t seatIndex)
 
 float optimizedClearanceForSeat(uint8_t seatIndex)
 {
+    //CW GREEN outside -> RED inside: the old210mm RED offset puts the
+    //rear axle at x=-690 on the west leg. Recorded tracking overshoot in623
+    //reached x=-627, consuming the inner-wall room for the angled nose.
+    //Use30mm less RED offset here; retain the pillar/swept-route preflight.
+    if(routeTurnSign<0 && sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+       seats[seatIndex].red && seats[seatIndex].lateralMm<0.0f)
+    {
+        const uint8_t sectionStart=(seatIndex/6)*6;
+        for(uint8_t prior=sectionStart;prior<seatIndex;++prior)
+            if(seats[prior].confirmed && !seats[prior].red &&
+               seats[prior].lateralMm>0.0f)
+                return 180.0f;
+    }
     if (hasConfirmedExtremeAdjacentPair(seatIndex))
         return isSecondExtremeAdjacentSeat(seatIndex)
             ? OBSTACLE_EXTREME_ADJACENT_SECOND_CLEARANCE_MM
@@ -2860,6 +2877,29 @@ float laterLapCurvatureSpeed(float curvature)
             OBSTACLE_LATER_LAP_SPEED_TOLERANCE);
 }
 
+float laterLapInwardTrackingSpeed(float speed, const PositionEstimate &pose,
+                                 const PathPoint *route, uint16_t index)
+{
+    if(!isfinite(speed)||speed<0||!isfinite(pose.x_mm)||!isfinite(pose.y_mm)||
+       !isfinite(pose.heading_deg))return 0;
+    const float tangent=connectorRouteHeading(route,index)*PI/180.0f;
+    const float nx=-sinf(tangent),ny=cosf(tangent);
+    const float towardCentre=-nx*route[index].x-ny*route[index].y;
+    if(fabsf(towardCentre)<1.0f)return speed;
+    const float sign=towardCentre>0 ? 1.0f:-1.0f;
+    const float h=pose.heading_deg*PI/180.0f;
+    const float inwardHeading=sign*(nx*cosf(h)+ny*sinf(h));
+    if(inwardHeading<=0)return speed;
+    const float inwardError=sign*(nx*(pose.x_mm-route[index].x)+
+                                  ny*(pose.y_mm-route[index].y));
+    //617 diverged toward the inner wall while the same route worked in618.
+    //Anticipate the measured heading error over the existing response budget,
+    //rather than maintaining full speed until the correction is too tight.
+    const float preview=inwardError+speed*OBSTACLE_LATER_LAP_RESPONSE_S*inwardHeading;
+    if(preview<=40.0f)return speed;
+    return fminf(speed,fmaxf(180.0f,speed/(1.0f+(preview-40.0f)/60.0f)));
+}
+
 float laterLapTrackingSpeed(float speed, float requestedCurvature, int steering)
 {
     if (!isfinite(speed) || speed < 0 || !isfinite(requestedCurvature)) return 0;
@@ -3367,6 +3407,27 @@ bool seatComfortablyVisible(
     uint8_t seatIndex,
     const PositionEstimate &pose);
 bool discoveryAimCommandSafe(const PositionEstimate &start, int steering);
+
+const Blob *getDiscoveryObstacle()
+{
+    const Blob *primary=getLargestValidObstacle();
+    if (!primary) return nullptr;
+    const PositionEstimate pose=get_position_struct();
+    const float h=pose.heading_deg*PI/180.0f;
+    const float range=obstacle_estimate_camera_range_mm(primary);
+    const float ray=h+obstacle_camera_bearing_deg(primary)*PI/180.0f;
+    const float x=pose.x_mm+OBSTACLE_CAMERA_LOCAL_X_MM*cosf(h)-OBSTACLE_CAMERA_LOCAL_Y_MM*sinf(h)+range*cosf(ray);
+    const float y=pose.y_mm+OBSTACLE_CAMERA_LOCAL_X_MM*sinf(h)+OBSTACLE_CAMERA_LOCAL_Y_MM*cosf(h)+range*sinf(ray);
+    const int seat=nearestSeatIndex(x,y,nullptr);
+    if (seat<0 || !seats[seat].confirmed) return primary;
+    // A nearby already-known RED must not hide the smaller next GREEN for
+    // every frame merely because it has the lower foot in the image.
+    const VisionResult &v=vision.getResult();
+    const Blob *other=primary->color==ColorType::RED ? &v.greenPillar:&v.redPillar;
+    if (!obstacle_blob_valid_for_acquisition(other))
+        other=primary->color==ColorType::RED ? &v.green:&v.red;
+    return obstacle_blob_valid_for_acquisition(other) ? other:primary;
+}
 
 void applyDiscoveryTargetNudge(
     PathPoint &target,
@@ -3893,6 +3954,10 @@ void updateDiscoveryCoverage(
                     OBSTACLE_GREEN_SEAT_OCCUPANCY_HOLD_MS;
             const bool clearEvidence =
                 !deferParkingTargetClear && comfortablyVisible &&
+                //621 marked the first place after the corner CLEAR from
+                //the preceding straight (~600mm oblique view). Colour votes
+                //remain allowed at full range; absence needs a nearer view.
+                (station % COURSE_STATIONS_PER_SECTION != 0 || seatRangeMm<=450.0f) &&
                 !greenSeatCandidateThisFrame[seatIndex] &&
                 !recentGreenSeatCandidate &&
                 !unmappedForegroundBlocksClear(rawBlob, observation,
@@ -3920,6 +3985,12 @@ void updateDiscoveryCoverage(
             if (coverage.clearFrames[side] >= requiredClearFrames)
             {
                 logParkingStartClearImage(seatIndex,pose);
+                Serial.print("[SEAT CLEAR] t=");Serial.print(now);
+                Serial.print(" seat=");Serial.print(seatIndex);
+                Serial.print(" bearing/range=");Serial.print(seatBearingDeg,1);
+                Serial.print("/");Serial.print(seatRangeMm,1);
+                Serial.print(" pose=");Serial.print(pose.x_mm,1);Serial.print(",");
+                Serial.print(pose.y_mm,1);Serial.print(",");Serial.println(pose.heading_deg,1);
                 coverage.seatObservedClear[side] = true;
             }
         }
@@ -3943,6 +4014,8 @@ void updateDiscoveryCoverage(
 
 void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
 {
+    if(!forced && run_telemetry_pose_capture_active())return;
+    if(!forced && robot_logger.remaining()<112U*1024U)return;
     const uint32_t now = millis();
     if (station >= OBSTACLE_SEAT_COUNT / COURSE_SEATS_PER_STATION ||
         lastDiscoveryCoverageMs == 0 || discoveryTraceCount >= 40 ||
@@ -4028,8 +4101,48 @@ void logDiscoveryTrace(uint8_t station, const char *reason, bool forced)
 bool cornerViewSeatMayBeOccupied(uint8_t seat)
 {
     if (seats[seat].confirmed) return true; // A later confirmation overrides CLEAR.
+    if (seats[seat ^ 1U].confirmed) return false;
     if (discoveryStations[seat/2].seatObservedClear[seat%2]) return false;
     return !(sectionInferredEmpty(seat/6) & (1U << ((seat%6)/2)));
+}
+
+bool cornerViewRetreatSafe(const PositionEstimate &start,int steering,float travel)
+{
+    //604 stopped with14.4mm conservative pillar reserve, below the ordinary
+    //40mm planning margin. Rejecting the initial sample prohibited even
+    //movement away from that possible pillar. Allow only a measured reverse
+    //escape with positive>=10mm reserve, no decreasing per-pillar clearance,
+    //unchanged40mm walls and a fully restored40mm endpoint reserve.
+    if (!isfinite(travel) || travel>=0 || travel< -260 || abs(steering)>20) return false;
+    const float k=pursuitCurvatureForServo(steering);
+    const float h0=start.heading_deg*PI/180.0f;
+    float previous[2][OBSTACLE_SEAT_COUNT]{};
+    const unsigned steps=static_cast<unsigned>(ceilf(-travel/3.0f));
+    for(unsigned step=0;step<=steps;++step)
+    {
+        const float ds=travel*step/steps,h=h0+k*ds;
+        const float x=start.x_mm+(fabsf(k)>1e-6f ? (sinf(h)-sinf(h0))/k:ds*cosf(h0));
+        const float y=start.y_mm+(fabsf(k)>1e-6f ? (cosf(h0)-cosf(h))/k:ds*sinf(h0));
+        for(uint8_t rear=0;rear<2;++rear)
+        {
+            const float offset=rear ? OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM:0;
+            ObstacleClearanceSample walls{};
+            const float px=x-offset*cosf(h),py=y-offset*sinf(h);
+            if(!calculateClearanceAtPose(seats[0],px,py,h*180/PI,walls)||walls.wallMm<=40) return false;
+            for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+            {
+                if(!cornerViewSeatMayBeOccupied(seat))continue;
+                const float gap=pointSegmentDistance(seats[seat].x,seats[seat].y,
+                    px,py,px+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*cosf(h),
+                    py+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*sinf(h))-
+                    OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM-OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+                if(!isfinite(gap)||gap<10 || (step && gap<fminf(40,previous[rear][seat])-0.25f) ||
+                    (step==steps && travel<=-60 && gap<40))return false;
+                previous[rear][seat]=fmaxf(previous[rear][seat],gap);
+            }
+        }
+    }
+    return true;
 }
 
 bool cornerViewSweepSafe(const PositionEstimate &start, float signedTravel)
@@ -4061,7 +4174,7 @@ bool cornerViewSweepSafe(const PositionEstimate &start, float signedTravel)
                     x,y,endX,endY) - OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM -
                     OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
                 if (!isfinite(clearance) || clearance <= 40.0f)
-                    return false;
+                    return signedTravel<0 && cornerViewRetreatSafe(start,0,signedTravel);
             }
         }
     }
@@ -4142,6 +4255,8 @@ int cornerViewStraightSteering(const PositionEstimate &pose, int direction)
 
 bool cornerViewSteeredCommandSafe(PositionEstimate pose, int steering, int direction)
 {
+    if(direction<0 && !cornerViewSweepSafe(pose,0))
+        return cornerViewRetreatSafe(pose,steering,-15.0f);
     const float radius=Ackermann::getTurnRadius(static_cast<float>(steering));
     const float curvature=fabsf(radius)>100000.0f ? 0.0f : -1.0f/radius;
     for (int mm=0; mm<=15; ++mm)
@@ -4331,7 +4446,8 @@ bool cornerViewArcSafe(const PositionEstimate &start, int steering, float travel
                 if (!calculateClearanceAtPose(seats[seat], pose.x_mm-offset*cosf(h),
                     pose.y_mm-offset*sinf(h), pose.heading_deg, sample) ||
                     sample.wallMm <= 40 ||
-                    (cornerViewSeatMayBeOccupied(seat) && sample.pillarMm <= 40)) return false;
+                    (cornerViewSeatMayBeOccupied(seat) && sample.pillarMm <= 40))
+                    return travel<0 && cornerViewRetreatSafe(start,steering,travel);
             }
     }
     return true;
@@ -4340,7 +4456,7 @@ bool cornerViewArcSafe(const PositionEstimate &start, int steering, float travel
 void collectCornerViewFrame(const PositionEstimate &pose, bool newFrame)
 {
     if (!newFrame) return;
-    lastDiscoveryObservation = obstacle_path_observe(getLargestValidObstacle());
+    lastDiscoveryObservation = obstacle_path_observe(getDiscoveryObstacle());
     processGreenSeatCandidates(pose, lastDiscoveryObservation);
     updateDiscoveryCoverage(lastDiscoveryObservation, pose, getLargestObstacle());
     lastDiscoveryCoveragePose = pose;
@@ -4457,10 +4573,29 @@ void updateCornerViewExtra(bool newFrame)
             returning ? cornerViewExtraReturnPose : cornerViewExtraOrigin,
             cornerViewExtraSteering,
             encoder - (returning ? cornerViewExtraReturnEncoder : cornerViewExtraStartEncoder));
-        if (hypotf(pose.x_mm-expected.x_mm, pose.y_mm-expected.y_mm) > 15 ||
-            fabsf(wrap180(pose.heading_deg-expected.heading_deg)) > 5 ||
+        const float positionError=hypotf(pose.x_mm-expected.x_mm, pose.y_mm-expected.y_mm);
+        const float headingError=fabsf(wrap180(pose.heading_deg-expected.heading_deg));
+        if (positionError > 15 || headingError > 5 ||
             fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg)) > 35)
-        { lockCornerView("extra arc tracking limit"); return; }
+        {
+            //611: modest curvature mismatch after the checked reverse arc
+            //must brake and obtain a new measured view, not permanently lock.
+            //Do not continue the old model or return blindly to its origin.
+            if(positionError<=25 && headingError<=12 &&
+               fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg))<=35)
+            {
+                holdCornerViewCentered();
+                cornerViewOrigin=pose;cornerViewOriginEncoder=encoder;
+                cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
+                cornerViewStoppedFrames=0;
+                discoveryStations[cornerViewStation].clearFrames[0]=0;
+                discoveryStations[cornerViewStation].clearFrames[1]=0;
+                cornerViewPhase=CORNER_VIEW_REBASE_BRAKE;cornerViewPhaseMs=millis();
+                Serial.println("[CORNER VIEW] Arc mismatch: brake, observe measured pose and retry checked views");
+                return;
+            }
+            lockCornerView("extra arc tracking limit"); return;
+        }
     }
     switch (cornerViewPhase)
     {
@@ -4489,6 +4624,8 @@ void updateCornerViewExtra(bool newFrame)
             discoveryStations[cornerViewStation].clearFrames[1] = 0;
             return;
         }
+        if(!cornerViewArcSafe(pose,cornerViewExtraSteering,-15.0f))
+        {lockCornerView("extra reverse swept clearance");return;}
         set_steering(cornerViewExtraSteering);
         servo_disabled = false;
         set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S); return;
@@ -4500,10 +4637,19 @@ void updateCornerViewExtra(bool newFrame)
         if (age < 200) return;
         collectCornerViewFrame(pose, newFrame);
         if (age < 600 || (age < 1800 &&
-            (!stationResolved(cornerViewStation) || cornerViewStoppedFrames < 2))) return;
-        // Always retrace the arc, even when the new viewpoint remains unresolved.
+            (!stationDirectlyResolved(cornerViewStation) || cornerViewStoppedFrames < 2))) return;
+        if(stationDirectlyResolved(cornerViewStation) && resumeDiscoveryFromView(pose))return;
+        // A retreat may deliberately leave the old reserve-deficient pose.
+        // Do not return to it or lock simply because that return is unsafe.
         if (!cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
-        { lockCornerView("extra return preflight"); return; }
+        {
+            cornerViewOrigin=pose;cornerViewOriginEncoder=encoder;
+            cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
+            cornerViewExtraTriedMask=0;cornerViewStoppedFrames=0;
+            cornerViewPhase=CORNER_VIEW_OBSERVE;cornerViewPhaseMs=millis();
+            Serial.println("[CORNER VIEW] Keep safer retreat pose; aim and observe again");
+            return;
+        }
         cornerViewPhase = CORNER_VIEW_EXTRA_RETURN_SETTLE;
         cornerViewPhaseMs = millis();
         logCornerViewPose("extra_scan", pose, encoder);
@@ -4550,6 +4696,29 @@ void updateCornerViewExtra(bool newFrame)
 
 void updateCornerView(bool newCameraFrame)
 {
+    //620: the mismatched arc was still braking when its pose became the
+    //straight-observation reference. Another3.17deg of settling then locked
+    //the next tick. Finish braking before choosing the new reference.
+    if(cornerViewPhase==CORNER_VIEW_REBASE_BRAKE)
+    {
+        holdCornerViewCentered();
+        const PositionEstimate pose=get_position_struct();
+        const float encoder=get_distance();
+        if(!isfinite(encoder)||!isfinite(pose.x_mm)||!isfinite(pose.y_mm)||
+           !isfinite(pose.heading_deg)||
+           hypotf(pose.x_mm-cornerViewOrigin.x_mm,pose.y_mm-cornerViewOrigin.y_mm)>20 ||
+           fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg))>12)
+        {lockCornerView("reobserve braking limit");return;}
+        if(millis()-cornerViewPhaseMs<300)return;
+        cornerViewOrigin=pose;cornerViewOriginEncoder=encoder;
+        cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
+        cornerViewStoppedFrames=0;
+        discoveryStations[cornerViewStation].clearFrames[0]=0;
+        discoveryStations[cornerViewStation].clearFrames[1]=0;
+        cornerViewPhase=CORNER_VIEW_OBSERVE;cornerViewPhaseMs=millis();
+        logCornerViewPose("reobserve_settled",pose,encoder);
+        return;
+    }
     if (cornerViewPhase >= CORNER_VIEW_EXTRA_SETTLE && cornerViewPhase <= CORNER_VIEW_EXTRA_BRAKE)
     {
         updateCornerViewExtra(newCameraFrame);
@@ -4694,7 +4863,16 @@ void updateCornerView(bool newCameraFrame)
                 Serial.println("[CORNER VIEW] Resolved; extend approach before route join");
                 return;
             }
-            lockCornerView("resolved but pursuit join unsafe"); return;
+            //627: colour is known but straight retreat exhausted its bound.
+            //Try existing swept parallax; never accept the unsafe join.
+            if(beginCornerViewExtra(pose))return;
+            const uint32_t now=millis();
+            if(now-cornerViewLastNoSafeTraceMs>=1000UL)
+            {
+                cornerViewLastNoSafeTraceMs=now;
+                Serial.println("[CORNER VIEW] Resolved; retrying checked approach viewpoints");
+            }
+            return;
         }
         if (!cornerViewCanResume)
         {
@@ -4825,6 +5003,15 @@ void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
     uint16_t mergeIndex = 0;
     if (!buildParkingEntryConnector(pose, route, mergeIndex))
     {
+        if (parkingCcwShortStart)
+        {
+            stop(false);
+            parkingEntryActive=false;parkingEntryScouting=false;parkingEntryObserving=true;
+            parkingEntryNeedsJoinView=true;parkingCcwRefineRecovery=true;
+            parkingCcwRefineUsed=false;parkingEntryObserveStartMs=millis();
+            Serial.println("[CCW START] Join refused; search another checked view");
+            return;
+        }
         parkingEntryTestHold = true;
         Serial.println(
             "[PARK ENTRY CONNECTOR] Rejected preflight - drive motor locked off");
@@ -4837,6 +5024,7 @@ void armParkingEntryConnectorFromPose(const PositionEstimate &pose)
     }
 
     parkingEntryConnectorMergeIndex = mergeIndex;
+    parkingEntryNeedsJoinView=false;
     parkingEntryConnectorProgress = 0;
     parkingEntryConnectorActive = true;
     parkingEntryConnectorReplanPending = false;
@@ -4928,17 +5116,18 @@ bool preflightCwStartArc(const PositionEstimate &start, float travelMm)
     return true;
 }
 
-bool preflightCcwFrontView(const PositionEstimate &start, float travelMm)
+bool preflightCcwFrontView(const PositionEstimate &start, float travelMm,
+                           int direction=1, int steering=-50)
 {
     if (!parkingCcwShortStart || routeTurnSign != 1 ||
         !isfinite(travelMm) || travelMm <= 0.0f || travelMm > 35.0f) return false;
-    const float k = pursuitCurvatureForServo(-OBSTACLE_PARKING_EXIT_STEERING);
+    const float k = pursuitCurvatureForServo(steering);
     for (int error = -1; error <= 1; ++error)
     {
         const float h = (start.heading_deg + error) * PI / 180.0f;
         for (float travel = 0.0f; travel <= travelMm + 8.0f; travel += 2.0f)
         {
-            const float next = h + k * travel;
+            const float next = h + k * direction * travel;
             const float x = start.x_mm + (sinf(next) - sinf(h)) / k;
             const float y = start.y_mm + (cosf(h) - cosf(next)) / k;
             const float heading = next * 180.0f / PI;
@@ -4961,23 +5150,49 @@ float ccwFrontViewExtensionMm(const PositionEstimate &pose)
     if (!parkingCcwShortStart || routeTurnSign != 1) return 0.0f;
     float bearing = 0.0f, range = 0.0f;
     seatCameraGeometry(5, pose, bearing, range);
-    if (fabsf(bearing) <= 10.0f) return 0.0f;
-    // Move away from the rails while turning the camera towards the front
-    // place. Continuing the reverse scan can sweep a front wheel into a rail.
-    const float k = pursuitCurvatureForServo(-OBSTACLE_PARKING_EXIT_STEERING);
-    const float h = pose.heading_deg * PI / 180.0f;
-    for (float extra = 5.0f; extra <= 35.0f; extra += 5.0f)
+    if (!parkingCcwRefineRecovery)
     {
-        const float next = h + k * extra;
+        // Keep the first successful refinement and its known-colour joins.
+        // Broader parallax alternatives are only needed after a failed view.
+        if (fabsf(bearing)<=10.0f) return 0.0f;
+        const float k=pursuitCurvatureForServo(-50),h=pose.heading_deg*PI/180.0f;
+        for (float extra=5.0f;extra<=35.0f;extra+=5.0f)
+        {
+            const float next=h+k*extra;
+            PositionEstimate view=pose;
+            view.x_mm+=(sinf(next)-sinf(h))/k;view.y_mm+=(cosf(h)-cosf(next))/k;
+            view.heading_deg=next*180.0f/PI;
+            seatCameraGeometry(5,view,bearing,range);
+            if (fabsf(bearing)<=10.0f && seatComfortablyVisible(5,view) && preflightCcwFrontView(pose,extra))
+            { parkingCcwRefineDirection=1;parkingCcwRefineSteering=-50;return extra; }
+        }
+        return 0.0f;
+    }
+    const float target = fabsf(bearing)>5.0f ? 0.0f : (parkingCcwViewAlternate ? -8.0f:8.0f);
+    parkingCcwViewAlternate=!parkingCcwViewAlternate;
+    float bestError=fabsf(bearing-target)-2.0f, bestTravel=0.0f;
+    const float h = pose.heading_deg * PI / 180.0f;
+    // Missing evidence requests another small, fully checked parallax view.
+    // Never extrapolate a fixed reverse turn towards the pink pieces.
+    for (int direction:{1,-1}) for (int steering:{-50,50})
+    for (float extra = 10.0f; extra <= 35.0f; extra += 5.0f)
+    {
+        const float k=pursuitCurvatureForServo(steering);
+        const float next = h + k * direction * extra;
         PositionEstimate view = pose;
         view.x_mm += (sinf(next) - sinf(h)) / k;
         view.y_mm += (cosf(h) - cosf(next)) / k;
         view.heading_deg = next * 180.0f / PI;
         seatCameraGeometry(5, view, bearing, range);
-        if (fabsf(bearing) <= 10.0f && seatComfortablyVisible(5, view) &&
-            preflightCcwFrontView(pose, extra)) return extra;
+        const float error=fabsf(bearing-target)+0.02f*extra;
+        if (error<bestError && seatComfortablyVisible(5, view) &&
+            preflightCcwFrontView(pose, extra,direction,steering))
+        {
+            bestError=error;bestTravel=extra;
+            parkingCcwRefineDirection=direction;parkingCcwRefineSteering=steering;
+        }
     }
-    return 0.0f;
+    return bestTravel;
 }
 
 float cwScoutViewExtensionMm(const PositionEstimate &pose, uint8_t seat, float travelled)
@@ -4985,7 +5200,7 @@ float cwScoutViewExtensionMm(const PositionEstimate &pose, uint8_t seat, float t
     if (!parkingCwShortStart || seat>=6) return 0.0f;
     float bearing=0.0f,range=0.0f;
     seatCameraGeometry(seat,pose,bearing,range);
-    if (seatComfortablyVisible(seat,pose) && fabsf(bearing)<=18.0f) return 0.0f;
+    if (seatComfortablyVisible(seat,pose) && fabsf(bearing)<=5.0f) return 0.0f;
     const float maximum=parkingEntryScoutArcMm()+30.0f-travelled;
     const float k=-routeTurnSign/OBSTACLE_PARKING_ENTRY_SCAN_RADIUS_MM;
     const float h=pose.heading_deg*PI/180.0f;
@@ -4997,7 +5212,7 @@ float cwScoutViewExtensionMm(const PositionEstimate &pose, uint8_t seat, float t
         view.y_mm+=(cosf(h)-cosf(next))/k;
         view.heading_deg=next*180.0f/PI;
         seatCameraGeometry(seat,view,bearing,range);
-        if (seatComfortablyVisible(seat,view) && fabsf(bearing)<=18.0f && preflightCwStartArc(pose,extra))
+        if (seatComfortablyVisible(seat,view) && fabsf(bearing)<=5.0f && preflightCwStartArc(pose,extra))
             return extra;
     }
     return 0.0f;
@@ -5158,7 +5373,7 @@ void updateParkingEntryScout(bool newCameraFrame)
     if (newCameraFrame)
     {
         const ObstacleObservationResult observation =
-            obstacle_path_observe(getLargestValidObstacle());
+            obstacle_path_observe(getDiscoveryObstacle());
         lastDiscoveryObservation = observation;
         processGreenSeatCandidates(pose, observation);
         updateDiscoveryCoverage(lastDiscoveryObservation, pose,
@@ -5222,15 +5437,11 @@ void updateParkingEntryScout(bool newCameraFrame)
             return;
         if (!resolved)
         {
-            parkingEntryScouting = false;
-            parkingEntryTestHold = true;
-            Serial.println(
-                "[PARK ENTRY SCOUT] Discovery unresolved - drive motor locked off");
-            if (!parkingEntryUsbWritten)
-            {
-                robot_logger.write_to_usb();
-                parkingEntryUsbWritten = true;
-            }
+            // Return along the checked scout arc, then acquire another fresh
+            // view. UNKNOWN alone must not latch the motor off (595).
+            parkingEntryScoutPhase=PARKING_ENTRY_SCOUT_RETURN_BRAKE;
+            parkingEntryScoutPhaseStartMs=millis();
+            Serial.println("[PARK ENTRY SCOUT] Unresolved; measured return then fresh view");
             return;
         }
         Serial.print("[PARK ENTRY SCOUT] Resolved station/result=");
@@ -5302,6 +5513,12 @@ void updateParkingEntryScout(bool newCameraFrame)
             Serial.println(fabsf(wrap180(
                 returnedPose.heading_deg -
                     parkingEntryScoutReturnPose.heading_deg)), 1);
+            if (parkingEntryScoutStation>=0 &&
+                !stationResolved(static_cast<uint8_t>(parkingEntryScoutStation)))
+            {
+                startParkingEntryScout(returnedPose);
+                return;
+            }
             if (parkingEntryTargetStation >= 0 &&
                 stationResolved(
                     static_cast<uint8_t>(parkingEntryTargetStation)))
@@ -5339,9 +5556,11 @@ bool updateCcwFrontViewRefinement(const PositionEstimate &pose, bool resolved)
         parkingCcwRefinePhase = 1;
         parkingCcwRefineMs = millis();
         Serial.print("[CCW START] Checked front-view refinement_mm=");
-        Serial.println(parkingCcwRefineTravel, 1);
+        Serial.print(parkingCcwRefineTravel, 1);
+        Serial.print(" direction/steering=");Serial.print(parkingCcwRefineDirection);
+        Serial.print("/");Serial.println(parkingCcwRefineSteering);
     }
-    const int steering = -routeTurnSign * OBSTACLE_PARKING_EXIT_STEERING;
+    const int steering = parkingCcwRefineSteering;
     if (parkingCcwRefinePhase == 1)
     {
         stop(false);
@@ -5350,7 +5569,8 @@ bool updateCcwFrontViewRefinement(const PositionEstimate &pose, bool resolved)
         steer(steering);
         if (millis() - parkingCcwRefineMs < OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS)
             return true;
-        if (!preflightCcwFrontView(pose, parkingCcwRefineTravel))
+        if (!preflightCcwFrontView(pose, parkingCcwRefineTravel,
+                                   parkingCcwRefineDirection,steering))
         {
             parkingCcwRefinePhase = 0;
             return false;
@@ -5361,22 +5581,21 @@ bool updateCcwFrontViewRefinement(const PositionEstimate &pose, bool resolved)
     }
     if (parkingCcwRefinePhase == 2)
     {
-        const float travelled = get_distance() - parkingCcwRefineEncoder;
+        const float travelled = parkingCcwRefineDirection*(get_distance() - parkingCcwRefineEncoder);
         if (!isfinite(travelled) || travelled < -5.0f ||
-            travelled > parkingCcwRefineTravel + 8.0f ||
-            millis() - parkingCcwRefineMs > 2500)
+            travelled > parkingCcwRefineTravel + 8.0f)
         {
             stop(false);
             parkingEntryTestHold = true;
             Serial.println("[CCW START] Front-view travel guard");
             return true;
         }
-        if (travelled < parkingCcwRefineTravel)
+        if (!resolved && travelled < parkingCcwRefineTravel && millis()-parkingCcwRefineMs<6000)
         {
             servo_disabled = false;
             set_steering(steering);
             steer(steering);
-            set_speed(static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
+            set_speed(parkingCcwRefineDirection*static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
             return true;
         }
         stop(true);
@@ -5387,7 +5606,7 @@ bool updateCcwFrontViewRefinement(const PositionEstimate &pose, bool resolved)
     servo_disabled = false;
     set_steering(steering);
     steer(steering);
-    const float stoppedTravel = get_distance() - parkingCcwRefineEncoder;
+    const float stoppedTravel = parkingCcwRefineDirection*(get_distance() - parkingCcwRefineEncoder);
     if (!isfinite(stoppedTravel) || stoppedTravel < -5.0f ||
         stoppedTravel > parkingCcwRefineTravel + 8.0f)
     {
@@ -5415,7 +5634,7 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     }
 
     const PositionEstimate pose = get_position_struct();
-    const int scanWheelSign = parkingCcwRefinePhase != 0 ? -routeTurnSign : routeTurnSign;
+    const int scanWheelSign = parkingCcwRefinePhase != 0 ? (parkingCcwRefineSteering>0 ? 1:-1) : routeTurnSign;
     if (parkingShortStart() && !parkingStartFootprintSafe(
             pose.x_mm, pose.y_mm, pose.heading_deg, scanWheelSign))
     {
@@ -5429,7 +5648,7 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
     {
         const Blob *rawBlob = getLargestObstacle();
         const ObstacleObservationResult observation =
-            obstacle_path_observe(getLargestValidObstacle());
+            obstacle_path_observe(getDiscoveryObstacle());
         lastDiscoveryObservation = observation;
         processGreenSeatCandidates(pose, observation);
         updateDiscoveryCoverage(lastDiscoveryObservation, pose, rawBlob);
@@ -5441,7 +5660,7 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
             !parkingEntryPathFailed &&
             parkingEntryTargetStation >= 0 &&
             stationResolved(static_cast<uint8_t>(parkingEntryTargetStation));
-        if (updateCcwFrontViewRefinement(pose, resolved)) return;
+        if (updateCcwFrontViewRefinement(pose, resolved && !parkingEntryNeedsJoinView)) return;
         stop(false);
         set_steering(0);
         const bool timedOut =
@@ -5506,14 +5725,10 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
             }
             else
             {
-                parkingEntryTestHold = true;
-                Serial.println(
-                    "[PARK ENTRY] Discovery unresolved after retry - drive motor locked off");
-                if (!parkingEntryUsbWritten)
-                {
-                    robot_logger.write_to_usb();
-                    parkingEntryUsbWritten = true;
-                }
+                parkingCcwRefineUsed=false;
+                parkingCcwRefineRecovery=true;
+                startParkingEntryPrimaryRetry();
+                Serial.println("[PARK ENTRY] Unknown; continue checked camera-view search");
             }
         }
         else if (OBSTACLE_PARKING_ENTRY_DISCOVERY_TEST_ONLY)
@@ -6101,6 +6316,8 @@ void obstacle_path_reset()
     parkingCcwScanArcMm = 0.0f;
     parkingCcwRefinePhase = 0;
     parkingCcwRefineUsed = false;
+    parkingCcwRefineDirection=1;parkingCcwRefineSteering=-50;parkingCcwViewAlternate=false;
+    parkingCcwRefineRecovery=false;parkingEntryNeedsJoinView=false;
     parkingCcwRefineMs = 0;
     parkingCcwRefineEncoder = parkingCcwRefineTravel = 0.0f;
     parkingCcwStoredSeatMask = 0;
@@ -6321,7 +6538,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261030_active_lap1_search");
+    Serial.println("[PATH] control_revision=20261031_far_green_rear30");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -6370,7 +6587,7 @@ void obstacle_path_update(bool new_camera_frame)
         if (completedLaps == 0)
         {
             const ObstacleObservationResult observation =
-                obstacle_path_observe(getLargestValidObstacle());
+                obstacle_path_observe(getDiscoveryObstacle());
             lastDiscoveryObservation = observation;
             processGreenSeatCandidates(pose, observation);
             updateDiscoveryCoverage(
@@ -6805,6 +7022,7 @@ void obstacle_path_update(bool new_camera_frame)
         // Cover both requested curvature and the quantized CAD servo command.
         safeSpeed=laterLapTrackingSpeed(safeSpeed,curvature,
             static_cast<int>(steering));
+        safeSpeed=laterLapInwardTrackingSpeed(safeSpeed,pose,path,progressIndex);
     }
     if (parkingEntryConnectorActive)
     {
@@ -6894,7 +7112,7 @@ void obstacle_path_update(bool new_camera_frame)
     set_speed(static_cast<int>(safeSpeed));
     // Bounded onboard diagnostics: no driving USB cable required. 200 records
     // across lap1 return and laps2/3 share the existing ~40kB budget.
-    if (returningPastParking && !lapFinishPending &&
+    if (!run_telemetry_pose_capture_active() && returningPastParking && !lapFinishPending && robot_logger.remaining()>=80U*1024U &&
         laterTrackingTraceCount < 200 && millis() - laterTrackingTraceMs >= 250)
     {
         laterTrackingTraceMs = millis(); ++laterTrackingTraceCount;
@@ -6954,7 +7172,7 @@ void obstacle_path_update(bool new_camera_frame)
 
 void obstacle_path_log_run_telemetry()
 {
-    if (!RUN_TELEMETRY_DETAILED) return;
+    if (!RUN_TELEMETRY_DETAILED && !run_telemetry_pose_capture_active()) return;
     static const PathPoint *previous=nullptr;
     static const char *previousKind="none";
     const PathPoint *points=optimizedBuilt?optimizedPath:livePath;
@@ -7188,6 +7406,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &result)
     const uint8_t seatIndex = static_cast<uint8_t>(result.seatId);
     CandidateSeat &seat = seats[seatIndex];
     result.status = OBSTACLE_OBSERVATION_CONFIRMED;
+    run_telemetry_obstacle(seatIndex,seat.red,seat.x,seat.y);
     lastConfirmedSeatIndex = result.seatId;
     extremeAdjacentReleasePending =
         hasConfirmedExtremeAdjacentPair(seatIndex);
@@ -7278,6 +7497,8 @@ bool mappedParkingSeatFootMatches(uint8_t seatIndex,
 void logRedSeatProjection(const ObstacleObservationResult &result,
                           const char *decision, bool force = false)
 {
+    if(!force && run_telemetry_pose_capture_active())return;
+    if(!force && robot_logger.remaining()<112U*1024U)return;
     if (!result.productionValid ||
         (result.color != ColorType::RED && result.color != ColorType::GREEN))
         return;
@@ -7495,6 +7716,19 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     result.sightingYmm =
         result.cameraYmm + result.rangeMm * sinf(globalBearing);
 
+    // The clipped-image range is a conservative avoidance placeholder,
+    // not measured depth.603:170mm forward snapped an outer-middle GREEN
+    // onto end seat13 and inferred the real middle empty. Wait for an
+    // uncropped frame/aimed seat view before committing any map position.
+    if (blob->minX<=2 || blob->maxX>=317)
+    {
+        expirePendingVotes();
+        result.status=OBSTACLE_OBSERVATION_NO_SEAT;
+        result.seatId=-1;
+        logRedSeatProjection(result,"edge_clipped_depth_pending");
+        return result;
+    }
+
     result.seatId = static_cast<int8_t>(nearestSeatIndex(
         result.sightingXmm,
         result.sightingYmm,
@@ -7559,14 +7793,27 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     // Do not commit a low-foot, distant RED from depth alone. Close views
     // and the parking section retain their existing separate geometry gates.
     if (result.seatId >= 6 && !seats[result.seatId].confirmed &&
-        result.color==ColorType::RED && result.bottom<=120 && result.rangeMm>=450.0f)
+        result.bottom<=(result.color==ColorType::GREEN ? 125:120) && result.rangeMm>=450.0f)
     {
         const float sx=seats[result.seatId].x-result.cameraXmm;
         const float sy=seats[result.seatId].y-result.cameraYmm;
         const float vx=result.sightingXmm-result.cameraXmm;
         const float vy=result.sightingYmm-result.cameraYmm;
         const float error=fabsf(atan2f(vx*sy-vy*sx,vx*sx+vy*sy))*180.0f/PI;
-        if (error>10.0f)
+        // 600/601: a high GREEN component snapped to end seat12 despite
+        // missing its ray, then the official layout inferred the real middle
+        // place empty. Depth alone must not establish that layout either.
+        const float maximumError=result.color==ColorType::GREEN ? 6.0f:10.0f;
+        //625: distant room RED at foot112/range617 committed actual GREEN22
+        //as RED and selected the wrong passing side. Require a consistent
+        //seat ray AND depth for these far/high RED votes; near views remain.
+        const bool distantRedMismatch=result.color==ColorType::RED &&
+            error>4.5f && fabsf(hypotf(sx,sy)-result.rangeMm)>100.0f;
+        const bool distantGreenEndMismatch=result.color==ColorType::GREEN &&
+            (result.seatId%6)/2!=1 && error>3.0f &&
+            fabsf(hypotf(sx,sy)-result.rangeMm)>60.0f;
+        if (distantRedMismatch || distantGreenEndMismatch || (error>maximumError &&
+            (result.color==ColorType::RED || !bearingResolved)))
         {
             expirePendingVotes();result.status=OBSTACLE_OBSERVATION_NO_SEAT;
             result.seatId=-1;logRedSeatProjection(result,"distant_ray_mismatch");return result;
@@ -7758,16 +8005,24 @@ void processGreenSeatCandidates(
             continue;
         if (officialMiddleConflictsWithEnd(seatIndex))
             continue;
-        if (!seatComfortablyVisible(seatIndex, pose))
+        float bearingDeg = 0.0f;
+        float expectedRangeMm = -1.0f;
+        seatCameraGeometry(seatIndex, pose, bearingDeg, expectedRangeMm);
+        //624-627: supplement the primary blob before the600mm empty-seat
+        //window. This only searches colour at a mapped non-parking seat;
+        //CLEAR, silhouette/colour, snap and three-frame gates stay unchanged.
+        const float greenBearingLimit=OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG*
+            OBSTACLE_DISCOVERY_FOV_FRACTION-OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG;
+        const bool earlyGreenView=seatIndex>=6 &&
+            expectedRangeMm>=OBSTACLE_DISCOVERY_VIEW_MIN_MM && expectedRangeMm<=800.0f &&
+            fabsf(bearingDeg)<=greenBearingLimit;
+        if (!seatComfortablyVisible(seatIndex, pose) && !earlyGreenView)
         {
             seat.greenSeatCandidateFrames = 0;
             logParkingGreenCheck(seatIndex, pose, "outside_view");
             continue;
         }
 
-        float bearingDeg = 0.0f;
-        float expectedRangeMm = -1.0f;
-        seatCameraGeometry(seatIndex, pose, bearingDeg, expectedRangeMm);
         const float bearingRad = bearingDeg * PI / 180.0f;
         const float expectedForwardMm =
             expectedRangeMm * cosf(bearingRad);
@@ -7803,6 +8058,12 @@ void processGreenSeatCandidates(
         greenSeatCandidateThisFrame[seatIndex] = candidate.silhouetteFound;
         if (candidate.silhouetteFound)
             greenSeatCandidateLastSeenMs[seatIndex] = now;
+        if (candidate.blob.minX<=2 || candidate.blob.maxX>=317)
+        {
+            seat.greenSeatCandidateFrames=0;
+            logParkingGreenCheck(seatIndex,pose,"edge_clipped_depth_pending",&candidate);
+            continue;
+        }
         // The silhouette's measured foot supplies independent distance;
         // angular overlap alone would confuse two aligned station seats.
         const float measuredRangeMm =
@@ -7907,7 +8168,7 @@ void processGreenSeatCandidates(
 int parkingExitObservationSeat(const Blob &blob, const PositionEstimate &pose,
                                ObstacleObservationResult &result)
 {
-    if (!obstacle_blob_valid_for_acquisition(&blob)) return -1;
+    if (!obstacle_blob_valid_for_acquisition(&blob) || blob.minX<=2 || blob.maxX>=317) return -1;
     result = ObstacleObservationResult{};
     result.color = blob.color;
     result.productionValid = true;
@@ -8023,15 +8284,20 @@ void obstacle_path_apply_exit_observations(const ParkingExitCameraBuffer &buffer
         if (!e.qualified || conflict[i/2] || seats[i].confirmed ||
             seats[i ^ 1U].confirmed || officialMiddleConflictsWithEnd(i)) continue;
         CandidateSeat &seat = seats[i];
-        seat.confirmed = true;
-        seat.red = e.result.color == ColorType::RED;
-        seat.redVotes = seat.red ? e.count : 0;
-        seat.greenVotes = seat.red ? 0 : e.count;
+        //610: an internally consistent historical projection put an end
+        //GREEN onto the middle seat. Committing it here skipped the normal
+        //scan and left an impossible three-pillar section at the lap boundary.
+        //Keep the cached evidence as one pending vote only. A fresh matched
+        //observation must still pass normal association/expiry before it can
+        //alter the map, infer empty places or inject a bypass.
+        const bool red = e.result.color == ColorType::RED;
+        const uint8_t votes = OBSTACLE_SEAT_CONFIRM_VOTES > 1 ? 1 : 0;
+        seat.redVotes = red ? votes : 0;
+        seat.greenVotes = red ? 0 : votes;
         seat.lastVoteMs = millis();
-        finalizeConfirmedSeat(e.result);
         ++accepted;
-        Serial.print("[EXIT VIEW] Confirmed seat/color/frames="); Serial.print(i);
-        Serial.print("/"); Serial.print(seat.red ? "RED" : "GREEN");
+        Serial.print("[EXIT VIEW] Pending seat/color/frames="); Serial.print(i);
+        Serial.print("/"); Serial.print(red ? "RED" : "GREEN");
         Serial.print("/"); Serial.print(e.count);
         Serial.print(" corrected_pose="); Serial.print(e.result.robotXmm,1);
         Serial.print("/"); Serial.print(e.result.robotYmm,1);
@@ -8040,8 +8306,8 @@ void obstacle_path_apply_exit_observations(const ParkingExitCameraBuffer &buffer
         Serial.print("/"); Serial.print(e.result.rangeMm,1);
         Serial.print("/"); Serial.println(e.result.snapErrorMm,1);
     }
-    Serial.print("[EXIT VIEW] Imported="); Serial.print(accepted);
-    Serial.println("; normal scan geometry retained, no cached CLEAR votes");
+    Serial.print("[EXIT VIEW] Pending hints="); Serial.print(accepted);
+    Serial.println("; fresh match required, normal scan retained, no cached CLEAR votes");
 }
 
 uint8_t obstacle_path_seat_count()

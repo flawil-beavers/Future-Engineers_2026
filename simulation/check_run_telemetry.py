@@ -10,6 +10,11 @@ def main():
     folder = ROOT / 'local_workspace/run-telemetry-regression'
     folder.mkdir(parents=True, exist_ok=True)
     (folder / 'Arduino.h').write_text('#pragma once\n#include <stdint.h>\nuint32_t millis();\n')
+    (folder / 'sensors.h').write_text('''#pragma once
+enum TofSensor{TOF_LEFT,TOF_RIGHT,TOF_REAR};
+inline float fakeTof[3]={-1,-1,-1};
+inline float get_tof_distance(TofSensor s){return fakeTof[s];}
+''')
     (folder / 'position_estimator.h').write_text(
         '#pragma once\nstruct PositionEstimate {float x_mm,y_mm,heading_deg;};\n'
         'PositionEstimate get_position_struct();\n')

@@ -10,16 +10,18 @@
 // ==============================================================
 // Startup mode after power-on/reset. The physical enable switch (A2) starts
 // the pending mode only when it is HIGH; keep it LOW while preparing a run.
-// MODE_OBSTACLE_CHALLENGE: Obstacle Challenge (current selection).
+// MODE_FINAL_PARKING_PRACTICE: entry-only parking.
+// MODE_OBSTACLE_CHALLENGE: full Obstacle Challenge (current selection).
 // MODE_OPEN_CHALLENGE: Open Challenge. Obstacle switches below do not apply.
 // Diagnostic startup choices include MODE_TURN_RADIUS_CAL,
 // MODE_SERVO_CENTER_CAL, MODE_PID_AUTOTUNE and MODE_MOTOR_MIN_CAL.
 // Serial O / O3 can temporarily choose Obstacle; l chooses Open. Serial mode
 // selection lasts only until reset. No laptop is needed when the desired
 // STARTUP_ROBOT_MODE is compiled into the firmware.
-// To start Obstacle now: leave the selection below as it is, set the enable
-// switch LOW, power on, wait for the BLUE ready light, then switch HIGH.
-// Current Obstacle gates drive the parking exit, three laps, then final parking.
+// With MODE_OBSTACLE_CHALLENGE selected: switch LOW, power on, wait for BLUE,
+// then switch HIGH for parking exit, three laps and final parking.
+// Normal full runs restored after successful isolated parking practice.
+// Serial park cw/park ccw still selects entry-only practice until reset.
 #define STARTUP_ROBOT_MODE MODE_OBSTACLE_CHALLENGE
 
 // --- OBSTACLE CHALLENGE: section layout ---
@@ -74,9 +76,10 @@ constexpr bool OBSTACLE_FINAL_PARKING_ENABLED = true;
 constexpr bool OBSTACLE_FINAL_PARKING_TEST_ONLY = false;
 constexpr bool OBSTACLE_FINAL_PARKING_ENTRY_ARMED = true;
 constexpr auto OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT = 7;
-// Isolated parking practice bypasses exit and laps. Use an empty field.
+// Legacy full-approach practice inside O (normally false). The separate
+// MODE_FINAL_PARKING_PRACTICE starts at capture, without exit/laps/scan.
 constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = false;
-constexpr int8_t OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN = 1; // +1 CCW, -1 CW
+constexpr int8_t OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN = -1; // +1 CCW, -1 CW
 
 // --- CAMERA DEVELOPMENT (all modes use the same camera implementation) ---
 // Stationary camera calibration auto-starts while the drive remains disabled.
@@ -849,19 +852,21 @@ static_assert(
             OBSTACLE_FINAL_PARKING_SEGMENT_COUNT,
     "Final-parking segment limit must be in the generated path");
 
-constexpr auto OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM = 40.0f;
+// Measured rear-axle centre to rearmost part, including sensor (2026-10-31).
+constexpr auto OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM = 30.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM = 125.0f;
-constexpr auto OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM = 125.0f;
+// User measured outside-to-outside wheels, straight ahead (2026-10-31).
+constexpr auto OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM = 123.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM = 16.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_GAP_MM =
     OBSTACLE_FINAL_ROBOT_LENGTH_MM * OBSTACLE_PARKING_LENGTH_FACTOR;
 constexpr auto OBSTACLE_FINAL_PARKING_LONGITUDINAL_CLEARANCE_MM =
     (OBSTACLE_FINAL_PARKING_GAP_MM -
      OBSTACLE_FINAL_ROBOT_LENGTH_MM) * 0.5f;
-constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM =
-    OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM +
-    OBSTACLE_FINAL_PARKING_LONGITUDINAL_CLEARANCE_MM;
+// Preserve the established parked axle position when correcting body dimensions.
+constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM = 60.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM =
-    OBSTACLE_PARKING_WIDTH_MM * 0.5f + 20.0f;
+    OBSTACLE_PARKING_WIDTH_MM - OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f - 11.5f;
 
 // Based on CAD/parking_entry_swept_search.py: reverse the searched exit's
 // seven segments, translating the full trajectory 20 mm away from the wall.
@@ -894,12 +899,12 @@ constexpr auto OBSTACLE_FINAL_PARKING_SCAN_MAX_MM = 1250.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_MAX_MM = 450.0f;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_APPROACH_TIMEOUT_MS = 35000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_SCAN_TIMEOUT_MS = 25000;
-constexpr uint32_t OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS = 15000;
+constexpr uint32_t OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS = 25000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_SEGMENT_TIMEOUT_MS = 10000;
 
 constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_SPEED = 70;
 constexpr auto OBSTACLE_FINAL_PARKING_SCAN_SPEED = 60;
-constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 45;
+constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 60;
 constexpr auto OBSTACLE_FINAL_PARKING_ENTRY_SPEED = 60;
 constexpr auto OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS = 400;
 constexpr auto OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS = 300;

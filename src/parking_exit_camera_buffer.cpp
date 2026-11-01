@@ -28,12 +28,12 @@ void ParkingExitCameraBuffer::begin(int8_t turnSign) {
     turn = turnSign;
 }
 
-void ParkingExitCameraBuffer::samplePose(uint32_t nowUs, const PositionEstimate &pose) {
+void ParkingExitCameraBuffer::samplePose(uint32_t nowUs, const PositionEstimate &pose, bool frameBoundary) {
     if (!enabled) return;
     if (!validExitPose(pose)) { reset(); return; }
     if (historyCount) {
         const TimedPose &last = history[(historyFirst + historyCount - 1) % HISTORY_CAPACITY];
-        if (nowUs - last.timeUs < 10000U) return;
+        if (nowUs == last.timeUs || (!frameBoundary && nowUs - last.timeUs < 10000U)) return;
     }
     if (historyCount == HISTORY_CAPACITY) {
         historyFirst = (historyFirst + 1) % HISTORY_CAPACITY;

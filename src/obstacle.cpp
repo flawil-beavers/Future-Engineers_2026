@@ -1351,7 +1351,8 @@ static const char *parkingExitDiagnosticReference()
 
 static bool updateParkingExit()
 {
-    if (RUN_TELEMETRY_DETAILED)
+    if ((RUN_TELEMETRY_DETAILED || run_telemetry_pose_capture_active()) &&
+        oc_parking_exit_state != PARKING_EXIT_DONE)
         run_telemetry_phase(obstacle_parking_exit_trace_phase());
     if (oc_parking_exit_state != PARKING_EXIT_IDLE &&
         oc_parking_exit_state != PARKING_EXIT_DONE &&
@@ -2234,6 +2235,7 @@ static void updateCourseProgress()
 void printVisionDebug()
 {
     if (final_parking_active()) return;
+    if (obstacle_path_started() && robot_logger.remaining()<112U*1024U) return;
     static uint32_t lastPrint = 0;
 
     if (
@@ -2249,6 +2251,7 @@ void printVisionDebug()
     {
         // Keep normal-run camera evidence without filling the RAM log with
         // repeated multi-line VISION dumps (log522 overflowed while held).
+        if(run_telemetry_pose_capture_active())return;
         static uint16_t traceCount = 0;
         static uint32_t previousMs = 0;
         if (previousMs == 0 || lastPrint-previousMs > 5000) traceCount = 0;

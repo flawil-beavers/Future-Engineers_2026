@@ -40,18 +40,23 @@ inline bool overlaps(const Quad &a, const Quad &b) {
 // Shared physical polygons for parking checks and passing-side verification.
 // wheelSign uses firmware steering sign; +/-1 checks both steering extremes.
 inline void robotQuads(float x, float y, float headingDeg, int wheelSign,
-                       float bodyMargin, Quad (&bodies)[6]) {
+                       float bodyMargin, Quad (&bodies)[6], float outsideWidth=125.0f,
+                       float rearOverhang=40.0f) {
     constexpr float rad=0.017453292519943295f;
     const float h=headingDeg*rad, c=cosf(h), s=sinf(h);
     const float left=wheelSign<0 ? -37.545f : (wheelSign>0 ? 62.455f : 0);
     const float right=wheelSign<0 ? -62.455f : (wheelSign>0 ? 37.545f : 0);
+    const float wheelY=0.5f*outsideWidth-12.5f;
+    // Preserve the front/side outlines; only trim rear body extensions to
+    //the measured rear overhang. Defaults retain the established exit model.
+    const float wideRear=fminf(35.0f,rearOverhang);
     const Quad local[6] = {
-        rectangle(37.5f,0,72.5f+bodyMargin,50+bodyMargin,0),
-        rectangle(42.5f,0,82.5f+bodyMargin,25+bodyMargin,0),
-        rectangle(0,50,21.6f+bodyMargin,12.5f+bodyMargin,0),
-        rectangle(0,-50,21.6f+bodyMargin,12.5f+bodyMargin,0),
-        rectangle(100,50,21.6f+bodyMargin,12.5f+bodyMargin,left*rad),
-        rectangle(100,-50,21.6f+bodyMargin,12.5f+bodyMargin,right*rad)
+        rectangle((110.0f-wideRear)*0.5f,0,(110.0f+wideRear)*0.5f+bodyMargin,50+bodyMargin,0),
+        rectangle((125.0f-rearOverhang)*0.5f,0,(125.0f+rearOverhang)*0.5f+bodyMargin,25+bodyMargin,0),
+        rectangle(0,wheelY,21.6f+bodyMargin,12.5f+bodyMargin,0),
+        rectangle(0,-wheelY,21.6f+bodyMargin,12.5f+bodyMargin,0),
+        rectangle(100,wheelY,21.6f+bodyMargin,12.5f+bodyMargin,left*rad),
+        rectangle(100,-wheelY,21.6f+bodyMargin,12.5f+bodyMargin,right*rad)
     };
     for (int i=0;i<6;++i) {
         bodies[i]=local[i];

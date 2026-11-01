@@ -8,6 +8,9 @@ void final_parking_reset();
 /** Start an isolated autonomous approach/scan/entry test before the bay. */
 void final_parking_start_practice(int8_t turn_sign);
 
+/** Entry only: surveyed capture pose, nominal247.5mm bay, no exit/laps/scan. */
+void final_parking_start_entry_practice(int8_t turn_sign);
+
 /**
  * Own the drive after the three-lap path is complete.
  *

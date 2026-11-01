@@ -45,6 +45,7 @@ enum RobotMode {
     MODE_PID_AUTOTUNE,          ///< PID speed controller auto-tuning
     MODE_MOTOR_MIN_CAL,         ///< Motor minimum DC calibration
     MODE_REVERSE_GYRO_TEST,     ///< Automatic reverse gyro speed sweep
+    MODE_FINAL_PARKING_PRACTICE, ///< Entry only from the measured bay-side axle pose
 };
 
 enum ModeResult {
@@ -74,6 +75,7 @@ extern RobotMode pending_mode;      ///< Mode to resume when switch toggles ON
  * @param new_mode The mode to switch to
  */
 void mode_switch(RobotMode new_mode);
+void mode_parking_practice_set_turn_sign(int8_t turn_sign);
 
 /**
  * @brief Run one update of the active mode.

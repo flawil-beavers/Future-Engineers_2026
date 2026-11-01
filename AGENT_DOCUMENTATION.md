@@ -12324,3 +12324,689 @@ upload/drive/commit/push. Next tester uploadsM7, normal CW/CCW three-lap runs,
 normal saves; secure originalsFIRST, confirm revision and PLAN/REPLAN/RESULT,
 complete physical containment/neutral wheels, contact/manual stop by log number.
 No dedicated ToF sweep, extra pauses or movements requested.
+
+## 2026-10-31: returned CW594--597 / CCW598--601, start and parking follow-up
+
+USB copiedFIRST (all601 logs because media dates unreliable), source/copySHA256
+verified, immediate unplug notice sent. Eight new complete original saved files
+in simulation/evidence/parking_exit_diagnostics/20261031_log_594_cw.txt through
+20261031_log_601_ccw.txt; README indexes sizes/all8 hashes and observed endings.
+Collection date used; allRUN_END/truncated0 includes interrupted attempts.
+594 SHA37205da6db23cc9881dc8fde6cfebfb07e8c5add40abbc23d442598270ed3ecb;
+601 SHA659896556cf8b8474d0413b1a7f6f800716243ce8040525539ccff6c804a6a04.
+Config buildOct30_20:04:33 is per-unit; CORNER_VIEW20:09:49 where present;
+installed binary unknown. Revisions active_lap1_search/corrected_pose/
+tight_completion match the prior source. User:4CW (595start stall; other3 good
+courses with missed/late GREEN and failed parking),4CCW (598/599start failures,
+600/601 missed single GREEN/poor RED-to-GREEN view, then parking failures).
+
+All8 exit imports0;4/69,7/96,6/82,1/9,14/191,12/117,7/81,11/117 frames/rejects.
+Reproduced pre-camera history failing to bracket later DMA completion; force a
+post-frame pose sample. Keep historical corrections/association and3-frame
+consensus; original exit movement unchanged. No pixel-replay detection claim.
+595 scout -16deg UNKNOWN: checked extension now aims<=5deg; unresolved scout
+returns measured arc and retries.598 GREEN5 confirms before old2500ms travel
+lock: brake on confirmation, allow6000ms bounded low-speed motion.599 unknown
+retry now searches checked10--35mm forward/reverse views, including modest
+parallax; preserve initial successful refinement. Refused CCW join searches a
+new checked view. No blind clearance/colour or motion when no safe view exists.
+
+600/601 high GREEN assigned end12 => official middle inferred empty. Targeted
+far-end combined ray/depth veto rejects6 reconstructed logged projections;
+aligned far observations keep80mm depth tolerance. Discovery prioritizes the
+other valid colour when the primary projects to a known pillar, retaining all
+normal acquisition/vote checks. Original camera frames/physical seat survey
+missing; missed-middle diagnosis consistent with user report, not pixel proof.
+
+Parking: run-local radius allowed0.80--1.50; heading-controlled arc travel
+budget scales with radius instead of fixed+35mm. Tiny0.55deg correction is no
+longer skipped by0.75deg tolerance. Prefer localY125 (12.5mm nominal open-edge
+reserve); retain original late/escape families and full swept/final gates.
+597 stable33mm wall residual accepted only after3 fresh stationary reports;
+600 +120mm residual atX775 requires complete corrected alignment preflight;
+601 can choose a fully checked neutral retreat instead of an unsafe correction.
+Repeated >200ms gyro poll gaps/SH2 restarts during stopped search: poll by10ms
+elapsed time, skip SAT only for polygons entirely beyond rail tips. Physical
+pose jumps/MCU timing still need new evidence; no unique mechanical cause proven.
+Global calibration, HSV, course speeds, M4/shared protocol and exit/ToF diagnostics
+preserved. Review:simulation/RETURNED_594_601_REVIEW_20261031.md.
+
+Final checks:returned18 association/start+10wall/scan,far52,observer636+12handover,
+CW8943,CCW54views/108joins+81view/state sequences/162joins+27retraces,priorGREEN
+14rows/54third/27first+18capture,589occupancy,parking396/396+5registration,
+adaptive350/350+8health (max3replans389.601mm),extendedradius28/28 with prior
+estimate3%error for deep anchors (max3replans442.397mm),tight36/36,braking102,
+sensorresume42,mixededges864,activeparallax PASS; relevant negative controls pass.
+These are host models, not universal physical success or original-frame replay.
+
+IDE M7 SUCCESS RAM453696/523624,flash550512/786432,binary554064B SHA256
+b19abfa7ecf15a34d63e7bb21ed211cd8dc802429aa84299fd9ea416b1e09839.
+New revisions path20261031_view_recovery,exit20261031_frame_bracket,
+parking20261031_shallow_entry. M4 not built; no upload/drive/commit/push.
+Next tester uploadsM7, normal CW/CCW3lap courses and normal saves. Secure originals
+FIRST+notify. Verify imported frames, active view directions/retries, end12 vs
+middle map, second-colour observations, radius and gyro gaps/restarts, complete
+neutral-wheel parking, contact/manual stops bylog. No dedicated ToF sweep or
+extra sensor movements/pauses requested.
+
+## 2026-10-31: final-parking brake-overrun follow-up
+
+User requested another parking audit; no new physical evidence or powered test.
+Existing594--601 evidence/index/hashes remain unchanged. The previous ideal
+instant-stop plant masked a sensitivity:3mm settled overrun causes4/28 no-plan
+aborts at local105/177.6/58.5, both directions/radius1.00/1.15; no modeled contact.
+Not proven as original hardware cause. Entry now measures signed encoder motion
+from brake command to settled stop and advances subsequent brake endpoints by
+that run-local lead0--8mm. Opposite rebound/nonfinite=>0; reset clears; tiny
+arcs still move. Swept checks, replan limits, neutral/final containment retained.
+No course-speed/margin/M4/backlash changes. Details/limitations in
+simulation/RETURNED_594_601_REVIEW_20261031.md follow-up section.
+
+Checks:84/84 brake-overrun cases0/1.5/3mm; negative control without lead80/84,
+same4abort cases. Full sequences396/396+5registration,adaptive350/350+8health,
+tight36/36,braking102,resume42+negative,returnedwall10 PASS. Models do not
+establish variable brake/servo dynamics, true pose accuracy or physical success.
+M7 SUCCESS RAM453704/523624,flash550960/786432,binary554512bytes SHA256
+a353c6f03a8c8656ed964f3019d626948dba27627243f411ba40a0a8ea0ebf63.
+Parking revision20261031_brake_completion supersedes shallow_entry binary.
+M4 not built; no flash/motion/commit/push. Next: tester uploadsM7; normalCW/CCW
+3lap/save, secure originalsFIRST+notify; inspect revision,FINAL PARK BRAKE
+settled_lead_mm, successful full physical containment/neutral wheels and any
+contact/manual intervention. No extra sensor sweep/pauses/movements requested.
+
+## 2026-10-31: returned603 and entry-only parking practice
+
+New USB602/603 copiedFIRST, hashes source-before/source-after/copy verified;
+immediate unplug notice sent before history/analysis. Complete unchanged files
+tracked at simulation/evidence/parking_exit_diagnostics/20261031_log_602_cw.txt
+and20261031_log_603_cw.txt; README indexes byte sizes/hashes.602 mixed/open
+excluded per user.603 SHA256
+2d6d19d667c1400830f9638e054d10f573c839a49cd23067a4d2d5bf31c462c8;
+602 SHA256:1f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326.
+User:two runs/one saved; outer-middle GREEN opposite start assigned firstouter,
+parking stall. Missing run unavailable.603 uses view_recovery/frame_bracket/
+brake_completion revisions; installed binary not read back. Exit93frames,import0.
+
+603 GREEN centre32/34/foot144 range188--191 matches170mm clipped forward-depth
+placeholder. Reconstructed clipped frames confirm wrong end13 without fix;
+actual pixels/bounds and independent true pose unavailable. Primary/targeted
+GREEN/exit import no longer use clipped placeholder as measured seat depth;
+occupancy/avoidance remain. Uncropped far52checks pass. Parking gap247.7,
+firstarc ends326.2/-1257.2/122.8,radius1.213,brakelead0.12,accepted replan then
+manual pause. No finalabort; ~22s silent interval not an explicitly timed search.
+Initial planning loop3008.8ms. Optimize exact southstrip wall/squaredpillar and
+railXseparation checks; preserve search families/budgets/margins; add search_ms.
+
+New MODE_FINAL_PARKING_PRACTICE starts directly at existing capture-brake/entry,
+no camera/exit/laps/longapproach/scan. Current startup defaults to this mode,CW.
+Disabled-only park cw/park ccw selection; interrupted origin cancelled; completed
+entry holds/saves normally. Setup:freegap247.5mm,rearaxle294.6mmfromwall,
+22.76mmbeyond nearinnerface infrontdirection,parallel. No measured origin/map
+in this mode; obstacles cleared nearby by tester. SerialO selects fullchallenge
+untilreset; restore MODE_OBSTACLE_CHALLENGE for permanent normal startup.
+Setup:simulation/PARKING_ENTRY_PRACTICE_DE.md. Review:
+simulation/RETURNED_603_AND_PARKING_PRACTICE_20261031.md.
+
+Checks:603association12+wrongendnegative,wall1440/rail12168equivalence,
+practice4CW/CCW radius1/1.15completions,603roundedreplan2,brakeoverrun84+8health,
+tight36,braking102,resume42+negative,priorreturned18,far52,observer636+12handover,
+priorGREEN14rows/54third/27first/18capture+negative PASS. Fullparking396+5registration
+passes. Host models do not prove hardware search latency, placement tolerance,
+actual camera pixels or physical parking. No universal success claim.
+IDE M7 SUCCESS RAM453704/523624,flash552736/786432,binary556288bytes SHA256
+ddca8118fd4796a5a78be7f6d01b8016cf652da9f061253d677502a19db982dd.
+New path20261031_clipped_depth,parking20261031_entry_practice;exitunchanged.
+M4 not built. No upload/motion/commit/push. Next tester uploadsM7, sets defined
+CW/CCWpracticepose, normalenable/save. SecureoriginalsFIRST+notify; inspect
+search_ms,brakelead,radius,replanprogress,actualcontainment/contact/manualstop.
+Fullcourse/automaticcapture confirmation remains separate. No ToFfan sweep.
+
+## 2026-10-31: CCW604--606, reserve escape and rear-space parking
+
+604--606 copiedFIRST, source-before/source-after/copy SHA256 verified, immediate
+unplug notice. Complete saved originals at simulation/evidence/parking_exit_diagnostics/
+20261031_log_604_ccw.txt through606; README indexes all3 sizes/fullhashes.
+604 SHA58b9c20f1331f13365a08b519fbff81190e30762cb5d5bb3d9ab2f538beba554;
+605 SHA4bd9b95f798c632f3103c86fb6916c903fcaa5f244c9d5ff5f671e3489967192;
+606 SHA88dd03ed5ab885812d702933a1400a898c2ad656df062c376c1eb2e9441cbffe.
+User:604 secondGREEN stationary stall;605 goodcourse/reversals,frontpinkcontact
+failedparking;606 goodcourse,brushedpink thenparked,photo inconversation only.
+Revs view_recovery/frame_bracket/brake_completion predate latest practice fixes;
+installedbinaryunknown.605/606 overflowed: fullsavedfiles but missingparkingtail;
+retainedRUN_END605 entry_replan_limit,606 completed, not contactfree proof.
+
+604 pose880.3/-668.2/46.12 has14.355mm capsulegap to possibleinner7, below40mm
+ordinaryreserve. Allretreatsfailedatstart. Add reverse-only fullswept escape:
+>=10mmpositivepillarreserve, runningbest monotonic until40mm restored with.25mm
+numericaltolerance,40mmwalls unchanged,>=60mmendpoint>=40mm,15mmruntimeforecast.
+Existing-20/90mmarc seesouter6; no steering/speed/colour relaxation. Exclude
+opposite seat only afterlegalpairconfirmed. Unsafe return keeps safer stopped
+pose for fresh observation; directresolved resume still needs pursuit preflight.
+
+ParkingtargetX65 vs81.25:nominalrear25/front57.5mm. Containedbutfront<25 orrear<10
+now seeks checked correction. Keep shallowtarget,neutral/containment/brakegates.
+At existing entry/replan brakes, rearToF may registerX usingx=(d+25)cos(theta):
+abs(theta)<=12,wholeconservative30degfan onpinkplane,3freshstablequalityframes,
+20--370mm,raw/filteredagreement,1--45mmcorrectedposepreflight. Noextraacquisition
+orpauses; invalid/stale/oblique refs leavegeometryunchanged. M4unchanged; realfan,
+unoccludedreturns andsensoraccuracy neednormaltestconfirmation.
+
+Oldlogs useexpensivepre-shortcut search; actual605/606finalsearchtime unavailable.
+Keepcurrentfastwall/SAT shortcuts andsearch_ms. Reduce repeatdiagnosticchatter
+under112KiBremaining,latertrackunder80KiB,parkingperiodicunder8KiB. Preserveexit/
+ToF/brake/reversal/correctionlogs andcriticalfooter. Byteprefixreplay605/606leaves
+80974/80394B beforeparking, not recovery of lostrecords/nooverflow guarantee.
+Review:simulation/RETURNED_604_606_REVIEW_20261031.md.
+
+Checks604retreat27+3negative,rear6accepted/36rejected+2frontreserve,
+fullparking396+5registration,adaptive350+8health,brakeoverrun84+8health,tight36,
+braking102,resume42+negative,priorGREEN14/54/27/18,CCW81views/states+27retraces,
+C/join173,legacyaccepted3920/joins162,wallreuse4608/edgeaim18,far52,
+observer636+12handover PASS. Hostgeometry/idealplant not physicalcontactproof.
+IDE M7 SUCCESS RAM453712/523624,flash555720/786432,binary559272bytes SHA256
+3c60d3a5edaeaa334019b02fc9ff1d1eaad289998c3fa8f715734b2c6be76062.
+New path20261031_retreat_escape,parking20261031_rear_space;exitunchanged.
+M4notbuilt;no upload/motion/commit/push. Startup STILL entry-onlypractice,CW;
+parkccw whiledisabled forCCW,O forfullcourseuntilreset. Startingmarksunchanged.
+Next normalpractice/save:secure originalsFIRST+notify;verifysearch_ms,rearref,
+radius,brakelead,replanprogress,truefront/rearspace,contact/manualstop. NoToFsweep.
+
+
+## 2026-10-31: CW607--609 completed practice; normal startup restored
+
+USB607--609 copied FIRST, source-before/source-after/copy SHA256 verified and
+immediate unplug notice sent. Complete unchanged originals under
+simulation/evidence/parking_exit_diagnostics/20261031_log_607_cw.txt through609;
+README contains sizes/hashes. All three entry-only CW/rear_space, completed,
+no overflow.607 SHAef30ce221d781961e9b6609b9b163b41c56a080c09ce98fbd5fca8c99f1690ab;
+608 SHA0554b83b31eb184da68d521770a1856e9bb5a99736da59f566ca59eb70f7e7bf;
+609 SHAde8b7f8ccdb4b97397e8598e612f3e410e37dbaa1aba1c0569f8875a40a49a68.
+User reports parking worked, wants less rear/more front steering room, then full
+runs. Individual contact-free status/installed binary not independently verified.
+Durations24.168/22.489/20.481s,5/4/3replans; max searches7201/7122/5604ms.
+Rear corrections607+20.76,608+11.19,609-3.42/+4.85mm. Actual hard searches still
+5--7s; no unrelated planner retuning. These are not CCW/full-approach validation.
+
+Small change only: preferred axleX65->60mm, nominal rear20/front62.5mm;
+front completion reserve25->30mm, rear minimum10mm unchanged. Existing full
+steered sweep, rear reference, brake/radius adaptation, speed and route preserved.
+STARTUP_ROBOT_MODE restored MODE_OBSTACLE_CHALLENGE: normal lot start, exit,
+three laps, final parking. Separate park cw/ccw commands remain untilreset.
+Setup doc updated; review simulation/RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md.
+Checks full396+5registration,adaptive350+8health,tight36,practice4,wall1440/rail12168,
+603replan2,604retreat27+3negative,rear6accepted/36rejected+2front controls PASS.
+Host tests do not prove physical clearance after this additional5mm adjustment.
+IDE M7 SUCCESS RAM453712/523624,flash555728/786432,binary559280bytes SHA256
+a50cd4611b70318ebd941abd81e5eb563fbb713c2171b9dbaba7c1fd93121d91.
+Parking revision20261031_front_swing_space; path/exit unchanged. M4 not built;
+no upload/motion/commit/push. Next tester uploadsM7, uses NORMAL original lot
+start (not practice capture marks), CW/CCW full runs/save. Secure originalsFIRST
+and notify; check complete course, final steering/front/rear room/contact,
+rear references and search_ms. No extra ToF sweeps or sensor pauses requested.
+
+### 2026-10-31: log610 normal obstacle lap-boundary stop
+
+USB610 copied FIRST, before/after/copy SHA256 matched, immediate unplug notice.
+Complete original simulation/evidence/parking_exit_diagnostics/20261031_log_610_cw.txt,
+96172B SHA f4630b160912c74fc01850b23f64d31dc59133ea78988b4dc05f4a07404ef7bc;
+README indexed. User: halted in middle after one lap. Build Oct31 13:37:20,
+path retreat_escape/exit frame_bracket; binary not read back. Normal startup
+confirmed in config and compiled main object; practice and one-lap test off.
+Cached exit GREEN confirmed start middle seat2 from3 historical frames; fresh
+views later confirmed seats0 GREEN/4 RED. Impossible start section blocked lap2
+with explicit Boundary held message; other sections legal. First run manually
+paused120.505s. Archive includes later turn=1 restart failing rear stationary
+verification (47.3->40.3mm after18.2mm encoderforward); placement/intervention
+unknown, separate from seam stop. Preserve that verification.
+
+Narrow fix: exit batch only seeds one unconfirmed vote, never map/injection/clear
+inference; fresh matched normal view required within existing400ms. Different
+accepted seat/colour clears it. Normal scan/motion, far acquisition, parking,
+speed and lap validation retained. Path revision20261031_exit_vote_hint.
+Observer1090+handover12 and far52 PASS (repeatimport, fresh match, stale hint,
+wrong fresh colour, cached-middle/fresh-end replay). M7 IDE build SUCCESS,
+RAM453712/523624 flash555680/786432 binary559232B SHA
+14cd8ceeb7d41edc9dcb6e9d63e090cc9eaaa6d5146d613c54840e55a4ee17ab.
+No M4 build/upload/motion. Review simulation/RETURNED_610_LAP_BOUNDARY_20261031.md.
+Next tester uploads M7, normal lot start/full CW/CCW/save. Secure first; verify
+pending hints cannot resolve scan, real start seats confirmed, lap2/3 transition
+and parking. Host cases do not establish physical detection reliability.
+Later-lap state/route regression:2807 cases,0 failures PASS; map-invalid negative
+controls still hold, so this change does not permit a blind second lap.
+
+### 2026-10-31: returned611--615 CW search/parking batch
+
+Copied USB611--615 FIRST, verified source-before/source-after/copy SHA256,
+immediate unplug notice. Complete unchanged originals in
+simulation/evidence/parking_exit_diagnostics/20261031_log_611_cw.txt through
+613_cw and614_ccw/615_ccw; README contains all five sizes/hashes. No overflow,
+one run each. Firmware path exit_vote_hint/parking front_swing_space/exit
+frame_bracket; headers buildOct31 13:37:20, installed binary not read back.
+611 SHA7ed28a9f16601037c7b41e323dd09a10594e65d9746a364fcf7a4373dd426278;
+612 b61e60b907b8301e24b9873b994a32f04edb137b3e2916ef578bf0f05412faad;
+613 243d51f31bd9c3efdd9c2a6cc095361277955fa447770cc9216053481f271590;
+614 8a15b5c9b738eab76236b945c59b43112a032a8526a35d91be9d5eb0083c3485;
+615 d33f0d5353e8002adb32d5b5e2159100500f9fd8567a1d4952513d39328ab52f.
+User: CW GREEN late/retry/one lock, CW pink approach worsens, CCW obstacle good,
+CCW one parking good/last stopped, nose tight/rear>=30mm, open edge about25mm.
+611 manual pause86.104s: S3 station2, oversize GREEN107x89px, reverse170 then
+extra-arc tracking lock.612 pause184.121s capture_pose; running ToF Y corrections
+along pink corresponded to heading deterioration177->171deg.613 completed252.978s,
+6replans/max8825ms search;614 completed224.569s,4replans/max8769ms, final local
+axleX~77 skipped requested60mm rear position.615 capture_distance old15s limit,
+aborted201.692s; exact capture endpoint absent after periodic trace budget.
+
+Changes: mild search-arc drift brakes/rebases measured observation/retries safe
+views, <=25mm/12deg error and<=35deg total heading; severe/nonfinite retainsstop.
+Colour/shape/map gates unchanged. Running wall correction suppressed if fan may
+hit pink and throughout registered capture; initial/stopped registration intact.
+Ordinary-reserve fast mirrored recipe before general search: measured straight/X,
+full1mm swept checks,6000 sample budget;18/18 near-capture cases use it. Hard
+fallback/escape/1mm last reserve unchanged. Rear target60->55mm (nominalrear15/
+front67.5), completion now requires axleX<=60 plus rear>=10/front>=30 so final
+rearward alignment cannot be skipped. Capture45->60mm/s, timeout15->25s,
+450mm bound unchanged; limit dispatches stopped checked replan rather than
+immediate terminal abort. No guaranteed physical completion without a safe plan.
+Shallower15--20mm shift not retained: model only12.5mm open-edge reserve and small
+additional shift failed independent-pose cases. Preferred depth125mm unchanged.
+Review simulation/RETURNED_611_615_REVIEW_20261031.md; practice setup updated.
+
+Final checks:396 full sequence+5registration,350adaptive+8health,84brake-overrun+
+8health,36tight,42segmentresume+negative,27retreat+3negative,rear6accept/36reject+
+2front,20newtracking+60parking incl18quick,active-search and52far acquisition PASS.
+M7 IDE SUCCESS RAM453712/523624 flash556920/786432 binary560472B SHA256
+50eeb0c660fd5ac9f13c5e212ac99929c07736341fb27888d07b2ae666fa231f.
+Path20261031_view_reobserve;parking20261031_checked_recipe. M4 unchanged/notbuilt.
+No upload/motion/commit/push. Host tests lack original images, actuator latency,
+independent physical pose and MCU timing. General fallback can still take seconds.
+Next tester uploads M7, normal start/full runs/save. Secure FIRST; check reobserve
+instead of611 lock, real seat confirmation, pink scan/capture heading, recipe
+search_ms, capture-limit recovery, rear/front/open-edge clearance/contact andhold.
+No extra ToF sweep/pause requested.
+
+### 2026-10-31: clearance clarification,123mm, returned616 and parking pauses
+
+User clarified5mm concerns manoeuvre spacing, not parked-X; final longitudinal
+pose was good. Straight outside wheel width ultimately123mm (supersedes120mm).
+Latest request: only about5mm shallower, about8mm extra front room/use rear room,
+fewer stationary calculation phases. USB616 copied FIRST, hashes matched and
+immediate unplug notice. Complete original
+simulation/evidence/parking_exit_diagnostics/20261031_log_616_cw.txt,
+157693B SHA1c68941851e2bb7dfde788998edc1abeccc8e0565993816784f74c29a524df82;
+portable README indexed. Path view_reobserve/parking checked_recipe,
+buildOct31 14:40:53; installed binary not read back. Completed149.001s/nooverflow.
+Quick search100ms; first arc radius1.136 then general replan8806ms, later94ms.
+Final422.2/-1375.4/178.5deg. Abrupt GREEN approach pause coincides with genuine
+report-timeout SPI/SH2 restart; following poll-gap1601ms reflects blocked restart,
+not proof of camera compute stall. At72054 profile0 resumes, seat22 confirms75371.
+Underlying report loss hardware/power/transport not identifiable; no corner lock.
+Gyro protection/driver unchanged; never drive blind to remove that safety stop.
+
+Correction: restore targetX60 and original end reserve (remove mistaken axleX<=60
+completion limit). Final-parking actual wheel geometry123; shared default125
+conservative path/exit untouched. Ordinary steered sweep adds forward8mm copy,
+no extra rear padding; checked initial reverse8 preferred. Tight1mm escape retains
+physical sweeps if extra preferred nose room unavailable. Depth preference127
+versus125,2mm shallower (nominal11.5mm open-edge reserve); not blanket20mm.
+Fast recipe tries127/125, fallback still may use deeper safe alternatives.
+Remaining quick recipe after first arc solved from actual pose/radius, full1mm
+preflight with ordinary/tight fallback; six mirrored radius1.05/1.10/1.136 cases
+accepted without exhaustive search. Candidate radius-envelope forecast now checks
+all arc starts, including after a straight; prevents tight recovery oscillation
+exposed in host tests. Speed/brake/servo dwell constants unchanged this session.
+Review simulation/RETURNED_616_CLEARANCE_REVIEW_20261031.md; practice doc corrected.
+
+Final checks396full+5registration,350adaptive+8health,84brake-overrun+8health,
+36tight,42resume+negative,123mmgeometry6,remainingrecipe6,near-capture18/18
+within60parking+20tracking,1440wall/12168rail equivalence,4practice+2registered
+replan PASS. No new physical run of123mm/front8 code yet. M7 IDE SUCCESS
+RAM453720/523624 flash558264/786432 binary561816B SHA256
+52abb5777036e7bb3cd869cbee3100f7cc7694a555ad71e5659e76a8ccec9408.
+Parking20261031_front8_123mm; path remainsview_reobserve. M4 not built (no changes
+it consumes). No upload/motion/commit/push. Next tester uploadsM7, normalfullrun,
+save; secure FIRST. Compare remaining-recipe branch/search_ms versus8806ms,
+front/rear during steering, final depth/contact/hold; preserve any recurrentgyro
+report failure to diagnose separately. No dedicated ToF sweep/pause requested.
+
+### 2026-10-31:617--618 saved; single-run dense pose capture ONLY
+
+USB617/618 copied FIRST, before/after/copy SHA256 matched; immediate unplug
+notice. Complete unchanged originals tracked at
+simulation/evidence/parking_exit_diagnostics/20261031_log_617_cw.txt (94809B,
+SHA6204b033ca6d5feff0aace85252b714288f3e44753a93137a71669e2ccc4c460) and
+20261031_log_618_cw.txt (169762B,
+SHAcbdc8b2d771cb462e62330636e0e997b528dfccfbe8a501cb232520142291995).
+README indexed. Header metadata only: bothCW turn=-1,buildOct31 15:03:51,
+path view_reobserve,618 parking front8_123mm; installed binary not read back.
+User report:617 too far between GREEN/RED on second section laps2/3;618 perfectCW.
+Explicit request: store only; DO NOT investigate/change routes yet. Another8mm
+front reserve/use rear room request recorded as PENDING, not applied. Next run
+is for visualization positions with less repetitive debug. No driving analysis.
+
+Implemented temporary M7 flagRUN_TELEMETRY_POSE_ONCE=1; FIRST run started perboot
+captures cached estimatedXY/heading,absolute timestamp,lap,reference epoch,
+local/field marker in compactRUN_POSE v2. Normally200ms;after72KiB500ms.
+96KiB pose+16KiB events budget; existing192KiB buffer and protectedfooter remain.
+No new sensors, pauses, motion or extra route dump. Stationary poses retained;
+rebase/large corrections recorded, small corrections remain in sampledposes.
+Repeated projection/discovery/later-track/camera and periodicparking chatter
+muted only whilecaptureactive; forced confirmations, important faults/endings,
+parking-exit ToF/brake/reversal/correction diagnostics preserved. Later runs
+sameboot ordinary; reboot re-arms. Removeflag andbuildM7 after targetrun.
+Visualizer accepts v2field poses, splits reference/lap jumps, never treatslocal
+coordinates asfield. Guide simulation/POSITION_CAPTURE_ONCE_20261031.md.
+
+Telemetry detailed/default tests PASS;300s capture+55KiB ordinary diagnostics
+>1000 poses/no truncation/footer intact; next run no capture/pose reads PASS.
+Synthetic renderer frame/lap separation PASS;remainingrecipe6/6 and gyro/path
+servo-resume positive+negative controls PASS. No route/speed/parking geometry or
+safety logic changed. Next uploadM7 only,reboot once,normalfullCWrun/save;secure
+FIRST,then analyze/visualize with617/618. Firmware build identity appended below.
+
+M7 capture build SUCCESS RAM453816/523624 flash560616/786432 binary564168B SHA256 31b28a3bcc0f386644a2b0f6b8494a7c07d2ed6a7101dfb39b98fc835eb08ee7. M4 unchanged/not built; no upload/motion/commit/push.
+
+## 2026-10-31:619 secured; filmed-run telemetry and617/618 followup
+
+FIRST secured complete619, source-before/source-after/copy SHA-256 matched;
+immediate unplug notice. Portable original:
+simulation/evidence/parking_exit_diagnostics/20261031_log_619_cw.txt,
+147241B,SHA03fc9ab424631c2702a25921424422607481c1c9d18db02d5eea1da402a84577.
+Index README updated.619 buildOct31 15:24:55,pathview_reobserve,parkingfront8_123mm,
+CW; installed binary not readback. No separate physical report. Firmware footer
+completed182798ms/truncated=1;1041 poses mainly duplicated in290ms, no laps2/3,
+max gap171364ms. COMPLETE original but incomplete trajectory. Fixed competing
+exit-DONE/scan phase producers and capture cadence bypass; parking phase lap3.
+Review simulation/RETURNED_617_619_REVIEW_20261031.md has exact617/618 hashes,
+firmware identity, physical reports and limits. User now authorized deferred work.
+617/618 same7842.7mm route;617 estimates inward divergence then encoder stall;
+618 succeeds. No proof of physical contact. Added normal later-lap measured
+inward-error/heading speed response; geometry/nominal ceiling/firstlap unchanged.
+Pathrev20261031_inward_response. Parking preferred steering front reserve8->16mm,
+normal checked reverse prefix16mm; tight1mm rescue preserves old8mm prefix and
+actual swept geometry. Final X60,width123,preferredY127 unchanged.
+Parkrev20261031_front16_123mm.16mm preferred reserve not guaranteed in rescue.
+
+User filmed-run request implemented: poseXY/heading+t absolute ms, lap/frame,
+local/field, cached fresh ToF left/right/rear mm(-1 invalid,9999 capped).
+Confirmation RUN_OBSTACLE seat/colour/nominalXY/robotpose with absolute+elapsed
+ms before route rebuilding; not first raw sighting. RUN_SYNC first drive request
+for video (physical motion may follow). No additional sensor acquisition.
+Temporary first-run-per-boot capture remains:200ms then500ms at72KiB then1000ms
+at80KiB,96KiB pose/16KiB events. Estimates drift, ToF rays may hit pillars;
+no guaranteed full capture for unlimited-duration runs. Guide updated.
+
+PASS telemetry detailed/default,300s+55KiB >850 poses/ToF,timestamps,adversarial
+5ms phasechatter/footer,next run inactive,visualizerframe separation;tracking32;
+parking396full/350adaptive/84overrun/36tight/6tail/6geometry plusregistrationhealth;
+discovery25,gyro-servo resume positive/negative,laterlaps2807. Models do not
+prove hardware reliability. M7 IDE PlatformIO SUCCESS RAM453816/523624,
+flash561984/786432;binary565536B SHA256
+ffaa6fd2f7083b409604210aa2683f0662c5f5a9b14455551edc8053f3044a0d.
+M4 unchanged/not built. No upload/motion/commit/push.
+Next: user uploadM7,reboot once,film before enable,normal complete run/save.
+On USB return secureFIRST,verifySHA,unplugnotice,then check capture coverage
+and compare video/estimated trajectory/confirmation times/ToF before tuning.
+
+## 2026-10-31:620/621 secured; CW first corner and partial-entry rescue
+
+USB620/621 copied FIRST, source-before/source-after/copy SHA-256 verified;
+immediate unplug notice. Complete unchanged portable originals indexed under
+simulation/evidence/parking_exit_diagnostics/:
+20261031_log_620_cw.txt80329B SHA9826d6c908f06dc900e6939ca46876e7c73790adec7d3568c0b6cedf1e7f0c12;
+20261031_log_621_cw.txt148179B SHA9df133d711c3b7349560a8776bbffac93887b15f535f69fafd7f786e88a94215.
+BothCW,diagnosticmoduleOct31 15:49:10,connectormodule15:57:18,pathinward_response;
+621parkingfront16_123mm. Installed binary not readback. User reports first GREEN
+post-start-corner failure both runs, unfinishedparking; authorizes10mm rear room.
+Review simulation/RETURNED_620_621_REVIEW_20261031.md documents measured evidence,
+limits and discarded prefix experiment.620:259poses,maxgap606ms,lap1stop;
+621:834poses all laps,maxgap11281ms during stopped search,6confirmations;
+bothtruncated=0,sync1,cachedToF present. Full-file logging successful; estimator
+notphysicalgroundtruth, originalpixels absent, video needed for alignment/drift.
+
+620 near/oversized invalidGREEN -> checkedparallax -> modestarc mismatch brake
+-> observation origin prematurelyrebased ->3.17deg settling trips3deg guard
+15mslater and permanentlock. Added300ms stopped brake/rebase phase,finite/
+20mm/12deg bounds; new measuredreference onlyaftersettle, subsequent sweeps intact.
+621 S1station0 CLEAR near600mm oblique preceding-straight view; neverseat7.
+Falseempty suspected from physicalreport; pixelcause notidentifiable. First
+station persection EMPTY nowrequires<=450mm; colourfullrange unchanged; other
+stations unchanged. Added per-seat CLEAR timestamp/bearing/range/pose diagnostics.
+621parking:gap249.2,capture210.1/-1204.3/180.5,radiusscale1.104->1.120;
+repeated tinyarcs clearance-replan thenlimit,search up to11136ms. Addedpartialentry
+rescue after2 clearance-replans:checked10mm reverse PLUS full continuation before
+acceptance, mirroredCW/CCW. Normalrecipe,finalX60,Y127preference,width123 and
+endcontainment unchanged. Blanketinitialreverse+10 regressed47/396 andtailadapter;
+discarded, finalchange targetsblockedpartialentry only.
+
+PASS recordedanchors12/12,forcedclearancehistory12/12 with10rearwardescapes,
+brake/rebase,450mm-clearboundary/occupancyhold,396fullsequence,6tail,84overrun,
+discovery25,20boundedmismatch+60parking. Finaladaptive350 result below.
+M7IDE PlatformIO SUCCESS RAM453816/523624 flash563192/786432;binary566744B
+SHA2563d6bd7cd82e604d33bfc105b6e85b987d6055fc5c3a3abb9b8796ec62a25bb34.
+Path20261031_settled_view,parking20261031_rear10_escape. M4unchanged/notbuilt.
+No upload/motion/commit/push. Model success cannot guarantee hardware parking.
+Next:useruploadM7,reboot once,densefilmednormalCW/save;secureFIRST thencompare
+firststationCLEAR/colour,settledview,rearwardescape selection,front/rearphysical
+clearance andcontainment. PreserveToF/brake/reversal/correction logs;noToFsweep.
+Final adaptive350/350 parked,8healthchecksPASS (max449.6mm travel/4replans).
+
+## 2026-10-31: normal logging restored;622/623 secured
+
+User requests removing dense logs and returning to normal safe driving after
+scanning trouble/run1 and wrong later-lap curve/run2. FIRST copied622/623;
+source-before/source-after/copy SHA-256 matched, immediate unplug notice.
+Portable complete originals/index:
+simulation/evidence/parking_exit_diagnostics/20261031_log_622_cw.txt106929B
+SHAe25973171c3a02ad384ada3e5748851565fb274d20ebb89c2fbfdc5d41c8b3f3;
+20261031_log_623_cw.txt109544B
+SHAe7bae2554a70241993093ef0cb7baebfd5792addecf95f4c3dfa1956c86bfd2a.
+BothCW,diagmoduleOct31 15:49:10,pathsettled_view,cornermodule16:25:32;
+no finalparking identity reached; installedbinarynotreadback.622stopped97286ms,
+623stopped104033ms,bothmode_pause/truncated0. Physicalreports asabove.
+622 unresolvedS2station0,checkedparallax/reobserve_settled but no safe nextview;
+repeated388-390ms gyro-pollgaps.623 seat7GREEN after110mm reverse,lap2/3 entered;
+also separate gyrorestart. Dense logging is not proven cause of wrong curve.
+No original pixels/independentphysicalposes. Review
+simulation/NORMAL_DRIVING_HANDOFF_20261031.md has evidence/limitations/nextsteps.
+
+Removed temporary M7 RUN_TELEMETRY_POSE_ONCE flag; bothdefaults0. Fullobstacle
+startup,normaldiagnostics,exitToF/brake/reversal/correction remain. No route,
+speed,steering,colour/mapping or safety change in restoration. Inprogressnormal
+rearward10mm preference edits were not uploaded and regressedtailadapter2/6;
+restored only those unstaged edits to laststaged testedfinalparking/testversion.
+Latestclarification:10mm during normalrangieren,originalfinalposition unchanged.
+This broaderparkingrequest remains PENDING, currentcode retainschecked10mm
+rescueafter2clearancereplans. Do notclaim normal10mmimplemented. Userprioritized
+normalmode restoration. Hostnormalcompact telemetryPASS/no pose reads/dumps,
+under1KiB;detailedsuitePASS;restoredtail6/6PASS. Buildidentity follows.
+Next uploadnormalM7,normalfullrun/save,secureFIRST,compare622/623ordinary
+perception/pathdiagnostics;investigate~390ms viewsearchgaps andseat7laterbypass.
+Resume rearroom preference withpassingtransitiontests,retainwidth123/endgoal.
+M4unchanged,noupload/motion/commit/push;no dedicatedToFsweep.
+Normal M7 IDE PlatformIO build SUCCESS RAM453816/523624 flash563192/786432,
+binary566744B SHA25662d0f09351e6eadc65355e10b39fd4e16cf4cd734336271c3a95c3d9b3fcf359.
+Temporaryposeflag absent; normal/detailed hosttestsPASS, restoredtail6/6PASS.
+M4notbuilt; no upload/motion/commit/push.
+
+## 2026-10-31:CW inner-RED line and ordinary partial-entry rear room
+
+User clarifies too near inner wall in straight after start corner GREENoutside/
+REDinside, mainlylaps2/3; estimates120mm room toRED. Parking frontpinkcontact
+with~40mm rearroom, wants10mm during manoeuvre/originalendpose. No newdrive at
+initialinventory; reuse complete623 (hash/firmware in evidenceREADME). Parking
+report notassigned to exactlog; no newphysicalmeasurements inventible.
+Review simulation/CW_INNER_RED_AND_REAR_ROOM_20261031.md records evidence/limits.
+623 REDseat10(-900,500),oldlaterclearance210=>axle~-690; loggedlap3~-628/358/62deg
+nearinnerwallx=-500,anglednose consumesaxle-only reserve. OnlyofficialCWinnerRED
+withpriorconfirmedouterGREEN same section now180mm instead210. Firstlap/CCW/
+otherlayouts unchanged; no speed/gates/logging edits. CADold/newlayoutB
+REDlane-689.167->-719.167,modeledpassagewall109.250->138.946mm,
+globalpillar70.370->67.859. All2807laterconfigurationsPASS; sourceold/newcontrolsPASS.
+
+Parking existing10mm checkedalternative now tried during ordinarypartialentry
+planning(localY<250),without2replan/reasoncondition. Firstapproach/arc preserved,
+completecontinuation preflight remains. Zero-historyrecordedanchorselect4/4,
+net firststraights121.912/3.078mm due merging withchildcontinuation. Thus10mm
+is availableprefix, NOT guaranteeof10mmextraactualtravel everypose. Actual123mm
+geometry/rear40mm/endX60preferredY127 unchanged. Requested measuredrearaxlecentre
+to rearmostsensor/body distance tocheck overlyconservativegeometry; awaitingreply.
+Prior broadinitialreverseextension remainsdiscarded. PASS12recordedanchors,
+12forcedhistory,396fullsequence,350adaptiveradius,84overrun,6tail. No realvalidation.
+Densecaptureoff/fullobstaclestartup. M7IDESUCCESS RAM453816/523624 flash563256/786432,
+binary566808B SHA256da2616ba0ad2c53f05b81c36888e8fd7695d697221fe3bb719661bb22a7871a8.
+Path20261031_cw_inner_red,parking20261031_rear10_normal. M4unchanged/notbuilt;
+no upload/motion/commit/push. Next useruploadM7normalCW/save,secureFIRST,
+checkphysicalRED/innerwall/frontpink/reargap;awaitrearoverhangmeasurebefore
+changingphysicalfootprint. PreserveexitToF/brake/reversal/correction,nosweep.
+
+## 2026-10-31:624-627 analysis; falseRED22, earlyGREEN, measuredrear30
+
+Copied original624-627 unchanged; source-before/source-after/copy SHA256 verified,
+immediateunplugnotice. Portable tracked evidence/index parking_exit_diagnostics:
+20261031_log_624_cw.txt171236B SHA86d99692dca3bc6a430f57eace8e905a5ce19fc0a1679d94a07ba9a6a8dbec24;
+20261031_log_625_cw.txt92310B SHAd019d1b4ba0448c82ce06414da01e40d7429980b64b843774e78c420edb58c0c;
+20261031_log_626_cw.txt88488B SHA95e28acd1414d5c5e79d1d4459a251e29e5539b7ef88d6d7c651e3bec988e2ba;
+20261031_log_627_ccw.txt89409B SHA1dbbbfcdf7b751410cbf2bc85e30150b3099b499a24ffc7291038a9384086a72.
+DiagmoduleOct31 16:38:46,pathsettled_view,624parkingrear10_escape. Installedbinary
+notreadback; these logs predatecw_inner_red/rear10_normal. Usercorrects NONEgood,
+samelayout,secondGREEN afterREDthirdsection passedwrongside; firmware624completed
+notphysicalsuccess (earlier agentinterpretationincorrect).624footercompleted191942ms;
+625/626/627mode_pause82194/77290/107270ms;alltruncated0,no densepose. Review
+simulation/RETURNED_624_627_REVIEW_20261031.md for preciseevidence/limits/nextsteps.
+
+625seat22confirmedRED at425282ms,robot944/117/281.5,image280/foot112,range617,
+sighting826/-606,snaperror129;injectedREDandsamecolourjoin19/22. PhysicalGREEN
+there=>wrongsidepath. Far/high unknownnonparkingRED nowdefers when BOTHrayerror
+>4.5deg ANDdeptherror>100mm;existing10degr capremains,nearviewsunaffected.
+InitialOR gate regressedlegitfar-middle; narrowedAND andallrelevantcontrolsPASS.
+Old/newrounded625replay commitswrongREDonlyold;syntheticblobdimensions,nooriginal
+pixels,so spuriousredcomponent rootcause notidentified. No hardcodedlayoutcolour.
+MappedGREENfallback extended600->800mm onlynonparking;sameangulargate,silhouette/
+colour/snap/rangetolerance/rowambiguity/REDconflict/3frames. CLEARrangeunchanged.
+627 knownREDreturnunsafejoin after210mmreverse nowtriesexistingcheckedparallax
+orcontinuedobservation,neveracceptsunsafejoin. ~390ms searchgaps/gyrorestart remain
+limits. Other625/626lateassociation andoversizedviews notclaimedfullysolved.
+
+Usermeasuredrearaxlecentretorearmostsensor/body30mm (was40). Correctedfinalparking
+rearconstant andactualrearpolygons viaoptionalrobotQuadsrearargument;default40
+keepsestablishedexit/routecallersunchanged. Endcontainment/reserveuse30;explicit
+axleendX60 retained(insteadofunintentionalrear+20=>50). Width123/front125/Y127/
+frontreserve16 andnormal10mmoptionremain. Nominalslotlengthnotchanged,scanmeasuresgap.
+624hadrearreferencecorrection38.28mm,severalreplans;reportedcompletionnotcontactproof.
+Parkingrearerrorplausiblecontributor,notprovensolecauseofcontact.
+
+PASSgeometry9,396fullsequence,350adaptiveradius,84overrun,36tight,6tail;
+farGREEN7/3frame650..800+empty/RED/parkinglimits;falseREDold/newcontrol;
+farprimary52;realVisionarchived+synthetic;4608wallreuse,18edgeaim,81CCWscan,
+far-middle/CHECK_ALL/watchdog/8exit;recordedfalseend6,knownRED/nextGREEN4,
+startcontrol8,earlydisputedrows14,thirdGREEN54,unknownfirstGREEN27,capture18,
+627dispatch,compacttelemetryPASS. No newphysicaltest. Densecaptureoff.
+M7IDEbuildSUCCESS RAM453816/523624 flash563624/786432,binary567176B
+SHA256df928923e92a8864bb4a4d486cebf59713d9736273a99931eca39784709eece1.
+Path20261031_far_green_rear30,parking20261031_rear30_123mm. M4unchanged/notbuilt;
+no upload/motion/commit/push. Next useruploadM7normalrun/save,secureFIRST,
+checkseat22GREEN/passSideL,earliness,626holds/627rejoin andphysicalfront/rear.
+Ifspuriouscolourpersists needoriginalpixelsatfailure;neverforceknownlayout.
+PreserveexitToF/brake/reversal/correction;no dedicatedToFsweep.
+
+## 2026-10-31:628 extra10mm preference cancelled; measuredrear30 retained
+
+FIRST secured complete628 CW,source-before/source-after/copy SHA256matched,
+immediateunplugnotice. Portableoriginal/index:
+simulation/evidence/parking_exit_diagnostics/20261031_log_628_cw.txt171194B,
+SHAc62f3f7995e30f4ec8e33d17571c63f65c2e5f27caad52fb0b9cfb8b8c641379.
+DiagmoduleOct31 17:20:17,pathfar_green_rear30,parkingrear30_123mm,turn-1;
+installedbinarynotreadback. Footercompleted189835ms/truncated0/normal logging,
+notphysicalvalidation. Userfrontroomexcessive/repeatedrearwardmovement; explicitly
+WITHDRAWS earlierextra10mm becauseactualrear30 correctedold40. This supersedes
+olderrequests/history: do NOT reintroduce a specialextra10mm preference.
+
+628gap253.3,capture210.9/-1204.2/180.3,6replans all selectedchecked10mmbranch;
+radiusscale1.178/1.162/1.218/1.134. Mergedstraights maycancelsomeprefixes; evidence
+is repeatedrearwardcandidatebias,notproofeachphysicallyadded10mm. Rearreference
+-17.15correctionnotdrivenmovement. Removedentirepreferredprefixbranch. Normal
+bidirectionalquick/general/escapeplanning/fullsweeps remain. Rear30,width123,
+finalaxleX60/Y127preference/frontreserve16 unchanged. No route/camera/speed/exit/
+ToFfan/loggingchanges. Guideupdated;review
+simulation/RETURNED_628_BALANCED_PARKING_20261031.md recordsdetails/limitations.
+
+PASS628mirroredanchors12atgap253.3/scales1.134/1.178/1.218;
+620/621recorded12+forcedhistory12,noautomaticprefix;4normalpartialplanning;
+396full,350adaptive,84overrun,36tight,6tail,registration/health. Hostnotphysicalproof.
+M7IDEbuildSUCCESS RAM453816/523624 flash563104/786432;binary566656B
+SHA25633e96b5b3ec08474a9f0a255c74474a5023d44f4f7f838ba1f93cd08cc161dd0.
+Parking20261031_rear30_balanced,pathfar_green_rear30. M4unchanged/notbuilt;
+no upload/motion/commit/push. Densecaptureoff. NextuseruploadM7normalpark/fullrun
+save,secureFIRST,comparefront/rearactualreserves anddirection/replancount to628.
+Keep30mmrear andgoodfinalgoal; preserveexitToF/brake/reversal/correction,nosweep.
+
+## 2026-11-01:629?634 parking motion and bounded continuation
+
+FIRST secured629?631; then supplied630?634 source-before/source-after/copy SHA256
+verified before analysis.630/631 identical to prior originals. Portable complete
+originals, sizes and full hashes: simulation/evidence/parking_exit_diagnostics/
+README.md,20261031_log_629_cw.txt through631_cw,20261101_log_632_cw.txt,
+633_ccw,634_cw. New hashes632=3e2bd3e85a436c7ae1f9076c9cae9097f9d185bc9c497b083313fe3b943f225e;
+633=069666c69da124d83fce97efa0b7e40654898ea14f111c25872731f67c1a1813;
+634=ec36d786488a266067586dfe4c21de8df10905a8b8f3adec93fecfe245a3cd42.
+629 olderrear30_123mm;631?634 rear30_balanced/pathfar_green_rear30;
+diagmoduleOct31 17:20:17, no binary readback.630 stops before parking.632 aborts
+entry_replan_limit,633/634 footercompleted; alltruncated0/denseoff. User reports
+room available/little movement/long pauses, not per-run contact validation.
+
+631 measured firstarc local136.2/237.4/60.2 scale1.159 rejected old fixed-heading
+tail0/2; general searches10?12s.632 repeated1?3mm prefixes/arc-clearance rejection
+until8-attempt limit. Expanded bounded tail headings/analytic straights/full1mm
+sweeps,12000steps/margin; early partialY220?250 measuredradius uses same solver.
+Tiny<5mm straight-to-arc transitions also preflight2mm shortfall. No blanket
+minimum segment; late checked general recovery retained. Added successful-tail
+search_ms for hardware timing. Width123/rear30/front125 and goal60/127 retained;
+no preferred extra10mm. No camera/route/speed/exit/ToF/dense-log change.
+
+PASS6316/6 mirrored actualradii1.159/1.20/1.235 (0?2 replans);632?63448/48 anchors,
+yaw?1.5,overrun0/1.5.396full,350adaptive,84overrun,36tight,12balanced,6priortail,
+health/registration pass. Host model not physical proof; general search and
+sensor/pose limitations remain. Review simulation/RETURNED_629_634_PARKING_MOTION_20261101.md.
+Next user upload M7 only; normalCW/CCW save, secureFIRST, comparesearch_ms/replans
+and physicalfront/rear reserves/contact. No dedicatedToFsweep. Keepcancelled10mm
+preference cancelled. Build identity follows after final compilation.
+Final M7IDE buildSUCCESS: parking20261101_bounded_tail, pathfar_green_rear30;
+RAM453816/523624 flash563912/786432, binary567464bytes,
+SHA256e9e762a1cf2660039b574b717083b4e1a7e5669c401a99a60738da52fe221acb.
+620/621 recorded12+forcedhistory12, normalpartialgoal/brake/rebase alsoPASS.
+M4unchanged/notbuilt; no upload, movement, commit or push.
+
+## 2026-11-01: efficient entry, swept room and progress-based recovery
+
+User requests fast parking from the good capture pose, few arcs, use safe full
+space calculated per pose instead of fixed1cm/6cm, reduce long computation holds.
+No new test batch in this turn.629-634 evidence/hashes remain unchanged/indexed;
+all predate this firmware. Read parking pose plan; preserve exit diagnostics.
+
+Implemented ordinary-reserve two-arc shortcut; bounded quick-recipe cost ranking
+(max1500 extra geometry steps), remaining-sequence refresh with fresh full1mm
+sweep, usable neutral travel computed from actual footprints/rails/gap minus
+max(2mm,measured brake lead) and available-room fallback candidates. General
+budget60000->20000/margin. Eight-total-replans changed to consecutive-no-progress
+limit: >3mm improvement in goal distance + equivalent yaw arc resets counter;
+true repeated stall/no safe plan still stops. Good final goal60/127, rear30,
+front125,width123, existing nose reserve/brake300/servo400 retained. No preferred
+extra10mm, no route/camera/speed/exit/ToF/dense logging changes.
+
+At gap245.2/capture269.2,295.9,-.5: prior7segments/4arcs/3reversals338.396mm;
+new5/2/1,332.487mm. Other probes retained safe prior families when shortcut not
+feasible. Reduced-clearance two-arc trial FAILED independent pose-error safety
+checks and was discarded. Released shortcut ordinary reserve only.
+PASS396full/no modeled collision,350adaptive,84overrun,48returned632-634,
+6returned631(now0general replans),36tight,12balanced,6oldtail,24returned620/621,
+registration/health. New efficient test14room/progress/recipe checks +36complete
+runs with independent plant/yaw/radius/brake errors; initial radius estimate1.0
+unmeasured versus actual1/1.136/1.235. Host not physical proof.
+Review:simulation/EFFICIENT_PARKING_ENTRY_20261101.md.
+M7IDEbuildSUCCESS parking20261101_efficient_entry, pathfar_green_rear30;
+RAM453824/523624 flash566400/786432, binary569952bytes,
+SHA2560ea50490d45dd1fc03dd71cbc36de350db5dc0319718e63f72e8fcb0218801ed.
+M4unchanged/notbuilt; no upload/movement/commit/push. Next user uploadM7 normal
+CW/CCW save; secureFIRST; compare search_ms,arc/reversal counts,remaining-refresh,
+physical reserves/contact. Broad fallback can still take time; do not promise
+universal completion. No dedicatedToFsweep; keep exit diagnostics unchanged.

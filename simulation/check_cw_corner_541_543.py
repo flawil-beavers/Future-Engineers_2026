@@ -87,7 +87,7 @@ int main(){int id,foot,cx,w,ht;float x,y,h;int total=0;
         'struct Discovery {bool observedClear=false;bool seatObservedClear[2]={};};')
     geometry += '\nbool earlyMiddleViewActive[OBSTACLE_SEAT_COUNT]={};\n'
     for sig in ('bool earlyMiddleViewEligible(', 'bool earlyMiddleViewPathSafe(', 'void rebuildLivePath()',
-                'bool cornerViewSeatMayBeOccupied(', 'bool cornerViewSweepSafe('):
+                'bool cornerViewSeatMayBeOccupied(', 'bool cornerViewRetreatSafe(', 'bool cornerViewSweepSafe('):
         geometry += block(source, source.index(sig))+'\n'
     old = subprocess.check_output(['git', 'show', 'cc0bc59:src/obstacle_path.cpp'], text=True)
     geometry += block(old, old.index('bool cornerViewSweepSafe(')).replace(
@@ -100,10 +100,10 @@ int main(){int total=0;float minimumWall=1e9f,minimumPillar=1e9f;
   routeTurnSign=dir;resetState();baseline();
   for(int i=0;i<24;++i){seats[i].confirmed=i%4==0;discoveryStations[i/2].seatObservedClear[i%2]=i%3==0;}
   PositionEstimate p{x,y,h};
-  if(cornerViewSweepSafe(p,travel)!=frozenCornerSweepSafe(p,travel))return 4;
+  if(frozenCornerSweepSafe(p,travel)&&!cornerViewSweepSafe(p,travel))return 4;
   ++total;
  }
- std::cout<<"RECOVERY GEOMETRY "<<total<<" equivalent decisions\n";
+ std::cout<<"RECOVERY GEOMETRY "<<total<<" preserves legacy accepted decisions\n";
  const float poses[3][3]={{-562.6f,-730.9f,173.93f},{-562.5f,-727.8f,173.88f},{-557.5f,-727.f,174.07f}};
  int routes=0;
  for(const auto &start:poses)for(int mirror:{0,1})for(float dx:{-10.f,0.f,10.f})

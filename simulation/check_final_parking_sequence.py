@@ -25,6 +25,7 @@ enum {DC_DISABLED,DC_ENABLED,DC_HOLDING};int dc_state=DC_HOLDING,command=0,steer
 bool servo_disabled=true;float current_speed=0,measured_speed=0;
 float last_loop_time=.01f;
 struct Logger {std::ostringstream lines;int writes=0;
+ size_t remaining()const{return 196608;}
  template<class T>void print(T x){lines<<x;}template<class T>void print(T x,int){lines<<x;}
  template<class T>void println(T x){lines<<x<<"\n";}template<class T>void println(T x,int){lines<<x<<"\n";}void println(){lines<<"\n";}
  void write_to_usb(){++writes;}} robot_logger;
@@ -42,9 +43,9 @@ uint8_t obstacle_path_seat_count(){return 24;}
 bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
 void update_gyro(){}
 bool obstacle_path_sample_pose_clearance(uint8_t i,float x,float y,float h,ObstacleClearanceSample &s){return calculateClearanceAtPose(seats[i],x,y,h,s);}
-enum TofSensor {TOF_LEFT,TOF_RIGHT};
+enum TofSensor {TOF_LEFT,TOF_RIGHT,TOF_REAR};
 struct TofObjectDiagnostic{int16_t distance_mm=0;bool hardware_valid=true,filter_accepted=true;};
-struct TofDiagnosticSnapshot{uint8_t stored_object_count=0;TofObjectDiagnostic objects[4];uint32_t sequence=0,sampled_ms=0;float selected_raw_distance_mm=0;};
+struct TofDiagnosticSnapshot{uint8_t stored_object_count=0;TofObjectDiagnostic objects[4];uint32_t sequence=0,sampled_ms=0;float selected_raw_distance_mm=0,filtered_distance_mm=0,selected_signal_mcps=1,selected_sigma_mm=1;};
 bool get_tof_diagnostic_snapshot(TofSensor,TofDiagnosticSnapshot &);
 namespace parking_module {
 void final_parking_sensor_hold();
@@ -69,6 +70,7 @@ BeamFootprint beamFootprint(TofSensor sensor,float rangeMm,const PositionEstimat
 '''
     fixture+=r'''
 bool get_tof_diagnostic_snapshot(TofSensor sensor,TofDiagnosticSnapshot &s){
+ if(sensor==TOF_REAR)return false; // No invented rear measurement in ordinary host cases.
  s.sequence=hostTime/framePeriod;s.sampled_ms=s.sequence*framePeriod;
  const float markerRange=parking_module::expectedOuterWallRange(sensor,truePose)-200;
  auto footprint=parking_module::beamFootprint(sensor,markerRange,truePose);
@@ -140,7 +142,7 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
   bool rejectedSafely=xBias!=0&&parking_module::final_parking_aborted()&&!frozenServo&&!physicalCollision&&dc_state!=DC_ENABLED;
   parked+=completedSafely;safeRejected+=rejectedSafely;
   bool ok=completedSafely||rejectedSafely;
-  ++total;if(!ok){++bad;std::cout<<"SEQUENCE FAIL "<<dir<<" "<<layout<<" period "<<period<<" bias "<<poseBias<<" xbias "<<xBias<<" collision "<<physicalCollision<<" contained "<<realContained<<" frozen "<<frozenServo<<"\n"<<robot_logger.lines.str();}
+  ++total;if(!ok){++bad;std::cout<<"SEQUENCE FAIL "<<dir<<" "<<layout<<" period "<<period<<" bias "<<poseBias<<" xbias "<<xBias<<" collision "<<physicalCollision<<" contained "<<realContained<<" frozen "<<frozenServo<<" true_xyh="<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<" estimated="<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<hostPose.heading_deg<<"\n"<<robot_logger.lines.str();}
  }
  std::cout<<"FINAL SEQUENCE "<<total<<" PARKED "<<parked<<" SAFE_REJECTED "<<safeRejected<<" FAILED "<<bad<<"\n";return bad?1:0;
 }
@@ -148,6 +150,9 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
     if '--quick' in sys.argv:
         fixture=fixture.replace('  framePeriod=period;',
             '  if(xBias!=0 || !((dir==-1&&layout==2&&poseBias==-40&&period==30)||(dir==1&&layout==3&&poseBias==40&&period==30)||(dir==-1&&layout==3&&poseBias==40&&period==100)))continue;\n  framePeriod=period;')
+    if '--slow-cw' in sys.argv:
+        fixture=fixture.replace('  framePeriod=period;',
+            '  if(dir!=-1||period!=100||layout!=0||poseBias!=0||xBias!=0)continue;\n  framePeriod=period;')
     destination=ROOT/'local_workspace'/('final-parking-sequence-quick' if '--quick' in sys.argv else 'final-parking-sequence');destination.mkdir(exist_ok=True)
     cpp=destination/'check.cpp';exe=destination/'check.exe';cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'local_workspace/later-laps'),str(cpp),'-o',str(exe)],check=True)

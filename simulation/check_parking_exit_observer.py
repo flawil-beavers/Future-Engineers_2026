@@ -95,12 +95,41 @@ int main(int argc,char **){
   b.translate(12,-8);b.translate(18,-10);
   CHECK(fabsf(b.frame(0).pose.x_mm-p.x_mm)<.01f);
   obstacle_path_apply_exit_observations(b);
-  if(!seats[seat].confirmed){ObstacleObservationResult debug;
-   std::cerr<<"case "<<direction<<"/"<<station<<"/"<<int(color)<<" range/bearing="<<range<<"/"<<bearing
-    <<" nominal="<<parkingExitObservationSeat(blob,p,debug)<<" stable="<<parkingExitObservationStable(blob,p,debug)
-    <<" snap="<<debug.snapErrorMm<<"\n";}
-  CHECK(seats[seat].confirmed && seats[seat].red==(color==ColorType::RED));
+  CHECK(!seats[seat].confirmed && !seats[seat].injected && !injectionCount);
+  CHECK((color==ColorType::RED?seats[seat].redVotes:seats[seat].greenVotes)==1);
+  // Re-importing historical frames cannot complete confirmation.
+  obstacle_path_apply_exit_observations(b);
+  CHECK(!seats[seat].confirmed && !injectionCount);
   CHECK(parkingEntryActive && hostPose.x_mm==1234 && hostPose.heading_deg==42);
+  prepareConsecutiveVote(seat,color);
+  CHECK(recordSeatVote(seats[seat],color));
+  CHECK(seats[seat].confirmed && seats[seat].red==(color==ColorType::RED));
+ }
+ //610: cached middle hint must not coexist as a confirmed phantom with a
+ //subsequently observed end pair. Normal fresh association resets that hint.
+ for(int direction:{-1,1}){
+  setup(direction);auto p=facing(3,500);auto green=blobFor(3,p,ColorType::GREEN);
+  ParkingExitCameraBuffer b;b.begin(direction);feed(b,1000000,p,green);
+  obstacle_path_apply_exit_observations(b);
+  CHECK(!seats[3].confirmed && seats[3].greenVotes==1 && !injectionCount);
+  prepareConsecutiveVote(1,ColorType::GREEN);
+  CHECK(!recordSeatVote(seats[1],ColorType::GREEN));
+  CHECK(seats[3].greenVotes==0 && !seats[3].confirmed);
+  CHECK(recordSeatVote(seats[1],ColorType::GREEN));
+  prepareConsecutiveVote(5,ColorType::RED);
+  CHECK(!recordSeatVote(seats[5],ColorType::RED));
+  CHECK(recordSeatVote(seats[5],ColorType::RED));
+  CHECK(seats[1].confirmed && seats[5].confirmed && !seats[3].confirmed);
+  //Expired hints and a different fresh colour both need two fresh votes.
+  setup(direction);obstacle_path_apply_exit_observations(b);
+  clockMs+=OBSTACLE_SEAT_VOTE_WINDOW_MS+1;
+  prepareConsecutiveVote(3,ColorType::GREEN);
+  CHECK(!recordSeatVote(seats[3],ColorType::GREEN));
+  CHECK(recordSeatVote(seats[3],ColorType::GREEN));
+  setup(direction);obstacle_path_apply_exit_observations(b);
+  prepareConsecutiveVote(3,ColorType::RED);
+  CHECK(!recordSeatVote(seats[3],ColorType::RED));
+  CHECK(recordSeatVote(seats[3],ColorType::RED) && seats[3].red);
  }
  for(int direction:{-1,1}){
   setup(direction);auto p=facing(5,450);auto green=blobFor(5,p,ColorType::GREEN);
@@ -165,6 +194,16 @@ int main(int argc,char **){
  ParkingExitCameraBuffer wrap;wrap.begin(1);uint32_t base=0xffff0000U;
  for(uint32_t dt=0;dt<=80000;dt+=10000)wrap.samplePose(base+dt,p);
  CHECK(wrap.capture(base+81000,base+80000,80000,1,v));
+ // Real loop cadence: completion is newer than the last10ms history sample.
+ // The pre-processing sample alone cannot bracket it; the forced post-frame
+ // sample must work even when less than10ms have elapsed since that sample.
+ for(uint32_t offset:{1000U,3000U,7000U}){
+  ParkingExitCameraBuffer b;b.begin(1);
+  for(uint32_t t=1000000;t<=1080000;t+=10000)b.samplePose(t,p);
+  CHECK(!b.capture(1080000+offset+1000,1080000+offset,73000,1,v));
+  b.samplePose(1080000+offset+1000,p,true);
+  CHECK(b.capture(1080000+offset+1000,1080000+offset,73000,2,v));
+ }
  std::cout<<"EXIT OBSERVER "<<checks<<" checks PASS; buffer bytes="<<sizeof(ParkingExitCameraBuffer)<<"\n";
 }
 '''

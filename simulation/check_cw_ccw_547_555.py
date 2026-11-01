@@ -70,7 +70,7 @@ unsigned long millis(){return clockMs;}
 bool discoveryAimCommandSafe(const PositionEstimate &,int);
 '''
     for sig in ('bool completingExtremeAdjacentPair(', 'bool cornerViewSeatMayBeOccupied(',
-                'bool cornerViewSweepSafe(', 'bool discoveryAimCommandSafe(',
+                'bool cornerViewRetreatSafe(', 'bool cornerViewSweepSafe(', 'bool discoveryAimCommandSafe(',
                 'void applyDiscoveryTargetNudge('):
         code += block(path,path.rindex(sig))+'\n'
     code += r'''

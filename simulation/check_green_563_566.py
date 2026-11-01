@@ -66,7 +66,7 @@ bool discoveryAimCommandSafe(const PositionEstimate &,int);
 '''
     for sig in ('bool earlyMiddleViewEligible(', 'bool earlyMiddleViewPathSafe(',
                 'void rebuildLivePath()', 'bool completingExtremeAdjacentPair(',
-                'bool cornerViewSeatMayBeOccupied(', 'bool cornerViewSweepSafe(',
+                'bool cornerViewSeatMayBeOccupied(', 'bool cornerViewRetreatSafe(', 'bool cornerViewSweepSafe(',
                 'bool discoveryAimCommandSafe(', 'void applyDiscoveryTargetNudge('):
         geo+=block(path,path.rindex(sig))+'\n'
     code=geo+r'''

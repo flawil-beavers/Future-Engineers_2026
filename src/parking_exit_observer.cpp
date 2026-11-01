@@ -14,14 +14,19 @@ void parking_exit_observer_sample_pose() {
 }
 void parking_exit_observer_capture() {
     if (!exitCamera.active()) return;
-    exitCamera.capture(micros(), camera.getLastFrameCompletedTimeUs(),
+    // DMA often finishes just after the last throttled history sample. Add
+    // the post-processing pose too, so completion is bracketed rather than
+    // rejecting almost every otherwise usable moving frame (594--601).
+    const uint32_t now = micros();
+    exitCamera.samplePose(now, get_position_struct(), true);
+    exitCamera.capture(now, camera.getLastFrameCompletedTimeUs(),
         camera.getLastFrameIntervalUs(), camera.getCompletedFrameCount(), vision.getResult());
 }
 void parking_exit_observer_translate(float dx, float dy) { exitCamera.translate(dx, dy); }
 void parking_exit_observer_apply() {
     if (!exitCamera.active()) return;
     const uint32_t startedUs = micros();
-    robot_logger.print("[EXIT VIEW] revision=20261030_corrected_pose frames/rejected/overwritten=");
+    robot_logger.print("[EXIT VIEW] revision=20261031_frame_bracket frames/rejected/overwritten=");
     robot_logger.print(exitCamera.size()); robot_logger.print("/");
     robot_logger.print(exitCamera.dropped()); robot_logger.print("/");
     robot_logger.println(exitCamera.overwritten());
