@@ -269,9 +269,19 @@ static RuntimeSafety::EnableSwitchFilter enable_switch_filter;
 // MOTOR CONTROL FUNCTIONS
 // ==========================================
 
+static int servo_last_command = 1000;
+static uint32_t servo_last_command_ms = 0;
+
+bool steering_command_settled(int angle, uint32_t minimumMs)
+{
+  // Time since an actual servo write, not since a planner requested an angle.
+  // stop(false/true) only disables writes; it does not detach the PWM servo.
+  return servo_last_command == angle &&
+      uint32_t(millis() - servo_last_command_ms) >= minimumMs;
+}
+
 void steer(int angle)
 {
-  static int servo_last_command = 1000;
   if (angle == servo_last_command)
   {
     return; // Skip unnecessary writes
@@ -295,6 +305,7 @@ void steer(int angle)
 
   servo.write(angle);
   servo_last_command = commanded_angle;
+  servo_last_command_ms = millis();
 }
 
 void set_steering(int angle)

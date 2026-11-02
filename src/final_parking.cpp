@@ -142,6 +142,11 @@ uint32_t entryPlannerLastPollMs = 0;
 uint32_t rearBrakeEpoch=0,rearReferenceSequence=0;
 uint8_t rearReferenceFrames=0;
 float rearReferenceAxleMm=0;
+bool entryBrakeEvidenceValid=false;
+uint32_t entryBrakeEpoch=0,entryBrakeStillMs=0;
+uint8_t entryBrakeEvidenceState=0;
+unsigned long entryBrakeSampleCount=0;
+float entryBrakeStillDistance=0,entryBrakeStillHeading=0;
 
 void serviceEntryPlanner()
 {
@@ -453,6 +458,34 @@ bool parkingBrakeReady(uint32_t minimumMs)
     if (elapsed>=minimumMs+OBSTACLE_FINAL_PARKING_BRAKE_SETTLE_TIMEOUT_MS)
         abortParking("brake_not_settled");
     return false;
+}
+
+bool parkingEntryBrakeReady()
+{
+    // Retain the proven300ms path and timeout. Earlier continuation requires
+    // independent encoder/yaw stillness AND fresh low-speed measurements.
+    if (parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return true;
+    if (aborted) return false;
+    const uint32_t now=millis();
+    const float distance=get_distance();
+    const float heading=get_position_struct().heading_deg;
+    if (!isfinite(distance) || !isfinite(heading) || !isfinite(measured_speed))
+    {entryBrakeEvidenceValid=false;return false;}
+    if (!entryBrakeEvidenceValid || entryBrakeEpoch!=stateStartMs ||
+        entryBrakeEvidenceState!=state ||
+        fabsf(distance-entryBrakeStillDistance)>0.5f ||
+        fabsf(wrap180(heading-entryBrakeStillHeading))>0.25f)
+    {
+        entryBrakeEvidenceValid=true;entryBrakeEpoch=stateStartMs;
+        entryBrakeEvidenceState=state;entryBrakeStillMs=now;
+        entryBrakeStillDistance=distance;entryBrakeStillHeading=heading;
+        entryBrakeSampleCount=speed_measurement_count;
+        return false;
+    }
+    return uint32_t(now-stateStartMs)>=150U &&
+        uint32_t(now-entryBrakeStillMs)>=120U &&
+        (speed_measurement_count-entryBrakeSampleCount)>=2UL &&
+        fabsf(measured_speed)<=SOFT_STOP_SPEED_THRESHOLD_MMS;
 }
 
 bool checkMotionHealth(const PositionEstimate &pose)
@@ -1704,6 +1737,15 @@ void requestEntryReplan(const char *reason)
     Serial.print("[FINAL PARK REPLAN] ");Serial.println(reason);
 }
 
+void beginEntrySettle()
+{
+    const int steering=activeEntrySegment().steering*routeTurnSign;
+    if (!parkingEntryPoseSafe(get_position_struct(),steering))
+    {requestEntryReplan("stationary_steering_clearance");return;}
+    servo_disabled=false;set_steering(steering);steer(steering);
+    stateStartMs=millis();state=FP_SEGMENT_SETTLE;
+}
+
 void enterTestHold(const char *reason)
 {
     stop(false);
@@ -1759,6 +1801,7 @@ void final_parking_reset()
     entryRadiusScale=1.0f;entryStartHeading=0.0f;
     entryRadiusMeasured=false;
     entryReplanHadMotion=false;
+    entryBrakeEvidenceValid=false;
     entryBrakeStartDistance=entryBrakeTravelMm=0.0f;
     entryBrakeDirection=1;
     entryPlanningBudget=0;
@@ -1818,7 +1861,7 @@ void final_parking_start_entry_practice(int8_t turn_sign)
     stateStartMs=millis();
     state=FP_CAPTURE_BRAKE;
     stop(true);
-    Serial.println("[FINAL PARK] revision=20261101_efficient_entry");
+    Serial.println("[FINAL PARK] revision=20261102_reuse_steer_settle");
     Serial.print("[FINAL PARK PRACTICE] entry_only=yes turn=");
     Serial.print(routeTurnSign>0 ? "CCW":"CW");
     Serial.print(" gap_mm=");Serial.print(measuredGapMm,1);
@@ -1873,7 +1916,7 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
-        Serial.println("[FINAL PARK] revision=20261101_efficient_entry");
+        Serial.println("[FINAL PARK] revision=20261102_reuse_steer_settle");
         // The stopped geometric search may outlast the 200-ms sensor age.
         // Service queued reports before attempting the first motion; a
         // genuinely stale/missing report still follows the normal hold.
@@ -2207,7 +2250,7 @@ bool final_parking_update(int8_t turn_sign)
 
     if (state == FP_CAPTURE_BRAKE)
     {
-        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
+        if (!parkingEntryBrakeReady())
             return true;
         stop(false);
         pose = get_position_struct();
@@ -2235,8 +2278,7 @@ bool final_parking_update(int8_t turn_sign)
         if (!planned && !parkingEntryPreflight(pose))
         { requestEntryReplan("entry_swept_preflight"); return true; }
         Serial.println("[FINAL PARK] Measured-gap entry swept preflight PASS");
-        stateStartMs = millis();
-        state = FP_SEGMENT_SETTLE;
+        beginEntrySettle();
         return true;
     }
 
@@ -2251,8 +2293,10 @@ bool final_parking_update(int8_t turn_sign)
         servo_disabled = false;
         set_steering(steering);
         steer(steering);
-        if (millis() - stateStartMs <
-            OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS)
+        // Reuse elapsed settling only for the identical physically written
+        // command. A new command still gets the complete actuator wait.
+        if (!steering_command_settled(steering,
+            OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS))
             return true;
         stateStartDistance = get_distance();
         stateStartMs = millis();
@@ -2344,7 +2388,7 @@ bool final_parking_update(int8_t turn_sign)
     if (state == FP_SEGMENT_BRAKE)
     {
         sampleRearEntryReference(pose);
-        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS))
+        if (!parkingEntryBrakeReady())
             return true;
         stop(false);
         updateEntryBrakeTravel();
@@ -2357,7 +2401,7 @@ bool final_parking_update(int8_t turn_sign)
         }
         if(rearCorrected){requestEntryReplan("rear_marker_reference");return true;}
         if(radiusChanged && adaptRemainingEntryRecipe(get_position_struct()))
-        {stateStartMs=millis();state=FP_SEGMENT_SETTLE;return true;}
+        {beginEntrySettle();return true;}
         const bool withinLegacyGate=adaptiveEntryCount ? true:endpointWithinGate(segmentIndex);
         PositionEstimate expected{};
         if (adaptiveEntryCount) expected=adaptiveEndpoints[segmentIndex];
@@ -2372,7 +2416,7 @@ bool final_parking_update(int8_t turn_sign)
             fabsf(wrap180(pose.heading_deg-expected.heading_deg))>1.5f)
         {
             if(refreshRemainingEntry(pose))
-            {stateStartMs=millis();state=FP_SEGMENT_SETTLE;return true;}
+            {beginEntrySettle();return true;}
             requestEntryReplan("segment_pose");return true;
         }
         ++segmentIndex;
@@ -2387,24 +2431,21 @@ bool final_parking_update(int8_t turn_sign)
             enterTestHold("configured segment limit reached");
             return true;
         }
-        stateStartMs = millis();
-        state = FP_SEGMENT_SETTLE;
+        beginEntrySettle();
         return true;
     }
 
     if (state == FP_VERIFY)
     {
-        // stop(false) disables servo writes. Actually centre the wheels and
-        // let them settle before checking the straight125mm final footprint.
+        // stop(false) disables writes but retains the servo PWM. Do not wait
+        // another400ms when the preceding straight already centred the wheels.
         if (servo_disabled)
         {
             if (!parkingEntryPoseSafe(pose,0))
             { requestEntryReplan("final_neutral_clearance");return true; }
             servo_disabled=false;set_steering(0);steer(0);
-            stateStartMs=millis();
-            return true;
         }
-        if (millis()-stateStartMs<OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS) return true;
+        if (!steering_command_settled(0,OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS)) return true;
         set_steering(0);
         pose = get_position_struct();
         const bool contained = finalFootprintContained();
@@ -2445,7 +2486,7 @@ bool final_parking_update(int8_t turn_sign)
     if (state==FP_REPLAN_BRAKE)
     {
         sampleRearEntryReference(pose);
-        if (!parkingBrakeReady(OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS)) return true;
+        if (!parkingEntryBrakeReady()) return true;
         stop(false);
         if (entryReplanHadMotion)
         {
@@ -2478,7 +2519,7 @@ bool final_parking_update(int8_t turn_sign)
         }
         Serial.print("[FINAL PARK REPLAN] accepted attempt=");Serial.print(entryReplans);
         Serial.print(" reason=");Serial.println(entryReplanReason ? entryReplanReason:"entry");
-        stateStartMs=millis();state=FP_SEGMENT_SETTLE;
+        beginEntrySettle();
         return true;
     }
 
@@ -2502,6 +2543,7 @@ bool final_parking_active()
 
 void final_parking_sensor_hold()
 {
+    entryBrakeEvidenceValid=false;
     if (!final_parking_active()) return;
     if (!sensorHoldPending) {
         sensorHoldPending = true;

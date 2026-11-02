@@ -1205,6 +1205,10 @@ constexpr auto OBSTACLE_PARKING_CCW_GREEN_LAP1_PLATEAU_WAYPOINTS = 1;
 constexpr auto OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM = 210.0f;
 // Official normal-section solitary middles only: less lateral excursion.
 constexpr auto OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM = 210.0f;
+// Known official CW GREEN end signs with a moderate outward bypass:
+// 230 mm centre clearance retains the swept wheel/pillar reserve without
+// inheriting the 260 mm discovery excursion toward the opposite wall.
+constexpr auto OBSTACLE_OPTIMIZED_END_CLEARANCE_MM = 230.0f;
 // Normal-section solitary middles permit a shorter extreme displacement, preserving
 // more wall reserve. End-pair passing plateaus retain their 210mm target.
 constexpr auto OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM = 190.0f;
@@ -1213,6 +1217,8 @@ constexpr auto OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM = 190.0f;
 // during the 1 -> 2 handoff. Fade into the later-lap route farther away.
 constexpr auto OBSTACLE_LATER_LAP_SEAM_KEEP_MM = 200.0f;
 constexpr auto OBSTACLE_LATER_LAP_SEAM_BLEND_MM = 200.0f;
+// Smooth discovery -> recorded-map pursuit/speed over measured forward travel.
+constexpr auto OBSTACLE_LATER_LAP_HANDOFF_MM = 400.0f;
 // Known routes use a stable pursuit distance even when a test speed cap is
 // active. Scaling it down with speed created tight, saturated turns in the
 // model. The existing corner multiplier still applies; lap 1 is unchanged.

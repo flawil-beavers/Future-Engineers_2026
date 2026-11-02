@@ -13010,3 +13010,185 @@ M4unchanged/notbuilt; no upload/movement/commit/push. Next user uploadM7 normal
 CW/CCW save; secureFIRST; compare search_ms,arc/reversal counts,remaining-refresh,
 physical reserves/contact. Broad fallback can still take time; do not promise
 universal completion. No dedicatedToFsweep; keep exit diagnostics unchanged.
+
+## 2026-11-02: direct later-lap connectors and handoff completion
+
+User requests shorter/smoother laps2/3, less excessive outward avoidance and
+safe1->2 /3->parking transitions. No newUSB/source batch; only C drive available.
+Read history/parkingposeplan. Existing629-634 evidence remains unchanged and
+predates this firmware.632/634 log ordinary smoothing7870.1->7807.2mm but no
+accepted inner-search message;30ms preflight timeout is a plausible source-code
+explanation, not a measured MCU timing determination.
+
+Added three analytic cubic connectors between protected passing plateaus after
+the old optional optimizer. Full geometric acceptance,80mm wall/50mm pillar
+envelope reserve, shorter route/target time and curvature/bending gates. Keeps
+first400mm and lastcorner from280mm before its start unchanged in this stage;
+no first-lap geometry or parking maneuver edit. New planning_us diagnostic.
+Moderate official CW GREEN end bypass only230 instead of260mm centre clearance;
+start/middle/extreme/adjacent/CCW retain previous policies. Broader CCW reduction
+discarded after calculated regression. Required passing sides retained; green
+left can require outward passage before returning inward. No speed increase.
+
+B CW saves93.04mm/.729s target per lap; B CCW17.13mm/.170s. Explicit free-corner
+example with old optional budget exhausted saves622.85mm/2.413s CW and405.91mm/
+.686s CCW. Preserve better old unlimited-search candidates. All are model results,
+not measured time/global optimality. New stage finite but synchronous, no hard
+time bound; MCU planning latency and real tracking remain next-test limitations.
+
+PASS2807 route/passing/state cases;6573 actual-ramp dynamics at10/20/50ms
+(2191each),maxlateral.796430m/s2,minwall80.281mm,minpillar31.9874mm.16targeted
+before/after comparisons include budget exhaustion/seam/live-map/finalcorner.
+623 innerRED reserve retained,trackedregionwall138.407mm.2970parkingapproaches
+PASS;396adaptiveparking+5registrationPASS. Old approach fixture's extra fixed-
+recipe nominal checks reject4, not an adaptive regression: added explicit
+--approach-only and separately ran current adaptive sequence; legacy diagnostic
+remains. No claim that fixed-entry checks all pass.
+
+Review simulation/LATER_LAP_DIRECT_LANES_20261102.md; generated comparisons under
+local_workspace/later-lap-direct-lanes/,including rear-axle route PNG.
+M7IDEbuildSUCCESS path20261101_direct_lanes,parking20261101_efficient_entry;
+RAM459200/523624 flash571720/786432,binary575272bytes,
+SHA256711c067090cb0a1464bdba05b9db87b69d3e9a0c2129827f1508d90a081fbf11.
+M4unchanged/notbuilt,no upload/motion/commit/push. Normal obstacle/compactlogs,
+camera/discovery/exitToF/brake/reversal/pose diagnostics preserved.
+Next useruploadM7normalCW/CCW/save;secure originals+hashes FIRST and tell unplug;
+compare direct-connector planning_us/route acceptance,actualwall/pillar reserves,
+1->2 transition and3->parking. No dedicatedToFsweep or extra motions.
+
+## 2026-11-02: reported jerk - transition audit, firmware unchanged
+
+User asks to check a repeatedly observed jerk at transitions; exact phase not
+yet identified. Asked whether1->2,3->parking or individual corners. No newUSB
+or log batch available. Review current path20261101_direct_lanes/parking
+20261101_efficient_entry, unchanged binarySHA711c067090cb0a1464bdba05b9db87b69d3e9a0c2129827f1508d90a081fbf11.
+
+Concrete command discontinuities: findLookahead returns a whole waypoint,
+without projection/interpolation; nearCorner switches later-lap lookahead
+280->182mm at a hard gate; first-lap seam protects only200mm exactly before
+the200mm blend, so280mm pursuit can already see a different target at1->2.
+At slower lap1 speeds the switch also changes the lookahead itself. Actual
+motor speed has a jerk-limited ramp, so a target-speed step alone does not
+prove an instantaneous acceleration jump. Map building is synchronous after
+capturing pose; >100ms delayed motor loops rebase the profile. Its duration
+is not independently measured for the reported jerk.
+
+Repro simulation/audit_lap_transition_commands.py: current extracted C++,
+same B poses/heading on both sides of each switch, independent of robot motion.
+Maximum logical servo-command delta from waypoint index alone12.2694deg CW /
+9.36488deg CCW; corner-lookahead gate3.47086/8.77964deg. At1->2 with260mm/s
+first-lap target: CW14.8531->16.0377deg,target12.6736mm jump; CCW0->0deg,
+target6.42358mm jump. At135mm/s target jumps136.339/132.170mm. These are model
+command differences, not physical servo measurements or confirmed jerk cause.
+
+3->parking currently commands immediate position HOLD when whole body clears
+the last corner, then300ms challenge settling; final parking additionally
+requires measured standstill and clears the speed profile before possible
+reversal. Keep that safety handoff; smooth it via earlier checked deceleration,
+not by blindly removing the halt. Existing634 shows finish->parking trace,
+but compact telemetry cannot attribute the user's jerk to a particular cause.
+
+No controller/firmware edit, build, upload or motion in this audit. Next phase
+identification/current normal log; then test continuous later-lap lookahead and
+corner blending with lap1 seam protection, plus early final-lap deceleration.
+Do not apply an unvalidated global servo slew filter: it can delay avoidance.
+Run full passing/dynamic and parking-handoff checks before any control change.
+
+## 2026-11-02: user identifies lap1->2 jerk; scoped handoff correction
+
+User confirms jerk at1->2. No new USB/source batch; only system drive available.
+Path revision20261102_lap_handoff, parking20261101_efficient_entry unchanged.
+Preserve all route geometry, lap1 perception, lap2->3, parking and diagnostics.
+Cache last committed lap1 lookahead/safe-speed; on successful map validation
+and optimized build, blend live/optimized pursuit targets and upward speed
+request over400mm encoder forward travel with cubic smoothstep. Keep lower
+new speed/curvature caps. No added stops; waiting cannot advance the blend,
+reverse noise cannot undo it; reset and subsequent-lap guards prevent rearming.
+Blend targets rather than changing a discrete waypoint lookahead threshold.
+One total handoff planning_us record added; synchronous build remains a possible
+unmeasured source of delay, not claimed fixed. No global servo slew filter.
+
+Production extraction check_lap_handoff.py PASS6 B-direction/speed rollouts
+135/180/260mm/s plus continuity, cap, waiting, reverse, phase/reset checks.
+Same-pose/index switch targetjump now0; former CW136.339/72.6258/12.6736mm,
+CCW132.17/68.2287/6.42358mm. Ordinary waypoint/corner discontinuities remain.
+PASS2807 route/state cases with active handoff;6573 actual-ramp dynamics at
+10/20/50ms,maxlateral.683068m/s2,minpillar31.7066mm;42extra A/B/C dynamic
+cases from135/180mm/s PASS.2970parkingapproach handoffs PASS. No parking
+planner changes; no claim of hardware performance from CAD simulation.
+Review simulation/LAP_HANDOFF_20261102.md. Generated outputs remain under
+local_workspace/lap-handoff/,later-laps/,later-lap-dynamics/,final-parking-approach/.
+
+M7 IDE buildSUCCESS,RAM459224/523624,flash572368/786432,binary575920bytes,
+SHA25699e6ecadb3d280c8d09895dca1e6d310a141d4c3624a58896002b6858f312fb5.
+M4unchanged/notbuilt; no upload/motion/commit/push. Existing Serial redefinition
+and unused-function build warnings remain. Next user uploads M7,normal CW/CCW
+save; copy originals+hashes FIRST,tell unplug; inspect planning_us and bounded
+LATER_TRACK across1->2 against physical jerk report. If delay remains, measure
+onboard build/control gap before restructuring scheduling. No dedicatedToFsweep.
+
+## 2026-11-02: parking duration re-audit; firmware unchanged
+
+User asks to recalculate whether current entry can park quickly, then says
+continue. No USB batch, only system drive. Read parking pose plan. Added
+simulation/audit_parking_duration.py with actual DriveProfile,20ms loop,
+independent radius1/1.136/1.235,visible initial yaw+/-1.5deg,0/1.5mm brake
+overrun,6 measured-gap/capture cases mirroredCW/CCW.216/216parked,no modeled
+contact. Re-ran396fullsequences+5registration,14efficient room/progress and
+36efficient completion checks:allPASS. Parking fixture now extracts current
+route source directly and replaces route encoder definition with declaration,
+avoiding duplicate get_distance after handoff test additions.
+
+Time from stopped registered capture to verified parked,excluding MCU search,
+approach/registration,USBsave/sensorfaults: nominal12.20-15.34s; allvariants
+10.94-21.44s,not a hardware upper bound.251.7mm case333.76mm travel,
+6strokes/4arcs/2reversals,7.26s drive states+2.40s servo+2.12s brake+.42s
+verify=12.20s. Tight mode40mm/s versus ordinary60. Allphysical waits retained.
+Important qualification of prior5/2/1 claim at245.2mm: directplan count does
+not prove ordinary-reserve two-arc shortcut. Actualstate chooses quickrecipe
+margin1,then entry_motion_clearance replan;7executedstrokes/3arcs/1reversal,
+15.34s. The safety response completes but planned bends alone understate time.
+Cost weights10mm/segment+20mm/reversal are a heuristic,not duration; future
+timing-aware ranking may help but requires before/after robustness checks.
+
+Review simulation/PARKING_DURATION_AUDIT_20261102.md; ignored generated outputs
+local_workspace/parking-duration/ and parking-duration-nominal/. Existing633/634
+search pauses predatecurrentfirmware; no claim theymeasurecurrentlatency.
+No firmware edits/build/upload/motion. Binary unchanged path20261102_lap_handoff,
+parking20261101_efficient_entry,
+SHA25699e6ecadb3d280c8d09895dca1e6d310a141d4c3624a58896002b6858f312fb5.
+Next normalCW/CCW logs:secureFIRST+hash/tellunplug; compare actualcapture->result,
+search_ms,executedsegments/replans,physicalreserves. Keep rear30,width123,goal60/127,
+cancelledextra10mm cancelled,300/400ms waits and all exit diagnostics unchanged.
+
+## 2026-11-02: reduce entry pauses with observed standstill/servo-age reuse
+
+User authorizes improving long parking pauses. No USB/new logs; only systemdrive.
+Read history/parkingposeplan. New parking20261102_reuse_steer_settle; path
+20261102_lap_handoff retained. Actual servo-write angle/time now exposed by
+motor_control; identical-angle elapsed400ms reused in entry/verify. Pending or
+disabled writes never count; newangles retain400ms. ServoPWM remainsattached.
+Begin checked steering immediately on settle-state entry,avoiding one-loop age
+error. Entrycapture/segment/replan brakes allow early continuation after>=150ms,
+>=120ms encoder<=.5mm/yaw<=.25deg stable window,>=2new velocity samples and
+measuredspeed<=5mm/s. Noise/motion restarts evidence,sensorpause/reset clears it.
+Otherwise prior300ms+speed/timeout path remains. Generalapproach brakes unchanged.
+No geometry/speed/planner/margin/goal/route/exitdiagnostic changes.
+
+Productionservo+state-machine gate regressionPASS(disabled/queued/actual writes,
+timerwrap,399/400ms,mirroredentry/verify,brakes,missingfreshsamples,motion,yaw,
+NaN/highspeed,sensorpause).396full+5registrationPASS;84overrun+8healthPASS;
+14room/progress+36efficientcompletionPASS.216duration cases PASS,216again with
+actual50ms-window/.60 velocityfilter PASS.12matched nominal legacy-wait controls
+PASS. At gap251.7,12.20->11.42s;245.2case15.34->13.90s; nominal savings.72-1.44s.
+Newfilteredmatrix10.40-19.28s excludes MCUsearch,approach/scan,save and unknown
+physical errors; not a worst-case hardware guarantee. Generalplanningholds remain.
+Report simulation/PARKING_SETTLE_REUSE_20261102.md; reproducible outputs in
+local_workspace/parking-duration-filtered/ and parking-duration-nominal-filtered-legacy/.
+
+M7IDEbuildSUCCESS,RAM459256/523624,flash572912/786432,binary576464bytes,
+SHA25603fadef7953736ca4b8fb3e220300dfadc5e6c60457c31344f3713cb78870d2b.
+ExistingSerial/unusedfunctionwarnings;M4unchanged/notbuilt,no upload/motion/commit/push.
+Next normalCW/CCW save,secureFIRST+hash/tellunplug;inspect actualsettledoverrun,
+phasepauses/search_ms,physicalreserves/contact. NoextraToFsweep. Preservewidth123,
+rear30,goal60/127,cancelledextra10mm and current exitdiagnostics.

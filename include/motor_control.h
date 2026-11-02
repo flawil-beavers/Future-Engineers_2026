@@ -105,6 +105,8 @@ extern bool system_enabled;           // Whether system is currently running
  * @param angle Target steering angle in degrees (-60 to +60 relative to SERVO_CENTER)
  */
 void steer(int angle);
+// Command-age estimate only; the servo has no physical position feedback.
+bool steering_command_settled(int angle, uint32_t minimumMs);
 
 /**
  * @brief Queue a steering command

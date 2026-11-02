@@ -137,6 +137,10 @@ bool lapCountingArmed = false;
 bool laterLapPlanRejected = false;
 bool lapBoundaryHoldLogged = false;
 bool lapFinishPending = false;
+// Only the first recorded lap hands over from the discovery controller.
+bool lapHandoffActive = false, lap1CommandValid = false;
+float lap1LookaheadMm = 0.0f, lap1SpeedMmS = 0.0f;
+float lapHandoffEncoderMm = 0.0f, lapHandoffTravelMm = 0.0f;
 bool runtimeTestMode = false;
 bool earlyMiddleViewActive[OBSTACLE_SEAT_COUNT] = {};
 ObstacleSectionLayoutMode sectionLayoutMode = OBSTACLE_STARTUP_CHECK_ALL_STATIONS
@@ -2084,7 +2088,10 @@ float optimizedClearanceForSeat(uint8_t seatIndex)
         return OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM;
     return sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
             seatIndex >= 6 && seatIndex % 6 / 2 == 1
-        ? OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM : OBSTACLE_LAP1_CLEARANCE_MM;
+        ? OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM
+        : (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL && seatIndex >= 6 &&
+           routeTurnSign < 0 && !seats[seatIndex].red
+            ? OBSTACLE_OPTIMIZED_END_CLEARANCE_MM : OBSTACLE_LAP1_CLEARANCE_MM);
 }
 
 bool optimizedUsesOuterPlateau(uint8_t seatIndex)
@@ -3101,6 +3108,90 @@ float laterLapTargetTime(PathPoint *route)
     return seconds;
 }
 
+// Join the required passing plateaus directly instead of returning to the
+// discovery centreline between them. Cubic handles preserve the measured-map
+// route tangents. The lap seam and complete final corner/parking handoff stay
+// byte-for-byte unchanged. This small construction is independent of the
+// optional iterative inner search and its MCU time budget.
+void connectKnownLaterLapRoute(PathPoint *route, PathPoint *rollback)
+{
+    const uint32_t startedUs=micros();
+    memcpy(rollback,route,sizeof(PathPoint)*pathLength);
+    struct Anchor {float heading;bool fixed;};
+    static Anchor anchors[OBSTACLE_MAX_PATH_WAYPOINTS];
+    static PathPoint best[OBSTACLE_MAX_PATH_WAYPOINTS];
+    float oldLength,oldPeak,oldTurn;
+    const float oldBending=laterLapBending(route,oldLength,oldPeak,&oldTurn);
+    const float oldTime=laterLapTargetTime(route);
+    float bestTime=oldTime;
+    memcpy(best,route,sizeof(PathPoint)*pathLength);
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        Anchor &a=anchors[i];
+        a.heading=connectorRouteHeading(rollback,i)*PI/180.0f;
+        const float d=baselinePath[i].distanceMm;
+        a.fixed=d<=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM ||
+            d>=corners[3].pathStartMm-OBSTACLE_LATER_LAP_LOOKAHEAD_MM;
+        for(uint8_t s=0;s<OBSTACLE_SEAT_COUNT;++s)
+        {
+            if(!seats[s].confirmed)continue;
+            const float forward=cyclicDistanceForward(seats[s].pathDistanceMm,d);
+            if(fminf(forward,loopLengthMm-forward)<=150.0f)a.fixed=true;
+        }
+    }
+    // Three analytic candidates, no iterative relaxation or full-lap online
+    // simulation. The actual pursuit/motor plant is covered by the offline
+    // matrix; full-footprint route gates and runtime guards remain mandatory.
+    for(float handle:{0.30f,0.22f,0.38f})
+    {
+        memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+        for(uint16_t first=0;first+1<pathLength;)
+        {
+            if(!anchors[first].fixed || anchors[first+1].fixed){++first;continue;}
+            uint16_t last=first+1;
+            while(last<pathLength && !anchors[last].fixed)++last;
+            if(last>=pathLength)break;
+            const PathPoint a=rollback[first],b=rollback[last];
+            const float span=baselinePath[last].distanceMm-baselinePath[first].distanceMm;
+            const float arm=handle*hypotf(b.x-a.x,b.y-a.y);
+            const float ax=a.x+arm*cosf(anchors[first].heading);
+            const float ay=a.y+arm*sinf(anchors[first].heading);
+            const float bx=b.x-arm*cosf(anchors[last].heading);
+            const float by=b.y-arm*sinf(anchors[last].heading);
+            for(uint16_t i=first+1;i<last;++i)
+            {
+                const float t=(baselinePath[i].distanceMm-baselinePath[first].distanceMm)/span,u=1-t;
+                route[i].x=u*u*u*a.x+3*u*u*t*ax+3*u*t*t*bx+t*t*t*b.x;
+                route[i].y=u*u*u*a.y+3*u*u*t*ay+3*u*t*t*by+t*t*t*b.y;
+            }
+            first=last;
+        }
+        float length,peak,turn,wall,pillar;
+        const float bending=laterLapBending(route,length,peak,&turn);
+        if(length>=oldLength-5.0f || bending>oldBending*1.01f ||
+            peak>fmaxf(oldPeak,1.0f/250.0f)+1e-7f || turn>oldTurn+0.01f ||
+            !laterLapRouteSafe(route,&wall,&pillar) || wall<80.0f || pillar<50.0f)continue;
+        const float seconds=laterLapTargetTime(route);
+        if(seconds>=bestTime-0.01f)continue;
+        bestTime=seconds;memcpy(best,route,sizeof(PathPoint)*pathLength);
+    }
+    memcpy(route,best,sizeof(PathPoint)*pathLength);
+    if(bestTime<oldTime)
+    {
+        float length,peak;laterLapBending(route,length,peak);
+        Serial.print("[LAPS] Direct connectors length_before_after_mm=");
+        Serial.print(oldLength,1);Serial.print('/');Serial.print(length,1);
+        Serial.print(" target_s_before_after=");Serial.print(oldTime,3);
+        Serial.print('/');Serial.print(bestTime,3);
+        Serial.print(" planning_us=");Serial.println(uint32_t(micros()-startedUs));
+    }
+    else
+    {
+        Serial.print("[LAPS] Direct connectors retained checked shape planning_us=");
+        Serial.println(uint32_t(micros()-startedUs));
+    }
+}
+
 // A lateral elastic line on the recorded route: retain the complete passing
 // plateaus, then connect them through free space towards the inner corridor.
 // There is no colour-pair restriction and no forced return to the centre.
@@ -3264,6 +3355,7 @@ bool buildOptimizedPath()
     {
         smoothKnownLaterLapRoute(optimizedPath,beforeLaneCarry,routeWall,routePillar);
         shortenKnownInnerRoute(optimizedPath,beforeLaneCarry);
+        connectKnownLaterLapRoute(optimizedPath,beforeLaneCarry);
     }
     recomputeSpeedProfile(optimizedPath);
     planLaterLapSpeeds(optimizedPath);
@@ -3301,9 +3393,16 @@ bool completePendingLap()
         }
         return false;
     }
-    if (!runtimeTestMode && completedLaps == 0 && runtimeLapTarget > 1 &&
-        !buildOptimizedPath())
-        return false;
+    if (!runtimeTestMode && completedLaps == 0 && runtimeLapTarget > 1)
+    {
+        const uint32_t planningStartUs = micros();
+        if (!buildOptimizedPath()) return false;
+        Serial.print("[LAPS] Handoff planning_us=");
+        Serial.println(uint32_t(micros() - planningStartUs));
+        lapHandoffActive = lap1CommandValid;
+        lapHandoffEncoderMm = get_distance();
+        lapHandoffTravelMm = 0.0f;
+    }
     lapBoundaryPending = false;
     lapBoundaryHoldLogged = false;
     ++completedLaps;
@@ -6178,6 +6277,44 @@ PathPoint findLookahead(
     return path[index];
 }
 
+float lapHandoffWeight()
+{
+    if (!lapHandoffActive) return 1.0f;
+    if (completedLaps != 1 || runtimeTestMode || lapFinishPending)
+    {
+        lapHandoffActive = false;
+        return 1.0f;
+    }
+    // Measured forward travel, not elapsed time or discrete waypoint indices:
+    // waiting must not consume the handover, and odometry noise cannot undo it.
+    const float travel = get_distance() - lapHandoffEncoderMm;
+    if (isfinite(travel)) lapHandoffTravelMm = fmaxf(lapHandoffTravelMm, travel);
+    const float t = clampFloat(lapHandoffTravelMm /
+        OBSTACLE_LATER_LAP_HANDOFF_MM, 0.0f, 1.0f);
+    if (t >= 1.0f) lapHandoffActive = false;
+    return t*t*(3.0f-2.0f*t);
+}
+
+PathPoint lapHandoffTarget(const PathPoint *path, const PositionEstimate &pose,
+                          float lookaheadMm, float weight)
+{
+    PathPoint target = findLookahead(path, pose, lookaheadMm);
+    if (weight >= 1.0f) return target;
+    // Blend pursuit targets, not a changing lookahead threshold: the latter
+    // would still jump a whole 50 mm waypoint as each threshold is crossed.
+    const PathPoint outgoing = findLookahead(livePath, pose, lap1LookaheadMm);
+    target.x = outgoing.x + weight*(target.x-outgoing.x);
+    target.y = outgoing.y + weight*(target.y-outgoing.y);
+    return target;
+}
+
+float lapHandoffSpeed(float requestedMmS, float weight)
+{
+    // Never lift a new curvature/route cap, even when lap 1 was faster.
+    return fminf(requestedMmS,
+        lap1SpeedMmS + weight*(requestedMmS-lap1SpeedMmS));
+}
+
 PathPoint connectorLookaheadFrom(
     uint8_t index, float lookaheadMm, const PathPoint *route,
     uint16_t mergeIndex, bool continueIntoRoute,
@@ -6262,6 +6399,9 @@ void obstacle_path_reset()
     pathLength = 0;
     progressIndex = 0;
     completedLaps = 0;
+    lapHandoffActive = lap1CommandValid = false;
+    lap1LookaheadMm = lap1SpeedMmS = 0.0f;
+    lapHandoffEncoderMm = lapHandoffTravelMm = 0.0f;
     laterTrackingTraceMs = 0;
     laterTrackingTraceCount = 0;
     parkingStartRoiLogged = false;
@@ -6538,7 +6678,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261031_far_green_rear30");
+    Serial.println("[PATH] control_revision=20261102_lap_handoff");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -6778,6 +6918,9 @@ void obstacle_path_update(bool new_camera_frame)
     if (completedLaps > 0 && optimizedBuilt && !runtimeTestMode &&
         !lapFinishPending && !parkingEntryConnectorActive)
         commandedSpeed=fminf(commandedSpeed,laterLapSpeedLimits[progressIndex]);
+    const float handoffWeight = parkingEntryConnectorActive ? 1.0f : lapHandoffWeight();
+    if (handoffWeight < 1.0f)
+        commandedSpeed = lapHandoffSpeed(commandedSpeed, handoffWeight);
     bool parkingEntryGreenJoin = false;
     if (parkingEntryJoining && parkingEntryTargetStation >= 0)
     {
@@ -6814,7 +6957,7 @@ void obstacle_path_update(bool new_camera_frame)
     }
     else
     {
-        target = findLookahead(path, pose, lookahead);
+        target = lapHandoffTarget(path, pose, lookahead, handoffWeight);
     }
     if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
         !parkingEntryJoining && !parkingEntryConnectorActive)
@@ -7110,6 +7253,12 @@ void obstacle_path_update(bool new_camera_frame)
     // observation recovery. The additional unassigned-blob-only stop caused
     // stop/go on fluctuating projections even outside the planned lane.
     set_speed(static_cast<int>(safeSpeed));
+    if (completedLaps == 0 && !runtimeTestMode && !parkingEntryConnectorActive)
+    {
+        lap1CommandValid = isfinite(lookahead) && isfinite(safeSpeed) && safeSpeed > 0;
+        lap1LookaheadMm = lookahead;
+        lap1SpeedMmS = safeSpeed;
+    }
     // Bounded onboard diagnostics: no driving USB cable required. 200 records
     // across lap1 return and laps2/3 share the existing ~40kB budget.
     if (!run_telemetry_pose_capture_active() && returningPastParking && !lapFinishPending && robot_logger.remaining()>=80U*1024U &&

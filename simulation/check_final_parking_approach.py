@@ -2,11 +2,15 @@
 Run check_later_laps.py first to regenerate the shared production fixture.
 No ToF marker classification, slip or servo latency is simulated here.
 """
-import shutil, subprocess
+import argparse, shutil, subprocess
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--approach-only',action='store_true',
+        help='Route handoff only; adaptive parking entry is checked by check_final_parking_sequence.py')
+    args=parser.parse_args()
     fixture=(ROOT/'local_workspace/later-laps/check.cpp').read_text().split('int main()')[0]
     path=(ROOT/'src/obstacle_path.cpp').read_text()
     final=(ROOT/'src/final_parking.cpp').read_text()
@@ -30,7 +34,7 @@ bool connectorClearanceSafe(const PositionEstimate &p){
         body=block(final,final.index(signature))
         fixture+=body+'\n'
     fixture+=r'''
-int main(){int total=0,bad=0;
+int main(int argc,char **argv){int total=0,bad=0;
  const int configs[11][3]={{0,0,0},{1,0,0},{2,0,0},{0,1,0},{0,2,0},{0,0,1},{0,0,2},{1,0,1},{1,0,2},{2,0,1},{2,0,2}};
  for(int dir:{-1,1})for(int layout=0;layout<11;++layout)for(int next=0;next<5;++next){
   routeTurnSign=dir;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
@@ -47,6 +51,7 @@ int main(){int total=0,bad=0;
    if(!ok){++bad;std::cout<<"FAIL "<<dir<<" "<<layout<<" next "<<next<<" "<<p.x_mm<<" "<<p.y_mm<<" "<<p.heading_deg<<"\n";}
   }
  }
+ if(argc>1){std::cout<<"FINAL APPROACH "<<total<<" FAILED "<<bad<<" (adaptive entry checked separately)\n";return bad?1:0;}
  int entries=0,entryBad=0;
  for(int dir:{-1,1})for(float gap:{242.5f,247.5f,252.5f}){
   routeTurnSign=dir;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
@@ -66,6 +71,6 @@ int main(){int total=0,bad=0;
     destination=ROOT/'local_workspace/final-parking-approach';destination.mkdir(exist_ok=True)
     cpp=destination/'check.cpp';exe=destination/'check.exe';cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'local_workspace/later-laps'),str(cpp),'-o',str(exe)],check=True)
-    r=subprocess.run([str(exe)],capture_output=True,text=True);(destination/'output.txt').write_text(r.stdout);print(r.stdout);raise SystemExit(r.returncode)
+    r=subprocess.run([str(exe)]+(['--approach-only'] if args.approach_only else []),capture_output=True,text=True);(destination/'output.txt').write_text(r.stdout);print(r.stdout);raise SystemExit(r.returncode)
 
 if __name__=='__main__':main()

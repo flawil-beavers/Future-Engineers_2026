@@ -10,17 +10,20 @@ import subprocess
 
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
+from check_later_laps import later_lap_fixture
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--full-matrix',action='store_true',
                         help='All existing uncapped layouts at 10/20/50ms')
+    parser.add_argument('--outgoing-speed',type=float,default=260,
+                        help='Discovery speed before the lap-1 handoff, mm/s')
     args=parser.parse_args()
     dest = ROOT/'local_workspace/later-lap-dynamics'
     dest.mkdir(parents=True, exist_ok=True)
     shared = ROOT/'local_workspace/later-laps'
-    fixture = (shared/'check.cpp').read_text().split('int main()')[0]
+    fixture = later_lap_fixture().split('int main()')[0]
     # Refresh this function if the matrix was built before a runtime-only edit.
     source = (ROOT/'src/obstacle_path.cpp').read_text()
     tracking = block(source, source.index('float laterLapTrackingSpeed('))
@@ -79,19 +82,22 @@ float elapsed=0,peakLateral=0,peakSpeed=0,peakTrackingRatio=0;
     end = rollout.index('  const float next=heading+curvature*ds;', start)
     rollout = rollout[:start]+r'''
   float command=lapFinishPending ? fminf(route[progressIndex].speedMmS,
-      OBSTACLE_LATER_LAP_CORNER_SPEED) : laterLapTrackingSpeed(
-      laterLapSpeedLimits[progressIndex],requestedCurvature,static_cast<int>(steering));
+      OBSTACLE_LATER_LAP_CORNER_SPEED) : laterLapSpeedLimits[progressIndex];
   if(speedCap>0)command=fminf(command,speedCap);
+  command=lapHandoffSpeed(command,handoffWeight);
+  if(!lapFinishPending)command=laterLapTrackingSpeed(command,requestedCurvature,static_cast<int>(steering));
   target_speed=static_cast<int>(command);drive_loop();
   elapsed+=last_loop_time;
   peakSpeed=fmaxf(peakSpeed,current_speed);
   peakLateral=fmaxf(peakLateral,current_speed*current_speed*fabsf(curvature));
   peakTrackingRatio=fmaxf(peakTrackingRatio,current_speed/fmaxf(1,command));
   const float ds=current_speed*last_loop_time;
+  simulatedEncoderMm+=ds;
 '''+rollout[end:]
     fixture += rollout
     fixture += r'''
 int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
+ if(argc>2)simulatedLap1SpeedMmS=std::atof(argv[2]);
  analyticChecks();int direction,id=0,colors[24];float cap;int bad=0;
  while(std::cin>>direction>>cap){
   for(int &c:colors)if(!(std::cin>>c))return 3;
@@ -99,7 +105,7 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
   for(int i=0;i<24;++i){seats[i].confirmed=colors[i]!=0;
    seats[i].red=colors[i]==2;seats[i].injected=colors[i]!=0;}
   learned();joinSameColourStraightEnds(livePath,true);
-  current_speed=260;current_acceleration=0;elapsed=peakLateral=peakSpeed=peakTrackingRatio=0;
+  current_speed=simulatedLap1SpeedMmS;current_acceleration=0;elapsed=peakLateral=peakSpeed=peakTrackingRatio=0;
   float wall,pillar;bool ok=driveDynamicLaps(cap,wall,pillar);
   // Even with the modeled ramp lag, keep actual lateral acceleration below
   // the chosen .8m/s^2 budget, and preserve the 30mm rollout pillar floor.
@@ -120,8 +126,9 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
                        for c in cases)+'\n'
     failed = False
     for dt in (.010, .020, .050):
-        run = subprocess.run([str(exe), str(dt)], input=inputs, text=True, capture_output=True)
-        (dest/f'output_{int(dt*1000)}ms.txt').write_text(run.stdout+run.stderr)
+        run = subprocess.run([str(exe), str(dt),str(args.outgoing_speed)], input=inputs, text=True, capture_output=True)
+        suffix='' if args.outgoing_speed==260 else f'_from{args.outgoing_speed:g}'
+        (dest/f'output_{int(dt*1000)}ms{suffix}.txt').write_text(run.stdout+run.stderr)
         print('Control interval', dt, 's')
         rows=[line.split() for line in run.stdout.splitlines() if line.startswith('DYNAMIC ')]
         assert len(rows)==len(cases)

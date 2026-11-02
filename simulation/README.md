@@ -259,3 +259,25 @@ reference, including rejected stale/ambiguous input and front-crowded parking.
 
 CW607--609 completed entry practice; small rearward adjustment and restored
 full-course startup: [handoff](RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md).
+
+Later-lap direct connections, clearance policy and lap/parking transitions:
+[review](LATER_LAP_DIRECT_LANES_20261102.md).
+`check_later_lap_direct_lanes.py` compares the actual route builder with and
+without the new connections, including exhausted optional-search budgets.
+Use `check_final_parking_approach.py --approach-only` for the route handoff and
+`check_final_parking_sequence.py` for the current adaptive entry planner.
+
+Lap 1 -> 2 pursuit/speed handoff: [review](LAP_HANDOFF_20261102.md).
+`check_lap_handoff.py` checks same-pose target continuity and slow discovery
+exits. `check_later_lap_dynamics.py --outgoing-speed 135` additionally checks
+the real motor ramp from a slow lap-1 exit; the default is 260 mm/s.
+
+Parking duration from the registered capture pose:
+[audit](PARKING_DURATION_AUDIT_20261102.md), `audit_parking_duration.py`.
+Separates motor-ramp travel and programmed settling from unmeasured MCU planning
+time; `--nominal` emits the small nominal comparison and detailed short-plan log.
+
+Shorter entry pauses with observed standstill and reused servo-command age:
+[review](PARKING_SETTLE_REUSE_20261102.md), `check_parking_steering_wait.py`.
+Duration sensitivity: `audit_parking_duration.py --filtered-speed`; append
+`--nominal --legacy-waits` for the previous waits with the same plant.

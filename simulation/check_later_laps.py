@@ -28,6 +28,11 @@ int sectionLayoutMode=0;
 bool parkingEntryActive=false,parkingEntryObserving=false,parkingEntryScouting=false;
 bool parkingEntryJoining=false,parkingEntryTestHold=false,runtimeTestMode=false;
 bool optimizedBuilt=false,lapBoundaryPending=false,lapCountingArmed=false,laterLapPlanRejected=false,lapBoundaryHoldLogged=false,lapFinishPending=false;
+bool lapHandoffActive=false,lap1CommandValid=false;
+float lap1LookaheadMm=0,lap1SpeedMmS=0,lapHandoffEncoderMm=0,lapHandoffTravelMm=0;
+float simulatedEncoderMm=0;
+float simulatedLap1SpeedMmS=260;
+float get_distance(){return simulatedEncoderMm;}
 uint8_t completedLaps=0,runtimeLapTarget=3;bool finished=false;
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 float laterLapSpeedLimits[OBSTACLE_MAX_PATH_WAYPOINTS]={};
@@ -53,12 +58,15 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
         'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
-        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void shortenKnownInnerRoute(',
+        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void connectKnownLaterLapRoute(', 'void shortenKnownInnerRoute(',
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
-        'PathPoint findLookahead(')
+        'PathPoint findLookahead(', 'float lapHandoffWeight()',
+        'PathPoint lapHandoffTarget(', 'float lapHandoffSpeed(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
     fixture += r'''
 void resetState(){
+ lapHandoffActive=lap1CommandValid=false;
+ lap1LookaheadMm=lap1SpeedMmS=lapHandoffEncoderMm=lapHandoffTravelMm=simulatedEncoderMm=0;
  completedLaps=0;finished=false;optimizedBuilt=false;lapBoundaryPending=false;lapCountingArmed=false;
  laterLapPlanRejected=false;lapBoundaryHoldLogged=false;lapFinishPending=false;runtimeTestMode=false;
  runtimeLapTarget=3;progressIndex=0;sectionLayoutMode=0;
@@ -189,6 +197,9 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
  minimumWall=minimumPillar=1e9f;
  const auto start=livePath[0];float x=start.x,y=start.y;
  float heading=connectorRouteHeading(livePath,0)*PI/180;
+ lap1CommandValid=true;lap1SpeedMmS=speedCap>0?fminf(speedCap,simulatedLap1SpeedMmS):simulatedLap1SpeedMmS;
+ lap1LookaheadMm=firstLapLookahead(lap1SpeedMmS);
+ if(nearCorner(baselinePath[0].distanceMm))lap1LookaheadMm*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
  lapBoundaryPending=true;if(!completePendingLap())return false;
  uint8_t witnessed[24]={},passCounts[24]={};
  float previousForward[24];for(auto &f:previousForward)f=NAN;
@@ -247,7 +258,8 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   }
   float lookahead=OBSTACLE_LATER_LAP_LOOKAHEAD_MM;
   if(nearCorner(baselinePath[progressIndex].distanceMm))lookahead*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
-  const auto target=findLookahead(route,pose,lookahead);
+  const float handoffWeight=lapHandoffWeight();
+  const auto target=lapHandoffTarget(route,pose,lookahead,handoffWeight);
   const float dx=target.x-x,dy=target.y-y;
   const float forward=dx*cosf(heading)+dy*sinf(heading);
   const float lateral=-dx*sinf(heading)+dy*cosf(heading);
@@ -262,6 +274,7 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   // Constant step stresses every turn at this resolution even when speed falls.
   const float ds=OBSTACLE_PATH_MAX_SPEED*OBSTACLE_LATER_LAP_SPEED_FACTOR*
       OBSTACLE_LATER_LAP_SPEED_TOLERANCE*.020f;
+  simulatedEncoderMm+=ds;
   const float next=heading+curvature*ds;
   if(fabsf(curvature)>1e-6){x+=(sinf(next)-sinf(heading))/curvature;
    y+=(cosf(heading)-cosf(next))/curvature;}

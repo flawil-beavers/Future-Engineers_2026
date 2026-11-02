@@ -11,10 +11,17 @@ claim completion outside the bay. Hardware lag/slip/reflections are excluded.
 import shutil,subprocess,sys
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
+from check_later_laps import later_lap_fixture
 
 def fixture_source():
     source=(ROOT/'src/final_parking.cpp').read_text()
-    fixture=(ROOT/'local_workspace/later-laps/check.cpp').read_text().split('int main()')[0]
+    fixture=later_lap_fixture().split('int main()')[0]
+    # Parking owns the hardware encoder adapter. Keep a declaration for the
+    # preceding route functions instead of defining a second get_distance().
+    fixture=fixture.replace('float get_distance(){return simulatedEncoderMm;}',
+                            'float get_distance();')
+    fixture=fixture.replace('void resetState(){',
+        'void resetHostServo();\nvoid resetState(){resetHostServo();')
     path=(ROOT/'src/obstacle_path.cpp').read_text()
     fixture+=block(path,path.index('bool obstacle_path_parking_approach_target('))
     fixture+=r'''
@@ -29,7 +36,8 @@ struct Logger {std::ostringstream lines;int writes=0;
  template<class T>void print(T x){lines<<x;}template<class T>void print(T x,int){lines<<x;}
  template<class T>void println(T x){lines<<x<<"\n";}template<class T>void println(T x,int){lines<<x<<"\n";}void println(){lines<<"\n";}
  void write_to_usb(){++writes;}} robot_logger;
-unsigned long millis(){return hostTime;}float get_distance(){return encoder;}
+unsigned long speed_measurement_count=0;bool hostSpeedSamples=true;
+unsigned long millis(){return hostTime;}float get_distance(){if(hostSpeedSamples)speed_measurement_count=hostTime/50;return encoder;}
 PositionEstimate get_position_struct(){return hostPose;}
 bool hostGyroHealthy=true;bool gyro_is_healthy(){return hostGyroHealthy;}
 void position_apply_xy_correction(float x,float y){hostPose.x_mm+=x;hostPose.y_mm+=y;}
@@ -37,7 +45,9 @@ void position_reset(float x,float y,float h){hostPose.x_mm=x;hostPose.y_mm=y;hos
 void stop(bool hold){dc_state=hold?DC_HOLDING:DC_DISABLED;command=0;current_speed=measured_speed=0;servo_disabled=true;}
 void set_speed(int speed){command=speed;dc_state=DC_ENABLED;current_speed=measured_speed=speed;}
 void set_steering(int angle){steeringCommand=set_degree=angle;}
-void steer(int angle){if(!servo_disabled)steeringCommand=set_degree=angle;}
+struct HostServo {void write(int angle){steeringCommand=angle-SERVO_CENTER;}} servo;
+@@STEER@@
+void resetHostServo(){servo_last_command=1000;servo_last_command_ms=0;}
 struct ObstacleSeatInfo {bool confirmed=false;float xMm=0,yMm=0;};
 uint8_t obstacle_path_seat_count(){return 24;}
 bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
@@ -50,6 +60,8 @@ bool get_tof_diagnostic_snapshot(TofSensor,TofDiagnosticSnapshot &);
 namespace parking_module {
 void final_parking_sensor_hold();
 '''
+    motor=(ROOT/'src/motor_control.cpp').read_text()
+    fixture=fixture.replace('@@STEER@@',motor[motor.index('static int servo_last_command'):motor.index('void set_steering(int angle)')])
     # Arduino/sensor headers are supplied by the host adapter above.
     fixture+=source[source.index('#define Serial robot_logger'):]
     # Preserve the old radial-cone model only as a host sensor adapter and a
