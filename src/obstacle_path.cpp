@@ -2805,6 +2805,30 @@ void smoothKnownLaterLapRoute(PathPoint *route, PathPoint *rollback,
     constexpr uint8_t passes[]={24,12,6,4};
     const float shifts[]={OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM,
         20.0f,10.0f,6.0f};
+    // Seat stations and the seam are immutable during this build. Compute
+    // their protection weights once, not again in every relaxation pass.
+    // The planner is non-reentrant and already owns static scratch arrays.
+    // Avoid adding to its nested route-validation stack; fill every entry.
+    static float protection[OBSTACLE_MAX_PATH_WAYPOINTS];
+    for(uint16_t i=0;i<pathLength;++i)
+    {
+        const float seam=fminf(baselinePath[i].distanceMm,
+            loopLengthMm-baselinePath[i].distanceMm);
+        const float keep=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
+        float fade=clampFloat((seam-keep)/150.0f,0.0f,1.0f);
+        fade=fade*fade*(3.0f-2.0f*fade);
+        for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
+        {
+            if(!seats[seat].confirmed)continue;
+            const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,
+                baselinePath[i].distanceMm);
+            const float distance=fminf(ahead,loopLengthMm-ahead);
+            float retain=clampFloat((distance-150.0f)/150.0f,0.0f,1.0f);
+            retain=retain*retain*(3.0f-2.0f*retain);
+            fade=fminf(fade,retain);
+        }
+        protection[i]=fade;
+    }
     for(uint8_t trial=0;trial<4;++trial)
     {
         memcpy(route,rollback,sizeof(PathPoint)*pathLength);
@@ -2813,26 +2837,8 @@ void smoothKnownLaterLapRoute(PathPoint *route, PathPoint *rollback,
             memcpy(smoothingBuffer,route,sizeof(PathPoint)*pathLength);
             for(uint16_t i=0;i<pathLength;++i)
             {
-                const float seam=fminf(baselinePath[i].distanceMm,
-                    loopLengthMm-baselinePath[i].distanceMm);
-                const float keep=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
-                if(seam<=keep)continue;
-                // Fade the refinement in over 150 mm; avoid a new kink at the
-                // protected seam boundary. Symmetric stencil has no directional bias.
-                float fade=clampFloat((seam-keep)/150.0f,0.0f,1.0f);
-                fade=fade*fade*(3.0f-2.0f*fade);
-                // Leave the actual pillar-passing plateau intact. Refine its
-                // approach/exit only, with a gradual transition outside 150 mm.
-                for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
-                {
-                    if(!seats[seat].confirmed)continue;
-                    const float ahead=cyclicDistanceForward(seats[seat].pathDistanceMm,
-                        baselinePath[i].distanceMm);
-                    const float distance=fminf(ahead,loopLengthMm-ahead);
-                    float retain=clampFloat((distance-150.0f)/150.0f,0.0f,1.0f);
-                    retain=retain*retain*(3.0f-2.0f*retain);
-                    fade=fminf(fade,retain);
-                }
+                const float fade=protection[i];
+                if(fade<=0.0f)continue;
                 float x=0,y=0;
                 for(int k=-2;k<=2;++k)
                 {
@@ -2917,7 +2923,7 @@ float laterLapTrackingSpeed(float speed, float requestedCurvature, int steering)
         fmaxf(fabsf(requestedCurvature),fabsf(actualCurvature))));
 }
 
-void planLaterLapSpeeds(const PathPoint *route)
+void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
 {
     float curveLimits[OBSTACLE_MAX_PATH_WAYPOINTS];
     const float maximum = OBSTACLE_PATH_MAX_SPEED * OBSTACLE_LATER_LAP_SPEED_FACTOR;
@@ -2952,8 +2958,12 @@ void planLaterLapSpeeds(const PathPoint *route)
         const float cross=(route[i].x-route[p].x)*(route[n].y-route[i].y)-
             (route[i].y-route[p].y)*(route[n].x-route[i].x);
         const float k=2*cross/fmaxf(1,a*b*c);
-        curveLimits[i]=fminf(ceilf(route[i].speedMmS *
-            OBSTACLE_LATER_LAP_SPEED_FACTOR),laterLapCurvatureSpeed(k));
+        // The lap-1 pointwise heuristic is intentionally cautious while
+        // discovering. Known laps use their physical curvature/braking plan
+        // instead of carrying that second, unrelated slow-down into lap2/3.
+        curveLimits[i]=physicalLimitsOnly ? laterLapCurvatureSpeed(k) :
+            fminf(ceilf(route[i].speedMmS*OBSTACLE_LATER_LAP_SPEED_FACTOR),
+                  laterLapCurvatureSpeed(k));
     }
     // Include a full actual waypoint interval; displacement can stretch the
     // baseline's nominal 50 mm spacing. Never use baseline station distances.
@@ -3358,7 +3368,7 @@ bool buildOptimizedPath()
         connectKnownLaterLapRoute(optimizedPath,beforeLaneCarry);
     }
     recomputeSpeedProfile(optimizedPath);
-    planLaterLapSpeeds(optimizedPath);
+    planLaterLapSpeeds(optimizedPath,true);
     optimizedBuilt = true;
     // Lap-1 passage reports have already consumed their injection snapshots.
     // Replace them with the actual later-lap route for lap-2/3 diagnostics.
@@ -6678,7 +6688,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261102_lap_handoff");
+    Serial.println("[PATH] control_revision=20261105_physical_lap_speeds");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -6917,7 +6927,7 @@ void obstacle_path_update(bool new_camera_frame)
         : recordedLapSpeed(progress.speedMmS));
     if (completedLaps > 0 && optimizedBuilt && !runtimeTestMode &&
         !lapFinishPending && !parkingEntryConnectorActive)
-        commandedSpeed=fminf(commandedSpeed,laterLapSpeedLimits[progressIndex]);
+        commandedSpeed=cappedPathSpeed(laterLapSpeedLimits[progressIndex]);
     const float handoffWeight = parkingEntryConnectorActive ? 1.0f : lapHandoffWeight();
     if (handoffWeight < 1.0f)
         commandedSpeed = lapHandoffSpeed(commandedSpeed, handoffWeight);

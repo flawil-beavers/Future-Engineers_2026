@@ -1070,3 +1070,79 @@ All three report parking revision20261031_rear30_balanced, pathfar_green_rear30.
 All footers truncated=0; completion is an estimator result, not physical contact proof.
 
 [Combined629?634 analysis and validation](../../RETURNED_629_634_PARKING_MOTION_20261101.md).
+
+## Returned635-636 (2026-11-05): CW exit alignment rejected
+
+Complete original files copied unchanged; source/copy SHA-256 verified before
+analysis and immediate unplug notice sent. These are complete source files,
+not excerpts; neither represents a completed obstacle run.
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [635 CW](20261105_log_635_cw.txt) | 25618 | a5baa6465673c2f4387d98501cdb70152adb57b52c111adf23548b7845e6e257 |
+| [636 CW](20261105_log_636_cw.txt) | 27716 | fb28ae5dd6a192393f559ac9d386875cce0c953e83647ac48c0b946638f70671 |
+
+Diagnostic build Nov 2 2026 17:43:41, center80, exit speed80mm/s, schema2.
+Both finish cw_short_start_reference_invalid; no diagnostic overflow/truncation,
+ordering errors or duplicate ToF snapshots.635 has later manual-disable footer;
+636 ends after reference rejection without RUN_END. All five segments executed,
+but final stopped heading error26.29/17.66deg exceeded5deg start acceptance.
+User reports no mechanical/setup changes and observed wheel slipping.
+Prior634 aligned after185.2mm;635/636 reached240.4/240.0mm without alignment.
+Slip is consistent with encoder/yaw discrepancy, not independently measured
+chassis translation. Generated analysis: local_workspace/parking-exit-analysis/20261105/.
+Firmware unchanged: proposed speed reduction explicitly rejected and reverted.
+
+## Returned645-650 (2026-11-05), latest six files only
+
+Source-before/source-after/copy SHA-256 verified before analysis; immediate
+unplug notice. All saved source bytes preserved unchanged.650 is cut in the
+middle of a diagnostic line at36864bytes; archived explicitly as an excerpt,
+missing the end of exit and all subsequent phases. It is not a complete run.
+
+| Original | Direction | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| [645](20261105_log_645_cw.txt) | CW | 74642 | 98a2a08b72c19d8f67d161130c29565de5187d374ba6bf000bee2256879e8089 |
+| [646](20261105_log_646_cw.txt) | CW | 171088 | a79e8e4979856d5fcfd6af2c434e39a9c0ce3fe71263b74d84b6096c38fd085d |
+| [647](20261105_log_647_cw.txt) | CW | 169746 | b6032a55bcbb09962055334641cca6e4f96a8d60cf68ec9d166fff1c0ba118e4 |
+| [648](20261105_log_648_ccw.txt) | CCW | 167055 | d36934a7239725d6391936b39f7b415001f93d923f20b1329871632dbf9099cc |
+| [649](20261105_log_649_ccw.txt) | CCW | 45682 | 9895f5fcd7deaf217b902f2bcf4be8cac678efb11ddcaef889a9e6480167a5ec |
+| [650 excerpt](20261105_log_650_ccw_excerpt.txt) | CCW | 36864 | ee970a9995c210d30ae2a19922d6a3e029ea511e5146dc2fbcab08d2c348597d |
+
+All headers diagnostic build Nov2_2026_17_43_41,exit80mm/s,center80.646-648
+path20261102_lap_handoff/parking20261102_reuse_steer_settle: these predate the
+new rearward10mm/parallel-stop changes.646/647 report parking complete;
+648 aborts scan_alignment_limit.645/649 manual pause;650 incomplete.
+Physical report: unnecessary slow later-lap regions, long CW parking search/
+alignment, CCW creeping corner then stop; user now authorizes faster unparking.
+
+## Returned651-654 (2026-11-05), measured parking dimensions
+
+All four unchanged complete source files copied immediately and source-before/
+source-after/copy SHA-256 verified; immediate unplug notice. All CW.
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [651](20261105_log_651_cw.txt) | 165926 | 51dd9c1f45fbaaf650b8e9a26086e9939432d7f2f7c9fa9997217dd8a8d40551 |
+| [652](20261105_log_652_cw.txt) | 13988 | b88d85d42923fc29c8d4aa96802234eddc42c96ad6c18392266e1dee8cb144c0 |
+| [653](20261105_log_653_cw.txt) | 28884 | c71457a3058a248a485d27dba681309cf563ca49420a0a293ca46a4775ae3610 |
+| [654](20261105_log_654_cw.txt) | 147611 | 2bc27ae7e4ada744acf0fb2c71f1eb1c1fd729777975afb5b39efb06b4e6a46a |
+
+Build Nov5_2026_20_16_44,long_arc_speed100;651/654 identify
+path20261105_physical_lap_speeds/parking20261105_efficient_alignment.
+User reports exit/laps improved;652 user fault and653 slippery floor excluded
+from normal software-failure inference.651 reports parking complete but user
+reports poor/incomplete physical parking;654 aborts entry_no_collision_free_plan.
+User newly measures axle spacing98mm,rear overhang35mm,front25mm straight or
+37mm at full lock; entire straight width remains123mm. Requests shallow finish
+about10mm inside the open longitudinal bay edge and more front manoeuvring room.
+
+Latest follow-up655/656: complete CCW originals, same firmware as651-654.
+User reports both nearly perfect, good longitudinal space use and shallow
+physical end position; requests shorter/faster approach, further improvement
+allowed. Both contain final_parking_stop/completed with no truncation.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [655](20261105_log_655_ccw.txt) | 167917 | 7eca2d6fe725481fb908508205e5992ce2bc8d64a63b146dbd2ef6288c8ac4d3 |
+| [656](20261105_log_656_ccw.txt) | 167316 | 9f0815eb7417c59657a738b926b1197befbe70124586718258e3d575614366e1 |

@@ -281,3 +281,21 @@ Shorter entry pauses with observed standstill and reused servo-command age:
 [review](PARKING_SETTLE_REUSE_20261102.md), `check_parking_steering_wait.py`.
 Duration sensitivity: `audit_parking_duration.py --filtered-speed`; append
 `--nominal --legacy-waits` for the previous waits with the same plant.
+
+Parking entry10mm rearward and stop once contained/parallel without centring:
+[PARKING_REARWARD_PARALLEL_STOP_20261105.md](PARKING_REARWARD_PARALLEL_STOP_20261105.md).
+`check_parking_parallel_stop.py` checks mirrored capture, early braking and
+completion away from the planning reference-X.
+
+Latest-six645-650 analysis, later-lap physical speed profile and faster checked
+parking approach: [RETURNED_645_650_EFFICIENCY_20261105.md](RETURNED_645_650_EFFICIENCY_20261105.md).
+`analyze_returned_645_650.py` regenerates portable-file summaries;
+`check_parking_returned_645_650.py` checks logged alignment anchors;
+`check_exit_long_arc_speed.py` checks phase-specific requests;
+`check_lap_smoothing_cache.py` proves cached/previous smoothing equivalence.
+
+Returned651?656 and new measured parking footprint/shorter approach:
+[review](RETURNED_651_656_PARKING_20261105.md).
+`analyze_returned_651_656.py` regenerates the portable-log summary;
+`check_parking_measured_651_656.py` checks measured steering reach and mirrored
+entry with independent radius variation.

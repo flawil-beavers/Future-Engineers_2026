@@ -13192,3 +13192,200 @@ ExistingSerial/unusedfunctionwarnings;M4unchanged/notbuilt,no upload/motion/comm
 Next normalCW/CCW save,secureFIRST+hash/tellunplug;inspect actualsettledoverrun,
 phasepauses/search_ms,physicalreserves/contact. NoextraToFsweep. Preservewidth123,
 rear30,goal60/127,cancelledextra10mm and current exitdiagnostics.
+
+## 2026-11-05: CW unparking stops, logs635/636 secured; speed unchanged
+
+USB originals635/636 copied first and source/copy SHA256 verified; told user
+unplug immediately. Portable originals indexed in
+simulation/evidence/parking_exit_diagnostics/20261105_log_635_cw.txt and
+20261105_log_636_cw.txt. SHA256 respectively
+ a5baa6465673c2f4387d98501cdb70152adb57b52c111adf23548b7845e6e257 and
+ fb28ae5dd6a192393f559ac9d386875cce0c953e83647ac48c0b946638f70671.
+Read parking pose plan. Diagnostic build Nov2_2026_17_43_41,center80,exit80;
+log does not identify binary SHA or final-parking/path revision, so exact binary
+identity is unverified. Both CW, all5segments, final240.4/240.0mm travel gate,
+stopped heading26.29/17.66deg -> cw_short_start_reference_invalid TEST_HOLD.
+Rear reference verification passed. No diagnostic truncation/ordering errors;
+636 lacks RUN_END but is the complete saved source file. User observed slip,
+no mechanical/setup changes. Prior634 aligned185.2mm; latest return yaw only
+52.4/55.8deg over~240mm versus earlier~84deg/~186mm. Encoder is not independent
+chassis translation; yaw response confirms mismatch, not its exact mechanics.
+Generated analyzer report/CSVs/SVGs local_workspace/parking-exit-analysis/20261105/.
+
+User explicitly forbids reducing tempo. Proposed final-return60mm/s change
+fully reverted before build/upload; all firmware sources equal HEAD,exit80.
+No build/upload/motion. Do not relax5deg reference gate or blindly extend240mm:
+slipping corrupts encoder-derived position. Next inspect slip/steering response
+against existing successful trace; evaluate bounded recovery with uncertain
+translation and swept-footprint checks before adding movement. Current problem
+is diagnosed but not fixed or physically validated. Keep route/brake/reversal,
+observer/ToF/pose diagnostics and existing servo settling unchanged.
+
+## 2026-11-05: repeated lap1->2 jerk, current firmware audited; no new run log
+
+User reports unparking hardware issue fixed; preserve exit80mm/s, no firmware
+change for that issue. Now reports repeated jerk at1->2, no current complete-run
+log available. No USB mounted. Source control_revision20261102_lap_handoff;
+400mm distance-based target/upward-speed blend remains active. Re-ran actual
+extracted check_lap_handoff.py:6 mirrored B/speed135/180/260 cases PASS; at
+identical pose/index first blended target equals outgoing target (0mm jump),
+plus cap/state/wait/reverse/reset assertions. This fixture does not cover actual
+MCU scheduling, full sensor/ToF/discovery nudge processing or physical servo.
+
+Unresolved concrete scheduling concern: completePendingLap synchronously calls
+buildOptimizedPath inside updateProgress/route update. This includes full-route
+preflight, smoothing, optional inner search (30000us own budget), direct
+connectors and repeated speed profiles. Main-loop sensors/drive_loop do not run
+while this call executes; only inner search has a local time budget, not the
+whole handoff. Existing handoff planning_us already measures total build on
+board; no returned current full-run log contains it, so duration/causal link to
+reported physical jerk remain unverified. Incoming pose is also captured before
+build and reused for remainder of current route update. A long loop causes
+motor controller profile rebase beyond100ms on following update. Do not assert
+this proves the reported jerk or claim prior target blend solved timing.
+
+No source edits/build/upload/motion. Next normal run save (no dedicated test or
+extra movement): secure originals first, compare control_revision, Handoff
+planning_us, bounded LATER_TRACK pose/target/speed/servo and sensor corrections
+around1->2. If confirmed long planning, move optional work into bounded chunks
+with existing live-route tracking and atomic checked-route activation; moving
+the same blocking call earlier merely relocates the interruption. Preserve
+normal speeds, geometry and safety checks; avoid arbitrary global servo filter.
+
+## 2026-11-05: parking10mm rearward, stop parallel without centring
+
+User requests shifting all entry10mm rearward, then explicitly clarifies:
+once fully inside and parallel, stop; do not return to the middle. No new USB
+batch. Parking revision20261105_rearward_10mm, path20261102_lap_handoff retained.
+Capture localX270.26->260.26 and planning reference60->50; mirrored CW/CCW.
+Legacy endpoints shift likewise; actual barriers/scan/registration, depth,
+speeds, exit80 and lap routes unchanged. Adaptive trajectories remain checked
+against actual barriers rather than blindly translating every motor segment.
+Updated practice axle beyond near inside face2.276->1.276cm.
+
+Runtime checks an acceptable parallel/contained pose during driving and before
+next segment, brakes then verifies neutral-wheel settling and measured stop.
+No forced finalX; remaining centring straight skipped. Removed prior10rear/
+30front completion preference; keep longitudinal8mm (5+3registration) and
+neutral-wheel clearance. Moving early stop needs extra3mm all-side containment;
+ordinary stopped/candidate containment remains5mm. In development, stopping
+exactly at estimated5mm gave false physical containment with scan rounding;
+the early-stop allowance fixed that, without tightening every terminal tail
+(which caused unnecessary recovery loops). Final matrices below all PASS.
+
+Actual-source checks:396/396 sequence+5registration;84/84 brake-overrun+8health,
+maxtravel358.599mm/max4replans;16parallel-stop cases+mirrored capture; actual
+servo-age/brake gates regression. These are model results, not powered trials.
+See simulation/PARKING_REARWARD_PARALLEL_STOP_20261105.md and updated practice
+setup; generated output local_workspace/final-parking-sequence/,
+parking-adaptive-brake-overrun/ and returned-603/.
+
+M7 IDE buildSUCCESS,RAM459256/523624,flash573096/786432;binarySHA256
+81eedacf6b73fda20b8680e791fc32a6f795b04c6695ed1aa5528e8515797479.
+M4unchanged/notbuilt; no upload/motion/commit/push. Existing Serial warning.
+Next user uploads M7,normal CW/CCW/save;secure originals FIRST+hash/tellunplug,
+check Parallel inside bay message, actual clearances and prompt completion at
+first valid parallel pose. No dedicated sensor sweep or changed speed.
+Lap1->2 scheduling concern remains unresolved pending normal-run evidence.
+
+## 2026-11-05: returned645-650, targeted speed and parking-approach efficiency
+
+FIRST copied latest six USB files645-650, verified source-before/source-after/
+copySHA256, told unplug immediately. Portable originals indexed under
+simulation/evidence/parking_exit_diagnostics/20261105_log_645_cw.txt through
+647cw,648/649ccw,650ccw_excerpt; full per-file hashes/bytes in evidence README.
+650 is36864bytes ending mid-record, not a complete log. Generic exit analyzer
+rejects its cut sample; process645-649 and keep650 explicitly limited. Generated
+summaries local_workspace/returned-645-650/ and parking-exit-analysis/20261105_645_649/.
+Physical report: unnecessary later-lap slowness, long CW park approach, CCW
+corner crawl/stop, requests faster exit. HeadersNov2_2026_17_43_41,exit80;
+646-648 path20261102_lap_handoff,parking20261102_reuse_steer_settle, predate
+rearward10mm correction.646/647 report complete,648 scan_alignment_limit,
+645/649 manual pause;650 incomplete. No binary readback/contact proof.
+
+Confirmed handoff blocking233240/242398/299733us. CW final registrationX-58.2/
+-66.2mm means do not omit real-marker scan based on nominal end position.
+648 initial wall correction+79.4mm; then42deg/60request with very little motion.
+649 actual~3-14mm/s at80request: loaded-drive discrepancy remains distinct from
+software speed caps. Cannot assign its exact mechanical/electrical cause.
+
+Path20261105_physical_lap_speeds: actual later laps use physical curvature/
+braking profile without duplicate lap1 pointwise cap; keep all tolerances,
+response/runtime caps and520ceiling. Preserve prior candidate-ranking profile
+so route shape does not change. Cache immutable smoothing protection weights
+once (768B static scratch, no extra nested stack):22 bitwise-equivalent comparisons. Planning still
+synchronous; actual MCU reduction/jerk acceptance pending next log.
+Parking20261105_efficient_alignment: earlier x350/400/450 candidates only for
+fully uncertainty-checked direct lane; learned bypass retains>=500. Nose-room
+preflight matches entry. Keep oblique corner acquisition; use gentle Ackermann
+pursuit for cleared scan/capture line. Approach100 vs70,alignment80 vs60,
+capture80 vs60; marker-sampling60 retained. Entry/rearward10mm/parallel-stop
+unchanged. Exit long arcs4/5 now100 vs80; first3 remain80. Distances, brakes,
+gyro/footprint/observer/ToF/reversal diagnostics retained;headerlong_arc_speed.
+
+PASS6573 dynamic cases10/20/50ms,maxlat.678063m/s2,minpillar31.9203mm;
+2807routes/state;2970approaches;396full+5registration;84overrun+8health;
+54loggedalignmentvariants(maxideal7.96s,steer34);2304exitgeometry+10settling;
+10extractedexit-speed cases;6handoffs;22cache bitwise cases. In development,
+letting the learned bypass shift early spent unmodelled lateral/nose reserve;
+restricted early candidates to direct uncertainty sweep and added matching
+nose check. Final matrices allPASS. Models exclude unknown real slip/servo lag.
+
+M7IDEbuildSUCCESS RAM460024/523624 flash573576/786432 binary577128B SHA256
+7f2228b54ca4c734c9d90f9f9fbeb62deceb413b5f8f8ddb68136cf013076d4c.
+M4unchanged/notbuilt;no upload/motion/commit/push. Full report
+simulation/RETURNED_645_650_EFFICIENCY_20261105.md. Next user M7normalCW/CCW,
+secureFIRST+hash/tellunplug;compare exitactualspeed/overrun, earlierapproach,
+wallalignment, laterlapcaps and handoffplanning_us. If loadedactualspeed still
+near3mm/s, higher requests alone are not proven a fix. NoextraToFsweep.
+
+## 2026-11-05: returned651-656, measured front sweep and efficient parking
+
+Secured651-654 FIRST+source-before/after/copySHA256; toldunplug. Later655/656
+likewise FIRST+SHA256+toldunplug before analysis. Complete unchanged originals
+simulation/evidence/parking_exit_diagnostics/20261105_log_651_cw.txt through
+654cw,655/656ccw; exact bytes/hashes in evidence README. All have RUN_END.
+BuildNov5_2026_20_16_44, path20261105_physical_lap_speeds,
+parking20261105_efficient_alignment.652 user fault,653 slippery floor excluded.
+User reports exit/laps very good;651/654 poor/incomplete CW parking;655/656
+nearly perfect CCW with good longitudinal use and shallow physical finish,
+but permits shorter/faster approach and further CCW improvement.
+
+651 estimates complete but localY116.4 (~22mm nominal open-edge gap); physical
+report differs.654 firstarc radiusclamped1.5 then entry_no_collision_free_plan
+at local87.4/206.8/60.7.655/656 complete, gaps247.3/247.4; initial wall
+registration48.1/62.4mm: retain actual marker/wall scan. Quick search1.3s,
+651 broad3.6s. Generated summaries local_workspace/returned-651-656/ and
+parking-exit-analysis/20261105_651_656/. Handoff202-243ms remains open separately.
+
+New measurements supersede old rear30: physicalaxle98,rear35,front25straight/
+37fullsteer,width123mm. Basefront now123/135 fromrearaxle, even tight1mm;
+old~125 physical nose omitted preferred16mm in tight mode. Conservative measured
+wheel envelope+LUT actual angles; preferred nose extra4mm, kinematic127unchanged.
+Default exit/lap footprint bitwise preserved. CaptureY271.5 vs294.6 (straight
+wheel10mm outside tips); preferred goalY128.5 (10mm inside open edge). Retain
+rearwardX260.26/reference50 and stop contained/parallel withoutcentering; deeper
+checked escapes allowed. Matching stopped/candidate containment6mm avoids
+completion-replan loops; moving8mm and longitudinal8mm retained.
+
+Normal analytic paths FIRST; only afterfailure bounded512node/65000sample
+multi-point recovery, 16compressedsegments, full1mm/radius-envelope validation.
+Static scratch20480B, no extra nestedstack. Normal tight entry adds1.5mm/polygon
+registration reserve, fadingover20mm. Actual full135mm contour never removed.
+Remaining recipe keeps its endpointX rather than forcing centring. Approach120,
+align/capture100,scan60unchanged, scanstart650vs680; entry60/tight40 and
+brake/servo/health/ToF gates retained. No firstlap/camera/exit/lap changes thissession.
+
+PASS396full+5registration,2970approach,84overrun+8health,24measuredgeometry
+(radius1/1.15/1.5,yaw+/-1,gaps248.9/249.6,mirrored),16parallelstop and actual
+servo/brake gates. New normal plant~11.4-12.5s/307-334mm, adverse1.5radius
+~21.3s/495mm; excludesMCUplanning/realtraction. Review
+simulation/RETURNED_651_656_PARKING_20261105.md and updatedpracticepositions.
+
+M7IDEbuildSUCCESS RAM480696/523624,flash576320/786432,binary579872B,SHA256
+5dbbf880f26137561d8108501900e6063d57fd9466e6f591f6a4a8dbd98f2844.
+Parkingrevision20261105_measured_parking. M4unchanged/notbuilt. No upload/
+reset/serial/motion/commit/push. Existing Serial and unusedlegacy warnings.
+Next userM7normalCW/CCW/save;secureFIRST+hash+toldunplug, thencompareapproach,
+measuredradius/recovery/searchtime and frontclearance/shallowphysicalfinish.
+Modelmatrix doesnot prove actualvehicle100% or everypose. No dedicatedToFsweep.

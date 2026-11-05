@@ -328,10 +328,10 @@ constexpr auto TOF_MAX_DELTA_MM = 100.0f; // Max change allowed between consecut
 // ==========================================
 
 // Physical axle-to-axle wheelbase (mm).
-// Used for printing/documentation only.  The Ackermann kinematic model
+// Used for the measured parking footprint and documentation. The kinematic model
 // uses WHEELBASE_MM = 127 mm (Ackermann::WHEELBASE_MM in ackermann_kinematics.h)
 // because the pin-slot joint geometry shifts the effective turning centre.
-constexpr float PHYSICAL_WHEELBASE_MM = 100.0f;
+constexpr float PHYSICAL_WHEELBASE_MM = 98.0f;
 
 constexpr auto CAL_SPEED_MMS = 250.0f;
 constexpr unsigned long CAL_TURN_SERVO_SETTLE_MS = 600;
@@ -428,6 +428,8 @@ constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 50;
 // the servo zero preserves the mirrored +/- geometry.
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_STEERING = 45;
 constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 80;
+// Keep the confined first three strokes; accelerate the two longer arcs.
+constexpr auto OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 200;
 constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 150;
 constexpr auto OBSTACLE_PARKING_EXIT_SEGMENT_COUNT = 5;
@@ -852,29 +854,33 @@ static_assert(
             OBSTACLE_FINAL_PARKING_SEGMENT_COUNT,
     "Final-parking segment limit must be in the generated path");
 
-// Measured rear-axle centre to rearmost part, including sensor (2026-10-31).
-constexpr auto OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM = 30.0f;
-constexpr auto OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM = 125.0f;
+// Measured 2026-11-05; kinematic CAD turn radii remain separately calibrated.
+constexpr auto OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM = 35.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM = PHYSICAL_WHEELBASE_MM+25.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM = PHYSICAL_WHEELBASE_MM+37.0f;
 // User measured outside-to-outside wheels, straight ahead (2026-10-31).
 constexpr auto OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM = 123.0f;
-constexpr auto OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM = 16.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM = 4.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_GAP_MM =
     OBSTACLE_FINAL_ROBOT_LENGTH_MM * OBSTACLE_PARKING_LENGTH_FACTOR;
 constexpr auto OBSTACLE_FINAL_PARKING_LONGITUDINAL_CLEARANCE_MM =
     (OBSTACLE_FINAL_PARKING_GAP_MM -
      OBSTACLE_FINAL_ROBOT_LENGTH_MM) * 0.5f;
-// Preserve the established parked axle position when correcting body dimensions.
-constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM = 60.0f;
+// Shift capture and final parked pose together toward the vehicle's rear.
+// Local +X follows the parked heading, so subtraction mirrors for CW/CCW.
+constexpr auto OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM = 10.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM =
+    60.0f - OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM;
 constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM =
-    OBSTACLE_PARKING_WIDTH_MM - OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f - 11.5f;
+    OBSTACLE_PARKING_WIDTH_MM - OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f - 10.0f;
 
-// Based on CAD/parking_entry_swept_search.py: reverse the searched exit's
-// seven segments, translating the full trajectory 20 mm away from the wall.
-// The nominal straight scan body clears the 200 mm marker tips by 32.1 mm.
-constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_X_MM = 270.26f;
-// Translate the full seven-segment entry 20 mm away from the marker tips.
-// Final centre y=120 leaves 17.5 mm nominal reserve at the open bay edge.
-constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM = 294.60f;
+// Capture beside the marker tips; measured wheel edge has10mm clearance.
+// The adaptive planner checks the full steered contour and measured gap.
+constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_X_MM =
+    270.26f - OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM;
+// A closer capture shortens entry and reduces the initial diagonal swing.
+constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM =
+    OBSTACLE_PARKING_WIDTH_MM+OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f+10.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_HEADING_DEG = 0.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_PRACTICE_START_X_MM = -500.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_PRACTICE_START_Y_MM = -1000.0f;
@@ -886,8 +892,9 @@ constexpr auto OBSTACLE_FINAL_PARKING_PRACTICE_START_Y_MM = -1000.0f;
 // APPROACH_LANE_Y remains the isolated-practice line, without learned signs.
 constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_LANE_Y_MM = -1120.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM = 650.0f;
-constexpr auto OBSTACLE_FINAL_PARKING_SCAN_Y_MM = -1205.40f;
-constexpr auto OBSTACLE_FINAL_PARKING_SCAN_START_X_MM = 680.0f;
+constexpr auto OBSTACLE_FINAL_PARKING_SCAN_Y_MM =
+    -1500.0f+OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM;
+constexpr auto OBSTACLE_FINAL_PARKING_SCAN_START_X_MM = 650.0f;
 // Historical scan gate retained for configuration compatibility; normal
 // parking now scans immediately after establishing the wall baseline.
 constexpr auto OBSTACLE_FINAL_PARKING_SCAN_ARM_X_MM = 560.0f;
@@ -902,9 +909,12 @@ constexpr uint32_t OBSTACLE_FINAL_PARKING_SCAN_TIMEOUT_MS = 25000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS = 25000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_SEGMENT_TIMEOUT_MS = 10000;
 
-constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_SPEED = 70;
+constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_SPEED = 120;
 constexpr auto OBSTACLE_FINAL_PARKING_SCAN_SPEED = 60;
-constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 60;
+// Alignment is outside the marker sampling phase; do not raise scan speed
+// and lose a narrow marker with a slower ToF cadence.
+constexpr auto OBSTACLE_FINAL_PARKING_ALIGN_SPEED = 100;
+constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 100;
 constexpr auto OBSTACLE_FINAL_PARKING_ENTRY_SPEED = 60;
 constexpr auto OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS = 400;
 constexpr auto OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS = 300;

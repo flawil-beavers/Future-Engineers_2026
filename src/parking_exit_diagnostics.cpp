@@ -139,7 +139,7 @@ void beginDiagnostics(int8_t turnSign)
             *character = '_';
     char line[LINE_CAPACITY];
     snprintf(line, sizeof(line),
-             "[PARK_DIAG_CONFIG] v=%lu build=%s turn=%d center=%d mm_per_count=%.7f period_ms=%lu sample_limit=%u byte_limit=%lu buffer=%lu sample_bytes=%lu event_bytes=%lu line_capacity=%lu segments=%d exit_speed=%d brake_ms=%lu rear_target=%.1f localize_max=%.1f",
+             "[PARK_DIAG_CONFIG] v=%lu build=%s turn=%d center=%d mm_per_count=%.7f period_ms=%lu sample_limit=%u byte_limit=%lu buffer=%lu sample_bytes=%lu event_bytes=%lu line_capacity=%lu segments=%d exit_speed=%d brake_ms=%lu rear_target=%.1f localize_max=%.1f long_arc_speed=%d",
              static_cast<unsigned long>(SCHEMA_VERSION), buildIdentity,
              turnSign, SERVO_CENTER, COUNTER_TO_MM,
              static_cast<unsigned long>(SAMPLE_PERIOD_MS), SAMPLE_LIMIT,
@@ -151,7 +151,8 @@ void beginDiagnostics(int8_t turnSign)
              OBSTACLE_PARKING_EXIT_SEGMENT_COUNT, OBSTACLE_PARKING_EXIT_SPEED,
              static_cast<unsigned long>(OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS),
              OBSTACLE_PARKING_REAR_TOF_TARGET_RANGE_MM,
-             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM);
+             OBSTACLE_PARKING_EXIT_EDGE_LOCALIZATION_MAX_MM,
+             OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED);
     emitLine(line, true);
 }
 

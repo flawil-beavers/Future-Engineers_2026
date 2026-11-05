@@ -41,25 +41,42 @@ inline bool overlaps(const Quad &a, const Quad &b) {
 // wheelSign uses firmware steering sign; +/-1 checks both steering extremes.
 inline void robotQuads(float x, float y, float headingDeg, int wheelSign,
                        float bodyMargin, Quad (&bodies)[6], float outsideWidth=125.0f,
-                       float rearOverhang=40.0f) {
+                       float rearOverhang=40.0f, float frontAxle=100.0f,
+                       float frontTip=125.0f, float steeredFrontTip=0.0f,
+                       float measuredLeft=NAN, float measuredRight=NAN) {
     constexpr float rad=0.017453292519943295f;
     const float h=headingDeg*rad, c=cosf(h), s=sinf(h);
-    const float left=wheelSign<0 ? -37.545f : (wheelSign>0 ? 62.455f : 0);
-    const float right=wheelSign<0 ? -62.455f : (wheelSign>0 ? 37.545f : 0);
+    const float left=isfinite(measuredLeft) ? measuredLeft :
+        (wheelSign<0 ? -37.545f : (wheelSign>0 ? 62.455f : 0));
+    const float right=isfinite(measuredRight) ? measuredRight :
+        (wheelSign<0 ? -62.455f : (wheelSign>0 ? 37.545f : 0));
     const float wheelY=0.5f*outsideWidth-12.5f;
     // Preserve the front/side outlines; only trim rear body extensions to
     //the measured rear overhang. Defaults retain the established exit model.
     const float wideRear=fminf(35.0f,rearOverhang);
     const Quad local[6] = {
         rectangle((110.0f-wideRear)*0.5f,0,(110.0f+wideRear)*0.5f+bodyMargin,50+bodyMargin,0),
-        rectangle((125.0f-rearOverhang)*0.5f,0,(125.0f+rearOverhang)*0.5f+bodyMargin,25+bodyMargin,0),
+        rectangle((frontTip-rearOverhang)*0.5f,0,(frontTip+rearOverhang)*0.5f+bodyMargin,25+bodyMargin,0),
         rectangle(0,wheelY,21.6f+bodyMargin,12.5f+bodyMargin,0),
         rectangle(0,-wheelY,21.6f+bodyMargin,12.5f+bodyMargin,0),
-        rectangle(100,wheelY,21.6f+bodyMargin,12.5f+bodyMargin,left*rad),
-        rectangle(100,-wheelY,21.6f+bodyMargin,12.5f+bodyMargin,right*rad)
+        rectangle(frontAxle,wheelY,21.6f+bodyMargin,12.5f+bodyMargin,left*rad),
+        rectangle(frontAxle,-wheelY,21.6f+bodyMargin,12.5f+bodyMargin,right*rad)
     };
     for (int i=0;i<6;++i) {
         bodies[i]=local[i];
+        if (i>=4 && wheelSign && steeredFrontTip>0.0f) {
+            // Parking-only measured steering overhang. Enclose both the
+            // original rotated tyre and its additional forward reach; do
+            // not translate it and silently remove its rear swept area.
+            float minX=INFINITY,maxX=-INFINITY,minY=INFINITY,maxY=-INFINITY;
+            for (const Point &p:bodies[i].p) {
+                minX=fminf(minX,p.x);maxX=fmaxf(maxX,p.x);
+                minY=fminf(minY,p.y);maxY=fmaxf(maxY,p.y);
+            }
+            maxX=fmaxf(maxX,steeredFrontTip+bodyMargin);
+            bodies[i]=rectangle((minX+maxX)*.5f,(minY+maxY)*.5f,
+                (maxX-minX)*.5f,(maxY-minY)*.5f,0.0f);
+        }
         for (Point &p : bodies[i].p) {
             const float lx=p.x, ly=p.y;
             p={x+c*lx-s*ly,y+s*lx+c*ly};
@@ -71,10 +88,13 @@ inline void robotQuads(float x, float y, float headingDeg, int wheelSign,
 // Piece faces include 5 mm reserve. Gap is checked at both measured extremes.
 inline bool safe(float x, float y, float headingDeg, int wheelSign,
                  bool keepBehindNearSeat, float bodyMargin=0.0f,
-                 bool keepAheadMiddleSeat=false) {
+                 bool keepAheadMiddleSeat=false, float outsideWidth=125.0f,
+                 float rearOverhang=40.0f, float frontAxle=100.0f,
+                 float frontTip=125.0f, float steeredFrontTip=0.0f) {
     if (!isfinite(x) || !isfinite(y) || !isfinite(headingDeg)) return false;
     Quad bodies[6];
-    robotQuads(x,y,headingDeg,wheelSign,bodyMargin,bodies);
+    robotQuads(x,y,headingDeg,wheelSign,bodyMargin,bodies,
+               outsideWidth,rearOverhang,frontAxle,frontTip,steeredFrontTip);
     const Quad fixed=rectangle(490,-1400,15,100,0);
     const Quad moved[2] = {rectangle(480-242.5f-10,-1400,15,100,0),
                           rectangle(480-252.5f-10,-1400,15,100,0)};

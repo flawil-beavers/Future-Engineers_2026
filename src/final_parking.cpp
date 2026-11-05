@@ -64,7 +64,13 @@ constexpr ParkingSegment PARKING_SEGMENTS[
 
 constexpr float SEGMENT_LOCAL_X_MM[
     OBSTACLE_FINAL_PARKING_SEGMENT_COUNT] = {
-    250.26f, 153.07f, 116.85f, 72.36f, 90.65f, 56.25f, 81.25f};
+    250.26f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    153.07f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    116.85f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    72.36f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    90.65f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    56.25f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM,
+    81.25f-OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM};
 constexpr float SEGMENT_LOCAL_Y_MM[
     OBSTACLE_FINAL_PARKING_SEGMENT_COUNT] = {
     294.60f, 234.95f, 163.62f, 117.56f, 125.57f, 120.00f, 120.00f};
@@ -120,7 +126,7 @@ uint32_t wallCorrectionSequence = 0;
 uint32_t stoppedWallSequence = 0;
 uint8_t stoppedWallFrames = 0;
 float stoppedWallRange = 0.0f;
-constexpr uint8_t ENTRY_PLAN_CAPACITY = 8;
+constexpr uint8_t ENTRY_PLAN_CAPACITY = 16;
 ParkingSegment adaptiveEntry[ENTRY_PLAN_CAPACITY]{};
 bool entryQuickRecipe = false;
 PositionEstimate adaptiveEndpoints[ENTRY_PLAN_CAPACITY]{};
@@ -515,19 +521,31 @@ int fieldLineSteering(
     int8_t fieldMotionSign,
     float targetY)
 {
-    const float lateralError = targetY - pose.y_mm;
-    const float lateralAngle = fieldMotionSign * atan2f(
-        lateralError,
-        OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM) * 180.0f / PI;
-    const float desiredHeading = baseHeadingDeg() + clampFloat(
-        lateralAngle,
-        -OBSTACLE_FINAL_PARKING_LINE_MAX_ANGLE_DEG,
-        OBSTACLE_FINAL_PARKING_LINE_MAX_ANGLE_DEG);
-    const float headingError = wrap180(desiredHeading - pose.heading_deg);
-    const int motorDirection = motorDirectionForFieldMotion(fieldMotionSign);
-    const float steering = clampFloat(
-        -motorDirection * headingError *
-            OBSTACLE_FINAL_PARKING_LINE_HEADING_KP,
+    if (targetY==OBSTACLE_FINAL_PARKING_APPROACH_LANE_Y_MM)
+    {
+        // Preserve the established lane acquisition from an oblique final
+        // corner. The new line pursuit is for the cleared outer corridor.
+        const float angle=fieldMotionSign*atan2f(targetY-pose.y_mm,
+            OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM)*180.0f/PI;
+        const float desired=baseHeadingDeg()+clampFloat(angle,
+            -OBSTACLE_FINAL_PARKING_LINE_MAX_ANGLE_DEG,
+            OBSTACLE_FINAL_PARKING_LINE_MAX_ANGLE_DEG);
+        return static_cast<int>(clampFloat(-motorDirectionForFieldMotion(fieldMotionSign)*
+            wrap180(desired-pose.heading_deg)*OBSTACLE_FINAL_PARKING_LINE_HEADING_KP,
+            -OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING,
+             OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING));
+    }
+    // Track the field line with the measured Ackermann model rather than
+    // multiplying a bearing error into sustained full lock (648 stalled at42).
+    // Target behind the vehicle for reverse travel; CW/CCW mirror naturally.
+    const float dy=targetY-pose.y_mm;
+    const float horizon=OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM+
+        fminf(fabsf(dy),OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM);
+    const float dx=fieldMotionSign*horizon;
+    const float h=pose.heading_deg*PI/180.0f;
+    const float curvature=2.0f*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1.0f,dx*dx+dy*dy);
+    const float steering = clampFloat(fabsf(curvature)<1.0e-6f ? 0.0f :
+        Ackermann::getServoAngleForRadius(-1.0f/curvature),
         -OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING,
         OBSTACLE_FINAL_PARKING_LINE_MAX_STEERING);
     return static_cast<int>(steering);
@@ -575,6 +593,8 @@ bool parkingApproachSteering(const PositionEstimate &pose, bool outer, int &stee
     }
     else
     {
+        // Keep the wide-angle corner departure controller. The gentler line
+        // pursuit takes over once this outward bend has reached the scan line.
         const float angle=clampFloat(atan2f(
             OBSTACLE_FINAL_PARKING_SCAN_Y_MM-pose.y_mm,
             OBSTACLE_FINAL_PARKING_LINE_LOOKAHEAD_MM)*180.0f/PI,-60.0f,60.0f);
@@ -614,9 +634,31 @@ void advanceEntryModel(PositionEstimate &pose,int steering,float distance,float 
 
 bool parkingApproachPoseSafe(const PositionEstimate &pose)
 {
+    // An earlier outward shift must retain the same steering-nose reserve
+    // as the entry checks, including the registered +/-40mm lane uncertainty.
+    const float h=pose.heading_deg*PI/180.0f;
+    PositionEstimate nose=pose;
+    const float reserve=OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM;
+    nose.x_mm+=reserve*cosf(h);
+    nose.y_mm+=reserve*sinf(h);
     return connectorClearanceSafe(pose) &&
-        parking_start_footprint::safe(pose.x_mm,pose.y_mm,pose.heading_deg,-1,false,5.0f) &&
-        parking_start_footprint::safe(pose.x_mm,pose.y_mm,pose.heading_deg,+1,false,5.0f);
+        connectorClearanceSafe(nose) &&
+        parking_start_footprint::safe(pose.x_mm,pose.y_mm,pose.heading_deg,-1,false,5.0f,false,
+            OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM,
+            PHYSICAL_WHEELBASE_MM,OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM,
+            OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM) &&
+        parking_start_footprint::safe(pose.x_mm,pose.y_mm,pose.heading_deg,+1,false,5.0f,false,
+            OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM,
+            PHYSICAL_WHEELBASE_MM,OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM,
+            OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM) &&
+        parking_start_footprint::safe(nose.x_mm,nose.y_mm,nose.heading_deg,-1,false,5.0f,false,
+            OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM,
+            PHYSICAL_WHEELBASE_MM,OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM,
+            OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM) &&
+        parking_start_footprint::safe(nose.x_mm,nose.y_mm,nose.heading_deg,+1,false,5.0f,false,
+            OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM,
+            PHYSICAL_WHEELBASE_MM,OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM,
+            OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM);
 }
 
 bool parkingApproachPreflight(PositionEstimate pose)
@@ -651,10 +693,13 @@ bool chooseParkingApproach(const PositionEstimate &pose)
     // the complete motion against all known pillars, walls and both pieces.
     // Keep the shift early enough to settle before the next outer wall;
     // preflight rejects a candidate intersecting a known pillar or marker.
-    const float candidates[]={500.0f,550.0f,600.0f,
+    const float candidates[]={350.0f,400.0f,450.0f,500.0f,550.0f,600.0f,
         OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM};
     for (bool direct:{true,false}) for (float candidate:candidates)
     {
+        // Only the direct lane has the full +/-40mm lateral uncertainty
+        // sweep. Preserve the learned bypass's established shift interval.
+        if (!direct && candidate<500.0f) continue;
         approachDirectLane=direct;
         approachOuterShiftX=candidate;
         if (parkingApproachPreflight(pose)) return true;
@@ -683,7 +728,11 @@ bool parkingEntryPoseSafe(const PositionEstimate &pose, int steering, float marg
     robotQuads(pose.x_mm,pose.y_mm,pose.heading_deg,
                steering>0 ? 1 : (steering<0 ? -1 : 0),safetyMargin,bodies,
                OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,
-               OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM);
+               OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM,PHYSICAL_WHEELBASE_MM,
+               OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM,
+               OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM,
+               Ackermann::getLeftWheelAngleLUT(steering),
+               Ackermann::getRightWheelAngleLUT(steering));
     const Quad fixed=rectangle(490.0f,-1400.0f,10.0f+safetyMargin,100.0f+safetyMargin,0.0f);
     const Quad moving=rectangle(movingInsideFaceX()-10.0f,-1400.0f,10.0f+safetyMargin,100.0f+safetyMargin,0.0f);
     // Extra nose room while steering is a swept-motion reserve, not a new
@@ -1024,7 +1073,7 @@ bool endpointWithinGate(uint8_t index)
     return positionError <= 20.0f && headingError <= 6.0f;
 }
 
-bool finalFootprintContained()
+bool finalFootprintContained(float additionalMargin=0.0f)
 {
     const PositionEstimate pose = get_position_struct();
     if (!isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
@@ -1039,7 +1088,7 @@ bool finalFootprintContained()
     const float halfWidth =
         OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM * 0.5f;
     const float localY[2] = {-halfWidth, halfWidth};
-    const float margin = OBSTACLE_FINAL_PARKING_FINAL_BOUNDARY_MARGIN_MM;
+    const float margin = OBSTACLE_FINAL_PARKING_FINAL_BOUNDARY_MARGIN_MM + additionalMargin;
     for (uint8_t ix = 0; ix < 2; ++ix)
     {
         for (uint8_t iy = 0; iy < 2; ++iy)
@@ -1110,7 +1159,12 @@ bool entryEndReserveReady()
     const float extra=0.5f*OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*fabsf(sinf(h));
     const float rear=p.x_mm-OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM*cosf(h)-extra;
     const float front=measuredGapMm-p.x_mm-OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM*cosf(h)-extra;
-    return rear>=10.0f && front>=30.0f;
+    // Once parallel and fully contained, accept the actual parked position.
+    // No centring move or preferred 30mm nose reserve is needed at standstill.
+    // Retain the boundary margin and clearance for centring the front wheels.
+    const float margin=OBSTACLE_FINAL_PARKING_FINAL_BOUNDARY_MARGIN_MM+3.0f;
+    return finalFootprintContained(1.0f) && rear>=margin && front>=margin &&
+        parkingEntryPoseSafe(get_position_struct(),0);
 }
 
 void sampleRearEntryReference(const PositionEstimate &pose)
@@ -1176,13 +1230,21 @@ bool applyRearEntryReference()
     return true;
 }
 
+// Additional registration reserve for normal entry; a partly parked car
+// retains the physical footprint even when it has already spent that reserve.
+float entryPlanMargin(float margin,const PositionEstimate &field)
+{
+    return margin+(margin>=3 ? 3.0f:(entryLocalPose(field).y_mm>=250 ? 1.5f:0.0f));
+}
+
 bool entryCandidateSafe(const EntryCandidate &candidate, PositionEstimate field,
                         PositionEstimate *endpoints = nullptr, float sampleStep=1.0f)
 {
     if (!endpoints && sampleStep==1.0f && candidate.count)
     {
         const float spread=entryRadiusMeasured ? 0.05f:0.15f;
-        const float margin=entrySafetyMargin>=4.0f ? entrySafetyMargin-3.0f:entrySafetyMargin;
+        const float margin=entrySafetyMargin>=4.0f ? entrySafetyMargin-3.0f:
+            (entrySafetyMargin==2.5f || entrySafetyMargin==2.0f ? 1.0f:entrySafetyMargin);
         PositionEstimate segmentStart=field;
         // A straight prefix must not hide an unusable following arc. Check
         //the same short radius envelope at every steering transition, not
@@ -1223,7 +1285,8 @@ bool entryCandidateSafe(const EntryCandidate &candidate, PositionEstimate field,
     if (!endpoints && sampleStep==1.0f &&
         !entryCandidateSafe(candidate,field,nullptr,10.0f)) return false;
     float walked=0.0f;
-    const float extraReserve=entrySafetyMargin>=4.0f ? 3.0f:0.0f;
+    const float extraReserve=entrySafetyMargin>=4.0f ? 3.0f:
+        (entrySafetyMargin==2.5f ? 1.5f:(entrySafetyMargin==2.0f ? 1.0f:0.0f));
     for (uint8_t index=0; index<candidate.count; ++index)
     {
         const ParkingSegment &segment=candidate.segments[index];
@@ -1255,7 +1318,7 @@ bool entryCandidateSafe(const EntryCandidate &candidate, PositionEstimate field,
                        OBSTACLE_FINAL_PARKING_FRONT_OVERHANG_MM};
     const float ys[]={-0.5f*OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM,
                        0.5f*OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM};
-    const float margin=OBSTACLE_FINAL_PARKING_FINAL_BOUNDARY_MARGIN_MM;
+    const float margin=OBSTACLE_FINAL_PARKING_FINAL_BOUNDARY_MARGIN_MM+1.0f;
     for (float x:xs) for (float y:ys)
     {
         const float px=local.x_mm+c*x-s*y,py=local.y_mm+s*x+c*y;
@@ -1282,13 +1345,14 @@ float entryCandidateCost(const EntryCandidate &candidate)
 // intermediate footprint. This is a usable path length, not gap minus length:
 // outside the rail tips a diagonal vehicle can have additional room.
 float entryFreeTravel(const PositionEstimate &field, int direction, int steering,
-                      float maximum=80.0f)
+                      float maximum=80.0f, bool countBudget=false)
 {
     PositionEstimate predicted=field;
     const float reserve=fmaxf(2.0f,entryBrakeTravelMm);
     float walked=0;
     while(walked<=maximum)
     {
+        if(countBudget){if(!entryPlanningBudget)break;--entryPlanningBudget;}
         serviceEntryPlanner();
         if(!parkingEntryPoseSafe(predicted,steering*routeTurnSign))break;
         if(walked==maximum)return fmaxf(0,walked-reserve);
@@ -1305,13 +1369,13 @@ bool planShortEntry(const PositionEstimate &field)
     const uint32_t started=millis();
     for(float margin:{3.0f})
     {
-        entrySafetyMargin=margin+(margin>=3 ? 3:0);
+        entrySafetyMargin=entryPlanMargin(margin,field);
         entryPlanningBudget=3500;entryPlannerLastPollMs=millis();
         EntryCandidate best;float cost=1.0e9f;
         // Two reverse arcs with a solved diagonal straight. No forward
         // correction arc is needed when this complete swept path fits.
         for(float high:{60.0f,65.0f,55.0f,70.0f,75.0f,80.0f})
-        for(float initial:{0.0f,10.0f,20.0f})
+        for(float initial:{0.0f,10.0f,20.0f,30.0f,40.0f})
         {
             if(!entryPlanningBudget)goto shortEntrySelected;
             PositionEstimate local=start;EntryCandidate arcs;
@@ -1361,12 +1425,12 @@ bool planEntryTail(const PositionEstimate &field, float targetY,
     for(float checkedMargin:{margin,1.0f})
     {
         entryPlanningBudget=12000;entryPlannerLastPollMs=millis();
-        entrySafetyMargin=checkedMargin+(checkedMargin>=3 ? 3:0);
+        entrySafetyMargin=entryPlanMargin(checkedMargin,field);
         for(float initial:{0.0f,10.0f,-10.0f,20.0f,-20.0f})
         for(float high:{local.heading_deg,70.0f,80.0f})
         for(float middle:{oldMiddle,20.0f,30.0f,40.0f,10.0f,0.0f})
         for(float low:{oldLow,10.0f,0.0f,20.0f})
-        for(float solvedY:{targetY,125.0f,120.0f,115.0f,110.0f})
+        for(float solvedY:{targetY,OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,127.0f,125.0f,120.0f,115.0f,110.0f})
         {
             if(!entryPlanningBudget)break;
             if(!allowPrefix && initial!=0)continue;
@@ -1403,6 +1467,114 @@ bool planEntryTail(const PositionEstimate &field, float targetY,
     return false;
 }
 
+// Bounded recovery for a diagonal car: the analytic recipe has only a few
+// cusps and can miss a valid multi-point alignment with a larger real radius.
+// Keep this stopped-only scratch off the control stack. Every accepted path
+// still receives the ordinary complete 1mm/radius-envelope preflight.
+bool planBoundedParkingRecovery(const PositionEstimate &field)
+{
+    struct Node { PositionEstimate pose; float cost,score; uint16_t parent;
+        ParkingSegment move; uint8_t segments; bool closed; };
+    static Node nodes[512];
+    const float savedMargin=entrySafetyMargin;
+    entrySafetyMargin=2.0f;
+    entryPlanningBudget=65000;entryPlannerLastPollMs=millis();
+    auto score=[](const PositionEstimate &p,float cost) {
+        return .05f*cost+4.0f*fabsf(p.y_mm-OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM)+
+            1.0f*fabsf(p.heading_deg)+.4f*fabsf(p.x_mm-85.0f);
+    };
+    auto start=entryLocalPose(field);
+    nodes[0]={start,0,score(start,0),0,{0,0,0},0,false};
+    int count=1;
+    for(int expansion=0;expansion<512 && entryPlanningBudget; ++expansion)
+    {
+        int selected=-1;float best=INFINITY;
+        for(int i=0;i<count;++i)if(!nodes[i].closed && nodes[i].score<best)
+        {selected=i;best=nodes[i].score;}
+        if(selected<0)break;
+        const Node current=nodes[selected];nodes[selected].closed=true;
+        if(current.segments && fabsf(current.pose.heading_deg)<=2.0f &&
+           current.pose.y_mm<140.0f)
+        {
+            ParkingSegment reverse[24];int n=0,at=selected;
+            while(at && n<24){reverse[n++]=nodes[at].move;at=nodes[at].parent;}
+            if(!at)
+            {
+                EntryCandidate candidate;auto local=start;
+                while(n){auto m=reverse[--n];appendEntry(candidate,local,m.direction,m.steering,m.distanceMm);}
+                if(hypotf(local.x_mm-current.pose.x_mm,local.y_mm-current.pose.y_mm)<0.1f &&
+                   fabsf(wrap180(local.heading_deg-current.pose.heading_deg))<0.1f &&
+                   entryCandidateSafe(candidate,field))
+                {
+                    entryCandidateSafe(candidate,field,adaptiveEndpoints);
+                    adaptiveEntryCount=candidate.count;
+                    for(uint8_t i=0;i<candidate.count;++i)adaptiveEntry[i]=candidate.segments[i];
+                    segmentIndex=0;entryQuickRecipe=false;entrySafetyMargin=1.0f;
+                    Serial.println("[FINAL PARK PLAN] Bounded multi-point recovery; complete swept preflight PASS");
+                    return true;
+                }
+            }
+        }
+        for(int direction:{-1,1})for(int steering:{-50,0,50})
+        for(int lengthChoice=0;lengthChoice<4;++lengthChoice)
+        {
+            float distance=lengthChoice==0 ? 20.0f:40.0f;
+            if(lengthChoice==2)
+            {
+                if(!steering)continue;
+                distance=-Ackermann::getTurnRadius(float(steering))*entryRadiusScale*
+                    (-current.pose.heading_deg)*PI/180.0f/direction;
+                if(distance<2 || distance>100)continue;
+            }
+            if(current.segments>=24)continue;
+            PositionEstimate end;
+            localToField(current.pose.x_mm,current.pose.y_mm,current.pose.heading_deg,
+                end.x_mm,end.y_mm,end.heading_deg);
+            if(lengthChoice==3)
+            {
+                entrySafetyMargin=current.cost<1 ? 1.0f:2.0f;
+                distance=entryFreeTravel(end,direction,steering,80.0f,true);
+                entrySafetyMargin=2.0f;
+                if(distance<4)continue;
+            }
+            bool safe=true;
+            for(float walked=0;walked<=distance;walked+=2)
+            {
+                if(!entryPlanningBudget){safe=false;break;}
+                --entryPlanningBudget;serviceEntryPlanner();
+                if(!parkingEntryPoseSafe(end,steering*routeTurnSign,
+                    1.0f+clampFloat((current.cost+walked)/20.0f,0.0f,1.0f))){safe=false;break;}
+                if(walked<distance)advanceEntryModel(end,steering*routeTurnSign,
+                    direction*fminf(2,distance-walked),entryRadiusScale);
+            }
+            if(!safe || !parkingEntryPoseSafe(end,steering*routeTurnSign,2.0f))continue;
+            const auto local=entryLocalPose(end);
+            if(local.y_mm<65 || local.y_mm>320 || fabsf(local.heading_deg)>85)continue;
+            const float cost=current.cost+distance+15+
+                (current.segments && current.move.direction!=direction ? 20:0);
+            int duplicate=-1;
+            for(int i=0;i<count;++i)if(fabsf(nodes[i].pose.x_mm-local.x_mm)<7 &&
+                fabsf(nodes[i].pose.y_mm-local.y_mm)<7 &&
+                fabsf(nodes[i].pose.heading_deg-local.heading_deg)<4)
+            {duplicate=i;break;}
+            if(duplicate>=0)continue;
+            int slot=count;
+            if(count>=512)
+            {
+                float worst=-INFINITY;slot=-1;
+                for(int i=0;i<count;++i)if(!nodes[i].closed && nodes[i].score>worst)
+                {worst=nodes[i].score;slot=i;}
+                if(slot<0 || score(local,cost)>=worst)continue;
+            }
+            else ++count;
+            nodes[slot]={local,cost,score(local,cost),uint16_t(selected),
+                {int8_t(direction),int8_t(steering),distance},uint8_t(current.segments+1),false};
+        }
+    }
+    entrySafetyMargin=savedMargin;
+    return false;
+}
+
 bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
                       float requestedMargin=0.0f)
 {
@@ -1414,7 +1586,7 @@ bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
     if(allowEscape && requestedMargin==0 && planShortEntry(field))return true;
     // Partial entries use the same bounded continuation family before the
     // expensive general search. Prefixes are ordinary checked alternatives.
-    if(allowEscape && requestedMargin==0 && entryRadiusMeasured && start.y_mm>220.0f && start.y_mm<250.0f &&
+    if(allowEscape && requestedMargin==0 && entryRadiusMeasured && start.y_mm>130.0f && start.y_mm<280.0f &&
        planEntryTail(field,OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,30,20,true))
         return true;
     EntryCandidate best;
@@ -1430,13 +1602,13 @@ bool planParkingEntry(const PositionEstimate &field, bool allowEscape=true,
             //entry recovery retains the general escape search ordering.
             if(margin<3.0f && start.y_mm<250.0f)continue;
             entryPlanningBudget=6000;entryPlannerLastPollMs=millis();
-            entrySafetyMargin=margin+(margin>=3.0f ? 3.0f:0.0f);
+            entrySafetyMargin=entryPlanMargin(margin,field);
             EntryCandidate quickBest;float quickCost=1.0e9f;
             for(float high:{55.0f,60.0f,70.0f,50.0f,80.0f})
             for(float middle:{30.0f,20.0f,40.0f})
             for(float low:{20.0f,10.0f,0.0f})
-            for(float initial:{margin>=3.0f ? -OBSTACLE_FINAL_PARKING_STEER_FRONT_RESERVE_MM:-8.0f,-20.0f,0.0f})
-            for(float targetY:{127.0f,125.0f})
+            for(float initial:{-32.0f,-20.0f,-40.0f,0.0f})
+            for(float targetY:{OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,127.0f,125.0f,120.0f,115.0f})
             {
                 if(!entryPlanningBudget)goto quickEntrySelected;
                 if(high<start.heading_deg)continue;
@@ -1491,7 +1663,7 @@ quickEntrySelected:
         if (requestedMargin==0.0f) { entryPlanningBudget=20000;entryPlannerLastPollMs=millis(); }
         // Reserve an additional3mm on both footprint and pieces while
         // planning for localization/endpoint rounding. Runtime retains margin.
-        entrySafetyMargin=margin+(margin>=3.0f ? 3.0f:0.0f);
+        entrySafetyMargin=entryPlanMargin(margin,field);
         // ENTRY_FIRST_STEERING_CHECKED_BY_SWEEP
         // A partly parked robot may fit with its current steering but not
         // with neutral wheels. Do not require an uncommanded neutral pose:
@@ -1534,12 +1706,12 @@ quickEntrySelected:
             appendEntryArc(arcs,arcEnd,-1,-50,middle);
             appendEntryArc(arcs,arcEnd,1,50,low);
             appendEntryArc(arcs,arcEnd,-1,-50,0);
-            // Prefer the shallow12.5mm-edge pose from the approach. A late
-            // recovery retains the original family ordering for escape room.
-            const bool late=!allowEscape || requestedMargin>0.0f || start.y_mm<250.0f;
-            const float targetYs[]={late ? 110.0f:125.0f,late ? 115.0f:120.0f,
-                late ? 120.0f:115.0f,late ? 125.0f:110.0f};
-            for (uint8_t targetIndex=0;targetIndex<4;++targetIndex)
+            // Prefer the shallow open-edge target. Keep deeper checked tails
+            // available when an already diagonal car cannot safely reach it.
+            const float targetYs[]={start.y_mm<250 ? 115.0f:OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,
+                start.y_mm<250 ? 110.0f:127.0f,
+                OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM,125.0f,120.0f,110.0f};
+            for (uint8_t targetIndex=0;targetIndex<6;++targetIndex)
             {
                 const float targetY=targetYs[targetIndex];
                 const float length=(arcEnd.y_mm-targetY)/sinf(high*PI/180.0f);
@@ -1617,6 +1789,8 @@ entryPlanSelected:
         }
     }
     }
+    if(allowEscape && requestedMargin==0 && start.y_mm<250.0f &&
+       planBoundedParkingRecovery(field))return true;
     adaptiveEntryCount=0;entrySafetyMargin=3.0f;
     return false;
 }
@@ -1683,13 +1857,13 @@ bool refreshRemainingEntry(const PositionEstimate &field)
             appendEntry(candidate,end,segment.direction,0,solveStraight&&i==first ? solved:segment.distanceMm);
     }
     if(fabsf(end.heading_deg)>1.0f)return false;
-    const float dx=OBSTACLE_FINAL_PARKING_TARGET_LOCAL_X_MM-end.x_mm;
+    const float dx=entryLocalPose(adaptiveEndpoints[adaptiveEntryCount-1]).x_mm-end.x_mm;
     if(fabsf(dx)>100)return false;
     appendEntry(candidate,end,dx>0?1:-1,0,fabsf(dx));
     const float margin=entrySafetyMargin;
     for(float check:{margin,1.0f})
     {
-        entrySafetyMargin=check+(check>=3 ? 3:0);
+        entrySafetyMargin=entryPlanMargin(check,field);
         entryPlanningBudget=2500;entryPlannerLastPollMs=millis();
         if(!candidate.count || !entryCandidateSafe(candidate,field))continue;
         entryCandidateSafe(candidate,field,adaptiveEndpoints);
@@ -1861,7 +2035,7 @@ void final_parking_start_entry_practice(int8_t turn_sign)
     stateStartMs=millis();
     state=FP_CAPTURE_BRAKE;
     stop(true);
-    Serial.println("[FINAL PARK] revision=20261102_reuse_steer_settle");
+    Serial.println("[FINAL PARK] revision=20261105_measured_parking");
     Serial.print("[FINAL PARK PRACTICE] entry_only=yes turn=");
     Serial.print(routeTurnSign>0 ? "CCW":"CW");
     Serial.print(" gap_mm=");Serial.print(measuredGapMm,1);
@@ -1916,7 +2090,7 @@ bool final_parking_update(int8_t turn_sign)
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
-        Serial.println("[FINAL PARK] revision=20261102_reuse_steer_settle");
+        Serial.println("[FINAL PARK] revision=20261105_measured_parking");
         // The stopped geometric search may outlast the 200-ms sensor age.
         // Service queued reports before attempting the first motion; a
         // genuinely stale/missing report still follows the normal hold.
@@ -2082,7 +2256,7 @@ bool final_parking_update(int8_t turn_sign)
             state=FP_SCAN_ALIGN_DRIVE;
         }
         driveFieldLine(scanAlignSign,OBSTACLE_FINAL_PARKING_SCAN_Y_MM,
-            OBSTACLE_FINAL_PARKING_SCAN_SPEED);
+            OBSTACLE_FINAL_PARKING_ALIGN_SPEED);
         if (!scanCommandSafe(pose,motorDirectionForFieldMotion(scanAlignSign)))
         { abortParking("scan_alignment_clearance"); return true; }
         const bool boundary=scanAlignSign>0 ? pose.x_mm>=1080.0f : pose.x_mm<=800.0f;
@@ -2286,6 +2460,13 @@ bool final_parking_update(int8_t turn_sign)
     {
         if (dc_state != DC_DISABLED)
             stop(false);
+        if (finalFootprintContained(3.0f) && entryEndReserveReady() &&
+            isfinite(measured_speed) &&
+            fabsf(measured_speed)<=SOFT_STOP_SPEED_THRESHOLD_MMS)
+        {
+            state=FP_VERIFY;
+            return true;
+        }
         const int steering = activeEntrySegment().steering *
                              routeTurnSign;
         if (!parkingEntryPoseSafe(pose,steering))
@@ -2316,6 +2497,18 @@ bool final_parking_update(int8_t turn_sign)
     if (state == FP_SEGMENT_DRIVE)
     {
         const ParkingSegment &segment = activeEntrySegment();
+        if (finalFootprintContained(3.0f) && entryEndReserveReady())
+        {
+            // Finish at the first valid parallel pose, including mid-segment.
+            // Remove curvature before the existing measured-standstill gate;
+            // never execute a remaining straight just to return to a target X.
+            entryBrakeStartDistance=get_distance();
+            entryBrakeDirection=segment.direction;
+            servo_disabled=false;set_steering(0);steer(0);
+            stop(true);stateStartMs=millis();state=FP_SEGMENT_BRAKE;
+            Serial.println("[FINAL PARK] Parallel inside bay; braking without centring move");
+            return true;
+        }
         const float travelled=distanceSince(stateStartDistance);
         // Use only this entry's measured, settled brake overrun. Retain a
         // small commanded movement for tiny corrections; never skip an arc

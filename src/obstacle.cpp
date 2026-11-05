@@ -1978,7 +1978,8 @@ static bool updateParkingExit()
     }
     set_speed(
         segment.direction *
-        OBSTACLE_PARKING_EXIT_SPEED);
+        (oc_parking_exit_segment>=3 ? OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED
+                                    : OBSTACLE_PARKING_EXIT_SPEED));
     set_steering(segmentSteering);
 
     const float stateDistance =

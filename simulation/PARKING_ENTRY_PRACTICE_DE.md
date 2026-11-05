@@ -8,36 +8,26 @@ Rückwärts-Einparkmanöver und benutzt danach denselben Einparkplaner wie der
 normale Hindernislauf, einschliesslich Endkorrektur und Halten nach Abschluss.
 Die Kamera wird für diesen isolierten Modus nicht initialisiert.
 
-Stand nach616 und Masskorrektur: Gerade Gesamtbreite inklusive Raeder123mm.
-Neu gemessen: Hinterachsmitte bis hinterster Teil inklusive Sensor30mm.
-Einpark-Koerperflaechen, Endlagen- und Reservepruefung verwenden jetzt30mm
-statt40mm. Die Frontkontur und die Hinterachs-Zielposition60mm bleiben gleich.
-Die gute Endposition in Laengsrichtung bleibt erhalten (Ziel Achse60mm,
-nominal30mm hinten/62,5mm vorne bei24,75cm Parkluecke); die irrtuemliche
-5mm-Verschiebung und die neue zusaetzliche Endpositionssperre sind aufgehoben.
-Die bevorzugte zusaetzliche Reserve VORNE beim Lenken ist jetzt16mm
-(nochmals8mm hinzugefuegt). Die normale Planung prueft zuerst einen16mm-
-Rueckwaertspraefix, um den vorhandenen Platz hinten zu nutzen. Jede Bewegung
-braucht die vollstaendige Kollisionspruefung. Die enge Rettungsplanung behaelt
-ihren bisherigen8mm-Praefix und kann die bevorzugte Zusatzreserve unterschreiten;
-die reale Rad-/Aufbaugeometrie wird dabei weiterhin geprueft.
-Nach Log628 ist die bevorzugte zusaetzliche10mm-Rueckwaertsfolge entfernt:
-Die korrigierten30mm Heckueberhang ersetzen diesen frueheren Wunsch. Die normale
-Planung prueft vorwaerts und rueckwaerts samt vollstaendiger Fortsetzung und
-nutzt den geometrisch verfuegbaren Raum. Kein pauschaler Rueckwaertszuschlag
-wird bei Neuplanungen wiederholt. Die gute Endposition bleibt unveraendert.
-Bevorzugte seitliche Achsposition127mm ab Bande statt125mm: nur2mm flacher.
-Bei123mm Breite bleiben nominal11,5mm zur offenen Parkkante, vor Messfehlern.
-Die flachere Folge wird zuerst geprueft; sichere tiefere Alternativen bleiben,
-falls die flachere Anfahrt nicht vollstaendig kollisionsfrei passt.
-Nach dem ersten Bogen versucht der Planer, die verbliebene Folge direkt an den
-beobachteten Radius anzupassen. Jede Uebernahme hat eine komplette Kollisionspruefung.
-Die folgenden Startmarkierungen bleiben gleich.
-Das sind Modellabstände, keine unabhängig gemessenen realen Reserven. Bereits vollständig
-enthaltene, aber vorne knappe Positionen werden nachkorrigiert. Der hintere ToF
-kann während der normalen Bremsintervalle eine passende rosa Referenz liefern;
-bei unpassendem Winkel oder ungültigen Daten bleibt die geometrische Prüfung
-massgebend. Die folgenden **Startmarkierungen bleiben gleich**.
+Stand 2026-11-05, nach Logs651-656: Gesamtbreite inklusive Raeder123mm,
+physischer Achsabstand98mm, Heckueberhang35mm. Die Front reicht ab Hinterachse
+123mm gerade und135mm bei Volleinschlag vor. Diese Lenkkontur wird auch in
+engen Rettungswegen geprueft; zusaetzlich bevorzugt die Planung4mm Frontreserve.
+Der kalibrierte kinematische Radstand127mm bleibt davon getrennt.
+
+Der Einfahrpunkt bleibt laengs10mm Richtung Heck verschoben, lokalX260,26mm.
+Er liegt jetzt naeher an den rosa Spitzen: Hinterachse271,5mm ab Aussenwand,
+also10mm zwischen geradem Rad und Spitzenlinie. Bevorzugte Endachslage128,5mm
+ab Wand: nominal10mm zwischen Fahrzeugkante und offener Parkkante.
+Sicher tiefere Fortsetzungen bleiben fuer bereits schraege Zwischenlagen moeglich.
+
+Die Endposition wird nicht auf ein laengs festes Zentrum gezwungen. Sobald er
+parallel, vollstaendig enthalten und sicher stillsteht, beendet er das Parken.
+Er faehrt danach nicht zur Mitte zurueck. Der hintere ToF wird waehrend normaler
+Bremsintervalle verwendet, wenn Winkel und Messqualitaet die Referenz zulassen.
+Normale kurze Folgen haben Vorrang. Erst wenn diese vollstaendig geprueft nicht
+passen, sucht er begrenzt zusaetzliche Rangierzuege mit verfuegbarem Platz an beiden
+Enden. Jede uebernommene Folge erhaelt eine vollstaendige Kollisionspruefung.
+Das sind Modellreserven; die neue Version muss auf dem Fahrzeug bestaetigt werden.
 
 ## Aufstellung
 
@@ -49,9 +39,9 @@ Dieser isolierte Test besitzt keine eingelernte Hinderniskarte.
 | --- | ---: |
 | Freie Länge zwischen den beiden rosa Innenflächen | **24,75 cm** |
 | Länge der rosa Begrenzungen von der Aussenwand ins Feld | **20,00 cm** |
-| Hinterachsmitte bis zur Aussenwand, senkrecht gemessen | **29,46 cm** |
-| Alternativ: Hinterachsmitte bis zur gedachten Linie zwischen den rosa Spitzen | **9,46 cm** auf der normalen Fahrbahnseite |
-| Hinterachse längs der Wand relativ zur nahen rosa **Innenfläche** | **2,28 cm ausserhalb der Parklücke**, in Richtung Fahrzeugfront |
+| Hinterachsmitte bis zur Aussenwand, senkrecht gemessen | **27,15 cm** |
+| Alternativ: Hinterachsmitte bis zur gedachten Linie zwischen den rosa Spitzen | **7,15 cm** auf der normalen Fahrbahnseite |
+| Hinterachse längs der Wand relativ zur nahen rosa **Innenfläche** | **1,28 cm ausserhalb der Parklücke**, in Richtung Fahrzeugfront |
 | Fahrzeugausrichtung | Parallel zur Aussenwand, Vorderräder gerade |
 
 Hinterachsmitte bedeutet die Mitte der Achse zwischen den beiden Hinterrädern,
@@ -62,22 +52,22 @@ in diesem Modus **nicht selbst**. Diese Aufstellgenauigkeit ist eine
 Vorbereitungsvorgabe, keine nachgewiesene Fehlertoleranz.
 
 Die nahe rosa Begrenzung ist diejenige, an deren Ende der Roboter steht.
-Ihre Innenfläche zeigt zur freien Parklücke. Die Hinterachse liegt2,28cm
+Ihre Innenfläche zeigt zur freien Parklücke. Die Hinterachse liegt1,28cm
 weiter ausserhalb der Lücke. Da die rosa Begrenzung selbst2cm dick ist,
 liegt die Hinterachse damit nur etwa2,8mm jenseits ihrer äusseren Seitenfläche.
-Das zur Wand gerichtete Hinterrad hat bei gerader Aufstellung etwa3,21cm
+Das zur Wand gerichtete Hinterrad hat bei gerader Aufstellung 10mm
 Abstand zur gedachten Linie durch die rosa Spitzen.
 
 ```text
 Blick von oben; Aussenwand unten, Fahrbahn oben
 
 CW:   <--- FRONT -- HINTERACHSE     | freie Parklücke |
-                          2,28 cm --> nahe Innenfläche
+                          1,28 cm --> nahe Innenfläche
 
 CCW:              | freie Parklücke |     HINTERACHSE -- FRONT --->
-                              nahe Innenfläche <-- 2,28 cm
+                              nahe Innenfläche <-- 1,28 cm
 
-Beide Richtungen: Hinterachse29,46cm vor der Aussenwand;
+Beide Richtungen: Hinterachse27,15cm vor der Aussenwand;
 die beiden rosa Begrenzungen reichen20cm von der Wand ins Feld.
 ```
 
@@ -122,3 +112,19 @@ Rueckwaertsbogen. Wenn diese nicht passt, bleiben die geprueften Rangierfolgen.
 Freier Weg wird aus Pose und Fahrzeugumriss berechnet; kein fester6cm-Zug.
 Verbleibende Zuege werden nach Messabweichungen frisch geprueft und angepasst.
 Details und Validierung: [Effiziente Einfahrt](EFFICIENT_PARKING_ENTRY_20261101.md).
+
+
+## Abschluss ohne Zentrieren (2026-11-05)
+
+Die um10mm verschobene Einfahrt wird gegen die echten, unveraenderten rosa
+Begrenzungen geprueft. Der Planer darf deshalb bei engem Platz eine andere
+sichere Bogenfolge waehlen; eine starre Verschiebung jeder Bewegung waere
+nicht fuer jede gemessene Luecke kollisionsfrei.
+
+Parallel bedeutet innerhalb der bestehenden2Grad-Toleranz. Der gesamte
+Roboter muss im Parkfeld liegen; beim fruehen Stoppen aus laufender Bewegung
+bleiben zusaetzlich3mm Modellreserve fuer Registrierung/Rundung. Nach dem
+Bremsen gelten die vorhandene5mm-Endlagenpruefung und eine sichere Stellung
+der geraden Vorderraeder. Die frueher bevorzugten30mm Platz vorne erzwingen
+keine anschliessende Zentrierfahrt mehr. Ein unsicherer oder noch schraeger
+Stand wird weiterhin korrigiert.

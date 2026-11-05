@@ -5,13 +5,14 @@ No ToF marker classification, slip or servo latency is simulated here.
 import argparse, shutil, subprocess
 from check_cw_start_planner import ROOT
 from check_connector_servo_resume import block
+from check_later_laps import later_lap_fixture
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--approach-only',action='store_true',
         help='Route handoff only; adaptive parking entry is checked by check_final_parking_sequence.py')
     args=parser.parse_args()
-    fixture=(ROOT/'local_workspace/later-laps/check.cpp').read_text().split('int main()')[0]
+    fixture=later_lap_fixture().split('int main()')[0]
     path=(ROOT/'src/obstacle_path.cpp').read_text()
     final=(ROOT/'src/final_parking.cpp').read_text()
     fixture+=block(path,path.index('bool obstacle_path_parking_approach_target('))
