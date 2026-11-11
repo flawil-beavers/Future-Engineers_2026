@@ -13498,3 +13498,64 @@ normal CW/CCW, save normally; secure FIRST+hash/tellunplug. Check fresh frame
 fallback, measured-pose reobserve, parking no repeated failed first command,
 actual containment/parallel stop. Retain known232.5mm planner limitation and
 real50/150mm camera acceptance as open; no universal never-stop promise.
+
+## 2026-11-11: lap1 approach-view audit, latest20 archived files
+
+User requests early camera-heading review and comparison with latest20 runs.
+No removable drive (only C:); no new original logs/images, serial, motion or
+upload. Existing20 files629–636/645–656 SHA256 checked against evidence README;
+650 remains excerpt,636 complete original withoutfooter,637–644 absent.
+652 user interruption/653 slipperyfloor retained as physical exclusions.
+These builds predate Nov11height/retry changes; not evidence of newfirmware.
+
+Nine recovery episodes in eightfiles:632two,633,645,648,651,654,655,656.
+CW632/654GREEN7 and651empty13 have early view then loss while prior injected
+avoidance protects its route; current guard still active at those oldposes.
+632/651station6 recoveries obtain CLEAR13, not middleGREEN15 confirmation.
+CCW633/648/655/656RED19 is too near/edgeclipped before130–150mm reverse.
+645storedCLEAR7 thenGREEN7, unusual priorRED2, no unique cause withoutframes.
+Allnine report resumed join; doesnot establish physical no-contact/maptruth.
+
+PASS270 actual targetnudge direction/distance/rowstate policies;365archived
+camera poses reproduce bothbearings within.15deg;52normalfar646/700mm;
+648rendered+48association+24heightpolicy plusonlyapprovedreal100mm image.
+No new image used. Report simulation/LAP1_APPROACH_LAST20_REVIEW_20261111.md;
+portable analyzers analyze_lap1_last20.py/check_lap1_approach_view.py, generated
+artifacts local_workspace/lap1-last20/. Firmware unchanged at ad291e1;
+noM7/M4build needed. Normal speed/paths/150mmguard remain unchanged.
+Next targeted engineering: compare dynamic early aiming after measured full
+previous-pillar clearance, fullquantizedCAD body/passside preflight; cover
+oldgood approaches before adopting any change. Do not simply remove guard or
+loosen CLEAR/colour gates. Preserve known parking232.5mm planner limitation.
+
+## 2026-11-11: cautious checked CCW single-place view correction
+
+User authorizes cautious improvement after20-file audit. No removable drive,
+new log/image, serial, upload or movement. Only production file changed is
+src/obstacle_path.cpp; pathrevision20261111_checked_ccw_view. Earlier body-clear
+release experiment was rejected: dynamic rollouts worsened later view; original
+150mm bypass guard retained. CW behaviour/speeds/vision/parking unchanged.
+
+CCWlap1 only: after original guard, one unresolved seat, normal targetnudge
+nearly45deg, seat outside26.426deg at300..750mm, permit up to5deg additional
+target rotation with existing60deg/s slew. Actual quantized42deg servo limit
+unchanged. Sweep80mm/28poses with40mm possible-pillar/wall reserve; forward
+capsule extension includes measured135mm nose without trimming rear. Recheck
+extra during decay too; rejected extra returns to normal target, no new stop.
+
+PASS362dispatch/decay+negativecontrol,6directguard,567paired approach rollouts.
+ProblemCCW655RED19:75/81 gain80..320ms geometric window,60/81>=160ms,6stillzero.
+Nominal240ms starting291mm; lateangle may be up to.574deg worse, benefit is
+earlierwindow. Other486 model metrics identical including324CW/twoCCWscenes;
+no formerly2-frame window lost. PASS270aimpolicy/365archivegeometry/1736knownmap.
+Synthetic visibility and simplified80ms camera cadence/plant only, no physical
+colour/height/confirmation guarantee. Rescue remains necessary. Known parking
+232.5mm gap limitation retained. No further image used without approval.
+
+Report simulation/LAP1_CHECKED_CCW_VIEW_20261111.md; test
+simulation/check_early_lap1_aim.py, artifacts local_workspace/early-lap1-aim/.
+M7 IDEbuildSUCCESS RAM484896/523624 flash597064/786432 bin600616B SHA256
+fb49725aadef397cbcce99110e5239eb5fd919883c496da24b275de948ba3765.
+M4unchanged/notbuilt; no commit/push. Next user normalM7CW/CCW/save; secure
+new originals FIRST+hash/tellunplug, compare RED19 earlyvalidframes/seatvotes,
+no extra during protectedpass, gate latency, remaining recovery and contact.

@@ -1146,3 +1146,7 @@ allowed. Both contain final_parking_stop/completed with no truncation.
 | --- | ---: | --- |
 | [655](20261105_log_655_ccw.txt) | 167917 | 7eca2d6fe725481fb908508205e5992ce2bc8d64a63b146dbd2ef6288c8ac4d3 |
 | [656](20261105_log_656_ccw.txt) | 167316 | 9f0815eb7417c59657a738b926b1197befbe70124586718258e3d575614366e1 |
+
+Cross-batch lap1 view audit of the latest20 archived files (629–636,645–656):
+[2026-11-11 review](../../LAP1_APPROACH_LAST20_REVIEW_20261111.md).
+Original bytes unchanged;650 remains an excerpt. No new physical test batch.

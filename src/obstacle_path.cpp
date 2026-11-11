@@ -4404,6 +4404,83 @@ bool discoveryAimCommandSafe(const PositionEstimate &start, int steering)
     return true;
 }
 
+bool earlyDiscoveryAimCommandSafe(const PositionEstimate &start, int steering)
+{
+    const float k=pursuitCurvatureForServo(steering);
+    const float h=start.heading_deg*PI/180.0f;
+    const float extraNose=fmaxf(0.0f,
+        OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM-ROBOT_FRONT_FROM_REAR_AXLE_MM);
+    for (int step=0; step<=27; ++step)
+    {
+        const float travel=80.0f*step/27.0f, next=h+k*travel;
+        PositionEstimate p=start;
+        p.x_mm+=fabsf(k)>1.0e-6f ? (sinf(next)-sinf(h))/k : travel*cosf(h);
+        p.y_mm+=fabsf(k)>1.0e-6f ? (cosf(h)-cosf(next))/k : travel*sinf(h);
+        p.heading_deg=next*180.0f/PI;
+        // Union of the original front/rear capsule and its forward extension
+        // encloses the measured135mm nose without removing the old rear reserve.
+        if (!cornerViewSweepSafe(p,extraNose)) return false;
+    }
+    return true;
+}
+
+void applyLap1DiscoveryAim(PathPoint &target, const PositionEstimate &pose)
+{
+    if (traversingInjectedAvoidance(baselinePath[progressIndex].distanceMm))
+    {
+        lastDiscoveryTargetNudgeDeg=0.0f;
+        lastDiscoveryNudgeUpdateMs=millis();
+        discoveryScanStation=discoveryScanSide=-1;
+        return;
+    }
+    const PathPoint baselineTarget=target;
+    const float previousNudge=lastDiscoveryTargetNudgeDeg;
+    const float dt=lastDiscoveryNudgeUpdateMs==0 ? 0.02f :
+        fminf(0.25f,(millis()-lastDiscoveryNudgeUpdateMs)/1000.0f);
+    applyDiscoveryTargetNudge(target,pose);
+    // CCW returned633/648/655/656: the last unresolved place stayed at the
+    // image edge while ordinary target rotation was already saturated.
+    // Preserve CW, the complete bypass guard and the normal two-place scan.
+    float angle=lastDiscoveryTargetNudgeDeg;
+    if (completedLaps==0 && routeTurnSign>0 && discoveryScanStation>=0 &&
+        discoveryScanSide>=0 && fabsf(angle)>=44.0f)
+    {
+        float bearing=0.0f,range=0.0f;
+        seatCameraGeometry(discoveryScanStation*COURSE_SEATS_PER_STATION+discoveryScanSide,
+            pose,bearing,range);
+        const float viewLimit=OBSTACLE_CAMERA_HORIZONTAL_FOV_DEG*
+            OBSTACLE_DISCOVERY_FOV_FRACTION-OBSTACLE_DISCOVERY_CLEAR_FOV_MARGIN_DEG;
+        if (range>=300.0f && range<=750.0f && fabsf(bearing)>viewLimit && bearing*angle>0.0f)
+        {
+            const float desired=copysignf(OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG+5.0f,bearing);
+            const float change=OBSTACLE_LOOK_NUDGE_SLEW_DEG_S*dt;
+            const float boosted=previousNudge+clampFloat(desired-previousNudge,-change,change);
+            if (fabsf(boosted)>fabsf(angle)) angle=boosted;
+        }
+    }
+    if (fabsf(angle)<=OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG) return;
+    const float a=angle*PI/180.0f,h=pose.heading_deg*PI/180.0f;
+    const float x=baselineTarget.x-pose.x_mm,y=baselineTarget.y-pose.y_mm;
+    PathPoint candidate=baselineTarget;
+    candidate.x=pose.x_mm+x*cosf(a)-y*sinf(a);
+    candidate.y=pose.y_mm+x*sinf(a)+y*cosf(a);
+    const float dx=candidate.x-pose.x_mm,dy=candidate.y-pose.y_mm;
+    const float k=2.0f*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1.0f,dx*dx+dy*dy);
+    const int steering=static_cast<int>(clampFloat(pursuitServoForCurvature(k),
+        -OBSTACLE_MAX_PURSUIT_STEERING_DEG,OBSTACLE_MAX_PURSUIT_STEERING_DEG));
+    // Recheck the extra angle also while it slews back after losing eligibility.
+    if (completedLaps==0 && routeTurnSign>0 && earlyDiscoveryAimCommandSafe(pose,steering))
+    { lastDiscoveryTargetNudgeDeg=angle; target=candidate; }
+    else
+    {
+        lastDiscoveryTargetNudgeDeg=clampFloat(lastDiscoveryTargetNudgeDeg,
+            -OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG,OBSTACLE_LOOK_MAX_TARGET_NUDGE_DEG);
+        const float normal=lastDiscoveryTargetNudgeDeg*PI/180.0f;
+        target.x=pose.x_mm+x*cosf(normal)-y*sinf(normal);
+        target.y=pose.y_mm+x*sinf(normal)+y*cosf(normal);
+    }
+}
+
 float cornerViewReverseDistance(const PositionEstimate &pose, uint8_t station,
                                float minimumViewRangeMm = OBSTACLE_DISCOVERY_VIEW_MIN_MM)
 {
@@ -6797,7 +6874,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261111_active_view_retry");
+    Serial.println("[PATH] control_revision=20261111_checked_ccw_view");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -7081,21 +7158,7 @@ void obstacle_path_update(bool new_camera_frame)
     if (!runtimeTestMode && !parkingEntryActive && !parkingEntryObserving &&
         !parkingEntryJoining && !parkingEntryConnectorActive)
     {
-        const float currentDistance =
-            baselinePath[progressIndex].distanceMm;
-        if (!traversingInjectedAvoidance(currentDistance))
-        {
-            applyDiscoveryTargetNudge(target, pose);
-        }
-        else
-        {
-            // Keep the validated pillar path authoritative for the complete
-            // vehicle pass. Discovery resumes 150 mm beyond the pillar.
-            lastDiscoveryTargetNudgeDeg = 0.0f;
-            lastDiscoveryNudgeUpdateMs = millis();
-            discoveryScanStation = -1;
-            discoveryScanSide = -1;
-        }
+        applyLap1DiscoveryAim(target, pose);
     }
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
