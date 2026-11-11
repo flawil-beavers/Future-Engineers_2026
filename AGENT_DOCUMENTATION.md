@@ -13389,3 +13389,112 @@ reset/serial/motion/commit/push. Existing Serial and unusedlegacy warnings.
 Next userM7normalCW/CCW/save;secureFIRST+hash+toldunplug, thencompareapproach,
 measuredradius/recovery/searchtime and frontclearance/shallowphysicalfinish.
 Modelmatrix doesnot prove actualvehicle100% or everypose. No dedicatedToFsweep.
+## 2026-11-11: Surprise Rule height/original-colour policy; image approval
+
+User requests optional FE Extra Task as the new default: exactly one50/150mm
+opposite-colour sign, pass as original colour on all3 laps. Official season
+Extra Task PDF versionNov9 verified; Q&A checked; canonical link/first-sign
+nuance added to WRO_2026_RULES.md. Exclude first actually encountered sign,
+not every start-section sign. No USB available (only C:), new logs, upload,
+reset, serial connection or motion this session.
+
+Default OBSTACLE_SURPRISE_RULE_ENABLED=1;0 retains ordinary participation.
+Keep visible colour separate from effective seat.red/original passing colour;
+one per-run seat identity,3 fresh consistent height/colour frames, encounter
+order from station distances/confirmed earlier signs/resolved empty places.
+Actual first sign retains ordinary2-vote acquisition. Frame dedup/expiry,
+GREEN fallback and test-clear reset covered. Later frozen map uses effective
+colour. Buffered exit images remain pending hints, never direct confirmation.
+Ground-foot range retained; assumed100mm height fallback disabled in this mode.
+Lower ROI preserved; narrow stem/full top measured separately with conservative
+base/edge/upper-background guards. fY=fX/square pixels is an unverified physical
+assumption, not a newly measured camera mount. No HSV/range retune, new route,
+speed, parking movement or M4 change.
+
+User invalidated20261026_green_new_pose_400mm_01 (cyclic horizontal wrap), then
+declinedgreen_final_400mm_01. User explicitly approved displayed
+20261027_green_400mm_01.png. Capture bundles unchanged; all four-file hashes and
+statuses in simulation/evidence/camera_diagnostics/validation_status.json.
+README/old camera report mark exclusions; unlisted images require user approval
+BEFORE new acceptance use. New height/green visibility/general replay filter by
+approval+hash. Old all-Oct26 replay counts are withdrawn as new height evidence.
+Approved GREEN100/400 replay estimates92.9173mm,class100,foot138,range390.7mm.
+Do not calibrate from rejected frames or claim this verifies real50/150mm.
+
+PASS648 rendered RGB565+48 actual association/dispatch+21 policy cases;
+baseline52 acquisition/7 GREEN fallback;565 evidence10/rejoin27+negative
+control;576 scout/direct+negative;589/621 occupancy/CLEAR; synthetic vision
+and approved real reference;2807 later-lap routes/state. New height fixture
+stubs subsequent map mutation; route matrix validates effective-colour routes
+separately. Full report simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md.
+Generated output local_workspace/surprise-rule/ and existing fixture dirs.
+
+M7 IDE buildSUCCESS, RAM484896/523624B,flash595392/786432B,bin598944B SHA256
+1b4d87efb71b9b36f883b849c9e0bb5e795346526437358a85a54b0bd06f39ba.
+M4 unchanged/notbuilt; existing Serial/unusedlegacy warnings. No commit/push.
+Next: user M7 upload; physical50/100/150mm acceptance with same mount/light,
+then normal CW/CCW/save. Ask approval for each new reference image before use.
+Secure new logs FIRST+hash/tellunplug. Inspect SURPRISE revision/enabled and
+locked seat/height/visible/original; verify only one identity, original side
+all3 laps, no false CLEAR of uncertain-height object. No physical guarantee
+or new passing-side exception for a first/behind-start sign is established.
+## 2026-11-11: lap1 active retry and parking recheck, known narrow-gap limit
+
+User asks whether lap1 always searches rather than stops, and whether parking
+works. Only C: available; no new source logs or powered test. Read parking pose
+plan; preserve normal telemetry, sensor acquisition and motion speeds.
+Earlier Surprise Rule work is already staged; this session builds on it.
+
+Path20261111_active_view_retry: UNKNOWN primary height no longer consumes the
+frame before a valid mapped GREEN fallback. Exactly one useful vote per frame,
+400ms expiry/first-sign exception retained. Three new rendered policy cases
+cover unknown primary then useful same-frame fallback for50/100/150mm.
+Bounded straight-view drift<=12deg/25mm and rejected view/return preflight now
+brake/rebase to actual settled pose, fresh images and entirely rechecked moves.
+Do not relax old motion tracking gates or return blindly. Large/invalid drift,
+direction/travel/time faults remain hard stops. Three start-primary UNKNOWN
+transitions now arm retry even without a prior-used flag. No blind pink-rail
+escape. If no safe view exists, observation/rechecking continues without motion.
+
+Parking20261111_recovery_handoff: cancelled escape-prefix recombination now
+checks the new first radius envelope (<=30steps+endpoint checks) before the
+existing full1mm endpoint sweep. Do not spend a depleted search budget on an
+additional whole-path search: development version did so and regressed2 brake
+cases; final fixed check restores84/84. Later child transitions remain checked.
+Bounded512node recovery allowed outside rail tips up tolocalY320, separates
+valid-terminal/nonterminal cells (old7mm/4deg duplicate bins could erase a valid
+endpoint); terminal planning reserves up to2mm more after measured brake
+overrun to avoid tiny oscillating corrections. Actual stopped completion/goal,
+135mm steered nose,123width,98axle,35rear and speeds unchanged. Late final
+speed sample reuses brake/verify rather than immediate abort; persistent brake
+fault still aborts. No M4/interface change.
+
+PASS1736 known-map lap1 geometry;29 actual recovery-state cases;25 discovery
+dispatch;576start+negative control;active selector/627resolved join;648rendered+
+48association+24policy;396fullparking+5registration;24measured envelope;
+84brake-overrun+8health;16parallelstop;6newhandoffs. Removing only the composed
+first-envelope gate reproduces both no-motion entry_no_progress failures.
+Latest complete parking matrix baseline320/350 vs332/350 now:12fixed,
+zero formerly-passing cases regressed,18remaining aborts all232.5mm gaps.
+Baselineparking source is HEAD eb80e12cfda6e9a59ffaa8383d94e2a99ee4b4fe.
+Explicit CURRENT capture/full accepted range test:96/120 pass,24abort, all
+24at232.5mm; all242.5..262.5mm pass. This accepted scan-tolerance lower endpoint
+IS NOT FIXED and must not be advertised as universal reliable parking.
+Actual reported248.9/249.6mm gap cases pass separately. No model collisions.
+Older611/615collector's tracking20pass, later legacy wall-reference assertion
+still fails; not counted as a passed whole script. Stale discovery fixture
+context repaired; old620collector has obsolete fixed goal assumptions.
+
+Full report simulation/LAP1_PARKING_RECHECK_20261111.md. Generated results in
+local_workspace/lap1-reobserve/,parking-adaptive-completion/ (baseline_output
+and comparison.json),parking-adaptive-brake-overrun/,returned-603/parking-handoff/
+and parking-current-capture-range/. No new original evidence files. Existing
+image registry/exclusions remain; no further image used without approval.
+
+M7 IDE buildSUCCESS,RAM484896/523624B,flash595792/786432B,bin599344B SHA256
+8aee74c3e54e96b9ace4bf3d7fbe941fa761ae9f4d0d4f21b0858402216fca53.
+M4 unchanged/notbuilt; no upload/reset/serial/motion/commit/push. Next user M7
+normal CW/CCW, save normally; secure FIRST+hash/tellunplug. Check fresh frame
+fallback, measured-pose reobserve, parking no repeated failed first command,
+actual containment/parallel stop. Retain known232.5mm planner limitation and
+real50/150mm camera acceptance as open; no universal never-stop promise.

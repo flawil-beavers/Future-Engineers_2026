@@ -3,6 +3,7 @@
 #include "config.h"
 #include "logger.h"
 #include "parking_exit_observer.h"
+#include "obstacle_sign_height.h"
 
 #define Serial robot_logger
 
@@ -64,6 +65,8 @@ void printCalibrationBlob(
     Serial.print(edge_clipped ? "yes" : "no");
     Serial.print(" production_valid=");
     Serial.print(production_valid ? "yes" : "no");
+    Serial.print(" full_top_y/height_mm=");Serial.print(blob.heightTopY);
+    Serial.print('/');Serial.print(obstacle_sign_height::estimate(blob),1);
 
     if (calibration_reference_distance_mm > 0.0f && production_valid)
     {
@@ -357,6 +360,8 @@ float obstacle_estimate_camera_forward_mm(const Blob *obstacle)
 
     if (obstacle->height() <= 0)
         return 0.0f;
+    if (OBSTACLE_SURPRISE_ENABLED)
+        return 0.0f; // unknown height cannot supply an assumed100mm range
     return OBSTACLE_CAMERA_FOCAL_LENGTH_PX *
            OBSTACLE_PILLAR_HEIGHT_MM /
            static_cast<float>(obstacle->height());

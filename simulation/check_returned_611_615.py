@@ -20,9 +20,10 @@ int cornerViewPhase=CORNER_VIEW_EXTRA_REVERSE,cornerViewExtraSteering=20,cornerV
 float encoder=0,cornerViewExtraReturnEncoder=0,cornerViewExtraStartEncoder=0,
  cornerViewOriginEncoder=0,cornerViewDistanceMm=170,cornerViewMeasuredReverseMm=170;
 uint32_t cornerViewPhaseMs=0;int cornerViewStoppedFrames=5;
+uint8_t cornerViewExtraTriedMask=0;
 struct Station{int clearFrames[2]={1,1};}discoveryStations[12];
 bool locked=false,braked=false;
-struct Log{void println(const char*){}}Serial;
+struct Log{void print(const char*){}void println(const char*){}}Serial;
 uint32_t millis(){return 1000;}
 PositionEstimate get_position_struct(){return actual;}
 float get_distance(){return encoder;}
@@ -30,6 +31,7 @@ float wrap180(float a){while(a>180)a-=360;while(a<-180)a+=360;return a;}
 PositionEstimate cornerViewArcPose(PositionEstimate p,int,float){return p;}
 void lockCornerView(const char*){locked=true;}
 void holdCornerViewCentered(){braked=true;}
+''' + block(path,path.index('void reobserveCornerView(')) + r'''
 void tick(){
 ''' +tracking+r'''
 }

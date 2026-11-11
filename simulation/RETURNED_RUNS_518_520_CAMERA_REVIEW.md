@@ -1,5 +1,13 @@
 # Returned CW518--520 and stationary camera investigation
 
+2026-11-11 acceptance restriction: `20261026_green_new_pose_400mm_01` is
+user-rejected cyclically wrapped image evidence; `green_final_400mm_01` was
+also declined for use. The original historical investigation below is
+retained, but neither capture may validate or calibrate current detection,
+geometry or sign height. Consult
+`simulation/evidence/camera_diagnostics/validation_status.json` and obtain
+individual user image approval before new acceptance use.
+
 User reports: CW1 exited, then stopped before RED in the start section; CW2
 looked out of the bay and stopped; CW3 missed RED/GREEN and stopped. Mapping to
 518/519/520 follows the substantive source-run order. Additional515--517 have

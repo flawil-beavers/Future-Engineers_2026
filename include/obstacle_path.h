@@ -28,6 +28,9 @@ struct ObstacleSeatInfo {
     bool confirmed = false;
     bool red = false;
     bool injected = false;
+    bool visibleRed = false;
+    bool modifiedSign = false;
+    uint8_t heightMm = 100;
 };
 
 struct ObstacleObservationResult {

@@ -40,6 +40,14 @@ struct Blob
 
     uint32_t area = 0;
 
+    // Separate full-image top measurement. minY/area retain the established
+    // lower ROI so upper-room colours cannot replace a valid pillar.
+    int16_t heightTopY = -1;
+    bool heightTopMeasured = false;
+    bool heightTopClipped = false;
+    uint32_t frameSequence = 0;
+    int16_t heightBaseWidthPx = 0;
+
     void reset(ColorType newColor)
     {
         found = false;
@@ -54,6 +62,10 @@ struct Blob
         maxY = 0;
 
         area = 0;
+        heightTopY = -1;
+        heightTopMeasured = heightTopClipped = false;
+        frameSequence = 0;
+        heightBaseWidthPx = 0;
     }
 
     int width() const
@@ -152,6 +164,9 @@ public:
         int16_t expectedFootY,
         GreenSeatCandidate& candidate) const;
 
+    void measurePillarHeight(const uint8_t* buffer, uint16_t width,
+                             uint16_t height, Blob& blob) const;
+
     HSV getHSVAt(
         const uint8_t* buffer,
         uint16_t width,
@@ -162,6 +177,7 @@ public:
 
 private:
     VisionResult result;
+    uint32_t frameSequence = 0;
 
     // RGB565 has only 65,536 possible input values. Build the exact current
     // RGB->HSV->colour result once at startup, then classify each sampled
@@ -223,14 +239,16 @@ static constexpr uint16_t LINE_Y_MAX = 239;
 
     void findLargestBlobs(
         uint16_t sampleWidth,
-        uint16_t sampleHeight
+        uint16_t sampleHeight,
+        const uint8_t* buffer
     );
 
     void processComponent(
         uint16_t startIndex,
         ColorType color,
         uint16_t sampleWidth,
-        uint16_t sampleHeight
+        uint16_t sampleHeight,
+        const uint8_t* buffer
     );
 
     Blob& blobForColor(ColorType color);

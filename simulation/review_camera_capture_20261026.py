@@ -1,12 +1,15 @@
 """Replay current Vision on archived field captures; quantify the observed wrap.
 
-Images and physical distances are evidence, not universal camera acceptance.
+New acceptance is limited to captures approved in validation_status.json.
+Historical wrapped images are invalid for geometry/calibration. The optional
+fault comparison only documents that historical imaging failure.
 Generated code/results stay in ignored local_workspace. Requires Pillow and g++.
 """
 import argparse
 import importlib.util
 import json
 import math
+import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -19,7 +22,14 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-dir',type=Path,default=ROOT/'simulation/evidence/camera_diagnostics')
     parser.add_argument('--output-dir',type=Path,default=ROOT/'local_workspace/camera-test-20261026/replay')
+    parser.add_argument('--historical-fault-diagnostics',action='store_true',
+                        help='Explicit historical fault study only; never height/geometry acceptance')
     args=parser.parse_args();args.output_dir.mkdir(parents=True,exist_ok=True)
+    registry=json.loads((args.source_dir/'validation_status.json').read_text())
+    approved={stem for stem,entry in registry['captures'].items() if entry['status']=='approved'}
+    for stem in approved:
+        for name,digest in registry['captures'][stem]['sha256'].items():
+            assert hashlib.sha256((args.source_dir/name).read_bytes()).hexdigest()==digest,name
     spec=importlib.util.spec_from_file_location('camshot',ROOT/'scripts/capture-camera-image.py')
     capture=importlib.util.module_from_spec(spec);spec.loader.exec_module(capture)
     shim="""#pragma once
@@ -58,8 +68,8 @@ for(int x:{150,156,164}){GreenSeatCandidate c;bool ok=vision.findGreenSeatCandid
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(args.output_dir),'-I',str(ROOT/'include'),
                     str(ROOT/'src/vision.cpp'),str(cpp),'-o',str(exe)],check=True)
     records=[]
-    for path in sorted(args.source_dir.glob('20261026_*.serial.bin')):
-        if not any(token in path.name for token in ('red_center','red_after_reset','green_same_pose','green_new_pose','green_syncdiag','green_autosync','green_final','red_same_pose')):continue
+    for path in sorted(args.source_dir.glob('*.serial.bin')):
+        if path.name.removesuffix('.serial.bin') not in approved:continue
         fields,payload=capture.decode_wire(path.read_bytes())
         base=path.name.removesuffix('.serial.bin');raw=args.output_dir/(base+'.rgb565');raw.write_bytes(payload)
         result=subprocess.check_output([str(exe),str(raw)],text=True)
@@ -69,6 +79,7 @@ for(int x:{150,156,164}){GreenSeatCandidate c;bool ok=vision.findGreenSeatCandid
     for first_name,second_name in [('20261026_red_center_400mm_01.png','20261026_red_center_400mm_02.png'),
             ('20261026_green_new_pose_400mm_01.png','20261026_green_new_pose_400mm_02.png'),
             ('20261026_green_syncdiag_400mm_01.png','20261026_green_syncdiag_400mm_02.png')]:
+        if not args.historical_fault_diagnostics:continue
         a=args.source_dir/first_name;b=args.source_dir/second_name
         if not (a.exists() and b.exists()):continue
         first=Image.open(a).convert('RGB');second=Image.open(b).convert('RGB')
@@ -79,7 +90,7 @@ for(int x:{150,156,164}){GreenSeatCandidate c;bool ok=vision.findGreenSeatCandid
         best=min(range(320),key=scores.__getitem__)
         wrap=dict(comparison=[a.name,b.name],best_cyclic_x_shift_px=best,
                   mean_absolute_rgb_difference=scores[best],unshifted_difference=scores[0],
-                  limitation='Observed cyclic displacement; does not establish wiring, sensor, DMA or startup root cause.')
+                  limitation='INVALID for geometry/calibration; historical fault comparison only. Does not establish wiring, sensor, DMA or startup root cause.')
         wraps.append(wrap);print('WRAP',wrap)
     references=[('20261026_red_after_reset_01.serial.bin','RED_raw',400),
         ('20261026_green_same_pose_400mm_01.serial.bin','GREEN_raw',400),

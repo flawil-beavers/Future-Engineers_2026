@@ -1,6 +1,6 @@
 """Compile actual Vision and replay mapped-seat checks; no firmware upload."""
 from pathlib import Path
-import subprocess,shutil,json
+import subprocess,shutil,json,hashlib
 ROOT=Path(__file__).resolve().parents[1]
 p=ROOT/'local_workspace/green-seat-visibility';p.mkdir(parents=True,exist_ok=True)
 (p/'Arduino.h').write_text('''#pragma once
@@ -72,17 +72,25 @@ subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(p),'-I',str(ROOT
 old_result=list(map(int,subprocess.check_output([str(old_exe),str(path),'265','164'],text=True).split()))
 print('576_removed_foot_gate_negative_control',old_result);assert old_result[0]==1
 evidence=ROOT/'simulation/evidence/camera_diagnostics'
+registry=json.loads((evidence/'validation_status.json').read_text())
+approved={stem for stem,entry in registry['captures'].items() if entry['status']=='approved'}
+for stem in approved:
+ for name,digest in registry['captures'][stem]['sha256'].items():
+  assert hashlib.sha256((evidence/name).read_bytes()).hexdigest()==digest,name
 same=0;accepted=0
-for image in sorted(evidence.glob('20261026_green*400mm*.rgb565')):
+for stem in sorted(approved):
+ image=evidence/(stem+'.rgb565')
  current=run(image,160,136)
  previous=list(map(int,subprocess.check_output([str(old_exe),str(image),'160','136'],text=True).split()))
  assert current==previous,(image.name,current,previous)
  same+=1;accepted+=current[0]
-print('Archived Oct26 400mm fixed-query old/new matches',same,'accepted',accepted)
+print('User-approved archive fixed-query old/new matches',same,'accepted',accepted)
 for name,color in [('20261005_green_middle_same_pose_01',1),('20261005_red_green_room_same_pose_01',0)]:
+ if name not in approved:continue
  r=run(evidence/(name+'.rgb565'),196,124);print(name,r);assert r[0]==color
 # These images contain a distant rear GREEN and an empty front: a false close
 # foot at the front projection must neither confirm GREEN nor block empty.
 for name in ['20260928_s1_empty_front_green_rear_stationary_01','20260929_s1_empty_front_recheck_01']:
+ if name not in approved:continue
  r=run(evidence/(name+'.rgb565'),220,170);print(name,r);assert r[0]==0
-print('VISION archived GREEN/RED and synthetic brightness/occupancy/background checks PASS')
+print('VISION approved archive and synthetic brightness/occupancy/background checks PASS; unapproved/rejected captures skipped')

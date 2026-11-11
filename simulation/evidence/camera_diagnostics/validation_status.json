@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "updated": "2026-11-11",
+  "default_status": "unreviewed",
+  "policy": "Only explicitly user-approved captures may support new image/height/geometry acceptance. Preserve original bytes. Invalid/rejected captures may only document their historical imaging fault, never calibrate or validate navigation. Ask the user before using another capture.",
+  "captures": {
+    "20261026_green_new_pose_400mm_01": {
+      "status": "invalid",
+      "reason": "User confirmed cyclic horizontal wrap; unusable for geometry, height, calibration or detection acceptance.",
+      "sha256": {
+        "20261026_green_new_pose_400mm_01.png": "665138f9991da8ba44313ab2bf41043453f8a00e3686f9ebeb91bf0049a333a7",
+        "20261026_green_new_pose_400mm_01.rgb565": "4bf15dc6cf0810686272d48dcd5b7c6ae4cade2b2a3558b85312845abed2a4fb",
+        "20261026_green_new_pose_400mm_01.json": "3336481d7f15578f425eb398ed936b1a7e02f34fad6c656254f85db02799a769",
+        "20261026_green_new_pose_400mm_01.serial.bin": "825a354941a37d90dc1ba34c9913a3e57f29b3739129b5d2f8855fbb01abaf6e"
+      }
+    },
+    "20261026_green_final_400mm_01": {
+      "status": "rejected",
+      "reason": "User explicitly declined use of this capture; no validation permitted.",
+      "sha256": {
+        "20261026_green_final_400mm_01.png": "43d4b6e84e81fd86e80c7b1234f37e1891858d5431ea0e40e0da18d6e7423ab1",
+        "20261026_green_final_400mm_01.rgb565": "96a283dc8d8276811086cd9da8245c03028303d954032aa155ef2cf40b16bcfc",
+        "20261026_green_final_400mm_01.json": "42e8c39bfbb89487e0e2de272f97beb566efccd7dbb96c5e45c0c1cf6737a5d4",
+        "20261026_green_final_400mm_01.serial.bin": "d05db71ea0486b0d238b8b7c84e0fe07f4a4b4ad900c1927c61ef4b5009331fe"
+      }
+    },
+    "20261027_green_400mm_01": {
+      "status": "approved",
+      "reason": "User visually approved this exact PNG on 2026-11-11. Historical stationary normal 100mm GREEN at 400mm. Approval covers image quality, not new physical height/range accuracy.",
+      "sha256": {
+        "20261027_green_400mm_01.png": "25d80eb0f13ad715934185ae85a8874c36bc2c04bffc080589f1b7b4657e4bc5",
+        "20261027_green_400mm_01.rgb565": "29017858e4811e4fffcc906aefd6c8085b7ec34a5ab22a85f3539bbee77f753a",
+        "20261027_green_400mm_01.json": "833c25f9d051e3460b13af8c8a813918cb6515386fd6fc3d3938232528c90483",
+        "20261027_green_400mm_01.serial.bin": "550697ca4567fb12d94e5b74add9783b1806cbb925aac413c4d4f9551d8ab570"
+      }
+    }
+  }
+}

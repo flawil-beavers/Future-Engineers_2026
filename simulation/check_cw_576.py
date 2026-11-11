@@ -52,7 +52,17 @@ int main(){
   startParkingEntryScout(PositionEstimate{});
   if(parkingEntryScouting||joins!=1)return 3;
  }
- std::cout<<"576 inferred-empty transition scouts; direct-clear/confirmed bypasses PASS\n";
+ // Missing primary evidence must arm a fresh observation, including a
+ // defensive transition where no previous retry flag was set.
+ for(bool ccw:{false,true}){
+  for(auto &s:seats)s.confirmed=false;
+  discoveryStations[0].observedClear=true;
+  parkingCcwShortStart=ccw;parkingEntryPrimaryRetryUsed=false;
+  parkingEntryTestHold=false;retries=joins=0;
+  startParkingEntryScout(PositionEstimate{});
+  if(parkingEntryTestHold||retries!=1||joins||!parkingEntryPrimaryRetryUsed)return 4;
+ }
+ std::cout<<"576 inferred-empty transition scouts; direct-clear/confirmed bypasses; missing primary retries PASS\n";
 }
 '''
     dest=ROOT/'local_workspace/cw-576';dest.mkdir(parents=True,exist_ok=True)

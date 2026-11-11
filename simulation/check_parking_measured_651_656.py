@@ -1,10 +1,13 @@
 """Measured 98/35/25/37mm parking envelope and mirrored normal entry.
 Independent-radius plant; does not reproduce unknown traction or camera truth.
+--accepted-range-stress covers the entire scan tolerance at the current capture;
+this intentionally reports unresolved narrow-gap cases as failures.
 """
+import sys
 from check_final_parking_sequence import fixture_source
 from check_returned_603_and_parking_practice import run
 
-run('parking-measured-651-656', fixture_source()+r'''
+source=fixture_source()+r'''
 #include <cassert>
 using namespace parking_module;
 int main(){
@@ -64,4 +67,11 @@ int main(){
  std::cout<<"MEASURED PARKING "<<total<<" FAILED "<<bad<<" max_travel="<<maxTravel<<"\n";
  return bad?1:0;
 }
-''')
+'''
+stress='--accepted-range-stress' in sys.argv
+if stress:
+    source=source.replace('for(float gap:{248.9f,249.6f})',
+                          'for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})')
+    source=source.replace('for(float scale:{1.f,1.15f,1.5f})',
+                          'for(float scale:{.95f,1.f,1.05f,1.1f,1.15f,1.5f})')
+run('parking-current-capture-range' if stress else 'parking-measured-651-656',source)

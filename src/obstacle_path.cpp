@@ -6,6 +6,7 @@
 #include "config.h"
 #include "course_map.h"
 #include "obstacle_section_layout.h"
+#include "obstacle_sign_height.h"
 #include "motor_control.h"
 #include "obstacle.h"
 #include "position_estimator.h"
@@ -66,6 +67,12 @@ struct CandidateSeat
     bool confirmed = false;
     bool red = false;
     bool injected = false;
+    bool visibleRed = false;
+    bool modifiedSign = false;
+    uint8_t heightMm = 100;
+    uint8_t heightClass = 0, heightFrames = 0;
+    uint8_t heightColor = 0;
+    uint32_t lastHeightFrame = 0;
 };
 
 struct CornerGeometry
@@ -110,6 +117,7 @@ PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 PathPoint parkingEntryConnector[
     OBSTACLE_PARKING_ENTRY_CONNECTOR_MAX_WAYPOINTS];
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
+int8_t surpriseSeatIndex = -1;
 DiscoveryStation discoveryStations[OBSTACLE_SEAT_COUNT / 2];
 bool greenSeatCandidateThisFrame[OBSTACLE_SEAT_COUNT] = {};
 uint32_t greenSeatCandidateLastSeenMs[OBSTACLE_SEAT_COUNT] = {};
@@ -630,7 +638,7 @@ int nearestSeatIndex(float x, float y, float *errorMm = nullptr)
     return bestSeat;
 }
 
-bool recordSeatVote(CandidateSeat &seat, ColorType color)
+bool recordSeatVote(CandidateSeat &seat, ColorType color, bool allowConfirmation=true)
 {
     if (seat.confirmed || (color != ColorType::RED && color != ColorType::GREEN))
         return false;
@@ -652,12 +660,90 @@ bool recordSeatVote(CandidateSeat &seat, ColorType color)
 
     const uint8_t winningVotes =
         seat.redVotes > seat.greenVotes ? seat.redVotes : seat.greenVotes;
-    if (winningVotes < OBSTACLE_SEAT_CONFIRM_VOTES)
+    if (winningVotes < OBSTACLE_SEAT_CONFIRM_VOTES || !allowConfirmation)
         return false;
 
     seat.confirmed = true;
     seat.red = seat.redVotes > seat.greenVotes;
+    seat.visibleRed = seat.red;
     return true;
+}
+
+// Confirmation order is not encounter order: exit frames can see a far sign
+// before the first one. Require a confirmed earlier sign, or directly/legally
+// resolved empty earlier stations, before deciding whether this is the first.
+enum SurpriseOrder : uint8_t { SURPRISE_FIRST, SURPRISE_LATER, SURPRISE_ORDER_UNKNOWN };
+SurpriseOrder surpriseOrderForSeat(uint8_t id)
+{
+    const float target=seats[id].pathDistanceMm;
+    bool unresolved=false;
+    for(uint8_t station=0;station<OBSTACLE_SEAT_COUNT/2;++station)
+    {
+        const uint8_t first=station*2;
+        const float distance=seats[first].pathDistanceMm;
+        if(distance>=target-1)continue;
+        if(distance<=1)
+        {
+            if((seats[first].confirmed && seats[first].injected) ||
+               (seats[first+1].confirmed && seats[first+1].injected))return SURPRISE_LATER;
+            continue; // a stored behind-start sign is not the first encountered
+        }
+        if(seats[first].confirmed || seats[first+1].confirmed)return SURPRISE_LATER;
+        const uint8_t inferred=sectionInferredEmpty(first/6);
+        if(!discoveryStations[station].observedClear &&
+           !(inferred & (1U<<((first%6)/2))))unresolved=true;
+    }
+    return unresolved ? SURPRISE_ORDER_UNKNOWN:SURPRISE_FIRST;
+}
+
+bool recordObservedSeatVote(uint8_t id,const Blob &blob)
+{
+    CandidateSeat &seat=seats[id];
+    if(seat.confirmed)return false;
+    if(blob.frameSequence && seat.lastHeightFrame==blob.frameSequence)return false;
+#if !OBSTACLE_SURPRISE_RULE_ENABLED
+    seat.lastHeightFrame=blob.frameSequence;
+    return recordSeatVote(seat,blob.color);
+#else
+    if(surpriseSeatIndex>=0)
+    {
+        seat.lastHeightFrame=blob.frameSequence;
+        return recordSeatVote(seat,blob.color);
+    }
+    const auto order=surpriseOrderForSeat(id);
+    const auto height=obstacle_sign_height::classify(blob);
+    // An unusable primary top must not consume this frame before the mapped
+    // GREEN fallback can supply a narrower, valid measurement. Only useful
+    // height evidence votes; the existing400ms window still expires old votes.
+    // The protected first sign needs no height to retain its ordinary colour.
+    if(order!=SURPRISE_FIRST && height==obstacle_sign_height::UNKNOWN)return false;
+    seat.lastHeightFrame=blob.frameSequence;
+    const auto now=millis();
+    if(height==obstacle_sign_height::UNKNOWN || seat.heightClass!=height ||
+       seat.heightColor!=static_cast<uint8_t>(blob.color) ||
+       (seat.lastVoteMs && now-seat.lastVoteMs>OBSTACLE_SEAT_VOTE_WINDOW_MS))
+        seat.heightFrames=0;
+    seat.heightClass=height;seat.heightColor=static_cast<uint8_t>(blob.color);
+    if(height!=obstacle_sign_height::UNKNOWN && seat.heightFrames<255)++seat.heightFrames;
+    const bool modified=height==obstacle_sign_height::SHORT || height==obstacle_sign_height::TALL;
+    const bool first=order==SURPRISE_FIRST;
+    const bool ready=first ||
+        (height==obstacle_sign_height::NORMAL && seat.heightFrames>=OBSTACLE_SEAT_CONFIRM_VOTES) ||
+        (modified && order==SURPRISE_LATER && seat.heightFrames>=OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES);
+    if(!recordSeatVote(seat,blob.color,ready))return false;
+    if(!first && modified)
+    {
+        seat.red=!seat.visibleRed;
+        seat.modifiedSign=true;
+        seat.heightMm=height;
+        surpriseSeatIndex=static_cast<int8_t>(id); // single per-run identity, not per lap
+        Serial.print("[SURPRISE] locked seat/height/visible/original=");
+        Serial.print(id);Serial.print('/');Serial.print(seat.heightMm);Serial.print('/');
+        Serial.print(seat.visibleRed ? "RED":"GREEN");Serial.print('/');
+        Serial.println(seat.red ? "RED; pass RIGHT":"GREEN; pass LEFT");
+    }
+    return true;
+#endif
 }
 
 void prepareConsecutiveVote(uint8_t selectedSeat, ColorType color)
@@ -672,6 +758,8 @@ void prepareConsecutiveVote(uint8_t selectedSeat, ColorType color)
             continue;
         if (i != selectedSeat)
         {
+            seat.heightFrames=seat.heightClass=0;
+            seat.heightColor=0;
             seat.redVotes = 0;
             seat.greenVotes = 0;
             seat.lastVoteMs = 0;
@@ -696,6 +784,7 @@ void clearPendingVotes()
             seats[i].redVotes = 0;
             seats[i].greenVotes = 0;
             seats[i].lastVoteMs = 0;
+            seats[i].heightFrames=seats[i].heightClass=0;
         }
     }
 }
@@ -712,6 +801,7 @@ void expirePendingVotes()
             seat.redVotes = 0;
             seat.greenVotes = 0;
             seat.lastVoteMs = 0;
+            seat.heightFrames=seat.heightClass=0;
         }
     }
 }
@@ -4515,6 +4605,24 @@ void lockCornerView(const char *reason)
     Serial.println(get_distance() - cornerViewOriginEncoder, 1);
 }
 
+void reobserveCornerView(const char *reason,const PositionEstimate &pose,float encoder)
+{
+    // A rejected old motion model is not failed perception. Brake first;
+    // then obtain fresh evidence and preflight every new movement from the
+    // actual settled pose. Never return blindly to the old origin.
+    holdCornerViewCentered();
+    cornerViewOrigin=pose;
+    cornerViewOriginEncoder=encoder;
+    cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
+    cornerViewStoppedFrames=0;
+    cornerViewExtraTriedMask=0;
+    discoveryStations[cornerViewStation].clearFrames[0]=0;
+    discoveryStations[cornerViewStation].clearFrames[1]=0;
+    cornerViewPhase=CORNER_VIEW_REBASE_BRAKE;
+    cornerViewPhaseMs=millis();
+    Serial.print("[CORNER VIEW] Brake and reobserve: ");Serial.println(reason);
+}
+
 void logCornerViewPose(const char *phase, const PositionEstimate &pose, float encoder)
 {
     Serial.print("[CORNER VIEW POSE] t="); Serial.print(millis());
@@ -4693,14 +4801,7 @@ void updateCornerViewExtra(bool newFrame)
             if(positionError<=25 && headingError<=12 &&
                fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg))<=35)
             {
-                holdCornerViewCentered();
-                cornerViewOrigin=pose;cornerViewOriginEncoder=encoder;
-                cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
-                cornerViewStoppedFrames=0;
-                discoveryStations[cornerViewStation].clearFrames[0]=0;
-                discoveryStations[cornerViewStation].clearFrames[1]=0;
-                cornerViewPhase=CORNER_VIEW_REBASE_BRAKE;cornerViewPhaseMs=millis();
-                Serial.println("[CORNER VIEW] Arc mismatch: brake, observe measured pose and retry checked views");
+                reobserveCornerView("arc tracking mismatch",pose,encoder);
                 return;
             }
             lockCornerView("extra arc tracking limit"); return;
@@ -4712,7 +4813,7 @@ void updateCornerViewExtra(bool newFrame)
         holdCornerViewSteering(cornerViewExtraSteering);
         if (age < 300) return;
         if (!cornerViewArcSafe(pose, cornerViewExtraSteering, -110))
-        { lockCornerView("extra settled preflight"); return; }
+        { reobserveCornerView("extra settled preflight",pose,encoder); return; }
         cornerViewExtraOrigin = pose;
         cornerViewExtraStartEncoder = encoder;
         cornerViewPhase = CORNER_VIEW_EXTRA_REVERSE;
@@ -4734,7 +4835,7 @@ void updateCornerViewExtra(bool newFrame)
             return;
         }
         if(!cornerViewArcSafe(pose,cornerViewExtraSteering,-15.0f))
-        {lockCornerView("extra reverse swept clearance");return;}
+        {reobserveCornerView("extra reverse swept clearance",pose,encoder);return;}
         set_steering(cornerViewExtraSteering);
         servo_disabled = false;
         set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S); return;
@@ -4767,9 +4868,10 @@ void updateCornerViewExtra(bool newFrame)
         holdCornerViewSteering(cornerViewExtraSteering);
         if (age < 300) return;
         cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
-        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110 ||
-            !cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
-        { lockCornerView("extra settled return preflight"); return; }
+        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110)
+        { lockCornerView("extra settled return travel"); return; }
+        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
+        { reobserveCornerView("extra settled return preflight",pose,encoder); return; }
         cornerViewExtraReturnPose = pose;
         cornerViewExtraReturnEncoder = encoder;
         cornerViewPhase = CORNER_VIEW_EXTRA_FORWARD;
@@ -4855,7 +4957,12 @@ void updateCornerView(bool newCameraFrame)
         if (fabsf(wrap180(pose.heading_deg - cornerViewOrigin.heading_deg)) > 3.0f ||
             cross > 15.0f)
         {
-            lockCornerView("heading/cross-track limit"); return;
+            if(fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg))<=12.0f &&
+               cross<=25.0f)
+                reobserveCornerView("straight heading/cross-track mismatch",pose,encoder);
+            else
+                lockCornerView("heading/cross-track limit");
+            return;
         }
     }
     switch (cornerViewPhase)
@@ -4912,7 +5019,7 @@ void updateCornerView(bool newCameraFrame)
         {
             const int steering=cornerViewStraightSteering(pose,-1);
             if (!cornerViewSteeredCommandSafe(pose,steering,-1))
-            { lockCornerView("reverse command clearance"); return; }
+            { reobserveCornerView("reverse command clearance",pose,encoder); return; }
             servo_disabled = false;
             set_steering(steering);
         }
@@ -5025,7 +5132,7 @@ void updateCornerView(bool newCameraFrame)
         {
             const int steering=cornerViewStraightSteering(pose,+1);
             if (!cornerViewSteeredCommandSafe(pose,steering,+1))
-            { lockCornerView("return command clearance"); return; }
+            { reobserveCornerView("return command clearance",pose,encoder); return; }
             servo_disabled = false;
             set_steering(steering);
         }
@@ -5402,8 +5509,9 @@ void startParkingEntryScout(const PositionEstimate &pose)
             startParkingEntryPrimaryRetry();
         else
         {
-            parkingEntryTestHold = true;
-            Serial.println("[CCW START] Front place unresolved - held for valid observation");
+            parkingEntryPrimaryRetryUsed = true;
+            startParkingEntryPrimaryRetry();
+            Serial.println("[CCW START] Front place unresolved; fresh observation retry");
         }
         return;
     }
@@ -5427,9 +5535,8 @@ void startParkingEntryScout(const PositionEstimate &pose)
             startParkingEntryPrimaryRetry();
         else
         {
-            parkingEntryTestHold = true;
-            Serial.println(
-                "[PARK ENTRY] Primary unresolved without retry - drive motor locked off");
+            parkingEntryPrimaryRetryUsed = true;
+            startParkingEntryPrimaryRetry();
         }
         return;
     }
@@ -5642,9 +5749,8 @@ void updateParkingEntryScout(bool newCameraFrame)
             }
             else
             {
-                parkingEntryTestHold = true;
-                Serial.println(
-                    "[PARK ENTRY] Primary unresolved without retry - drive motor locked off");
+                parkingEntryPrimaryRetryUsed = true;
+                startParkingEntryPrimaryRetry();
             }
         }
         return;
@@ -6405,6 +6511,7 @@ void obstacle_path_sensor_resume()
 
 void obstacle_path_reset()
 {
+    surpriseSeatIndex=-1;
     telemetryRouteDirty=true;
     pathLength = 0;
     progressIndex = 0;
@@ -6544,6 +6651,8 @@ void obstacle_path_start(
     bool ccw_first_edge_reference)
 {
     obstacle_path_reset();
+    Serial.print("[SURPRISE] revision=20261111_height_rule enabled=");
+    Serial.println(OBSTACLE_SURPRISE_ENABLED ? 1:0);
     Serial.print("[PATH LAYOUT] mode=");
     Serial.println(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL
         ? "CHECK_ALL_STATIONS" : "OFFICIAL_2026");
@@ -6688,7 +6797,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.println("[PATH] control_revision=20261105_physical_lap_speeds");
+    Serial.println("[PATH] control_revision=20261111_active_view_retry");
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -8063,7 +8172,7 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
     {
         result.status = OBSTACLE_OBSERVATION_ALREADY_CONFIRMED;
     }
-    else if (recordSeatVote(seat, blob->color))
+    else if (recordObservedSeatVote(static_cast<uint8_t>(result.seatId), *blob))
     {
         finalizeConfirmedSeat(result);
     }
@@ -8277,9 +8386,20 @@ void processGreenSeatCandidates(
 
         // This path uses three fresh, geometrically matched frames. The
         // ordinary blob votes and red recognition remain independent.
-        seat.confirmed = true;
-        seat.red = false;
-        seat.greenVotes = seat.greenSeatCandidateFrames;
+        if(OBSTACLE_SURPRISE_ENABLED && surpriseSeatIndex<0)
+        {
+            vision.measurePillarHeight(camera.getBuffer(),camera.getWidth(),
+                                       camera.getHeight(),candidate.blob);
+            prepareConsecutiveVote(seatIndex,ColorType::GREEN);
+            if(!recordObservedSeatVote(seatIndex,candidate.blob))
+            {logParkingGreenCheck(seatIndex,pose,"height_pending",&candidate);continue;}
+        }
+        else
+        {
+            seat.confirmed = true;
+            seat.visibleRed=seat.red = false;
+            seat.greenVotes = seat.greenSeatCandidateFrames;
+        }
         ObstacleObservationResult result;
         result.productionValid = true;
         result.color = ColorType::GREEN;
@@ -8494,6 +8614,9 @@ bool obstacle_path_get_seat(uint8_t seat_id, ObstacleSeatInfo &info)
     info.confirmed = seat.confirmed;
     info.red = seat.red;
     info.injected = seat.injected;
+    info.visibleRed=seat.visibleRed;
+    info.modifiedSign=seat.modifiedSign;
+    info.heightMm=seat.heightMm;
     return true;
 }
 
@@ -8605,6 +8728,7 @@ void obstacle_path_clear_observations()
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
     optimizedBuilt = false;
     injectionCount = 0;
+    surpriseSeatIndex = -1;
     parkingCwStoredSeat = -1;
     parkingCcwStoredSeatMask = 0;
     lastConfirmedSeatIndex = -1;
@@ -8624,6 +8748,10 @@ void obstacle_path_clear_observations()
         seats[i].redVotes = 0;
         seats[i].greenVotes = 0;
         seats[i].lastVoteMs = 0;
+        seats[i].heightFrames = seats[i].heightClass = seats[i].heightColor = 0;
+        seats[i].lastHeightFrame = 0;
+        seats[i].heightMm = 100;
+        seats[i].modifiedSign = seats[i].visibleRed = false;
         seats[i].confirmed = false;
         seats[i].red = false;
         seats[i].injected = false;

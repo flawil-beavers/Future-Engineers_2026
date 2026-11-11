@@ -17,6 +17,8 @@ code=r'''
 constexpr int A0=0,A1=1,A2=2;
 constexpr float PI=3.14159265358979323846f;
 #include "config.h"
+using std::isfinite;
+bool lap1CommandValid=false;float lookahead=100,lap1LookaheadMm=0,lap1SpeedMmS=0;
 constexpr int COURSE_STATIONS_PER_SECTION=3,CORNER_VIEW_IDLE=0,CORNER_VIEW_SETTLE=1;
 struct NullLog{template<class T>void print(T){} template<class T>void print(T,int){}
 template<class T>void println(T){} template<class T>void println(T,int){}} Serial;

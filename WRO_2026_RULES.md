@@ -1,5 +1,16 @@
 # WRO 2026 Future Engineers rules reference
 
+2026-11-11 Surprise Rule verification: the official season page links
+[Future Engineers Extra Task / Surprise Rule, version November 9, 2026](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf).
+The additional task replaces exactly one sign with its opposite colour and
+height50 or150mm; its unchanged base is50x50mm. Passing must use the original
+colour on all three laps. The first sign encountered in the required direction
+is excluded, not the entire starting straight. A second encountered sign in
+that straight remains eligible. Participation is optional and decided before
+the attempt; firmware must not switch mode while driving. The general rules
+remain the January15,2026/55-page edition. The official Q&A was checked again;
+no newer Surprise Rule clarification was found in that check.
+
 2026-10-27 inner-route review: canonical PDF and official Q&A checked again.
 The PDF remains January15,2026/55 pages; latest listed Future Engineers
 parking-row clarification remains October16. Recorded-map shortcuts retain

@@ -2,6 +2,7 @@
 
 #include "vision.h"
 #include "config.h"
+#include "obstacle_sign_height.h"
 
 // One shape gate for component selection and acquisition.
 inline bool obstacle_blob_shape_valid(
@@ -16,6 +17,11 @@ inline bool obstacle_blob_shape_valid(
     {
         return false;
     }
+
+    //50mm signs do not reach the old top-Y/21px-height limits. This narrow
+    //metric/base gate preserves those original limits for all other shapes.
+    if (obstacle_sign_height::shortShape(*obstacle) ||
+        obstacle_sign_height::measuredShape(*obstacle)) return true;
 
     if (
         obstacle->color !=

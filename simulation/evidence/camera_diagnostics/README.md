@@ -1,5 +1,28 @@
 # Stationary camera evidence
 
+## Image acceptance restriction, 2026-11-11
+
+`validation_status.json` is the authoritative per-capture acceptance registry.
+Original PNG/RGB565/JSON/wire bytes remain unchanged and are SHA-256 indexed
+there. Unlisted images are unreviewed: ask the user to approve the displayed
+image before using it as new geometry, height or detection acceptance evidence.
+
+- `20261026_green_new_pose_400mm_01`: **INVALID**. User identified cyclic
+  horizontal wrapping (left image part appended at the right). Exclude this
+  entire capture bundle from calibration, geometry, height and detection
+  acceptance. It may remain evidence of the historical acquisition fault.
+- `20261026_green_final_400mm_01`: **REJECTED for use** by the user. No new
+  validation may rely on it; no additional technical fault is inferred.
+- `20261027_green_400mm_01`: **APPROVED** by the user on 2026-11-11 after
+  displaying this exact PNG. Historical stationary GREEN100mm/400mm setup;
+  image-quality approval does not prove height/range accuracy on other mounts
+  or on50/150mm signs.
+
+Historical results below retain their original context. In particular, an
+earlier all-Oct26 replay is not new acceptance of the Surprise Rule height
+model. The current height regression uses only approved images and synthetic
+projections; it does not retune camera calibration from rejected images.
+
 ## 2026-10-05: green and empty control in a different room
 
 The user corrected the setup: this GREEN measurement was made in a different

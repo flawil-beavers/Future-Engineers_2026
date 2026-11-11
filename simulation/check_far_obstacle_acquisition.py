@@ -10,10 +10,10 @@ from check_connector_servo_resume import block
 from check_cw_start_planner import ROOT
 
 
-def fixture_source():
+def fixture_source(surprise=False):
     path = (ROOT/'src/obstacle_path.cpp').read_text()
     camera = (ROOT/'src/obstacle_vision.cpp').read_text()
-    code = r'''
+    code = ('#define OBSTACLE_SURPRISE_RULE_ENABLED '+('1' if surprise else '0')+'\n')+r'''
 #include <cstdint>
 #include <cmath>
 #include <iostream>
@@ -32,6 +32,7 @@ bool parkingEntryActive=false,parkingEntryObserving=false,parkingEntryScouting=f
  parkingEntryConnectorActive=false;
 constexpr int COURSE_SEATS_PER_STATION=2;
 bool oppositeSeatConflictReported[OBSTACLE_SEAT_COUNT]={};
+int8_t surpriseSeatIndex=-1;
 int sectionLayoutMode=0,completedLaps=0,injectionCount=0,progressIndex=0,routeTurnSign=-1;
 struct Point {float distanceMm=0;}baselinePath[1];
 float loopLengthMm=10000;unsigned long clockMs=1000;
@@ -51,7 +52,13 @@ void finalizeConfirmedSeat(ObstacleObservationResult &r){
                       'float obstacle_estimate_camera_forward_mm(',
                       'float obstacle_estimate_camera_range_mm('):
         code += block(camera, camera.index(signature)) + '\n'
+    if surprise:
+        code+='struct DiscoveryStation{bool observedClear=false;}discoveryStations[OBSTACLE_SEAT_COUNT/2];\n'
+        code+='uint8_t sectionInferredEmpty(uint8_t){return 0;}\n'
+        code+=path[path.index('enum SurpriseOrder :'):path.index('SurpriseOrder surpriseOrderForSeat(')]
+        code+=block(path,path.index('SurpriseOrder surpriseOrderForSeat('))+'\n'
     for signature in ('int nearestSeatIndex(', 'bool recordSeatVote(',
+                      'bool recordObservedSeatVote(',
                       'void prepareConsecutiveVote(', 'void expirePendingVotes(',
                       'float cyclicDistanceForward(', 'bool distantSeatSideAmbiguous(',
                       'int resolveSeatRowByBearing(', 'bool officialMiddleConflictsWithEnd(',

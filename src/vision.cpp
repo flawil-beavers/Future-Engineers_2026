@@ -10,6 +10,7 @@ Vision::Vision()
 void Vision::begin()
 {
     result.clear();
+    frameSequence=0;
 
     // Populate from the existing conversion and threshold functions so this
     // is bit-for-bit equivalent to the former per-pixel classification.
@@ -31,6 +32,76 @@ void Vision::begin()
 const VisionResult &Vision::getResult() const
 {
     return result;
+}
+
+void Vision::measurePillarHeight(const uint8_t *buffer,uint16_t width,
+                                 uint16_t height,Blob &blob) const
+{
+    blob.heightTopMeasured=blob.heightTopClipped=false;
+    blob.heightTopY=-1;
+    blob.frameSequence=frameSequence;
+    blob.heightBaseWidthPx=0;
+    if (!OBSTACLE_SURPRISE_ENABLED || !buffer || width!=320 || height!=240 ||
+        !blob.found || (blob.color!=ColorType::RED && blob.color!=ColorType::GREEN) ||
+        blob.width()<7 || blob.width()>OBSTACLE_MAX_START_WIDTH ||
+        blob.height()<11 || blob.area<150 || blob.maxY<OBSTACLE_MIN_BOTTOM_Y ||
+        blob.minX<=2 || blob.maxX>=317 || blob.maxY>=237)
+        return;
+    const auto matches=[&](int x,int y) {
+        if(x<0 || x>=width || y<0 || y>=height)return false;
+        const int sx=ROTATE_180 ? width-1-x:x,sy=ROTATE_180 ? height-1-y:y;
+        return colorLookup[readRGB565Raw(buffer,uint32_t(sy)*width+sx)]==
+            static_cast<uint8_t>(blob.color);
+    };
+    // A shallow connected wall strip can widen the ROI box. Locate the
+    // actual stem in its bottom14px before following the top vertically.
+    int stemLeft=320,stemRight=-1,sumX=0,columns=0;
+    for(int x=blob.minX;x<=blob.maxX;x+=2)
+    {
+        int rows=0;
+        for(int y=blob.maxY-2;y>=blob.maxY-14 && y>=blob.minY;y-=2)
+            rows+=matches(x,y);
+        if(rows>=2){stemLeft=stemLeft<x ? stemLeft:x;stemRight=x;sumX+=x;++columns;}
+    }
+    if(columns<3)return;
+    const int stemWidth=stemRight-stemLeft+1,center=sumX/columns;
+    blob.heightBaseWidthPx=stemWidth;
+    const int flank=stemWidth/2+(stemWidth/4>4 ? stemWidth/4:4);
+    int top=blob.maxY-4,gaps=0,supportedRows=0,narrowTop=-1;
+    // Only probe a narrow pillar strip, not the upper frame's room colours.
+    for(int y=blob.maxY-4;y>=0;y-=2)
+    {
+        int support=0;
+        for(int column=-2;column<=2;++column)
+            support+=matches(center+column*stemWidth/8,y);
+        if(support>=3)
+        {
+            top=y;gaps=0;
+            ++supportedRows;
+            if(!matches(center-flank,y) || !matches(center+flank,y))narrowTop=y;
+        }
+        else if(++gaps>=3)
+        {
+            if(supportedRows>=2 && narrowTop>=0)
+            {
+                blob.heightTopY=top;blob.heightTopMeasured=true;
+                if(narrowTop!=top)
+                {
+                    Blob bounded=blob;bounded.heightTopY=narrowTop;
+                    const auto low=obstacle_sign_height::classify(bounded);
+                    if(low==obstacle_sign_height::UNKNOWN ||
+                       low!=obstacle_sign_height::classify(blob))
+                        blob.heightTopMeasured=false;
+                }
+            }
+            return;
+        }
+    }
+    if(top<=2 && gaps==0 && narrowTop<=2 && narrowTop>=0)
+    {
+        blob.heightTopY=top;
+        blob.heightTopMeasured=blob.heightTopClipped=true;
+    }
 }
 
 bool Vision::findGreenSeatCandidate(
@@ -480,7 +551,7 @@ void Vision::processComponent(
     uint16_t startIndex,
     ColorType color,
     uint16_t sampleWidth,
-    uint16_t sampleHeight)
+    uint16_t sampleHeight,const uint8_t *buffer)
 {
     uint16_t queueRead = 0;
     uint16_t queueWrite = 0;
@@ -617,6 +688,9 @@ void Vision::processComponent(
 
     if (color == ColorType::RED || color == ColorType::GREEN)
     {
+        if(OBSTACLE_SURPRISE_ENABLED)
+            measurePillarHeight(buffer,sampleWidth*PIXEL_STEP,
+                                 sampleHeight*PIXEL_STEP,component);
         Blob &pillar = color == ColorType::RED
             ? result.redPillar : result.greenPillar;
         if (obstacle_blob_shape_valid(&component) &&
@@ -634,7 +708,7 @@ void Vision::processComponent(
 
 void Vision::findLargestBlobs(
     uint16_t sampleWidth,
-    uint16_t sampleHeight)
+    uint16_t sampleHeight,const uint8_t *buffer)
 {
     const uint32_t samples =
         static_cast<uint32_t>(sampleWidth) *
@@ -661,7 +735,7 @@ void Vision::findLargestBlobs(
             static_cast<uint16_t>(i),
             color,
             sampleWidth,
-            sampleHeight);
+            sampleHeight,buffer);
     }
 }
 
@@ -686,6 +760,7 @@ bool Vision::update(
 
     const uint32_t startTime =
         micros();
+    if(++frameSequence==0)++frameSequence;
 
     uint32_t qualityValueSum = 0;
     result.minValue = 255;
@@ -810,7 +885,7 @@ bool Vision::update(
 
     findLargestBlobs(
         sampleWidth,
-        sampleHeight);
+        sampleHeight,buffer);
 
     result.meanValue = result.qualitySamples
         ? qualityValueSum / result.qualitySamples : 0;

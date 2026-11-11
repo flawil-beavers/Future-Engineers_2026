@@ -14,6 +14,7 @@ ObstacleObservationResult lastDiscoveryObservation;
 struct Camera{unsigned char pixel=0;unsigned char*getBuffer(){return &pixel;}int getWidth(){return 320;}int getHeight(){return 240;}}camera;
 bool candidateEnabled=true;int requested=0;
 struct FakeVision{
+ void measurePillarHeight(unsigned char*,int,int,Blob&){}
  bool findGreenSeatCandidate(unsigned char*,int,int,int x,int foot,GreenSeatCandidate&c){
   ++requested;if(!candidateEnabled||abs(x-164)>3)return false;
   c.silhouetteFound=true;c.greenSamples=30;c.brightnessContrast=80;

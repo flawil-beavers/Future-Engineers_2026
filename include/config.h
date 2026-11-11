@@ -954,6 +954,12 @@ constexpr auto VISION_ORANGE_HUE_MIN = 9;
 constexpr auto VISION_ORANGE_HUE_MAX = 35;
 
 // Detection validation
+#ifndef OBSTACLE_SURPRISE_RULE_ENABLED
+#define OBSTACLE_SURPRISE_RULE_ENABLED 1
+#endif
+// Select participation before uploading/starting. Never changes during a run.
+constexpr bool OBSTACLE_SURPRISE_ENABLED = OBSTACLE_SURPRISE_RULE_ENABLED != 0;
+constexpr uint8_t OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES = 3;
 constexpr auto OBSTACLE_RED_MIN_AREA = 300;
 constexpr auto OBSTACLE_RED_MIN_HEIGHT = 21;
 constexpr auto OBSTACLE_GREEN_MIN_AREA = 400;
@@ -1363,6 +1369,9 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // distance = scale / (maxY - horizonY). Camera mount/lighting acceptance is
 // limited to the recorded setups; no universal range-accuracy claim.
 constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 52.0f;
+// Full-sensor square-pixel vertical model; needs physical50/100/150mm acceptance.
+constexpr auto OBSTACLE_CAMERA_FOCAL_Y_PX = OBSTACLE_CAMERA_FOCAL_X_PX;
+constexpr auto OBSTACLE_CAMERA_PRINCIPAL_Y_PX = 119.5f;
 constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 33600.0f;
 // The former centred-crop mode needed a V-shaped off-axis correction. In the
 // full-sensor mode, equal 400 mm forward-depth samples had maxY=136 (left) and
