@@ -11,6 +11,16 @@ the attempt; firmware must not switch mode while driving. The general rules
 remain the January15,2026/55-page edition. The official Q&A was checked again;
 no newer Surprise Rule clarification was found in that check.
 
+On 2026-11-08 the Open Challenge video review rechecked the canonical January 15,
+2026 PDF and official Q&A. The PDF remains 55 pages and matches the recorded
+`c23ba063...` SHA-256 below. Page 11 specifies 1000 or 600 mm corridors, with
++/-100 mm tolerance at the International Final. Rule 13.1 on page 26 specifies
+the 3000 x 3000 mm track. Rule 13.16 on page 27 permits square or rectangular
+inner walls. Appendix B on page 43 gives 1000, 1400 and 1800 mm segment sets
+and thickness-adjusted short pieces. The filmed MVI_1318 layout is consistent
+with a 1000 x 1800 mm enclosure, giving 600 mm corridors at its ends and 1000 mm
+at its sides. Open layouts vary with the draw.
+
 2026-10-27 inner-route review: canonical PDF and official Q&A checked again.
 The PDF remains January15,2026/55 pages; latest listed Future Engineers
 parking-row clarification remains October16. Recorded-map shortcuts retain

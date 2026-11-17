@@ -13559,3 +13559,447 @@ fb49725aadef397cbcce99110e5239eb5fd919883c496da24b275de948ba3765.
 M4unchanged/notbuilt; no commit/push. Next user normalM7CW/CCW/save; secure
 new originals FIRST+hash/tellunplug, compare RED19 earlyvalidframes/seatvotes,
 no extra during protectedpass, gate latency, remaining recovery and contact.
+
+## 2026-11-02: submission-video pose replays from Video runs
+
+User requested standalone animated clips for the Video runs logs. Source hashes
+match existing complete tracked originals: 601 CCW, 632 CW, 633 CCW and 634 CW;
+portable evidence paths/full hashes remain in parking_exit_diagnostics/README.md.
+No new test batch or physical outcome was supplied. Filename 601_OPEN_video1 is
+misleading: it contains an obstacle run. User explicitly excluded 602 after being
+informed its Open Challenge section lacks timed field XY; do not fabricate it.
+
+Added simulation/render_video_runs.py (Pillow/numpy/OpenCV). Working artifacts,
+index and source/hash/export manifest: local_workspace/video-documentation/.
+Exports are 1920x1080, 30 fps, silent MP4 at 1x and 4x; 7.5 Hz rendered updates,
+repeated for 1x. Equal-scale field, nominal accepted-seat map/rails, estimated
+chassis, cumulative segmented trails, clock and parking inset. Only logged field
+poses are used; local rear-positioning coordinates are excluded. Interpolation
+cannot cross explicit exit corrections, phase boundaries, >1.5s gaps or bounded
+jump checks. Gaps hide the robot; no invented route. Final untimed result poses
+are not animated. Other small estimator corrections can remain in observations.
+
+601/632 report aborts (scan_motion_clearance/entry_replan_limit), 633/634 logged
+completion, not independent contact-free validation. First/last sampled pose may
+differ from RUN_START/RUN_END; manifest retains both and full displayed duration.
+No camera sync offset or original film was supplied. No firmware edit/build or
+upload, original-log mutation, commit or push. Next: select clips for the edit,
+check physical outcomes against footage, and align the 1x clock to the filmed
+start if needed. Leave 602 excluded unless better data/explicit schematic request.
+Verification: eight MP4s decoded at first/middle/final frames, dimensions/counts
+checked; all four source/archive SHA-256 pairs unchanged. Visual QA of opening,
+driving, parking and end/gap screens passed. Focused checks passed for heading
+wrap interpolation, correction/gap splitting, local-frame exclusion and 602
+refusal. Evidence originals/index and this handoff are tracked; working video
+artifacts remain intentionally ignored. No machine-specific paths added.
+
+## 2026-11-02: continuous presentation versions requested
+
+User explicitly requests always-visible robot and interpolation of all missing
+positions, producing continuous trails. Added --continuous to
+simulation/render_video_runs.py; new versions go to
+local_workspace/video-documentation/continuous/, preserving previous exports.
+Every successive field-pose interval is joined, including long gaps, phase
+boundaries and estimator corrections. XY is linear; heading uses shortest-angle
+interpolation. Hold first/last recorded pose outside coverage and retain the
+robot on end cards. Full-field bounds include every pose plus chassis margin;
+partial trail extends to the current animated pose. Label presentation as
+continuous/interpolated; connecting paths are not measured physical motion.
+602 remains excluded. Same four archived originals, no new test batch, firmware
+change/build, upload, commit or push. Parent working index links new versions.
+Focused checks pass for long-gap/phase-crossing interpolation, angle wrap,
+endpoint holds, default-mode gap preservation and non-null pose at 100 ms steps
+through all four timelines. Visual 601 opening/gap/driving/end checks pass.
+Completed-run presentation refinement: 633/634 separately log a final parking
+result two lines before RUN_END. Continuous mode uses that reported pose at
+RUN_END as an approximate timing anchor, interpolating the missing parking tail;
+this is explicitly documented in the working index/manifest and is not a timed
+sample. Original default-mode handling remains unchanged. Added --runs for
+selective regeneration while retaining other manifest entries.
+Final verification: all eight continuous MP4s decoded at opening/middle/end,
+1080p dimensions/frame counts checked, every inter-pose interval joined, and all
+four source/archive SHA-256 pairs unchanged. Visual checks cover starting hold,
+formerly missing intervals, held abort tail and interpolated completed parking
+tails. Original exports retained. Next use continuous/README.md to select 1x/4x;
+recorded motion remains distinguishable from presentation interpolation by labels.
+
+## 2026-11-02: 602 Open Challenge schematic added
+
+User now explicitly requests the missing visualization, superseding prior 602
+exclusion for presentation. Added simulation/render_open_video_602.py and working
+clips/index/manifest under
+local_workspace/video-documentation/continuous/log_602_schematic/. Parent and
+continuous indices link them. Complete source matches tracked
+simulation/evidence/parking_exit_diagnostics/20261031_log_602_cw.txt, SHA-256
+1f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326.
+Two complete OPEN_CHALLENGE sequences, each 12 paired corner-entry/turn-finish
+records and three laps; earlier aborted obstacle prefix and incomplete enable
+excluded. Untimed corner/heading/distance records cannot yield a measured XY
+replay. Continuous normalized circuit/robot orientation and pacing are labelled
+schematic/illustrative, with actual logged event endpoint headings and straight
+distances alongside. Standard illustrative pace 81.6s, 4x 20.4s; neither claims
+recorded runtime. Robot always visible; trail resets between the two sequences.
+1080p/30fps/silent MP4. CRLF extraction, 24 paired corners, known source distances
+and geometric continuity checks pass. Both videos decode at first/middle/final
+frames; visual QA of both sequences passes; source/archive hashes unchanged.
+No new evidence batch, firmware edit/build/upload, commit or push. Next select
+602 schematic clips from the index; use filmed footage for actual timing/XY.
+
+## 2026-11-03: sensor-evidence video overlays and location maps
+
+User requests where ToF measurements and camera processing were used, selecting
+BOTH activity and confirmed-use evidence, for ALL five logs including 602.
+Added simulation/render_sensor_usage.py; outputs/CSV records/manifest/index under
+local_workspace/video-documentation/sensor-usage/. Reuses continuous 1080p clips;
+1x/standard and4x sensor versions plus four-panel location PNG per source.
+Amber circles=ToF, magenta triangles=camera; hollow=logged activity, filled=use
+flags/explicit corrections or accepted visual observations. One-second source-
+time pulses mark recent evidence. Preserve robot visibility above accumulated
+markers. Dashes denote intervals with advancing ToF correction counters, NOT
+beams or measured routes; first counter is a baseline, repeated stale correction
+values alone do not count. Camera DRIVE_CAM/DISCOVERY_TRACE/results are activity;
+decision=confirmed and SEAT CLEAR count as accepted evidence, not physical truth.
+ToF PARK_DIAG/new final-parking cache sequences are snapshots, not automatically
+fresh acquisitions or control use; filter acceptance is not a use flag.
+
+Each record retains source tag/line, logged pose/time, category and interval
+bounds. Rear-positioning local-frame samples are excluded from field maps.
+Coverage is sampled/capped and lower-bound evidence, not all acquired frames or
+all decisions; absent markers never mean a sensor was off. No target rays or
+unrecorded sensor frames fabricated. 602 camera use is UNKNOWN/no logged events.
+Its two sequences map corner-entry/turn-finish L/R snapshots and24 corner-trigger
+transitions onto the existing illustrative timeline. Filled602 corner symbols
+use navigation implementation to establish ToF control role; not per-reading use
+flags. Enhanced render_open_video_602 parser preserves range values in events.
+Prior schematic video path/timing remains unchanged; 602guard checks2448frames.
+
+Existing complete tracked originals601/602/632/633/634 unchanged; all five source
+hashes match parking_exit_diagnostics originals/index. Firmware identities remain
+in that evidence metadata, not inferred from the currently installed binary.
+No new test batch, firmware edit/build/upload, robot movement, ToF sweep, commit
+or push. Classification checks pass for baseline/stale counters, bounded
+intervals, use flags, snapshot dedup, local-frame exclusion, camera acceptance
+and no invented602 camera evidence. First601 videos/maps visually checked.
+Next review all five sensor maps/clips for submission editing; final export
+verification follows below.
+Final verification PASS: all10 MP4 exports decode at opening/middle/end with
+expected1080p dimensions/frame counts; all5 PNG maps and5 CSV record counts
+verified. Source/archive SHA-256 pairs match and all portable originals, evidence
+README and this handoff remain Git-tracked. No machine-specific paths added.
+Visual QA includes601 and602/634 normal/4x screens, robot visibility and playback
+labels. Parent video indices now link sensor-usage/README.md. Sampled category
+counts (ToF activity/use/interval; camera activity/accepted): 601: 421/31/165; 231/5,
+602: 96/24/0; 0/0 (camera unknown), 632: 380/27/107; 150/11,
+633: 446/25/109; 109/10, 634: 425/29/113; 133/10. These are record counts, not all frames
+or unique physical events. Generated clips/maps/CSVs remain intentionally ignored
+working artifacts; tracked evidence originals/index unchanged. Next select
+sensor clips or separated maps for the edit via the sensor index.
+
+
+## 2026-11-08: Open Challenge measurement rays and clean field-only clips
+
+User requests replacing sensor circles with measurement lines for Open Challenge
+ONLY, selects logged range lengths with dashed out-of-range rays to the field
+boundary, and adds a field-only version. Added simulation/render_open_tof_rays.py.
+Working outputs/index/manifest/previews:
+local_workspace/video-documentation/sensor-usage/open-challenge-rays/.
+Four silent 30fps clips include both complete602 Open sequences: panel1920x1080
+and clean field-only1080x1080, each standard illustrative pace81.6s and4x20.4s.
+Field-only contains no text/panels. Parent indices link new versions; sensor index
+defaults602 to rays. Other run videos were not regenerated.
+
+48 paired corner-entry/turn-finish snapshots, orangeLEFT/blueRIGHT, use logged
+filtered Dist values. Solid metric rays end in crosses. Filtered9999 or invalid
+values get dashed rays to the outer boundary, without a measured-hit marker.
+Rays pulse at each snapshot for approximately one illustrative second. Nominal
+configured sensor mounts40mm forward/35mm left-right; direction uses logged
+relative gyro heading plus/minus90deg. Finite endpoints are projected from the
+schematic XY pose, not surveyed targets. Preserve actual range lengths, including
+disagreement with nominal walls; enlarge equal-scale view to retain endpoints.
+Camera activity remains unlogged. No invented camera rays or new ToF readings.
+
+Complete source matches tracked20261031_log_602_cw original (SHA-256 in existing
+evidence README and output manifest); original/firmware unchanged. No new batch,
+build/upload, robot movement, commit or push. PASS metric ray lengths, L/R origin
+and rotations, boundary clipping,48-pair/two-sequence timeline checks; all four
+exports decode at opening/quarter/middle/end with correct size/frame counts.
+Visual panel/field-only QA passes. Next choose panel or field-only clips from
+the ray index for the submission edit; timing and XY remain illustrative.
+
+
+## 2026-11-08 filmed Open trajectory and rule-sized inner enclosure
+
+User supplies MVI_1318_OPEN_video1.MP4 and asks for trajectory and inner-rectangle
+correction, specifically checking the rules. Canonical January 15, 2026 PDF and
+official Q&A rechecked. Local PDF SHA-256 still matches c23ba063 recorded in
+WRO_2026_RULES.md. Visually inspected rules pages 11, 27 and 43. Open corridors
+are 1000 or 600 mm, with +/-100 mm International Final tolerance. Appendix B
+provides 1000, 1400 and 1800 mm segment sets. Select the 1000 x 1800 mm nominal
+inner rectangle matching this film, within the 3000 mm square outer field.
+Open layouts vary with the draw. The old 1000 mm square schematic was unsuitable
+for this filmed layout.
+
+Added simulation/render_video_aligned_open.py. Inputs are source video and a
+reviewed portable calibration/trajectory JSON. Working outputs are under
+local_workspace/video-documentation/sensor-usage/open-challenge-video-aligned/.
+New field-only 1080 square and source-film-panel 1920 x 1080 clips each have 1x
+and 4x versions. Duration is about 128.27s and 32.07s at 30fps. This covers the
+filmed first Open sequence in602. Association uses its initial92/410mm ranges
+and622mm first straight. Reconstructed start projects about101/429mm clearance.
+The source-film inset follows the same film clock for review.
+
+Video source SHA-256 is e8b66d09dda2ac0ad6c21518dfe55fcbcaa779f3fdad4ec38fc1d68757a5b2ea.
+Complete log identity remains simulation/evidence/parking_exit_diagnostics/20261031_log_602_cw.txt, SHA-256
+1f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326.
+Video is supplied externally by basename above. Generated reports remain local
+working artifacts. Portable original log and evidence index remain Git-tracked.
+
+Perspective plus empirical radial fit uses printed mat landmarks. Track uses
+visible lower wheel-contact proxies, smoothed direction, 100mm nominal wheelbase
+and123mm nominal wheel track to estimate rear axle. Operator occlusion and one
+isolated false detection are interpolated. Final stationary pose is held through
+the film ending. The first foreground mask clipped some silhouette regions and
+was rerun with the static enclosure retained in background subtraction.
+Corrected trajectory has no centre-enclosure jumps and peak estimated speed
+331.9mm/s. Axle reconstruction remains approximate from the oblique film.
+
+The log records event order without timestamps. Turn-entry film alignment and
+logged straight encoder travel estimate exit snapshot times.26 paired range
+snapshots include initial/stop and24 turn events. Preserve logged lengths and
+logged relative heading. Sensor synchronization and projected endpoints remain
+approximate, especially near corners. Central ray intersections do not establish
+the actual optical return target there. No range values were changed to force
+wall agreement. Equal-scale view includes finite endpoint margin.
+
+PASS monotonic time, speed bound, enclosure exclusion,26 chronological snapshots,
+metric ray lengths and visible finite endpoints. All four videos decode at
+opening/eighth/quarter/middle/end with expected sizes/frame counts. Visual QA of
+field and source-film panel passed. Source video/log hashes verified. Rule
+reference and video indices updated. No firmware change/build/upload or new
+robot test. No commit or push. Next use the filmed-run index for the submission
+edit, retaining approximate pose/event-sync qualification. Regenerate with the
+video and included calibration_and_alignment.json through the new renderer.
+
+## 2026-11-08 — Open 602 inner-ToF-positioned visualization revision
+
+User requested the previous estimated driving path with corrected middle walls,
+prioritizing inner-wall ToF and showing outer-wall residual. Supplied better
+overhead reference DJI_20261031112923_0061_D_OPEN_video1.MP4 (3840x2160,
+29.970 fps, 116.48 s), SHA-256
+c0ff2286157bfc5cbf64d98ecb366f184f5914950e0f18be75fa8e82bed6419f.
+Checked sampled footage for rectangular layout/turn sequence. It is a layout
+reference, not a video-led XY fit or synchronization claim. Fixed inner enclosure
+1000x1800 mm / outer 3000x3000 mm as previously checked against official rules.
+
+New renderer simulation/render_tof_positioned_open.py fits first complete Open
+sequence only. Valid LEFT sets lateral position; RIGHT is fallback; otherwise
+retain previous lateral estimate. Keep actual logged headings, filtered ranges
+and nominal forward40/lateral35 mm mounts. Start/final straight travel anchors
+622/591 mm; other along-track positions and timing remain estimates. Rounded
+300 mm prior turns expand minimally where necessary (300–334 mm) for finite
+inner-face ray intersections and chassis clearance. No original values changed.
+At stop axle estimate x37.55/y-1212.76 mm, heading1076.3deg: LEFT281 matches inner
+wall exactly; RIGHT234 versus modeled250.253 leaves +16.253 mm residual. Red
+segments expose outer-wall disagreement. Snapshot fitting assumes the assigned
+wall is the return surface; it does not independently prove the true trajectory.
+
+Working exports under local_workspace/video-documentation/sensor-usage/
+open-challenge-tof-positioned/: field-only1080square and panel1920x1080,
+48.267s standard illustrative pace /12.067s4x, silent30fps. Brief measurement
+holds keep rays on their actual snapshot pose; movement between is continuous.
+Camera readings are not logged. Manifest includes26 snapshot fits and source
+hashes. Primary working indices now link these versions; old outputs retained.
+
+PASS original602 source/archive hash equality (complete tracked original
+simulation/evidence/parking_exit_diagnostics/20261031_log_602_cw.txt, SHA-256
+1f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326),
+26 snapshot constraints <0.01mm, every rendered chassis clear,622/591 anchors,
+all4 export frame counts and opening/middle/final decoding. Panel final-pose
+visual QA passed. Python compile passed. No firmware change/build/test batch,
+commit or push. Next use this latest index for the submission edit; retain
+estimated along-track/timing qualification. Second Open sequence is only in
+older exports and has not been fitted to this first-run film.
+
+## 2026-11-08 — DJI same-speed path and ToF wall-ray revision
+
+User requested the speed and trajectory of the better DJI overhead film. New
+simulation/track_dji_open.py tracks that film; simulation/render_dji_open.py
+uses its full116.483s source clock at29.970fps with no presentation holds or
+time warping. Four field-only/source-film-panel1x/4x exports are in working
+local_workspace/video-documentation/sensor-usage/open-challenge-dji-synced/.
+Enclosure remains1000x1800mm, outer3000square. Pixel centroid is corrected
+42.5mm backward to approximate axle. Painted-line false detections caught
+in first tracking attempt were excluded before final tracking/rendering.
+
+Filmed trajectory receives smooth inner-LEFT-priority lateral corrections
+at26 events; RIGHT fallback, video estimate otherwise. Filmed turn progress
+estimates untimed log event alignment. Small along-track clamp keeps inner
+rays on finite faces. Original headings/ranges retained. Rays move with the
+displayed robot during0.6s snapshot pulses; crosses show logged endpoints,
+red residual segments reach geometric walls. No readings fabricated. Stop
+LEFT281mm fits exactly; RIGHT234/model250.253 leaves16.253mm residual.
+
+PASS original602 archive/source and DJI hashes, valid LEFT anchor fits
+<0.01mm, no rendered chassis collisions, all4 source-time export duration
+checks and first/quarter/mid/three-quarter/final decode. Reviewed track and
+synchronized-film contact previews. Video source SHA-256 remains
+c0ff2286157bfc5cbf64d98ecb366f184f5914950e0f18be75fa8e82bed6419f;
+complete evidence simulation/evidence/parking_exit_diagnostics/20261031_log_602_cw.txt
+SHA-2561f4f0dcf8104799bd3cda190bc49f567fbfa3fd7c9416d9d6380fa89ef3c0326.
+No firmware changes/builds/new physical tests/commit/push. Exact next step:
+use latest DJI1x files for video editing; retain approximate metric pose and
+sensor synchronization qualification. Second Open sequence is not mapped
+to this film. All calibration/track/alignment data are in local output.
+
+## 2026-11-08 — Tripod-style stabilization of DJI source footage
+
+User requested stabilization of DJI_20261031112923_0061_D_OPEN_video1.MP4.
+New simulation/stabilize_overhead_video.py fits direct fixed-reference
+static features using LK/RANSAC homography. Driving corridor masked out;
+no robot motion used as camera motion. Fit every2source frames, interpolate
+intervening transforms; export every original frame once. Fixed central
+3648x2052 crop scaled to3840x2160 retains95% width/height (2.5% peredge).
+This trims already-tight top/bottom framing; no invented scene/robot frames.
+
+Working artifact local_workspace/video-documentation/stabilized-dji/
+DJI_OPEN_tripod_stabilized_4K.mp4, H264CRF18, BT709,29.970fps,3491frames,
+116.483s. Source has no audio. Encoder dependency downloaded only into
+local_workspace/video-tools. Source SHA-256 remains
+c0ff2286157bfc5cbf64d98ecb366f184f5914950e0f18be75fa8e82bed6419f.
+Manifest retains source/output hashes, camera transforms and crop.
+
+PASS robust fits across film, fixed valid crop, sampled before/after review,
+frame count/rate,4K decode opening/20/40/60/80/100/116s. Fit median residual
+0.38px4K; separate field-landmark sample medians0.32–0.82px. Raised-object
+parallax leaves larger residuals at some landmarks; global-plane warp is
+an approximation. Robot movement preserved, no retiming or variable zoom.
+No firmware changes/build/new physical tests/commit/push. Next use stabilized
+MP4 for the documentation edit; root working video index links this version.
+
+## 2026-11-08 — Preserve complete frame in stabilized DJI export
+
+User authorized implementation retaining the top and bottom edges. Added optional preserve framing to simulation/stabilize_overhead_video.py using existing camera transforms. The fixed viewport fits the union of all source-frame footprints into 3840x2160 at 95.42795% scale. Black padding covers exposed canvas and varies slightly with camera motion.
+
+Working export is local_workspace/video-documentation/stabilized-dji/full-frame/DJI_OPEN_tripod_stabilized_full_frame_4K.mp4. PASS every source corner retained across all3491 frames with >=4px margin, original crop-mode geometry regression, Python compile, source hash,29.970fps/116.483s/frame-count agreement, and sampled 4K decode plus visual review. Source SHA-256 remains c0ff2286157bfc5cbf64d98ecb366f184f5914950e0f18be75fa8e82bed6419f. Output SHA-256 is 1aeae98452978690219cd61d3f1d37df343ad16e15d3587b17cb2737c3dfdd15.
+
+The CLI --reuse-analysis --framing preserve writes into full-frame under the output root. Existing crop mode retains its entry point and geometry. Next use the full-frame MP4 in the documentation edit when complete source edges are required.
+
+## 2026-11-09 — Transparent DJI batch paused for laptop sleep
+
+User requested stabilization of0066/0067/0068 with complete top/bottom edges, then transparent uncovered areas. Per-clip camera analyses are complete under local_workspace/video-documentation/stabilized-dji-batch-0066-0068/. Fixed preserve-frame scales are 93.5985%/97.1974%/97.5443%. Source lengths are 325.559s/326.393s/95.329s at3840x2160,29.970fps. 0068 transparent WebM is complete and verified with exact2857 frame packets, corner inclusion, decoded alpha and installed Kdenlive MLT alpha support. Its output SHA-256 is 1a83086d37357da89be1e40efc9508b1a3d87655906da6203f347df3ad3fbf0c.
+
+0066 and0067 VP9-alpha exports are partly encoded. User requested pausing to put the laptop to sleep. Successfully suspended the render Python and both encoder processes using NtSuspendProcess. Their identities and creation tokens are saved in the ignored paused_processes.json. In-memory codec state is retained for Sleep.
+
+Exact next steps on user resume request. Run `python local_workspace/pause_drone_renders.py --resume` outside the per-command sandbox, which hides other render processes. Resume helper checks creation identities and resumes encoders before Python. Original unified exec session55247 can then be awaited. The user requested no additional checks while waiting and notification at completion.
+
+The running long exports loaded an overly strict zero-alpha corner assertion before it was corrected in the module. VP9 may round empty samples to1/255. If they finish with that assertion, preserve the encoded files and finalize using `python local_workspace/finalize_encoded_alpha_clip.py DJI_20261031175628_0066_D DJI_20261031180153_0067_D`. This validates alpha with <=2/255 tolerance and avoids re-encoding. Then run verify_transparent_drone_batch.py on 0066/0067, review finished contact sheets, and run finish_transparent_drone_batch.py to create the batch index and durable hash record. 0068 validation.json is already present. Final response must link all three WebM files and disclose transparent border padding.
+
+## 2026-11-09 — Three DJI clips with stabilization and transparent borders
+
+User supplied DJI clips0066/0067/0068 and requested the same stabilization with complete top/bottom edges, then alpha transparency in uncovered areas. Extended simulation/stabilize_overhead_video.py with optional static feature regions and transparent VP9 WebM output. Footage uses floor and inner-poster features specific to this framing. Full-frame corner inclusion is checked across every source frame. Fixed scales are DJI_20261031175628_0066_D.MP4 93.598%, DJI_20261031180153_0067_D.MP4 97.197%, DJI_20261031180719_0068_D.MP4 97.544%. Original timelines are325.559s/326.393s/95.329s at29.970fps, 9757/9782/2857 frames,3840x2160.
+
+Working outputs and batch index are under local_workspace/video-documentation/stabilized-dji-batch-0066-0068/. VP9 alpha CRF24 was selected after validating transparency with installed Kdenlive MLT. Replicated edge colour plus a separately warped alpha mask preserves scene opacity and avoids dark resampling fringes. VP9 alpha can round empty samples by1–2/255. Validation tolerates that quantization while requiring transparent and opaque regions and an opaque field centre.
+
+PASS every-source-corner visibility, exact frame packet counts, source-time duration, sampled4K decoding and alpha checks, Kdenlive MLT alpha import, and sampled visual review for all three. Short-clip review selection now handles clips under100seconds. Source/output SHA-256 values follow.
+
+DJI_20261031175628_0066_D.MP4 source 85f6cc26a3f9c0444e6c86220a6e04d464e321c8a57105c36798f02971749027, output 9a9a9f8b8d07eaa88de651b40512e646fc03aaae6e05c37431d2e5a524a6068a.
+
+DJI_20261031180153_0067_D.MP4 source c1ce3beca9ad241f80c813022c605e92a806c4822445d9f62c0c8af9c98f3a63, output f19413aeb72bb918e5f303d0d89a0788d52dcc3d5003f062e5d2791eb924ba45.
+
+DJI_20261031180719_0068_D.MP4 source 35f001175b98c3b48ba6f9c9695249153dbb226162d8f11d0c32ea4654f4396e, output 1a83086d37357da89be1e40efc9508b1a3d87655906da6203f347df3ad3fbf0c.
+
+Next use the transparent WebM clips on an upper Kdenlive video track and select the desired background on a lower track. Per-clip manifests and validation files retain the camera fits, fixed viewport, alpha checks and source identities.
+
+## 2026-11-09 — Compare633/634 for documentation visualization
+
+User requested a choice between633 and634. Reviewed existing replay and sensor manifests, maps, sampled continuous-video frames, portable source logs and the629–634 parking review. Recommend634 for the main driving/sensor visualization based on cleaner repeated-lap presentation and denser timed pose coverage. Raw deduplicated timed field samples are574/635 (633/634). Internal gaps longer than1.5s are4 totalling31.381s versus3 totalling17.838s, largest9.519s versus7.992s. Neither interpolated centreline crosses the nominal inner rectangle in these existing models. Logged camera activity counts109/133, accepted observations10/10, sampled explicit ToF-use records25/29. These counts describe recorded evidence rather than acquisition rates or physical accuracy.
+
+Both footers report completed/final_parking_stop and truncated0. Durations190.338s CCW/198.688s CW. Parking-focused comparison favors633 for shorter planner pauses (max1.204s versus10.151s;634 also8.570s), though633 has7 corrections versus634 four. Timed parking trace ends 23.181s/33.254s before RUN_END. Existing continuous clips assign the untimed final result to RUN_END and interpolate that tail, so use filmed parking to substantiate the closing manoeuvre. Physical contact reports remain unverified per the existing batch record.
+
+Portable originals20261101_log_633_ccw.txt SHA-256 069666c69da124d83fce97efa0b7e40654898ea14f111c25872731f67c1a1813 and20261101_log_634_cw.txt SHA-256 ec36d786488a266067586dfe4c21de8df10905a8b8f3adec93fecfe245a3cd42 match the replay manifests. Next select the existing local_workspace/video-documentation/sensor-usage/run_634_sensors_4x.mp4 (50.433s) for the main insert and check the final parking against associated footage. This review establishes no mapping between these run IDs and DJI0066/0067/0068.
+
+
+## 2026-11-10 — Run633 drone-gap sensor visualization
+
+User selected original logged poses as authoritative, drone tracking only in gaps, and adjusted displayed ToF distances reaching modeled surfaces. Completed four silent MP4 working exports under local_workspace/video-documentation/sensor-usage/run-633-drone/, panel and field-only at1x/4x. Panel includes synchronized drone footage and enlarged parking detail. The source is the unchanged complete portable original20261101_log_633_ccw.txt, SHA256069666c69da124d83fce97efa0b7e40654898ea14f111c25872731f67c1a1813.
+
+Added preparation, alignment, reconstruction and rendering scripts in simulation/. Source0066/0067 tracking uses saved stabilization transforms and calibrated1000mm-square inner walls. Estimated run start0066 4:42.85, boundary run42.708567s, end0067 2:27.629433. All574 timed field poses plus the final result at RUN_END are preserved exactly in XY and wrapped heading. Drone-shaped initial/internal gaps and23.181s parking tail are corrected smoothly to logged endpoints. Median centered alignment discrepancy115mm/8.5deg remains an estimate. Parking rail inward faces232.5/480mm reproduce first logged right101mm and rear62.3mm. Physical chassis overhangs125/40mm, width123mm.
+
+Orange/blue/purple side/rear rays use geometric surface intersections and projected numeric labels. Manifest retains original sampled ranges, ages, validity and source lines. Thin activity, explicit use, documented control role, correction intervals and untimed grey geometry guides are distinguished. Camera field-of-view and accepted target rays use logged events. Untimed final rear corrections have no invented measurement timestamps. Evidence is sampled and capped. Pillar geometry uses accepted logged map centers.
+
+Validation reproduced575 anchors, found no reconstructed centerline crossings of the inner square, verified positive rays ending on scene surfaces, and decoded first/middle/last frames with exact expected frame counts for all four exports. Original-speed output190.366667s at30fps,4x47.6s. No extra end holds. Root and sensor working indexes link this revision. No firmware changes or new test batch. Next user step is review/import the1x panel or field-only clip into Kdenlive. Any further trajectory refinement must continue to preserve logged anchors unless the user changes that policy.
+
+
+## 2026-11-10 — Run633 map-only refinement
+
+User requested only the map export, a continuous aging trail, ToF graphics limited to relevant use and camera only at accepted observations. User explicitly reconfirmed retaining all logged pose points despite parking disagreement. Completed local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_1x.mp4,1080square,30fps,5711frames/190.367s. Working indexes link this revision.
+
+Found a real prior tracking failure near the0066/0067 boundary: the old proximity tracker followed small fixed objects and produced incorrect unlogged corner motion. Added simulation/refine_run_633_tracking.py to restrict detections to robot-sized silhouettes and measure orientation by PCA with180-degree continuity.3044/3096 cached frames have valid robot silhouettes; largest missing detection interval2.803s. Saved video_track_refined.json separately. Gap endpoints search film associations within3s and map the selected interval onto fixed logged timing, then smoothly correct residual endpoint errors. Final parking tail uses filmed start association169.482s for log167.157s, with original final video time retained. Missing-interval timing remains approximate. All574 original field poses and final-result anchor remain exact.
+
+Recovered11 initial rear-positioning local samples using the logged field-start rebase, giving586 anchors total. This replaces an erroneous initial video extrapolation. The unlogged final parking residual correction is limited by physical chassis/bay geometry so shifting the filmed path to the final logged result does not push the chassis through a rail. Logged parking samples remain untouched and can still disagree with the film. Final-result timestamp remains approximated at RUN_END. Original complete evidence/hash is unchanged from the preceding entry.
+
+New simulation/render_run_633_map.py exports only map1x. Trail alpha is1/(1+age/20.832s), based on recorded lap2-to3 boundaries, yielding half/third opacity after one/two periods. Camera graphics require accepted use. ToF requires explicit use, documented control role or correction-counter interval; general activity and untimed guides are omitted. Distances remain clearly labelled projected values. Verified exact anchors/heading, no reconstructed inner-square crossings, positive surface intersections, sensor filtering, fading values and first/middle/last export decode with exact frame count. Next review/import this map-only clip into Kdenlive. Additional formats can be generated on request from the same cached evidence.
+
+## 2026-11-10 — Run633 measured parking and targeted camera revision
+
+User requested faint potential pillar positions, camera cones pointing at the measured pillar, useful final-parking ToF graphics, synchronized closing motion and correction of the first-lap bottom-left red scan. User explicitly authorized changing final-parking pose points using ToF first and footage for timing, superseding the earlier parking-anchor requirement. Completed the updated map-only1x export at local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_1x.mp4. The original source log and firmware remain unchanged.
+
+All24 firmware candidate seats are faint background squares. Accepted red/green pillars remain solid. Camera events now retain raw sightings separately and target their accepted canonical seat centers. The bottom-left RED seat1 raw sighting(-625,-681) was about252mm from the accepted(-500,-900) pillar, explaining the previous off-target graphic. Stylized translucent target cones taper directly onto accepted pillar/clear-seat centers. They illustrate targeted observations and do not claim a calibrated angular FOV. Only10 accepted camera events are shown.
+
+Added simulation/run_633_sensor_guided.py. Timed final-parking geometry keeps encoder X and gyro heading, with108 reliable right-ToF wall constraints providing a median-filtered lateral registration. Freshness/range/heading and conservative side-fan checks exclude close rail returns from wall registration. Registration is retained across marker crossings and smoothed to avoid invented sideways jumps. Parking samples and their ToF events receive a smooth footage-matched local clock adjustment.345 course/local poses remain exact. Parking points can change under the new authorization. Source measurements and source/rendered clock pairs are retained in the manifest.
+
+Further refined filmed headings with minimum enclosing chassis rectangles, using continuous silhouette PCA to resolve their axes. video_track_measurement.json preserves this separately from the earlier track. Found that the former clip's end at video-run190.338s cut off the actual last straight reverse. Filmed reverse from192.058s to193.860s measures53.708mm, agreeing with the logged last segment53.2mm. Its displayed path uses53.2mm and the logged final XY/heading, with filmed monotonic progress. Corrected source0067 endpoint151.151s, approximately2:31.15. Export duration is193.867s at30fps,5816frames. Do not infer a firmware clock-drift cause from this reconstruction.
+
+Useful parking wall/marker scans and close-rail observations now have ToF rays. Three accepted closing rear-reference corrections lack individual timestamps/raw ranges. Dashed rear rays are limited to the eligible near-straight low-speed filmed reference window before the last reverse and labelled estimated. Their precise times and numeric raw ranges are not claimed. Other displayed distances remain projected surface intersections. Continuous reciprocal trail fading is retained.
+
+Verified original evidence SHA256069666c69da124d83fce97efa0b7e40654898ea14f111c25872731f67c1a1813,345 unchanged course/local poses,10 exact accepted camera targets,24 unique candidate seats, positive chronological parking mapping, monotonic final reverse with exact53.2mm displacement/final pose, no reconstructed inner-square crossing, and first/middle/last decode with exact export frame count. Next review/import the updated map-only clip into Kdenlive. Future refinements should keep robot measurements primary for parking geometry, footage for timing, and the closing rear-reference timing uncertainty explicit.
+
+## 2026-11-10 — Run633 camera field-of-view and clean distance labels
+
+User requested both camera field-of-view side lines during scanning, a straight target line and distance-only ToF labels. Replaced the tapered target triangle with the calibrated angular cone using principalX164.4px/focalX248.9px and320px image width, approximately33.4deg left/32.0deg right. It appears during the existing accepted scan-event windows. A straight line still ends at the accepted pillar/clear-seat center. Faint cone depth follows target range and is clipped at modeled surfaces using the same intersection logic as ToF. Angular calibration does not establish a maximum detection range.
+
+ToF labels now contain only the rounded distance and mm, as explicitly requested. Projection and closing rear-reference timing limitations are retained in README/manifest rather than on the numeric labels. Regenerated and verified the single map-only1x MP4 at the existing latest path,5816frames/193.867s. Measurement/trajectory checks still pass. Next review/import this latest clip. Continue using accepted scan events for camera visibility and preserving the documented uncertainty of closing rear-reference times.
+
+## 2026-11-10 — Run 633 restored log timing and corrected green pillar
+
+User reported poor synchronization and requested logged positioning at logged times, with footage only in gaps. This supersedes the earlier parking retiming and lateral re-registration. The revised map reads 619 timed field poses, including 240 final-parking samples and 45 additional scan/correction records. All reproduced exact XY and heading at their logged timestamps. The 11 rebased initial local poses remain available. Sensor event timestamps match their source records. Video fills pose gaps longer than 1.5 seconds and is fitted to the logged endpoints. The 53.2 mm final straight reverse begins at an estimated 188.589 seconds inside the untimed tail and ends at the logged finish of 190.338 seconds.
+
+The rectified overhead footage shows the top green pillar at outer middle seat 14, world (0, 1100) mm. The firmware assigned it to seat 13 at (500, 900) mm. The displayed map, camera target and ray intersections use seat 14. The manifest retains both assignments. Other pillar positions follow the log.
+
+Completed and decoded the map-only MP4 at local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_log_timed_1x.mp4, 5711 frames at 30 fps. Windows denied replacement of the previous filename, so the verified render was finalized under the new filename and the README points to it. Reproduce with `python simulation/render_run_633_map.py`. The next review compares this clip on the log timeline, with estimated timing confined to missing data.
+
+## 2026-11-11 — Run 633 playback-speed verification
+
+User reports that aligning the middle of round 2 with the footage puts unparking roughly 10 seconds late and the simulation ending several seconds early. Verified the actual latest MP4 with ffprobe, including all 5711 frame timestamps. It starts at zero, advances uniformly at 30 fps and lasts 190.366667 seconds. Original log elapsed time is 190.338 seconds. Twelve decoded frames across departure, course and parking match newly rendered log-clock states at the same presentation times, with compression PSNR 38.5–41.5 dB. Original and transparent stabilized drone clips retain matching durations and 30000/1001 fps. No playback-speed or missing-frame encoding fault was found.
+
+The log RUN_LAP times are 76.976, 97.800 and 118.332 seconds. Film-tracked positive-X bottom crossings occur at source virtual times 359.304, 381.106 and 405.805 seconds. Those are geometric crossing estimates and differ from the exact firmware lap condition. Their correspondence and initial departure association require the user's specific alignment timestamps. Asked for simulation and drone timestamps at the aligned round-2 point and whether the reference is original or stabilized. Pending that input, preserve the verified log-rate export. The next step is diagnose the particular filmed/logged correspondence or editor interpretation before applying a justified timing correction. Working verification report is local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/speed_verification.json.
+
+## 2026-11-11 — Run 633 calibrated footage-speed export
+
+User authorized the event-matching timing plan after reporting an approximately seven-second early simulation finish when starts are aligned. Added simulation/calibrate_run_633_clock.py. Matched the initial unparking heading peak, three positive-X bottom crossings and the final settled reverse between log and footage. The corresponding log crossing times are 76.910498, 97.812345 and 121.926339 seconds. The third geometric crossing occurs during parking approach, after the firmware lap-completion condition, so RUN_LAP elapsed118.332 cannot substitute for it.
+
+A single affine conversion fits all five events. Film virtual seconds equal279.788471302 plus1.034469646608 times log seconds. The replay duration is196.898884 seconds,6.560884 seconds longer than the log clock. Fit residuals are at most0.133797s. Four independent departure/parking extrema checks have residuals0.048299,-0.602446,-0.434755,-0.586546s. Compared source-frame contact sheets for initial turn, two lap crossings, scan staging and final stop. This establishes an empirical timing correction without identifying the firmware or recording-clock cause.
+
+The same uniform conversion drives robot positions, camera/ToF events and trail aging. All619 logged field positions remain exact under the conversion. Missing-interval tracking now uses the calibrated footage clock. The original53.2mm final reverse and logged final pose remain the closing geometry. Initial local rear poses, corrected top green seat, calibrated camera boundaries and distance-only ToF labels are retained.
+
+Completed local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_video_synced_1x.mp4,5907frames at30fps,196.900s. Align its first frame to DJI0066 at4:39.788. DJI0067 begins at replay45.770s and its151.129s frame matches the replay finish. Metadata includes the five fitted events, four independent checks and residuals. Verified encoded duration/frame count and nine decoded event frames against the calibrated renderer with compression PSNR above32dB. Working verification is video_sync_verification.json beside the clip. The README now links this export. Next review/import this footage-synchronized version with the stated start alignment. Event extraction and intermediate unlogged motion retain estimation uncertainty.
+
+## 2026-11-11 — Kdenlive loaded the earlier run633 export
+
+User still reported an approximately six-second early finish and asked about HD30fps. Inspected the open Kdenlive project through the computer-use skill. Window title confirms HD1080p30fps. The project bin, selected clip monitor and selected effect stack all identify run_633_map_log_timed_1x.mp4. The bin shows duration00:03:10:11. The corrected run_633_map_video_synced_1x.mp4 is absent from the visible bin. The earlier clip is6.533s shorter than the corrected196.900s file, explaining the reported discrepancy. Inspection changed only window activation. Next use the video_synced clip in the existing edit and retain the calibrated start alignment. A29.97-to30fps difference across this duration is approximately0.2s.
+
+## 2026-11-12 — Run633 doubled distance-label text
+
+User requested twice the video text size after showing the small map inset in the documentation edit. Increased map distance-label font from21px to42px bold. Label boxes now follow measured font dimensions and avoid the robot and viewport edges. Reviewed early rear sensing, side sensing and closing parking frames.
+
+Completed local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_video_synced_large_text_1x.mp4. The latest working README links it. Verified42px font,5907frames at30fps/196.900s and nine decoded event frames against the renderer. The footage clock calibration remains the reference for this export. Next replace the simulation source in the Kdenlive edit with this large-text version, using DJI0066 at4:39.788 for start alignment.
+
+## 2026-11-17 — Visualization tools prepared with incoming main changes
+
+User requested committing the visualization work while accounting for incoming changes. Fast-forwarded main through eb80e12, ad291e1 and484a23e, preserving incoming parking, camera diagnostics, evidence and lap-one updates. Resolved the engineering-history and rules-reference append conflicts by retaining both incoming and local additions.
+
+Archived originals are now the default inputs for the general replay, sensor overlays and602 Open renderers. The general renderer also accepts existing working-copy filenames. Font loading resolves Arial or DejaVu Sans through the installed font search. Added simulation/VIDEO_VISUALIZATION.md with dependencies, source footage, preprocessing inputs and reproduction commands, linked from the simulation README.
+
+The user identified stabilization as a one-time utility. Retained that script under ignored local_workspace/stabilize_overhead_video.py. The visualization pipeline consumes its saved camera-transform analysis as an external preprocessing input. Original footage, cached frames and generated media remain local working material.
+
+All16 visualization scripts compile. Checked default discovery of601/632/633/634 archived inputs, legacy log_633.txt input compatibility, both602 Open sequences, sensor extraction and font loading. Rechecked exact geometry for619 run633 poses and the shared calibrated pose/event clock. No firmware edits were introduced by this preparation. Next use the committed reproduction guide with the original footage and saved preprocessing inputs, and review the latest large-text map clip in the documentation edit.
