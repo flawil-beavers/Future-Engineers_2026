@@ -8,6 +8,9 @@ contact testing.
 
 ## Files
 
+Submission-video rendering, sensor graphics and run633 footage synchronization
+are documented in [VIDEO_VISUALIZATION.md](VIDEO_VISUALIZATION.md).
+
 | File | Description |
 |------|-------------|
 | `check_open_wall_following_20261028.py` | Compares 11200 wall-following commands in 560 scenarios with the pre-change Open controller and executes actual ToF filtering for first-corner timing; unresolved findings documented in `OPEN_CHALLENGE_REVIEW_20261027.md`. |
