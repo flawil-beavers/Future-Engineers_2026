@@ -1,115 +1,81 @@
 # WRO 2026 Future Engineers rules reference
 
-2026-11-11 Surprise Rule verification: the official season page links
-[Future Engineers Extra Task / Surprise Rule, version November 9, 2026](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf).
-The additional task replaces exactly one sign with its opposite colour and
-height50 or150mm; its unchanged base is50x50mm. Passing must use the original
-colour on all three laps. The first sign encountered in the required direction
-is excluded, not the entire starting straight. A second encountered sign in
-that straight remains eligible. Participation is optional and decided before
-the attempt; firmware must not switch mode while driving. The general rules
-remain the January15,2026/55-page edition. The official Q&A was checked again;
-no newer Surprise Rule clarification was found in that check.
+## Canonical sources and verification
 
-On 2026-11-08 the Open Challenge video review rechecked the canonical January 15,
-2026 PDF and official Q&A. The PDF remains 55 pages and matches the recorded
-`c23ba063...` SHA-256 below. Page 11 specifies 1000 or 600 mm corridors, with
-+/-100 mm tolerance at the International Final. Rule 13.1 on page 26 specifies
-the 3000 x 3000 mm track. Rule 13.16 on page 27 permits square or rectangular
-inner walls. Appendix B on page 43 gives 1000, 1400 and 1800 mm segment sets
-and thickness-adjusted short pieces. The filmed MVI_1318 layout is consistent
-with a 1000 x 1800 mm enclosure, giving 600 mm corridors at its ends and 1000 mm
-at its sides. Open layouts vary with the draw.
+- [Official season page](https://wro-association.org/competition/2026-season/).
+- [General and Game Rules](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf), January 15, 2026, 55 pages.
+- [Modified Traffic Sign Surprise Rule](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf), November 9, 2026.
+- [Official game mat](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf).
+- [Official Questions and Answers](https://wro-association.org/competition/questions-answers/), part of the international rules and able to clarify or override the PDF.
 
-2026-10-27 inner-route review: canonical PDF and official Q&A checked again.
-The PDF remains January15,2026/55 pages; latest listed Future Engineers
-parking-row clarification remains October16. Recorded-map shortcuts retain
-the existing RED-right/GREEN-left whole-vehicle passing checks and all confirmed
-pillars. Inner-band preference never overrides a required passing side.
-
-2026-10-18 route/speed review: canonical PDF still identifies January 15, 2026,
-55 pages; local copy has SHA-256
+The recorded General Rules SHA-256 is
 `c23ba063c548e74812ffd9ed580931b2d4264541261b5f8eaff643a1e3201043`.
-Official Q&A rechecked. Its October 16 clarification excludes the three
-outer-wall sign positions in the parking straight at the International Final;
-this agrees with the existing inner-row start-layout assumption. It does not
-permit ignoring a confirmed sign on an arbitrary practice field. The optimization
-retains every confirmed sign and the existing passing-side policy.
+Follow AGENTS.md for downloading, caching and verifying official PDFs.
+National competitions may adapt the rules; use the applicable Swiss organizer's
+rules and recheck official Q&A before competition.
 
-Use the official WRO sources instead of committing a local copy of the rules
-PDF:
+| Verification date | Result |
+| --- | --- |
+| 2026-11-17 | Season page still links the November 9 Surprise Rule. Its full text and score sheet were read; Q&A has no additional Surprise Rule clarification. |
+| 2026-11-11 | General Rules remain the January 15 edition. First-encountered-sign exclusion confirmed for the Surprise Rule. |
+| 2026-11-08 | General Rules version/hash and Q&A checked for inner enclosure geometry. |
+| 2026-10-18 and 2026-10-27 | General Rules and Q&A checked for parking-row restrictions and passing-side preservation. |
 
-- [Official WRO 2026 season page](https://wro-association.org/competition/2026-season/)
-- [Future Engineers General & Game Rules PDF](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf)
-- [Official Future Engineers Game Mat PDF](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf)
-- [Official WRO Questions & Answers](https://wro-association.org/competition/questions-answers/)
+Earlier checks, page inspections and engineering context remain in the
+[preserved reference history](docs/history/WRO_2026_RULES.md). This consolidation
+adds no new source verification beyond the dates above.
 
-Agents may download the PDF without asking for additional permission whenever
-a task materially involves the competition rules. If no copy is already
-available, download it to
-`local_workspace/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf`.
-Using the local copy makes repeated searching, screenshots, and page-level
-inspection faster. Before relying on it, verify its source and version against
-the official links above and check the official Q&A for later clarifications.
-Never commit the downloaded file.
+## Modified Traffic Sign Surprise Rule
 
-The linked PDF is the 55-page `WRO 2026 Future Engineers Category - Game Rules
-2026`, version January 15, 2026. The official season page states that Q&A
-answers are part of the rules and may clarify or override the PDF.
+Participation is optional and declared before each attempt, with no change
+after starting. Exactly one sign changes to the opposite colour and a height
+of 50 or 150 mm instead of 100 mm. Its position and 50 x 50 mm base stay fixed.
+The first sign encountered in the required direction is excluded; a later sign
+in the starting straight remains eligible. Judges record the original colour
+and position; selected position and modified height are shared by participating
+teams in the same official round. Non-participants retain the original sign.
 
-National organizers may adapt the international rules. Before a competition,
-confirm the applicable Swiss organizer's version and re-check the official Q&A
-for later clarifications.
+Pass according to the original colour on all three laps: modified green is
+passed right, modified red left. Other signs keep their normal rules.
+Incorrect passage ends the attempt under the existing rules. Each correct
+passage earns 5 points, up to 15, retained even if all laps are not completed.
+Repairing halves the total including the bonus. The three-minute limit remains.
+Maximum Obstacle Challenge and overall scores are 77 and 137 respectively.
 
-Links verified on 2026-08-30.
+## Passing, layout and lap completion
 
-Canonical PDF and official Q&A rechecked on 2026-10-06 for optimized laps 2/3.
-The PDF remains the 55-page January 15, 2026 edition. Rules 9.16 and 9.19 keep
-one direction and RED-right/GREEN-left on all three laps; no mandatory turn
-after lap 2. Rule 9.22 requires the three-lap return; 9.24.4 ends Obstacle on
-a stop in the finish section or parking lot. The project targets parking too;
-the new three-lap stop stages testing before that separate parking task.
+Rules 9.16 and 9.19 retain one direction and RED-right/GREEN-left for all
+three laps; no mandatory turn follows lap 2. Rule 9.19 and Appendix A.5
+(pages 18 and 39-40) assess passage when the complete vehicle crosses the
+sign's transverse line. A sign already behind the start need not be approached
+just to pass it initially; a new wrong-side crossing has no such exception.
 
-On2026-09-26 the canonical PDF was rechecked:55 pages, January15_2026 version.
-Figure8c (printed page15) was rendered and visually inspected. Its36 cards
-contain middle-station pillars only as solitary signs; two-pillar cards occupy
-the two longitudinal ends. These imply empty ends after a confirmed middle,
-and an empty middle after confirmed signs at both ends. This inference assumes
-the official card layouts; it is not measured camera evidence and does not apply
-to arbitrary practice arrangements. Official Q&A was rechecked on the same date;
-current Future Engineers clarifications concern parking measurements/direction
-and constant vehicle size, with no amendment to this card-layout inference.
+Figure 8c (page 15) has middle-station signs only as solitary signs and pairs
+at the longitudinal ends. Inferring empty ends from a middle sign, or an empty
+middle from both ends, assumes this official layout and does not establish
+camera evidence on an arbitrary practice field. Figure 8e (page 16) places
+parking-section signs in the inner row. The October 16 Q&A excludes its three
+outer-row positions at the International Final; confirmed signs on a different
+practice layout must still be respected. Route shortcuts retain passing sides.
 
-2026-10-06 recheck: a fresh download from the canonical PDF URL matches the
-local copy byte-for-byte, SHA-256
-`c23ba063c548e74812ffd9ed580931b2d4264541261b5f8eaff643a1e3201043`,
-55 pages, January15_2026 version. Official Future Engineers Q&A was checked
-again; no starting-sign passing exception is listed. Figure4/page8 and
-Figure8c/page15 were visually inspected. Figure8e/page16 moves all parking-
-section signs to the inner row. The 36 cards therefore collapse to six
-single-sign and four end-pair inner-row arrangements in that section.
-Rule9.19/page18 and AppendixA.5/pages39--40 apply the passing side when the
-vehicle completely crosses a sign's transverse line in the driving direction.
-A sign already behind the starting vehicle need not be approached just to
-pass it initially. This is a geometric distinction, not an exemption allowing
-a fresh wrong-side crossing caused by an observation/localization manoeuvre.
-AppendixA/page41's relaxed passing side concerns only travel to parking after
-the three official laps. Any different national clarification must be checked
-against the applicable organizer's rules before using it.
+Scoring item 1.2 (page 21) completes a lap once the whole vehicle leaves the
+last corner, without another full start-straight traversal. Rule 9.22 requires
+the three-lap return; 9.24.4 ends Obstacle on a stop in the finish section or
+parking lot. Appendix A (page 41) relaxes passing sides on travel to parking
+after three laps. Q&A allows opposite-direction final parking.
+The project's 250 mm handover localization reserve is an engineering assumption,
+not a rule or independent pose measurement.
 
-2026-10-07 parking completion recheck: the canonical January 15 PDF,
-scoring item 1.2 (printed page 21), completes a lap when the whole vehicle has
-left the last corner section. It does not require another full traversal of
-the start straight. The official Future Engineers Q&A explicitly permits
-opposite-direction travel while parking after the three laps. Production now
-checks all body/wheel polygons inside the start straight before the final
-handover, including a 250 mm longitudinal localization reserve. This reserve
-is an engineering assumption, not a rule or an independent position measurement.
+## Field dimensions and visualization assumptions
 
-2026-10-09 Inspector mat recheck: the official2026 season page links the
-one-page FutureEngineers_Playfield PDF above (legacy internal title retained).
-Source SHA-256 is recorded in tools/robot-run-inspector/assets/fe-2026-mat.json.
-The PDF MediaBox includes5mm bleed per side; its TrimBox is the3200mm square
-mat. Inspector uses the trimmed official artwork with separately drawn nominal
-walls and logged objects. Official Q&A was rechecked; physical placement and
-national adaptations still require their own verification.
+Rule 13.1 (page 26) specifies a 3000 x 3000 mm track. Page 11 gives 1000 or
+600 mm corridors, with +/-100 mm tolerance at the International Final.
+Rule 13.16 permits square or rectangular inner walls. Appendix B (page 43)
+lists 1000, 1400 and 1800 mm segments and thickness-adjusted short pieces.
+The filmed MVI_1318 enclosure is consistent with 1000 x 1800 mm, giving
+600 mm end corridors and 1000 mm side corridors. This is a filmed-layout
+interpretation; Open layouts vary with the draw.
+
+The official mat PDF has 5 mm bleed per side and a 3200 mm square TrimBox.
+Inspector trims the artwork and separately draws nominal walls and logged
+objects. Its source hash is in tools/robot-run-inspector/assets/fe-2026-mat.json.

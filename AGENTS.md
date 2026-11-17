@@ -8,9 +8,15 @@
   analyzing logs or modifying code; finish portable evidence indexing next.
 - Read `AGENT_DOCUMENTATION.md` before continuing an existing investigation or
   robot-validation sequence.
+- It is the current handoff, not the full history. Follow its relevant review
+  and evidence links before acting. For an older run, build, rejected approach
+  or decision not covered there, consult `docs/history/README.md` and the
+  archived handoff. Archived test procedures are historical, not active orders.
 - Append durable engineering findings and exact next steps there after a
-  substantial session. Keep mandatory agent instructions in this file and
-  project history in `AGENT_DOCUMENTATION.md`.
+  substantial session. Keep the active summary current and entries concise;
+  detailed analysis belongs in linked review reports. Archive superseded
+  history through `docs/history/README.md` without discarding evidence or
+  limitations. Keep mandatory agent instructions in this file.
 - For parking/unparking motion-error tests, also read
   `PARKING_POSE_IMPLEMENTATION_PLAN.md`. After each received test batch, append a
   concise entry to `AGENT_DOCUMENTATION.md` with firmware identity, committed
