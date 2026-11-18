@@ -626,15 +626,13 @@ Dedicated modes are provided for servo centre, turn radius, motor minimum drive,
 
 # Video
 
-<!-- TODO: Replace the historical Open Challenge video and add the final
-Obstacle Challenge video after the competition configuration and robot geometry
-are frozen. Requirements are tracked in DOCUMENTATION_TODO.md. -->
+## Open Challenge
 
-## Open Challenge - Development Video
+[![Watch the Open Challenge video](https://img.youtube.com/vi/koMCLdpg0-I/maxresdefault.jpg)](https://www.youtube.com/watch?v=koMCLdpg0-I)
 
-The following video documents an earlier Open Challenge implementation and is retained as engineering-history evidence.
+## Obstacle Challenge
 
-[![Watch the Open Challenge development video](https://img.youtube.com/vi/7w7cAxLPb28/maxresdefault.jpg)](https://youtu.be/7w7cAxLPb28)
+[![Watch the Obstacle Challenge video](https://img.youtube.com/vi/5dCMkFn-6TI/maxresdefault.jpg)](https://www.youtube.com/watch?v=5dCMkFn-6TI)
 
 # Robot Photos
 
