@@ -1,0 +1,136 @@
+
+===== ROBOT INITIALIZATION START =====
+
+===== SERIAL INITIALIZED =====
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+nav_long_range_active: 0
+Initializing ToF: Right_ToF
+nav_long_range_active: 0
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+System disabled. Pending mode: OBSTACLE_CHALLENGE
+Position initialized: (0.00, 0.00), heading=0.00°
+System disabled. Pending mode: OBSTACLE_SEAT_TEST
+Temporary mode until restart: OBSTACLE_SEAT_TEST
+Safe USB handoff active; terminal remains available.
+SYSTEM ENABLED
+Camera and vision initialized.
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
+[SEAT] Use: seat expect <section 0-3> <station 0-2> <L|R> <range_mm>
+Resumed mode: OBSTACLE_SEAT_TEST
+[GYRO] No data for 200ms, re-enabling reports...
+Position initialized: (-1012.30, -0.86), heading=360.05°
+[SEAT] armed id=0 label=0/0/R camera_range=400.0 expected_bearing=-14.5 robot_pose=-1012.3,-0.9,360.0
+[SEAT] event=VOTE color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,360.0 camera=-887.3,-0.8 sighting=-476.4,-87.7 seat=0 expected=0 snap_error=26.7 votes=R1/G0 injections=0
+[GYRO] No data for 200ms, re-enabling reports...
+[PATH] Live avoidance injected seat=0 color=RED
+[SEAT] event=CONFIRMED_INJECTED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,360.0 camera=-887.3,-0.8 sighting=-476.4,-87.7 seat=0 expected=0 snap_error=26.7 votes=R2/G0 injections=1 pass=R peak=271.1 taper=+/-6 circle_clearance=128.6
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,360.0 camera=-887.3,-0.8 sighting=-476.4,-87.7 seat=0 expected=0 snap_error=26.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,360.0 camera=-887.3,-0.8 sighting=-476.4,-87.7 seat=0 expected=0 snap_error=26.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-476.4,-87.5 seat=0 expected=0 snap_error=26.8 votes=R2/G0 injections=1
+[SEAT] event=WRONG_SEAT color=RED bounds=34,80-60,160 valid=yes bearing=22.3 range=311.1 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-599.6,117.8 seat=1 expected=0 snap_error=101.2 votes=R1/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=202,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-476.4,-87.5 seat=0 expected=0 snap_error=26.8 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-476.4,-87.5 seat=0 expected=0 snap_error=26.8 votes=R2/G0 injections=1
+[SEAT] event=WRONG_SEAT color=RED bounds=38,80-64,170 valid=yes bearing=21.2 range=284.7 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-621.9,102.5 seat=1 expected=0 snap_error=121.9 votes=R1/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=204,124-246,134 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,132 valid=yes bearing=-12.0 range=420.0 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-476.4,-87.5 seat=0 expected=0 snap_error=26.8 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=38,82-56,126 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=216,138-258,160 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.7 sighting=-486.4,-85.4 seat=0 expected=0 snap_error=20.2 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=38,82-54,126 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=204,80-246,134 valid=yes bearing=-12.0 range=409.8 pose=-1012.3,-0.9,0.1 camera=-887.3,-0.6 sighting=-486.3,-84.8 seat=0 expected=0 snap_error=20.7 votes=R2/G0 injections=1
+[SEAT] stopped and cleared; drive motor remains off
+Paused. Pending mode: OBSTACLE_SEAT_TEST
+SYSTEM DISABLED
+[SEAT CMD] rejected fields=0 mode=NONE section=-1 station=-1 side=? range=-1
+Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>
+No stationary seat test is active.
+[SEAT CMD] rejected fields=4 mode=NONE section=0 station=1 side=L range=400
+Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>
+SYSTEM ENABLED
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
+[SEAT] Use: seat expect <section 0-3> <station 0-2> <L|R> <range_mm>
+Resumed mode: OBSTACLE_SEAT_TEST
+[SEAT] votes, injection path, and expected seat cleared
+Position initialized: (-1525.64, -0.02), heading=359.91°
+[SEAT] armed id=3 label=0/1/L camera_range=400.0 expected_bearing=14.5 robot_pose=-1525.6,-0.0,359.9
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=VOTE color=RED bounds=48,138-74,180 valid=yes bearing=19.1 range=262.5 pose=-1525.6,-0.0,359.9 camera=-1400.6,-0.2 sighting=-1152.5,85.4 seat=3 expected=3 snap_error=140.0 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_SEAT color=RED bounds=42,80-72,186 valid=yes bearing=19.9 range=250.7 pose=-1525.6,-0.0,359.9 camera=-1400.6,-0.2 sighting=-1164.7,84.7 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=88,80-106,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] stopped and cleared; drive motor remains off
+Paused. Pending mode: OBSTACLE_SEAT_TEST
+SYSTEM DISABLED
+[SEAT CMD] rejected fields=0 mode=NONE section=-1 station=-1 side=? range=-1
+Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>
+[SEAT CMD] rejected fields=0 mode=NONE section=-1 station=-1 side=? range=-1
+Usage while S1/S-1 is active: seat expect <section 0-3> <station 0-2> <L|R> <range 150-1000 mm>
+No stationary seat test is active.
+SYSTEM ENABLED
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
+[SEAT] Use: seat expect <section 0-3> <station 0-2> <L|R> <range_mm>
+Resumed mode: OBSTACLE_SEAT_TEST
+[GYRO] No data for 200ms, re-enabling reports...
+[SEAT] votes, injection path, and expected seat cleared
+Position initialized: (-2037.93, 0.78), heading=359.91°
+[SEAT] armed id=2 label=0/1/R camera_range=400.0 expected_bearing=-14.5 robot_pose=-2037.9,0.8,359.9
+[SEAT] event=VOTE color=RED bounds=174,92-202,130 valid=yes bearing=-5.2 range=430.8 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1484.0,-39.5 seat=2 expected=2 snap_error=73.5 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=VOTE color=RED bounds=172,92-226,144 valid=yes bearing=-6.4 range=365.2 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1550.0,-40.5 seat=2 expected=2 snap_error=64.2 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=VOTE color=RED bounds=176,94-204,128 valid=yes bearing=-5.2 range=442.1 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1472.7,-40.6 seat=2 expected=2 snap_error=79.7 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=VOTE color=GREEN bounds=170,132-200,166 valid=yes bearing=-4.5 range=294.7 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1619.1,-23.0 seat=2 expected=2 snap_error=121.0 votes=R0/G1 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=VOTE color=RED bounds=176,92-204,120 valid=yes bearing=-5.4 range=494.1 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1421.1,-47.0 seat=2 expected=2 snap_error=117.3 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_SEAT color=RED bounds=50,138-72,186 valid=yes bearing=19.1 range=250.7 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1675.9,82.4 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_SEAT color=RED bounds=52,154-74,190 valid=yes bearing=18.8 range=243.5 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1682.3,78.5 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=WRONG_SEAT color=RED bounds=50,80-76,120 valid=yes bearing=19.1 range=494.1 pose=-2037.9,0.8,359.9 camera=-1912.9,0.6 sighting=-1445.8,161.7 seat=3 expected=2 snap_error=100.8 votes=R1/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=178,80-196,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=RED bounds=180,80-198,90 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=2 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] stopped and cleared; drive motor remains off
+Paused. Pending mode: OBSTACLE_SEAT_TEST
+SYSTEM DISABLED

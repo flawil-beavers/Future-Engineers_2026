@@ -1,0 +1,89 @@
+
+===== ROBOT INITIALIZATION START =====
+
+===== SERIAL INITIALIZED =====
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+nav_long_range_active: 0
+Left_ToF distance_mode: 2
+Left_ToF timing_budget_us: 30062
+Initializing ToF: Right_ToF
+nav_long_range_active: 0
+Right_ToF distance_mode: 2
+Right_ToF timing_budget_us: 29966
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+System disabled. Pending mode: CAMERA_CALIBRATION
+Position initialized: (0.00, 0.00), heading=0.00°
+System disabled. Pending mode: OBSTACLE_LIVE_TEST
+Temporary mode until restart: OBSTACLE_LIVE_TEST
+Safe USB handoff active; terminal remains available.
+SYSTEM ENABLED
+Camera and vision initialized.
+[MAP] Reset
+Position initialized: (0.00, -1000.00), heading=0.00°
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=0.0
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT first_corner_mm=500
+
+===== LIVE ONE-LAP PURE PURSUIT TEST =====
+Camera discovery/path injection: ENABLED
+ToF pose correction: ENABLED (fresh frames only)
+Parking exit: BYPASSED
+Direction: LEFT/CCW
+Speed cap mm/s: 175
+Raw ToF stop: DISABLED (side ToF cannot distinguish pillar from wall)
+[LIVE PATH] Ready; 'z' or switch LOW stops immediately
+===========================================
+
+Resumed mode: OBSTACLE_LIVE_TEST
+[LIVE PATH] t_ms=583 idx=0/145 lap=0 injections=0 cte_mm=0.2 heading_err_deg=-0.1 pos=0,-1000 target=175..175 profile=0 measured=0..0 duty=0..0 phase=0 nudge_deg=0.0 scan_seat=-2 tof=468/466
+[GYRO] No data for 200ms, re-enabling reports...
+[PATH] Live avoidance injected seat=5 color=RED
+[MAP] Confirmed S0 station=2 side=LEFT color=RED
+[LIVE PATH] t_ms=889 idx=0/145 lap=0 injections=1 cte_mm=0.4 heading_err_deg=-0.1 pos=0,-1000 target=175..175 profile=175 measured=0..0 duty=0..136 phase=0 nudge_deg=0.0 scan_seat=-1 tof=465/467
+[LIVE PATH] t_ms=1196 idx=1/145 lap=0 injections=1 cte_mm=7.4 heading_err_deg=-0.2 pos=57,-1000 target=175..175 profile=175 measured=69..175 duty=133..139 phase=0 nudge_deg=0.0 scan_seat=-1 tof=464/467
+[LIVE PATH] t_ms=1503 idx=3/145 lap=0 injections=1 cte_mm=6.5 heading_err_deg=-2.6 pos=155,-1001 target=175..175 profile=175 measured=257..284 duty=81..107 phase=0 nudge_deg=0.0 scan_seat=-1 tof=464/465
+[SLIP] deviation=45.6%, angle=6, expected_arc=25.7, actual_arc=37.4, radius=1232.5 mm
+[LIVE PATH] t_ms=1810 idx=4/145 lap=0 injections=1 cte_mm=12.8 heading_err_deg=-6.0 pos=202,-1002 target=175..175 profile=175 measured=136..255 duty=0..0 phase=0 nudge_deg=0.0 scan_seat=-1 tof=464/460
+[LIVE PATH] t_ms=2117 idx=4/145 lap=0 injections=1 cte_mm=18.5 heading_err_deg=-6.5 pos=214,-1002 target=175..175 profile=175 measured=54..69 duty=122..138 phase=0 nudge_deg=0.0 scan_seat=-1 tof=469/455
+[LIVE PATH] t_ms=2425 idx=5/145 lap=0 injections=1 cte_mm=37.3 heading_err_deg=-7.5 pos=281,-1008 target=175..175 profile=175 measured=125..207 duty=131..138 phase=0 nudge_deg=0.0 scan_seat=-1 tof=470/453
+[LIVE PATH] t_ms=2732 idx=7/145 lap=0 injections=1 cte_mm=44.3 heading_err_deg=-10.2 pos=366,-1016 target=175..175 profile=175 measured=253..256 duty=85..99 phase=0 nudge_deg=0.0 scan_seat=-1 tof=476/453
+[LIVE PATH] t_ms=3040 idx=8/145 lap=0 injections=1 cte_mm=51.8 heading_err_deg=-11.5 pos=420,-1024 target=175..175 profile=175 measured=171..229 duty=83..85 phase=0 nudge_deg=0.0 scan_seat=-1 tof=481/447
+[SLIP] deviation=88.1%, angle=-8, expected_arc=11.8, actual_arc=22.2, radius=921.7 mm
+[LIVE PATH] t_ms=3347 idx=9/145 lap=0 injections=1 cte_mm=56.4 heading_err_deg=-10.5 pos=458,-1030 target=175..175 profile=175 measured=129..135 duty=107..125 phase=0 nudge_deg=0.0 scan_seat=-1 tof=84/439
+[LIVE PATH] t_ms=3654 idx=11/145 lap=0 injections=1 cte_mm=48.9 heading_err_deg=-14.2 pos=524,-1040 target=175..175 profile=175 measured=168..208 duty=111..124 phase=0 nudge_deg=0.0 scan_seat=-1 tof=106/435
+[LIVE PATH] t_ms=3961 idx=12/145 lap=0 injections=1 cte_mm=14.7 heading_err_deg=-13.1 pos=603,-1046 target=175..175 profile=175 measured=240..242 duty=82..95 phase=0 nudge_deg=3.6 scan_seat=-2 tof=9999/430
+[LIVE PATH] t_ms=4268 idx=13/145 lap=0 injections=1 cte_mm=11.3 heading_err_deg=-5.0 pos=658,-1035 target=175..175 profile=175 measured=186..210 duty=80..88 phase=0 nudge_deg=13.0 scan_seat=-2 tof=9999/424
+[SLIP] deviation=33.1%, angle=-31, expected_arc=18.0, actual_arc=24.0, radius=215.6 mm
+[LIVE PATH] t_ms=4576 idx=14/145 lap=0 injections=1 cte_mm=17.0 heading_err_deg=2.7 pos=699,-1018 target=175..175 profile=175 measured=144..165 duty=96..105 phase=0 nudge_deg=16.8 scan_seat=-2 tof=9999/422
+[LIVE PATH] t_ms=4883 idx=15/145 lap=0 injections=1 cte_mm=26.9 heading_err_deg=8.6 pos=747,-992 target=175..175 profile=175 measured=150..172 duty=112..114 phase=0 nudge_deg=15.7 scan_seat=-2 tof=9999/425
+[LIVE PATH] t_ms=5190 idx=16/145 lap=0 injections=1 cte_mm=35.1 heading_err_deg=18.8 pos=800,-955 target=175..175 profile=175 measured=193..205 duty=104..104 phase=1 nudge_deg=6.3 scan_seat=7 tof=9999/431
+[LIVE PATH] t_ms=5497 idx=17/145 lap=0 injections=1 cte_mm=41.0 heading_err_deg=28.5 pos=848,-916 target=175..175 profile=175 measured=205..214 duty=102..103 phase=1 nudge_deg=0.0 scan_seat=7 tof=9999/440
+[LIVE PATH] t_ms=5805 idx=18/145 lap=0 injections=1 cte_mm=21.2 heading_err_deg=30.2 pos=877,-860 target=175..175 profile=175 measured=207..214 duty=102..103 phase=1 nudge_deg=0.0 scan_seat=7 tof=9999/502
+[SLIP] deviation=139.4%, angle=7, expected_arc=12.3, actual_arc=29.4, radius=1055.0 mm
+[LIVE PATH] t_ms=6113 idx=19/145 lap=0 injections=1 cte_mm=10.0 heading_err_deg=24.2 pos=891,-801 target=175..175 profile=175 measured=192..203 duty=102..102 phase=1 nudge_deg=0.0 scan_seat=7 tof=9999/9999
+[LIVE PATH] t_ms=6420 idx=20/145 lap=0 injections=1 cte_mm=29.2 heading_err_deg=15.6 pos=907,-745 target=175..175 profile=175 measured=183..190 duty=103..103 phase=1 nudge_deg=8.9 scan_seat=7 tof=9999/9999
+[LIVE PATH] t_ms=6727 idx=21/145 lap=0 injections=1 cte_mm=40.6 heading_err_deg=6.4 pos=925,-692 target=175..175 profile=175 measured=176..176 duty=103..104 phase=1 nudge_deg=26.6 scan_seat=7 tof=9999/9999
+[PATH] Perception blocked at S1 station=0 forward_mm=135
+[LIVE PATH] t_ms=7034 idx=23/145 lap=0 injections=1 cte_mm=41.8 heading_err_deg=-4.6 pos=942,-646 target=0..175 profile=175 measured=155..166 duty=104..104 phase=2 nudge_deg=35.0 scan_seat=7 tof=399/9999
+[LIVE PATH] ABORT: unresolved station reached perception limit
+
+===== LIVE OBSTACLE PATH TEST RESULT =====
+Result: FAIL
+Direction: LEFT/CCW
+Completed laps: 0
+Obstacle injections: 1
+Maximum cross-track error mm: 57.6
+Maximum heading error deg: 30.2
+Failure reason: ABORT: unresolved station reached perception limit
+==========================================
+
+Mode OBSTACLE_LIVE_TEST failed.
+SYSTEM DISABLED

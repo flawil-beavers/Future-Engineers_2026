@@ -47,6 +47,7 @@ struct Blob
     bool heightTopClipped = false;
     uint32_t frameSequence = 0;
     int16_t heightBaseWidthPx = 0;
+    int16_t heightBaseCenterX = 0;
 
     void reset(ColorType newColor)
     {
@@ -66,6 +67,7 @@ struct Blob
         heightTopMeasured = heightTopClipped = false;
         frameSequence = 0;
         heightBaseWidthPx = 0;
+        heightBaseCenterX = 0;
     }
 
     int width() const

@@ -26,12 +26,12 @@ void pixel(int x,int y,uint16_t color){
  int offset=((239-y)*320+(319-x))*2;
  pixels[offset]=color>>8;pixels[offset+1]=color&255;
 }
-float vertical(float distance,float z,float cameraHeight=126,float fy=249,float pitch=15.2f){
+float vertical(float distance,float z,float cameraHeight=85.5f,float fy=259,float pitch=5.62f){
  const float angle=pitch*PI/180,dy=cameraHeight-z;
  return 119.5f+fy*(dy*cosf(angle)-distance*sinf(angle))/
                    (distance*cosf(angle)+dy*sinf(angle));
 }
-Blob image(ColorType color,float mm,float distance,int center=160,float yaw=0,float cameraHeight=126){
+Blob image(ColorType color,float mm,float distance,int center=160,float yaw=0,float cameraHeight=85.5f){
  std::fill(pixels.begin(),pixels.end(),0);
  const int foot=int(std::round(vertical(distance,0,cameraHeight)));
  const int top=int(std::round(vertical(distance,mm,cameraHeight)));
@@ -55,18 +55,45 @@ bool vote(uint8_t id,Blob &blob){
  prepareConsecutiveVote(id,blob.color);return recordObservedSeatVote(id,blob);
 }
 int main(int argc,char **argv){visionTest.begin();int rendered=0,policy=0;
+ if(argc>4 && std::string(argv[1])=="--sequence"){
+  resetSeats();seats[0].confirmed=seats[0].injected=true;
+  const auto color=ColorType(std::stoi(argv[2]));const int height=std::stoi(argv[3]);
+  Blob b;const int needed=height==100 ? 2:3;
+  for(int i=4;i<argc;++i){
+   std::ifstream f(argv[i],std::ios::binary);f.read(reinterpret_cast<char*>(pixels.data()),pixels.size());
+   assert(f.gcount()==int(pixels.size()));clockMs+=40;
+   assert(visionTest.update(pixels.data(),320,240));
+   b=color==ColorType::RED ? visionTest.getResult().redPillar:visionTest.getResult().greenPillar;
+   assert(b.found && int(obstacle_sign_height::classify(b))==height);
+   vote(6,b);assert(seats[6].confirmed==(i-3>=needed));
+  }
+  if(argc-4>=needed){
+   const bool originalRed=(color==ColorType::RED)!=(height!=100);
+   assert(seats[6].red==originalRed && seats[6].visibleRed==(color==ColorType::RED));
+   assert(seats[6].modifiedSign==(height!=100));
+   for(int lap:{1,2}){
+    completedLaps=lap;b.color=color==ColorType::RED ? ColorType::GREEN:ColorType::RED;
+    b.frameSequence+=100;obstacle_path_observe(&b);
+    assert(seats[6].red==originalRed && seats[6].visibleRed==(color==ColorType::RED));
+    assert(seats[6].modifiedSign==(height!=100));
+   }
+  }
+  std::cout<<"APPROVED SEQUENCE frames="<<argc-4<<" height="<<height<<" confirmed="<<seats[6].confirmed<<" PASS\n";
+  return 0;
+ }
  if(argc>1){
   std::ifstream f(argv[1],std::ios::binary);f.read(reinterpret_cast<char*>(pixels.data()),pixels.size());
   if(f.gcount()!=int(pixels.size()))return 2;
   visionTest.update(pixels.data(),320,240);
   for(auto b:{visionTest.getResult().redPillar,visionTest.getResult().greenPillar})
    std::cout<<"REPLAY color="<<int(b.color)<<" found="<<b.found<<" box="<<b.minX<<"/"<<b.minY<<"/"<<b.maxX<<"/"<<b.maxY
-    <<" top="<<b.heightTopY<<" mm="<<obstacle_sign_height::estimate(b)<<" class="<<int(obstacle_sign_height::classify(b))<<"\n";
+    <<" top="<<b.heightTopY<<" mm="<<obstacle_sign_height::estimate(b)<<" class="<<int(obstacle_sign_height::classify(b))
+    <<" range="<<obstacle_estimate_camera_forward_mm(&b)<<" x="<<b.centerX<<"\n";
   return 0;
  }
  for(auto color:{ColorType::RED,ColorType::GREEN})for(float mm:{50.f,100.f,150.f})
  for(float distance:{300.f,400.f,500.f,600.f})for(int center:{80,160,240})
- for(float yaw:{0.f,30.f,45.f})for(float cameraHeight:{120.f,126.f,132.f}){
+ for(float yaw:{0.f,30.f,45.f})for(float cameraHeight:{81.f,85.5f,90.f}){
   auto b=image(color,mm,distance,center,yaw,cameraHeight);
   auto h=obstacle_sign_height::classify(b);
   if(!b.found||!obstacle_blob_shape_valid(&b)||int(h)!=int(mm)){
@@ -198,27 +225,58 @@ int main(int argc,char **argv){visionTest.begin();int rendered=0,policy=0;
     run=subprocess.run([str(exe)],capture_output=True,text=True)
     (dest/'output.txt').write_text(run.stdout+run.stderr);print(run.stdout,end='')
     if not run.returncode:
-        replay=[]; archived=0; absent=0
+        replay=[]; archived=0; absent=0; failures=[]; measured=[]; sequences={}
         evidence=ROOT/'simulation/evidence/camera_diagnostics'
         registry=json.loads((evidence/'validation_status.json').read_text())
         for stem,entry in registry['captures'].items():
-            if entry['status']!='approved':
+            if entry['status']!='approved' or not entry.get('ground_truth'):
                 continue
             for name,digest in entry['sha256'].items():
                 assert hashlib.sha256((evidence/name).read_bytes()).hexdigest()==digest,name
             file=evidence/(stem+'.rgb565')
+            truth=entry['ground_truth']
+            key=(truth['color'],truth['height_mm'],truth['lens_to_near_face_mm'])
+            sequences.setdefault(key,[]).append(file)
             result=subprocess.run([str(exe),str(file)],capture_output=True,text=True)
             assert result.returncode==0,(file.name,result.stderr)
             replay.append(file.name+'\n'+result.stdout)
+            truth=entry.get('ground_truth')
+            target_found=False
             for line in result.stdout.splitlines():
                 if 'found=1' in line:
-                    assert 'class=100' in line,(file.name,line)
+                    fields=dict(token.split('=',1) for token in line.split()[1:])
+                    if truth:
+                        expected_color={'RED':1,'GREEN':2}[truth['color']]
+                        if int(fields['color'])!=expected_color:
+                            failures.append((file.name,'unexpected colour component',line))
+                            continue
+                        target_found=True
+                        measured.append(dict(file=file.name,ground_truth=truth,observed=fields))
+                        if int(fields['class'])!=truth['height_mm']:
+                            failures.append((file.name,'height mismatch',line))
+                        if abs(float(fields['range'])-truth['lens_to_near_face_mm'])>30:
+                            failures.append((file.name,'range error exceeds30mm',line))
+                        if not 140<=int(fields['x'])<=188:
+                            failures.append((file.name,'centred target replaced by background',line))
+                    elif int(fields['class'])!=100:
+                        failures.append((file.name,'historical normal reference mismatch',line))
                     archived+=1
+            if truth and not target_found:
+                failures.append((file.name,'target not detected',result.stdout))
             absent+=int('found=1' not in result.stdout)
         (dest/'archive_replay.txt').write_text(''.join(replay))
+        (dest/'measured_replay.json').write_text(json.dumps(dict(measured=measured,failures=failures),indent=2)+'\n')
         assert archived>0,'Approved normal reference must actually be detected'
-        print('USER-APPROVED NORMAL DETECTIONS',archived,'UNDETECTED FRAMES',absent,
-              'NO FALSE MODIFIED CLASS; unapproved/rejected images excluded')
+        print('USER-APPROVED DETECTIONS',archived,'UNDETECTED FRAMES',absent,
+              'GROUND-TRUTH FAILURES',len(failures),'; unapproved/rejected images excluded')
+        if failures:
+            for failure in failures: print('REFERENCE FAIL',*failure)
+            raise SystemExit(1)
+        for (color,height,distance),files in sorted(sequences.items()):
+            result=subprocess.run([str(exe),'--sequence',str({'RED':1,'GREEN':2}[color]),
+                                   str(height),*map(str,files)],capture_output=True,text=True)
+            assert result.returncode==0,(color,height,distance,result.stdout,result.stderr)
+            print(color,distance,result.stdout.strip())
     raise SystemExit(run.returncode)
 
 

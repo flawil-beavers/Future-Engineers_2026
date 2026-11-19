@@ -1,0 +1,54 @@
+
+===== ROBOT INITIALIZATION START =====
+
+===== SERIAL INITIALIZED =====
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+nav_long_range_active: 0
+Initializing ToF: Right_ToF
+nav_long_range_active: 0
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+System disabled. Pending mode: OBSTACLE_CHALLENGE
+Position initialized: (0.00, 0.00), heading=0.00°
+System disabled. Pending mode: OBSTACLE_SEAT_TEST
+Temporary mode until restart: OBSTACLE_SEAT_TEST
+Safe USB handoff active; terminal remains available.
+SYSTEM ENABLED
+Camera and vision initialized.
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
+[SEAT] Use: seat expect <section 0-3> <station 0-2> <L|R> <range_mm>
+Resumed mode: OBSTACLE_SEAT_TEST
+[GYRO] No data for 200ms, re-enabling reports...
+[SEAT] votes, injection path, and expected seat cleared
+Position initialized: (-1012.30, 2.33), heading=719.87°
+[SEAT] armed id=0 label=0/0/R camera_range=400.0 expected_bearing=-14.5 robot_pose=-1012.3,2.3,719.9
+[SEAT] event=VOTE color=RED bounds=228,80-274,138 valid=yes bearing=-16.9 range=390.7 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-513.7,-112.2 seat=0 expected=0 snap_error=19.0 votes=R1/G0 injections=0
+[PATH] Live avoidance injected seat=0 color=RED
+[SEAT] event=CONFIRMED_INJECTED color=RED bounds=226,80-274,140 valid=yes bearing=-16.9 range=381.8 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-522.2,-109.6 seat=0 expected=0 snap_error=24.5 votes=R2/G0 injections=1 pass=R peak=271.1 taper=+/-6 circle_clearance=128.6
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-276,138 valid=yes bearing=-16.9 range=390.7 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-513.7,-112.2 seat=0 expected=0 snap_error=19.0 votes=R2/G0 injections=1
+[SEAT] event=WRONG_SEAT color=RED bounds=32,80-56,142 valid=yes bearing=21.9 range=373.3 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-540.7,140.7 seat=1 expected=0 snap_error=56.9 votes=R1/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-274,140 valid=yes bearing=-16.9 range=381.8 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-522.2,-109.6 seat=0 expected=0 snap_error=24.5 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=214,138-274,166 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-274,138 valid=yes bearing=-16.9 range=390.7 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-513.7,-112.2 seat=0 expected=0 snap_error=19.0 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=RED bounds=216,140-274,172 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=0 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-274,138 valid=yes bearing=-16.9 range=390.7 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-513.7,-112.2 seat=0 expected=0 snap_error=19.0 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-274,140 valid=yes bearing=-16.9 range=381.8 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-522.2,-109.6 seat=0 expected=0 snap_error=24.5 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-274,140 valid=yes bearing=-16.9 range=381.8 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-522.2,-109.6 seat=0 expected=0 snap_error=24.5 votes=R2/G0 injections=1
+[PATH] Live avoidance injected seat=1 color=RED
+[SEAT] event=WRONG_SEAT color=RED bounds=32,82-56,132 valid=yes bearing=22.1 range=420.0 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-497.9,159.3 seat=1 expected=0 snap_error=58.2 votes=R2/G0 injections=2 pass=R peak=351.3 taper=+/-6 circle_clearance=408.8
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=228,80-276,138 valid=yes bearing=-16.9 range=390.7 pose=-1012.3,2.3,719.9 camera=-887.3,2.0 sighting=-513.7,-112.2 seat=0 expected=0 snap_error=19.0 votes=R2/G0 injections=2
+[SEAT] stopped and cleared; drive motor remains off
+All modes stopped.
+SYSTEM DISABLED

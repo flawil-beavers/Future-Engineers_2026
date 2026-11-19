@@ -16,6 +16,7 @@ rules and recheck official Q&A before competition.
 
 | Verification date | Result |
 | --- | --- |
+| 2026-11-19 | Season page/November9 Surprise PDF/Q&A rechecked; first encountered sign excluded, original passing colour on all3laps, no newer Surprise clarification found. |
 | 2026-11-17 | Season page still links the November 9 Surprise Rule. Its full text and score sheet were read; Q&A has no additional Surprise Rule clarification. |
 | 2026-11-11 | General Rules remain the January 15 edition. First-encountered-sign exclusion confirmed for the Surprise Rule. |
 | 2026-11-08 | General Rules version/hash and Q&A checked for inner enclosure geometry. |

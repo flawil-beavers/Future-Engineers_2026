@@ -26,3 +26,5 @@ describe their own firmware and must not be used as acceptance of later builds.
 Original logs, image approval status and evidence metadata stay in
 [simulation/evidence](../../simulation/evidence/parking_exit_diagnostics/README.md).
 This archive contains documentation, not replacement telemetry.
+
+- [November19 height-camera intake and pre-correction replay](HEIGHT_CAPTURE_INTAKE_20261119.md): original acquisition/approval history and initial failure evidence. Current correction/validation is in the active handoff and measured-height review.

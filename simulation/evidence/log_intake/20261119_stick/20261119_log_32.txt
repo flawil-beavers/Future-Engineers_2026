@@ -1,0 +1,1304 @@
+
+===== ROBOT INITIALIZATION START =====
+
+===== SERIAL INITIALIZED =====
+Enable switch is HIGH - System starting in ENABLED mode
+Initializing ToF: Left_ToF
+nav_long_range_active: 0
+Left_ToF distance_mode: 2
+Left_ToF timing_budget_us: 30062
+Initializing ToF: Right_ToF
+nav_long_range_active: 0
+Right_ToF distance_mode: 2
+Right_ToF timing_budget_us: 29966
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+SYSTEM ENABLED
+Camera and vision initialized.
+Mode switched to: CAMERA_CALIBRATION
+Position initialized: (0.00, 0.00), heading=0.00°
+[CAM CAL] center_hsv_h=352 s=154 v=206
+[CAM PERF] source=320x240 capture_ms=582.28 processing_ms=6.15 total_ms=588.43
+[CAM CAL] color=RED x=161 y=107 w=33 h=59 area=1684 min_x=146 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=278 y=95 w=83 h=21 area=428 min_x=236 max_x=318 min_y=86 max_y=106 bearing_deg=-24.5 range_est_mm=186.9 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=351 s=172 v=173
+[CAM PERF] source=320x240 capture_ms=141.21 processing_ms=5.98 total_ms=147.19
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1732 min_x=146 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.27 processing_ms=6.08 total_ms=149.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.46 processing_ms=5.93 total_ms=149.38
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.43 processing_ms=5.93 total_ms=148.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.05 processing_ms=5.94 total_ms=147.98
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.84 processing_ms=6.06 total_ms=147.89
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1732 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.06 total_ms=148.51
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.56 processing_ms=6.06 total_ms=148.63
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.43 processing_ms=6.05 total_ms=148.48
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.24 processing_ms=6.08 total_ms=149.33
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.07 total_ms=148.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.88 processing_ms=6.05 total_ms=147.93
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.98 processing_ms=6.05 total_ms=149.03
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.98 processing_ms=6.07 total_ms=150.04
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=144.11 processing_ms=6.06 total_ms=150.17
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.29 processing_ms=6.05 total_ms=149.34
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.31 processing_ms=6.06 total_ms=149.37
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.02 processing_ms=6.05 total_ms=149.06
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.76 processing_ms=6.04 total_ms=149.80
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.75 processing_ms=6.08 total_ms=148.83
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.46 processing_ms=6.06 total_ms=149.52
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.23 processing_ms=6.05 total_ms=149.28
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.20 processing_ms=6.06 total_ms=149.25
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.11 processing_ms=6.06 total_ms=149.17
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.08 processing_ms=6.05 total_ms=149.12
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.80 processing_ms=6.07 total_ms=149.87
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.75 processing_ms=6.07 total_ms=148.81
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.89 processing_ms=6.05 total_ms=148.94
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.83 processing_ms=6.05 total_ms=148.88
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.67 processing_ms=6.03 total_ms=149.70
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.21 processing_ms=6.08 total_ms=148.29
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.87 processing_ms=6.07 total_ms=148.94
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.77 processing_ms=6.04 total_ms=148.81
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.40 processing_ms=6.06 total_ms=148.46
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.40 processing_ms=6.06 total_ms=148.46
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.25 processing_ms=6.06 total_ms=149.31
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.33 processing_ms=6.04 total_ms=149.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.23 processing_ms=6.07 total_ms=148.30
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.25 processing_ms=6.06 total_ms=148.31
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.19 processing_ms=6.05 total_ms=149.24
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.53 processing_ms=6.07 total_ms=148.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.59 processing_ms=6.10 total_ms=148.68
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.54 processing_ms=6.08 total_ms=148.62
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.37 processing_ms=6.04 total_ms=149.41
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.08 processing_ms=6.05 total_ms=149.13
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.19 processing_ms=6.07 total_ms=148.26
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.11 processing_ms=6.06 total_ms=149.17
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.19 processing_ms=6.03 total_ms=148.22
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.77 processing_ms=6.07 total_ms=147.85
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.82 processing_ms=6.05 total_ms=148.88
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=183 v=156
+[CAM PERF] source=320x240 capture_ms=142.73 processing_ms=6.04 total_ms=148.78
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.71 processing_ms=6.02 total_ms=149.73
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.82 processing_ms=6.03 total_ms=148.85
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.82 processing_ms=6.05 total_ms=149.86
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=144.00 processing_ms=6.04 total_ms=150.04
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.88 processing_ms=6.03 total_ms=149.91
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.96 processing_ms=6.06 total_ms=149.01
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.80 processing_ms=6.05 total_ms=148.85
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=354 s=183 v=156
+[CAM PERF] source=320x240 capture_ms=143.51 processing_ms=6.05 total_ms=149.55
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.58 processing_ms=6.07 total_ms=148.65
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=167 v=140
+[CAM PERF] source=320x240 capture_ms=142.41 processing_ms=6.06 total_ms=148.47
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.28 processing_ms=6.04 total_ms=148.32
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.11 processing_ms=6.07 total_ms=148.17
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.16 processing_ms=6.05 total_ms=148.22
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.16 processing_ms=6.06 total_ms=148.23
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.40 processing_ms=6.04 total_ms=148.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.57 processing_ms=6.07 total_ms=147.64
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.43 processing_ms=6.06 total_ms=148.49
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=146 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.53 processing_ms=5.93 total_ms=148.46
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.38 processing_ms=6.04 total_ms=149.42
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.98 processing_ms=6.07 total_ms=149.05
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1724 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.08 processing_ms=6.06 total_ms=149.13
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.27 processing_ms=6.05 total_ms=148.33
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.20 processing_ms=6.05 total_ms=148.25
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.16 processing_ms=6.07 total_ms=149.24
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=352 s=189 v=156
+[CAM PERF] source=320x240 capture_ms=142.11 processing_ms=6.03 total_ms=148.13
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.03 processing_ms=6.07 total_ms=149.10
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.06 total_ms=148.65
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.63 processing_ms=6.02 total_ms=147.65
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.47 processing_ms=6.03 total_ms=148.50
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.05 total_ms=148.71
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.76 processing_ms=6.07 total_ms=149.83
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.72 processing_ms=6.05 total_ms=148.76
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.04 processing_ms=6.06 total_ms=149.10
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.06 processing_ms=6.06 total_ms=148.12
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.04 processing_ms=6.06 total_ms=148.10
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.89 processing_ms=6.07 total_ms=148.96
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.19 processing_ms=6.11 total_ms=148.30
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.93 processing_ms=6.05 total_ms=148.98
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.00 processing_ms=6.06 total_ms=149.06
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.04 processing_ms=6.06 total_ms=149.10
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.45 processing_ms=6.04 total_ms=148.49
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.64 processing_ms=6.08 total_ms=147.72
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.48 processing_ms=6.06 total_ms=147.54
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.51 processing_ms=6.04 total_ms=148.55
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.03 total_ms=148.63
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.05 total_ms=148.66
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.38 processing_ms=6.06 total_ms=149.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.41 processing_ms=6.03 total_ms=149.45
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.64 processing_ms=6.06 total_ms=148.70
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.73 processing_ms=6.07 total_ms=148.80
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.66 processing_ms=6.07 total_ms=149.72
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.70 processing_ms=6.08 total_ms=149.77
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.76 processing_ms=6.05 total_ms=148.81
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.56 processing_ms=6.04 total_ms=149.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.52 processing_ms=6.06 total_ms=149.58
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.47 processing_ms=6.05 total_ms=149.52
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.89 processing_ms=6.03 total_ms=148.92
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.83 processing_ms=6.03 total_ms=148.86
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.80 processing_ms=6.07 total_ms=148.87
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.74 processing_ms=6.07 total_ms=148.81
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.69 processing_ms=6.04 total_ms=148.73
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.53 processing_ms=6.07 total_ms=148.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.56 processing_ms=6.06 total_ms=148.62
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.37 processing_ms=6.05 total_ms=149.42
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.22 processing_ms=6.05 total_ms=149.27
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.21 processing_ms=6.07 total_ms=149.28
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.31 processing_ms=6.03 total_ms=149.35
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.17 processing_ms=6.04 total_ms=149.21
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.06 total_ms=148.43
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.39 processing_ms=6.06 total_ms=149.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.32 processing_ms=6.04 total_ms=149.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=170 v=148
+[CAM PERF] source=320x240 capture_ms=143.50 processing_ms=6.04 total_ms=149.53
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.50 processing_ms=6.09 total_ms=148.59
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.58 processing_ms=6.06 total_ms=148.63
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.55 processing_ms=6.05 total_ms=148.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.54 processing_ms=6.05 total_ms=148.59
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.06 total_ms=148.66
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.65 processing_ms=6.07 total_ms=148.72
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.75 processing_ms=6.05 total_ms=147.81
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.68 processing_ms=6.05 total_ms=148.74
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.78 processing_ms=6.04 total_ms=148.82
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.72 processing_ms=6.03 total_ms=148.75
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.70 processing_ms=6.07 total_ms=147.77
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.06 total_ms=148.72
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.05 total_ms=148.71
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.38 processing_ms=6.06 total_ms=149.43
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.02 processing_ms=6.06 total_ms=149.09
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.07 processing_ms=6.05 total_ms=148.11
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.80 processing_ms=6.07 total_ms=148.87
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.87 processing_ms=6.05 total_ms=148.92
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.84 processing_ms=6.05 total_ms=148.89
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.93 processing_ms=6.05 total_ms=148.97
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.07 processing_ms=6.06 total_ms=149.13
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.57 processing_ms=6.08 total_ms=147.65
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.07 total_ms=148.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.05 total_ms=148.43
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.05 total_ms=148.52
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.46 processing_ms=6.07 total_ms=149.53
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.52 processing_ms=6.07 total_ms=148.59
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.04 processing_ms=6.06 total_ms=149.11
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.23 processing_ms=6.09 total_ms=148.32
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.01 processing_ms=6.05 total_ms=149.07
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.03 processing_ms=6.05 total_ms=149.08
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.66 processing_ms=6.08 total_ms=147.74
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=141.48 processing_ms=6.06 total_ms=147.53
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.48 processing_ms=6.08 total_ms=147.56
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=141.34 processing_ms=6.03 total_ms=147.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=167 v=140
+[CAM PERF] source=320x240 capture_ms=142.38 processing_ms=6.06 total_ms=148.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.04 total_ms=148.50
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.21 processing_ms=6.05 total_ms=149.26
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.38 processing_ms=6.03 total_ms=148.41
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.05 total_ms=148.42
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.81 processing_ms=6.06 total_ms=148.87
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.88 processing_ms=6.06 total_ms=148.94
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.05 processing_ms=6.07 total_ms=148.12
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1744 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.01 processing_ms=6.06 total_ms=148.07
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1744 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.75 processing_ms=6.04 total_ms=148.79
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=141.71 processing_ms=6.03 total_ms=147.74
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.71 processing_ms=6.07 total_ms=147.77
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.06 total_ms=148.51
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.49 processing_ms=6.05 total_ms=148.55
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.52 processing_ms=6.07 total_ms=148.59
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.26 processing_ms=6.09 total_ms=149.35
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.31 processing_ms=6.03 total_ms=149.34
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.20 processing_ms=6.06 total_ms=149.26
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.20 processing_ms=6.04 total_ms=149.25
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.88 processing_ms=6.05 total_ms=147.93
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.88 processing_ms=6.03 total_ms=147.92
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=355 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.84 processing_ms=6.05 total_ms=147.89
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.67 processing_ms=6.07 total_ms=148.75
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.86 processing_ms=6.04 total_ms=147.91
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.43 processing_ms=6.06 total_ms=147.49
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.28 processing_ms=6.08 total_ms=148.35
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=141.28 processing_ms=6.07 total_ms=147.34
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.27 processing_ms=6.05 total_ms=147.32
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.32 processing_ms=6.06 total_ms=148.39
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.51 processing_ms=6.07 total_ms=148.58
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.04 total_ms=148.51
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.57 processing_ms=6.03 total_ms=148.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.03 processing_ms=6.05 total_ms=149.08
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.25 processing_ms=6.08 total_ms=148.32
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.25 processing_ms=6.07 total_ms=148.31
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.18 processing_ms=6.06 total_ms=149.24
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.45 processing_ms=6.07 total_ms=148.52
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.56 processing_ms=6.05 total_ms=148.61
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.44 processing_ms=6.05 total_ms=149.49
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.45 processing_ms=6.07 total_ms=149.52
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.08 total_ms=148.67
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.57 processing_ms=6.08 total_ms=149.65
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.67 processing_ms=6.04 total_ms=149.71
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.64 processing_ms=6.06 total_ms=149.70
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.90 processing_ms=6.06 total_ms=148.95
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.07 total_ms=148.73
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.71 processing_ms=6.07 total_ms=148.78
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.08 total_ms=148.69
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.45 processing_ms=6.08 total_ms=148.53
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.20 processing_ms=6.07 total_ms=149.27
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.30 processing_ms=6.06 total_ms=148.36
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.31 processing_ms=6.08 total_ms=148.38
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.36 processing_ms=6.06 total_ms=148.42
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.09 processing_ms=6.03 total_ms=149.12
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1724 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.27 processing_ms=6.09 total_ms=148.35
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.28 processing_ms=6.07 total_ms=149.35
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.42 processing_ms=6.05 total_ms=148.47
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.32 processing_ms=6.07 total_ms=148.39
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.35 processing_ms=6.03 total_ms=148.38
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=354 s=183 v=156
+[CAM PERF] source=320x240 capture_ms=142.35 processing_ms=6.02 total_ms=148.37
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.22 processing_ms=6.01 total_ms=149.23
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1736 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.43 processing_ms=6.07 total_ms=148.50
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.59 processing_ms=6.04 total_ms=148.63
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.07 total_ms=148.68
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.05 total_ms=148.71
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.81 processing_ms=6.08 total_ms=148.89
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.78 processing_ms=6.08 total_ms=148.86
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.70 processing_ms=6.05 total_ms=149.75
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.65 processing_ms=6.05 total_ms=149.71
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.87 processing_ms=6.05 total_ms=149.93
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1740 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.01 processing_ms=6.04 total_ms=149.05
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.79 processing_ms=6.05 total_ms=148.85
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.76 processing_ms=6.05 total_ms=148.80
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.68 processing_ms=6.06 total_ms=148.74
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.05 total_ms=148.66
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.48 processing_ms=6.06 total_ms=149.54
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.43 processing_ms=6.06 total_ms=149.49
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.45 processing_ms=6.07 total_ms=149.51
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.73 processing_ms=6.06 total_ms=148.79
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.77 processing_ms=6.07 total_ms=148.84
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.68 processing_ms=6.07 total_ms=149.75
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.73 processing_ms=6.06 total_ms=148.80
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1736 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.75 processing_ms=6.04 total_ms=149.78
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.93 processing_ms=6.09 total_ms=150.02
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.98 processing_ms=6.06 total_ms=150.04
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.40 processing_ms=6.03 total_ms=149.43
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.44 processing_ms=6.04 total_ms=149.48
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.42 processing_ms=6.06 total_ms=149.48
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.49 processing_ms=6.06 total_ms=149.56
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.32 processing_ms=6.06 total_ms=149.38
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1740 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.56 processing_ms=6.08 total_ms=148.64
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=167 v=140
+[CAM PERF] source=320x240 capture_ms=142.63 processing_ms=6.04 total_ms=148.67
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.96 processing_ms=6.04 total_ms=148.99
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=141.99 processing_ms=6.07 total_ms=148.05
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.93 processing_ms=6.09 total_ms=148.02
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.80 processing_ms=6.10 total_ms=148.90
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.79 processing_ms=6.05 total_ms=148.84
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.63 processing_ms=6.05 total_ms=148.67
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=357 s=174 v=140
+[CAM PERF] source=320x240 capture_ms=142.74 processing_ms=6.06 total_ms=148.80
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.43 processing_ms=6.07 total_ms=148.49
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.50 processing_ms=6.07 total_ms=148.57
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.41 processing_ms=6.06 total_ms=148.47
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.31 processing_ms=6.08 total_ms=148.39
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.41 processing_ms=6.05 total_ms=148.46
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.35 processing_ms=6.08 total_ms=149.43
+[CAM CAL] color=RED x=161 y=108 w=31 h=59 area=1736 min_x=148 max_x=178 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.51 processing_ms=6.11 total_ms=148.62
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.36 processing_ms=6.05 total_ms=149.41
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=143.39 processing_ms=6.05 total_ms=149.45
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.07 total_ms=148.53
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=143.39 processing_ms=6.08 total_ms=149.47
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=3 s=184 v=148
+[CAM PERF] source=320x240 capture_ms=143.55 processing_ms=6.05 total_ms=149.60
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1728 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.38 processing_ms=6.07 total_ms=148.44
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1724 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=358 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=141.61 processing_ms=6.07 total_ms=147.69
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.75 processing_ms=6.08 total_ms=148.83
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=172 v=148
+[CAM PERF] source=320x240 capture_ms=142.62 processing_ms=6.05 total_ms=148.67
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1732 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=353 s=179 v=148
+[CAM PERF] source=320x240 capture_ms=142.59 processing_ms=6.08 total_ms=148.66
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=1 s=180 v=140
+[CAM PERF] source=320x240 capture_ms=142.53 processing_ms=6.32 total_ms=148.85
+[CAM CAL] color=RED x=161 y=108 w=29 h=59 area=1736 min_x=148 max_x=176 min_y=80 max_y=138 bearing_deg=0.8 range_est_mm=400.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=0 s=182 v=140
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.37 total_ms=148.98
+[CAM CAL] color=RED x=158 y=106 w=61 h=61 area=2228 min_x=118 max_x=178 min_y=80 max_y=140 bearing_deg=1.5 range_est_mm=387.2 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=300 s=4 v=189
+[CAM PERF] source=320x240 capture_ms=142.72 processing_ms=6.30 total_ms=149.02
+[CAM CAL] color=RED x=82 y=113 w=57 h=75 area=2796 min_x=48 max_x=104 min_y=80 max_y=154 bearing_deg=18.3 range_est_mm=332.6 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=345 s=15 v=198
+[CAM PERF] source=320x240 capture_ms=142.81 processing_ms=6.43 total_ms=149.24
+[CAM CAL] color=RED x=54 y=117 w=63 h=87 area=4328 min_x=20 max_x=82 min_y=80 max_y=166 bearing_deg=23.9 range_est_mm=298.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.95 processing_ms=6.55 total_ms=149.50
+[CAM CAL] color=RED x=62 y=120 w=67 h=93 area=4892 min_x=26 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=345 s=15 v=198
+[CAM PERF] source=320x240 capture_ms=142.91 processing_ms=6.61 total_ms=149.53
+[CAM CAL] color=RED x=62 y=121 w=67 h=93 area=5068 min_x=26 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=37 s=10 v=189
+[CAM PERF] source=320x240 capture_ms=143.02 processing_ms=6.60 total_ms=149.62
+[CAM CAL] color=RED x=62 y=121 w=75 h=93 area=5020 min_x=18 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=345 s=15 v=198
+[CAM PERF] source=320x240 capture_ms=143.09 processing_ms=6.59 total_ms=149.69
+[CAM CAL] color=RED x=62 y=121 w=65 h=93 area=5076 min_x=28 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.03 processing_ms=6.59 total_ms=149.62
+[CAM CAL] color=RED x=63 y=120 w=69 h=91 area=4728 min_x=24 max_x=92 min_y=80 max_y=170 bearing_deg=22.2 range_est_mm=281.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=22 y=189 w=31 h=31 area=268 min_x=6 max_x=36 min_y=176 max_y=206 bearing_deg=29.8 range_est_mm=216.0 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=37 s=10 v=189
+[CAM PERF] source=320x240 capture_ms=142.17 processing_ms=6.62 total_ms=148.79
+[CAM CAL] color=RED x=62 y=122 w=69 h=93 area=5076 min_x=24 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=142.14 processing_ms=6.60 total_ms=148.74
+[CAM CAL] color=RED x=62 y=120 w=71 h=93 area=4820 min_x=22 max_x=92 min_y=80 max_y=172 bearing_deg=22.4 range_est_mm=276.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.98 processing_ms=6.58 total_ms=148.56
+[CAM CAL] color=RED x=63 y=120 w=73 h=93 area=4676 min_x=20 max_x=92 min_y=80 max_y=172 bearing_deg=22.2 range_est_mm=275.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=37 s=10 v=189
+[CAM PERF] source=320x240 capture_ms=142.05 processing_ms=6.61 total_ms=148.65
+[CAM CAL] color=RED x=63 y=120 w=65 h=93 area=4748 min_x=28 max_x=92 min_y=80 max_y=172 bearing_deg=22.2 range_est_mm=275.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=37 s=10 v=189
+[CAM PERF] source=320x240 capture_ms=142.04 processing_ms=6.58 total_ms=148.63
+[CAM CAL] color=RED x=63 y=120 w=61 h=93 area=4744 min_x=32 max_x=92 min_y=80 max_y=172 bearing_deg=22.2 range_est_mm=275.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.04 processing_ms=6.60 total_ms=149.64
+[CAM CAL] color=RED x=64 y=120 w=59 h=91 area=4748 min_x=34 max_x=92 min_y=80 max_y=170 bearing_deg=22.0 range_est_mm=281.3 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.08 processing_ms=6.49 total_ms=149.57
+[CAM CAL] color=RED x=73 y=117 w=53 h=83 area=3852 min_x=46 max_x=98 min_y=80 max_y=162 bearing_deg=20.2 range_est_mm=304.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.01 processing_ms=6.36 total_ms=149.37
+[CAM CAL] color=RED x=86 y=114 w=47 h=75 area=3120 min_x=62 max_x=108 min_y=80 max_y=154 bearing_deg=17.5 range_est_mm=331.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.99 processing_ms=6.29 total_ms=149.27
+[CAM CAL] color=RED x=86 y=112 w=43 h=73 area=2732 min_x=64 max_x=106 min_y=80 max_y=152 bearing_deg=17.5 range_est_mm=340.0 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=300 s=3 v=198
+[CAM PERF] source=320x240 capture_ms=142.88 processing_ms=6.32 total_ms=149.21
+[CAM CAL] color=RED x=88 y=112 w=43 h=71 area=2592 min_x=66 max_x=108 min_y=80 max_y=150 bearing_deg=17.1 range_est_mm=348.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=12 y=226 w=25 h=25 area=96 min_x=0 max_x=24 min_y=214 max_y=238 bearing_deg=31.5 range_est_mm=199.3 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.79 processing_ms=6.26 total_ms=149.06
+[CAM CAL] color=RED x=88 y=110 w=39 h=69 area=2416 min_x=68 max_x=106 min_y=80 max_y=148 bearing_deg=17.1 range_est_mm=358.6 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.52 processing_ms=6.28 total_ms=149.80
+[CAM CAL] color=RED x=88 y=110 w=39 h=67 area=2396 min_x=68 max_x=106 min_y=80 max_y=146 bearing_deg=17.1 range_est_mm=369.2 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=19 y=204 w=17 h=19 area=112 min_x=12 max_x=28 min_y=194 max_y=212 bearing_deg=30.3 range_est_mm=207.4 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=21 s=21 v=206
+[CAM PERF] source=320x240 capture_ms=143.54 processing_ms=6.24 total_ms=149.78
+[CAM CAL] color=RED x=82 y=110 w=41 h=69 area=2404 min_x=62 max_x=102 min_y=80 max_y=148 bearing_deg=18.3 range_est_mm=361.2 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.49 processing_ms=6.22 total_ms=149.71
+[CAM CAL] color=RED x=82 y=110 w=41 h=69 area=2436 min_x=62 max_x=102 min_y=80 max_y=148 bearing_deg=18.3 range_est_mm=361.2 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=37 s=9 v=206
+[CAM PERF] source=320x240 capture_ms=142.62 processing_ms=6.22 total_ms=148.84
+[CAM CAL] color=RED x=108 y=107 w=39 h=61 area=1964 min_x=90 max_x=128 min_y=80 max_y=140 bearing_deg=12.8 range_est_mm=396.9 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=28 y=188 w=33 h=19 area=164 min_x=10 max_x=42 min_y=180 max_y=198 bearing_deg=28.7 range_est_mm=228.1 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=35 s=21 v=206
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.27 total_ms=148.88
+[CAM CAL] color=RED x=96 y=109 w=39 h=65 area=2208 min_x=76 max_x=114 min_y=80 max_y=144 bearing_deg=15.4 range_est_mm=377.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.45 processing_ms=6.27 total_ms=148.72
+[CAM CAL] color=RED x=95 y=109 w=39 h=65 area=2204 min_x=76 max_x=114 min_y=80 max_y=144 bearing_deg=15.6 range_est_mm=377.5 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.42 processing_ms=6.20 total_ms=147.62
+[CAM CAL] color=RED x=94 y=108 w=37 h=65 area=2120 min_x=76 max_x=112 min_y=80 max_y=144 bearing_deg=15.8 range_est_mm=377.9 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.42 processing_ms=6.24 total_ms=147.66
+[CAM CAL] color=RED x=97 y=109 w=37 h=65 area=2184 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=4 y=213 w=11 h=25 area=132 min_x=0 max_x=10 min_y=200 max_y=224 bearing_deg=32.8 range_est_mm=202.2 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=7 s=9 v=206
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.31 total_ms=148.68
+[CAM CAL] color=RED x=97 y=108 w=37 h=65 area=2080 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=6 y=220 w=13 h=33 area=232 min_x=0 max_x=12 min_y=204 max_y=236 bearing_deg=32.5 range_est_mm=201.5 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=300 s=3 v=198
+[CAM PERF] source=320x240 capture_ms=142.34 processing_ms=6.26 total_ms=148.60
+[CAM CAL] color=RED x=97 y=108 w=37 h=65 area=2108 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=11 y=214 w=31 h=19 area=200 min_x=0 max_x=30 min_y=206 max_y=224 bearing_deg=31.6 range_est_mm=199.7 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=300 s=3 v=198
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.24 total_ms=148.70
+[CAM CAL] color=RED x=97 y=108 w=37 h=65 area=2076 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] color=GREEN x=6 y=216 w=15 h=25 area=168 min_x=0 max_x=14 min_y=206 max_y=230 bearing_deg=32.5 range_est_mm=201.5 edge_clipped=yes production_valid=no
+[CAM CAL] center_hsv_h=7 s=9 v=206
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.18 total_ms=148.64
+[CAM CAL] color=RED x=96 y=110 w=37 h=65 area=2228 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.4 range_est_mm=377.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=7 s=9 v=206
+[CAM PERF] source=320x240 capture_ms=142.57 processing_ms=6.18 total_ms=148.75
+[CAM CAL] color=RED x=96 y=109 w=37 h=65 area=2216 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.4 range_est_mm=377.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.22 total_ms=148.88
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2228 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=344 s=13 v=206
+[CAM PERF] source=320x240 capture_ms=143.69 processing_ms=6.18 total_ms=149.87
+[CAM CAL] color=RED x=96 y=109 w=37 h=63 area=2216 min_x=78 max_x=114 min_y=80 max_y=142 bearing_deg=15.4 range_est_mm=388.9 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=199
+[CAM PERF] source=320x240 capture_ms=142.77 processing_ms=6.43 total_ms=149.20
+[CAM CAL] color=RED x=81 y=110 w=109 h=73 area=3120 min_x=6 max_x=114 min_y=80 max_y=152 bearing_deg=18.5 range_est_mm=342.0 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=37 s=9 v=206
+[CAM PERF] source=320x240 capture_ms=141.98 processing_ms=6.33 total_ms=148.31
+[CAM CAL] color=RED x=96 y=109 w=37 h=57 area=1788 min_x=78 max_x=114 min_y=80 max_y=136 bearing_deg=15.4 range_est_mm=429.1 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.04 processing_ms=6.45 total_ms=148.49
+[CAM CAL] color=RED x=84 y=110 w=93 h=65 area=3140 min_x=22 max_x=114 min_y=80 max_y=144 bearing_deg=17.9 range_est_mm=382.1 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.80 processing_ms=6.46 total_ms=148.26
+[CAM CAL] color=RED x=98 y=115 w=35 h=65 area=1924 min_x=80 max_x=114 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=49 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=141.61 processing_ms=6.40 total_ms=148.02
+[CAM CAL] color=RED x=84 y=110 w=93 h=65 area=3072 min_x=22 max_x=114 min_y=80 max_y=144 bearing_deg=17.9 range_est_mm=382.1 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.62 processing_ms=6.41 total_ms=148.03
+[CAM CAL] color=RED x=85 y=108 w=83 h=63 area=2936 min_x=32 max_x=114 min_y=80 max_y=142 bearing_deg=17.7 range_est_mm=393.6 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.55 processing_ms=6.41 total_ms=147.97
+[CAM CAL] color=RED x=97 y=114 w=37 h=65 area=2012 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.38 total_ms=149.04
+[CAM CAL] color=RED x=97 y=113 w=37 h=65 area=1996 min_x=78 max_x=114 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.37 total_ms=148.97
+[CAM CAL] color=RED x=85 y=107 w=89 h=61 area=2784 min_x=26 max_x=114 min_y=80 max_y=140 bearing_deg=17.7 range_est_mm=406.3 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.49 processing_ms=6.40 total_ms=148.90
+[CAM CAL] color=RED x=87 y=109 w=79 h=63 area=2800 min_x=36 max_x=114 min_y=80 max_y=142 bearing_deg=17.3 range_est_mm=392.7 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.37 processing_ms=6.41 total_ms=148.79
+[CAM CAL] color=RED x=99 y=115 w=35 h=63 area=1852 min_x=82 max_x=116 min_y=80 max_y=142 bearing_deg=14.7 range_est_mm=387.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=142.51 processing_ms=6.45 total_ms=148.96
+[CAM CAL] color=RED x=87 y=110 w=81 h=63 area=2972 min_x=36 max_x=116 min_y=80 max_y=142 bearing_deg=17.3 range_est_mm=392.7 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=7 s=10 v=189
+[CAM PERF] source=320x240 capture_ms=142.57 processing_ms=6.57 total_ms=149.14
+[CAM CAL] color=RED x=84 y=104 w=81 h=63 area=1776 min_x=44 max_x=124 min_y=80 max_y=142 bearing_deg=17.9 range_est_mm=394.1 edge_clipped=no production_valid=no
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.46 processing_ms=6.20 total_ms=148.66
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2324 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.57 processing_ms=6.14 total_ms=148.71
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2288 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=141.71 processing_ms=6.17 total_ms=147.88
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2280 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.15 total_ms=148.76
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.71 processing_ms=6.14 total_ms=148.85
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=142.31 processing_ms=6.16 total_ms=148.47
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=67 s=12 v=190
+[CAM PERF] source=320x240 capture_ms=141.42 processing_ms=6.16 total_ms=147.58
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2332 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.48 processing_ms=6.16 total_ms=147.64
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.49 processing_ms=6.13 total_ms=147.61
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2324 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.14 total_ms=148.74
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2284 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=142.66 processing_ms=6.12 total_ms=148.78
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.66 processing_ms=6.12 total_ms=149.78
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=345 s=15 v=198
+[CAM PERF] source=320x240 capture_ms=143.70 processing_ms=6.16 total_ms=149.86
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2280 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=67 s=12 v=190
+[CAM PERF] source=320x240 capture_ms=143.74 processing_ms=6.16 total_ms=149.90
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.22 processing_ms=6.16 total_ms=149.38
+[CAM CAL] color=RED x=97 y=111 w=37 h=65 area=2284 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.41 processing_ms=6.16 total_ms=148.57
+[CAM CAL] color=RED x=97 y=110 w=39 h=65 area=2284 min_x=80 max_x=118 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=67 s=12 v=190
+[CAM PERF] source=320x240 capture_ms=143.38 processing_ms=6.15 total_ms=149.53
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2296 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=143.27 processing_ms=6.14 total_ms=149.41
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.32 processing_ms=6.16 total_ms=149.47
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2284 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.20 processing_ms=6.14 total_ms=149.34
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.19 processing_ms=6.16 total_ms=148.36
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.23 processing_ms=6.14 total_ms=149.38
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.24 processing_ms=6.13 total_ms=149.37
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=17 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=143.32 processing_ms=6.16 total_ms=149.48
+[CAM CAL] color=RED x=97 y=111 w=37 h=65 area=2288 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.10 processing_ms=6.17 total_ms=149.26
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=144.11 processing_ms=6.15 total_ms=150.26
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=144.19 processing_ms=6.16 total_ms=150.35
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=144.23 processing_ms=6.18 total_ms=150.41
+[CAM CAL] color=RED x=97 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.39 processing_ms=6.15 total_ms=149.54
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.24 processing_ms=6.11 total_ms=149.35
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2316 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=143.24 processing_ms=6.16 total_ms=149.40
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=143.29 processing_ms=6.17 total_ms=149.46
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.44 processing_ms=6.16 total_ms=149.60
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=67 s=12 v=190
+[CAM PERF] source=320x240 capture_ms=143.19 processing_ms=6.18 total_ms=149.37
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=143.09 processing_ms=6.16 total_ms=149.26
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.98 processing_ms=6.13 total_ms=149.11
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.97 processing_ms=6.12 total_ms=149.08
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.88 processing_ms=6.14 total_ms=149.02
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.19 processing_ms=6.14 total_ms=149.33
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.02 processing_ms=6.15 total_ms=149.17
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2296 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=143.07 processing_ms=6.15 total_ms=149.22
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2284 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=17 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=142.89 processing_ms=6.15 total_ms=149.04
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2252 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.82 processing_ms=6.16 total_ms=148.98
+[CAM CAL] color=RED x=97 y=111 w=37 h=65 area=2288 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.80 processing_ms=6.16 total_ms=148.95
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2284 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=142.81 processing_ms=6.15 total_ms=148.96
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.73 processing_ms=6.14 total_ms=148.87
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2324 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.68 processing_ms=6.14 total_ms=148.82
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.54 processing_ms=6.16 total_ms=148.70
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2280 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=67 s=12 v=190
+[CAM PERF] source=320x240 capture_ms=142.61 processing_ms=6.14 total_ms=148.75
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2336 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.86 processing_ms=6.14 total_ms=147.99
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2300 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=49 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=141.86 processing_ms=6.14 total_ms=148.00
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2316 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=142.68 processing_ms=6.14 total_ms=148.82
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2320 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.67 processing_ms=6.16 total_ms=148.83
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2280 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=40 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.60 processing_ms=6.15 total_ms=148.75
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2288 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.20 processing_ms=6.14 total_ms=148.34
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2296 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=142.17 processing_ms=6.16 total_ms=148.33
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2312 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=31 s=21 v=198
+[CAM PERF] source=320x240 capture_ms=142.13 processing_ms=6.15 total_ms=148.29
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2288 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=142.11 processing_ms=6.13 total_ms=148.24
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.99 processing_ms=6.15 total_ms=148.14
+[CAM CAL] color=RED x=97 y=110 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.58 processing_ms=6.15 total_ms=147.73
+[CAM CAL] color=RED x=97 y=111 w=37 h=65 area=2292 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=15.2 range_est_mm=376.7 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.49 processing_ms=6.15 total_ms=147.64
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2308 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=6 s=11 v=198
+[CAM PERF] source=320x240 capture_ms=141.56 processing_ms=6.14 total_ms=147.70
+[CAM CAL] color=RED x=98 y=111 w=37 h=65 area=2324 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+[CAM CAL] center_hsv_h=120 s=1 v=190
+[CAM PERF] source=320x240 capture_ms=142.74 processing_ms=6.14 total_ms=148.88
+[CAM CAL] color=RED x=98 y=110 w=37 h=65 area=2304 min_x=80 max_x=116 min_y=80 max_y=144 bearing_deg=14.9 range_est_mm=376.4 edge_clipped=no production_valid=yes
+SYSTEM ENABLED
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT first_corner_mm=500
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT first_corner_mm=500
+[SEAT] geometry preflight LEFT+RIGHT: PASS
+[SEAT] motor lock: PASS
+[SEAT] Use: seat expect <section 0-3> <station 0-2> <L|R> <range_mm>
+Mode switched to: OBSTACLE_SEAT_TEST
+Temporary mode until restart: OBSTACLE_SEAT_TEST
+Safe USB handoff active; terminal remains available.
+[SEAT] votes, injection path, and expected seat cleared
+Position initialized: (-561.05, -7.92), heading=0.88°
+[SEAT] armed id=3 label=0/1/L camera_range=400.0 expected_bearing=14.5 robot_pose=-561.1,-7.9,0.9
+[SEAT] event=VOTE color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R1/G0 injections=0
+[PATH] Live avoidance injected seat=3 color=RED
+[MAP] Confirmed S0 station=1 side=LEFT color=RED
+[SEAT] event=CONFIRMED_INJECTED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1 pass=R peak=92.0 taper=+/-6 circle_clearance=148.7
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.5 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=15.2 range=376.7 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,98.0 seat=3 expected=3 snap_error=23.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=15.2 range=376.7 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,98.1 seat=3 expected=3 snap_error=23.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=15.2 range=376.7 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,98.1 seat=3 expected=3 snap_error=23.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=15.2 range=376.7 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,98.1 seat=3 expected=3 snap_error=23.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=15.2 range=376.7 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,98.1 seat=3 expected=3 snap_error=23.7 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=ALREADY_CONFIRMED color=RED bounds=80,80-116,144 valid=yes bearing=14.9 range=376.4 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=-74.0,96.7 seat=3 expected=3 snap_error=23.9 votes=R2/G0 injections=1
+[SEAT] event=REJECTED_NO_SEAT color=RED bounds=56,80-96,118 valid=yes bearing=19.8 range=637.5 pose=-561.1,-7.9,0.9 camera=-436.1,-6.0 sighting=160.5,218.8 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_BLOB color=GREEN bounds=284,106-312,114 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=1
+[SEAT] votes, injection path, and expected seat cleared
+Position initialized: (-561.05, -7.92), heading=0.88°
+[SEAT] armed id=3 label=0/1/L camera_range=400.0 expected_bearing=14.5 robot_pose=-561.1,-7.9,0.9
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_BLOB color=GREEN bounds=294,108-314,116 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expected=3 snap_error=-1.0 votes=R0/G0 injections=0
+[SEAT] event=REJECTED_NO_BLOB color=NONE bounds=0,0-0,0 valid=no bearing=0.0 range=-1.0 pose=0.0,0.0,0.0 camera=0.0,0.0 sighting=0.0,0.0 seat=-1 expec
+*** WARNING: LOG BUFFER OVERFLOW ***

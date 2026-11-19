@@ -5,17 +5,23 @@ from check_connector_servo_resume import block
 s=(ROOT/'src/obstacle_path.cpp').read_text();f=fixture_source().split('int main()')[0]
 f+='\nbool parkingSectionInnerSeatsOnly=true;\n'
 f+=block(s,s.index('void seatCameraGeometry('))
-f+=block(s,s.index('bool mappedParkingSeatFootMatches('))
+gate=block(s,s.index('bool mappedParkingSeatFootMatches('))
+f+=gate
+# Historical pixel observations belong to the October mount. Preserve those
+# exact cases against that calibration, and exercise the current mount below.
+f+=gate.replace('mappedParkingSeatFootMatches','legacyParkingSeatFootMatches').replace(
+    'OBSTACLE_CAMERA_GROUND_HORIZON_Y','52.0f').replace(
+    'OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX','33600.0f')
 f+=r'''
 int main(){
  baseline();PositionEstimate pose;
  pose.x_mm=355;pose.y_mm=-1332;pose.heading_deg=78.9;
- if(mappedParkingSeatFootMatches(0,pose,174,false))return 1;
- if(!mappedParkingSeatFootMatches(0,pose,152,false))return 2;
+ if(legacyParkingSeatFootMatches(0,pose,174,false))return 1;
+ if(!legacyParkingSeatFootMatches(0,pose,152,false))return 2;
  pose.x_mm=300;pose.y_mm=-1222;pose.heading_deg=147.7;
- if(mappedParkingSeatFootMatches(2,pose,184,false))return 3;
- if(!mappedParkingSeatFootMatches(2,pose,158,false))return 4;
- if(!mappedParkingSeatFootMatches(6,pose,184,false))return 5;
+ if(legacyParkingSeatFootMatches(2,pose,184,false))return 3;
+ if(!legacyParkingSeatFootMatches(2,pose,158,false))return 4;
+ if(!legacyParkingSeatFootMatches(6,pose,184,false))return 5;
  // Returned log589: real GREEN5 at the stationary parking-entry view.
  pose.x_mm=192.2f;pose.y_mm=-1204.1f;pose.heading_deg=38.7f;
  float h=pose.heading_deg*PI/180.0f;
@@ -30,9 +36,20 @@ int main(){
  if(mappedParkingSeatFootMatches(5,pose,expected+24,false))return 7;
  // False middle GREEN576 remains outside the original tight gate.
  pose.x_mm=300;pose.y_mm=-1222;pose.heading_deg=147.7;
- if(mappedParkingSeatFootMatches(2,pose,208,true))return 8;
+ if(legacyParkingSeatFootMatches(2,pose,208,true))return 8;
  parkingSectionInnerSeatsOnly=false;
- if(!mappedParkingSeatFootMatches(2,pose,184,false))return 9;
+ if(!legacyParkingSeatFootMatches(2,pose,184,false))return 9;
+ parkingSectionInnerSeatsOnly=true;
+ // Current-mount geometry: genuine projected feet accepted, incompatible
+ // observations rejected without weakening either existing tolerance.
+ for(float distance:{300.f,400.f,500.f,600.f}){
+  seats[0].x=cameraX+distance*cosf(h);seats[0].y=cameraY+distance*sinf(h);
+  pose.x_mm=192.2f;pose.y_mm=-1204.1f;pose.heading_deg=38.7f;
+  const int foot=lroundf(OBSTACLE_CAMERA_GROUND_HORIZON_Y+
+      OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX/distance);
+  if(!mappedParkingSeatFootMatches(0,pose,foot,false))return 10;
+  if(mappedParkingSeatFootMatches(0,pose,foot+40,false))return 11;
+ }
  std::cout<<"START FOOT log471/576 false projections rejected; log589 end GREEN accepted; compatibility PASS\n";
 }
 '''

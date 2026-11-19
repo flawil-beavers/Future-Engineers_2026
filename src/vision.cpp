@@ -41,6 +41,7 @@ void Vision::measurePillarHeight(const uint8_t *buffer,uint16_t width,
     blob.heightTopY=-1;
     blob.frameSequence=frameSequence;
     blob.heightBaseWidthPx=0;
+    blob.heightBaseCenterX=0;
     if (!OBSTACLE_SURPRISE_ENABLED || !buffer || width!=320 || height!=240 ||
         !blob.found || (blob.color!=ColorType::RED && blob.color!=ColorType::GREEN) ||
         blob.width()<7 || blob.width()>OBSTACLE_MAX_START_WIDTH ||
@@ -66,6 +67,7 @@ void Vision::measurePillarHeight(const uint8_t *buffer,uint16_t width,
     if(columns<3)return;
     const int stemWidth=stemRight-stemLeft+1,center=sumX/columns;
     blob.heightBaseWidthPx=stemWidth;
+    blob.heightBaseCenterX=(stemLeft+stemRight)/2;
     const int flank=stemWidth/2+(stemWidth/4>4 ? stemWidth/4:4);
     int top=blob.maxY-4,gaps=0,supportedRows=0,narrowTop=-1;
     // Only probe a narrow pillar strip, not the upper frame's room colours.
@@ -693,10 +695,44 @@ void Vision::processComponent(
                                  sampleHeight*PIXEL_STEP,component);
         Blob &pillar = color == ColorType::RED
             ? result.redPillar : result.greenPillar;
-        if (obstacle_blob_shape_valid(&component) &&
-            (!pillar.found || component.maxY > pillar.maxY ||
-             (component.maxY == pillar.maxY && component.area > pillar.area)))
-            pillar = component;
+        Blob candidate=component;
+        // A room-colour strip can join a real stem in the ROI. Retain the
+        // original component for occupancy/debugging; use only its measured
+        // narrow stem for pillar geometry. No HSV threshold is changed.
+        if (component.heightTopMeasured && component.heightBaseWidthPx>=7 &&
+            component.width()<=OBSTACLE_MAX_START_WIDTH &&
+            component.width()>component.heightBaseWidthPx*3/2)
+        {
+            const int left=component.heightBaseCenterX-component.heightBaseWidthPx/2;
+            const int right=left+component.heightBaseWidthPx-1;
+            uint32_t count=0,xsum=0,ysum=0;
+            candidate.minX=320;candidate.maxX=-1;
+            candidate.minY=240;candidate.maxY=-1;
+            for(int y=component.minY;y<=component.maxY;y+=PIXEL_STEP)
+                for(int x=left;x<=right;x+=PIXEL_STEP)
+                {
+                    if(x<0 || x>=sampleWidth*PIXEL_STEP)continue;
+                    const int sx=ROTATE_180 ? sampleWidth*PIXEL_STEP-1-x:x;
+                    const int sy=ROTATE_180 ? sampleHeight*PIXEL_STEP-1-y:y;
+                    if(colorLookup[readRGB565Raw(buffer,sy*sampleWidth*PIXEL_STEP+sx)]!=
+                       static_cast<uint8_t>(color))continue;
+                    ++count;xsum+=x;ysum+=y;
+                    if(x<candidate.minX)candidate.minX=x;
+                    if(x>candidate.maxX)candidate.maxX=x;
+                    if(y<candidate.minY)candidate.minY=y;
+                    if(y>candidate.maxY)candidate.maxY=y;
+                }
+            if(count)
+            {
+                candidate.centerX=xsum/count;candidate.centerY=ysum/count;
+                candidate.area=count*PIXEL_STEP*PIXEL_STEP;
+            }
+            else candidate.found=false;
+        }
+        if (obstacle_blob_shape_valid(&candidate) &&
+            (!pillar.found || candidate.maxY > pillar.maxY ||
+             (candidate.maxY == pillar.maxY && candidate.area > pillar.area)))
+            pillar = candidate;
     }
     if (!best.found || component.area > best.area)
         best = component;

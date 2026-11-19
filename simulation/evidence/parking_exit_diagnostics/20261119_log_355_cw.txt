@@ -1,0 +1,167 @@
+[MAP] Reset
+[MAP] Enter section 0 origin=START_OFFSET
+[OC] New obstacle run
+[PARK EXIT] Geometry width_mm=200 robot_length_mm=UNSET parking_length=1.5*robot_length prototype_only=yes
+[PARK EXIT] Prototype footprint length/front/rear/width_mm=165.0/125.0/40.0/135.0 gap_mm=247.5 rear_clearance_mm=50.0 stage_segments=5/5
+[PARK REAR] enabled=yes sensor_behind_axle_mm=25.0 target_range/clearance_mm=65.0/50.0
+[PARK EXIT] Start wall left=99 right=9999
+[PARK EXIT] Away steering=50
+[PARK REAR] Armed initial_range_mm=64.0 target_range_mm=65.0 tolerance_mm=2.0
+Position initialized: (391.00, -1366.00), heading=180.00°
+[PARK FIELD START] turn=CW fixed_line_x=500.0 rear_axle_x_y_heading=391.0/-1366.0/180.0 start_y_source=outer_wall_tof range_mm=99.0 start_x_source=rear_tof rear_range/clearance_mm=64.0/49.0
+[PARK REAR RESULT] start/final_range_mm=64.0/64.0 start/final_clearance_mm=49.0/49.0 correction_travel_mm=0.0
+[PARK EXIT] Segment 1 direction=reverse steering=-50 target_mm=20.0
+[PARK EXIT] Segment 1 stopped target_mm=20.0 actual_mm=20.3 heading_delta_deg=-12.2
+[PARK EXIT] Segment 2 direction=forward steering=50 target_mm=25.0
+[PARK EXIT] Segment 2 stopped target_mm=25.0 actual_mm=25.2 heading_delta_deg=-24.0
+[PARK EXIT] Segment 3 direction=reverse steering=-50 target_mm=20.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-80/-80.0/-38.3 deficit_mm_s=41.7 compensation_dc=-10.8 output_dc=-104.3
+[PARK EXIT] Segment 3 stopped target_mm=20.0 actual_mm=20.3 heading_delta_deg=-34.2
+[PARK EXIT] Segment 4 direction=forward steering=50 target_mm=85.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/54.2 deficit_mm_s=25.8 compensation_dc=2.9 output_dc=92.1
+[PARK EXIT] Segment 4 stopped target_mm=85.0 actual_mm=85.5 heading_delta_deg=-75.0
+[PARK EXIT] Segment 5 direction=forward steering=-50 target_mm=150.0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=80/80.0/42.8 deficit_mm_s=37.2 compensation_dc=8.6 output_dc=101.6
+[PARK EXIT] Final alignment distance_mm=148.8 heading_error_deg=1.7 aligned=yes
+[PARK EXIT] Segment 5 stopped target_mm=150.0 actual_mm=148.9 heading_delta_deg=0.4
+[PARK EXIT RESULT] completed_segments=5/5 travel_mm=218.9 heading_error_deg=0.4 tof_start_left_right_mm=99/9999 tof_end_left_right_mm=52/9999
+[PARK EXIT TOF REF] sensor=L filtered/raw_mm=52.0/52.0 signal_mcps=16.91 sigma_mm=1.1 rear_beyond_parking_end_mm=87.3 remaining_to_centerline_mm=212.7 beam_x_mm=207.7 beam_footprint_x_mm=197.7..217.6 expected_piece_x_mm=212.5..232.5 beam_over_piece=yes usable=yes localization_seed=yes apply_y=yes
+[PARK EXIT FIELD POSE] x_y_heading=247.1/-1212.7/180.4 tof_y_correction_mm=2.5
+[PARK LOCALIZE] Armed sensor=L initial_range_mm=52.0 direction=reverse approach/detection_speed_mm_s=100/60 max_travel_mm=430.0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK LOCALIZE] First marker present at search start
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.00/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.05/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.10/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.16/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.22/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.28/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.35/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.29/2
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-100/-100.0/-40.5 deficit_mm_s=59.5 compensation_dc=-19.7 output_dc=-107.0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.29/2
+[PARK LOCALIZE] First marker passed; searching second
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.29/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.30/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.33/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.34/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.33/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.32/3
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.30/3
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.27/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.19/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.11/2
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=-0.03/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.10/1
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.17/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.24/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.23/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.20/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.20/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.15/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.17/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.18/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.14/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.13/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.12/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.11/0
+[PARK LOCALIZE] Second marker acquired; slowing for edge
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.10/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.05/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.04/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.03/0
+[MOTOR LOAD COMP] target/profile/measured_mm_s=-60/-60.0/-28.5 deficit_mm_s=31.5 compensation_dc=-5.7 output_dc=-96.8
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.05/0
+[PARK LOCALIZE CONTROL] heading_error/steering_deg=0.01/0
+[PARK LOCALIZE RESULT] transition=yes creep_mm=298.9 piece_range_mm=167.0 piece_seen=yes wall_range_mm=247.0 expected_wall_range_mm=254.2 wall_residual_mm=-7.2 predicted/known_edge_x_mm=469.9/500.0 x_correction_mm=30.1 apply_x=yes wall_y_correction_mm=-7.2 apply_y=yes max_heading_error_deg=0.4
+[PARK LOCALIZE POSE] x_y_heading=576.1/-1217.7/180.5
+[PARK EXIT] Complete - parking-entry discovery next
+
+======================
+VISION
+======================
+Processing: 1.87 ms
+
+RED:
+X: 61
+Y: 129
+Width: 17
+Height: 103
+Bottom Y: 182
+Area: 964
+
+GREEN:
+X: 180
+Y: 88
+Width: 55
+Height: 9
+Bottom Y: 92
+Area: 232
+BLUE debug area: 2036
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.74
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=180.0
+[PARK ENTRY] Localization reached arc start; steering preload=-50
+[PARK ENTRY] Pure Pursuit discovery armed turn=CW target=S0 station=1 points=7 reverse_mm=55.0 start_x_y_heading=576.1/-1217.7/180.5
+[PATH] Known geometry ready points=145 length_mm=7142 turns=RIGHT first_corner_mm=500
+[PARK ENTRY CONTROL] phase=REVERSE_ARC travel_mm=0.0 steering=-50 arc_mm/radius_mm=55.0/109.0
+
+======================
+VISION
+======================
+Processing: 1.88 ms
+
+RED:
+X: 56
+Y: 131
+Width: 15
+Height: 109
+Bottom Y: 188
+Area: 988
+
+GREEN:
+X: 80
+Y: 99
+Width: 19
+Height: 13
+Bottom Y: 106
+Area: 96
+BLUE debug area: 2232
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.74
+[PATH] Live avoidance injected seat=2 color=RED clearance_mm=230
+[MAP] Confirmed S0 station=1 side=RIGHT color=RED
+
+======================
+VISION
+======================
+Processing: 1.87 ms
+
+RED:
+X: 253
+Y: 102
+Width: 27
+Height: 47
+Bottom Y: 126
+Area: 1156
+
+GREEN:
+X: 152
+Y: 86
+Width: 39
+Height: 13
+Bottom Y: 92
+Area: 236
+BLUE debug area: 2004
+OA state: IDLE
+Open/Obstacle turns: 0
+Target heading: 0.74
+[PARK ENTRY] Scan pose reached error_mm=7.4 heading_error_deg=4.7 travel/planned_mm=48.1/55.0 target_station=1
+[PARK ENTRY RESULT] resolved=yes station=1 result=RED seat=2 pose_x_y_heading=623.0/-1226.5/156.3 target_inner_seat=2 bearing_range_deg_mm=-4.8/578.7
+[PARK ENTRY CONNECTOR] Preflight FAIL tracking_sample/target=0/2 forward_mm=39.8 steering/min_lookahead_deg_mm=56.2/25.0 merge_forward/lateral/before_pillar_mm=254/-149/450
+[PARK ENTRY CONNECTOR] Rejected preflight - drive motor locked off

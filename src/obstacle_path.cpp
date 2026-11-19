@@ -696,6 +696,23 @@ SurpriseOrder surpriseOrderForSeat(uint8_t id)
     return unresolved ? SURPRISE_ORDER_UNKNOWN:SURPRISE_FIRST;
 }
 
+// Store the one special identity independently of visible colour. seat.red is
+// the effective/original colour consumed by the existing map and bypass code
+// on all laps; visibleRed remains the actual camera observation for diagnostics.
+void rememberModifiedSign(uint8_t id,obstacle_sign_height::Class height)
+{
+    if(surpriseSeatIndex>=0 || id>=OBSTACLE_SEAT_COUNT)return;
+    CandidateSeat &seat=seats[id];
+    seat.red=!seat.visibleRed;
+    seat.modifiedSign=true;
+    seat.heightMm=height;
+    surpriseSeatIndex=static_cast<int8_t>(id);
+    Serial.print("[SURPRISE] locked seat/height/visible/original=");
+    Serial.print(id);Serial.print('/');Serial.print(seat.heightMm);Serial.print('/');
+    Serial.print(seat.visibleRed ? "RED":"GREEN");Serial.print('/');
+    Serial.println(seat.red ? "RED; pass RIGHT":"GREEN; pass LEFT");
+}
+
 bool recordObservedSeatVote(uint8_t id,const Blob &blob)
 {
     CandidateSeat &seat=seats[id];
@@ -732,16 +749,7 @@ bool recordObservedSeatVote(uint8_t id,const Blob &blob)
         (modified && order==SURPRISE_LATER && seat.heightFrames>=OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES);
     if(!recordSeatVote(seat,blob.color,ready))return false;
     if(!first && modified)
-    {
-        seat.red=!seat.visibleRed;
-        seat.modifiedSign=true;
-        seat.heightMm=height;
-        surpriseSeatIndex=static_cast<int8_t>(id); // single per-run identity, not per lap
-        Serial.print("[SURPRISE] locked seat/height/visible/original=");
-        Serial.print(id);Serial.print('/');Serial.print(seat.heightMm);Serial.print('/');
-        Serial.print(seat.visibleRed ? "RED":"GREEN");Serial.print('/');
-        Serial.println(seat.red ? "RED; pass RIGHT":"GREEN; pass LEFT");
-    }
+        rememberModifiedSign(id,height);
     return true;
 #endif
 }
@@ -6728,7 +6736,7 @@ void obstacle_path_start(
     bool ccw_first_edge_reference)
 {
     obstacle_path_reset();
-    Serial.print("[SURPRISE] revision=20261111_height_rule enabled=");
+    Serial.print("[SURPRISE] revision=20261119_measured_height enabled=");
     Serial.println(OBSTACLE_SURPRISE_ENABLED ? 1:0);
     Serial.print("[PATH LAYOUT] mode=");
     Serial.println(sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_CHECK_ALL

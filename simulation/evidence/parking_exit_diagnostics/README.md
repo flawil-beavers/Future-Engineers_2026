@@ -1150,3 +1150,41 @@ allowed. Both contain final_parking_stop/completed with no truncation.
 Cross-batch lap1 view audit of the latest20 archived files (629–636,645–656):
 [2026-11-11 review](../../LAP1_APPROACH_LAST20_REVIEW_20261111.md).
 Original bytes unchanged;650 remains an excerpt. No new physical test batch.
+
+## Intake20261119: unassigned older parking/exit originals
+
+16 complete source files secured unchanged from the connected stick. Their actual capture dates/firmware versions and physical outcomes have not been established. The source clock reports2098. All files end on a complete line; no run-completion claim is made. No SURPRISE revision marker is present. Source-before/source-after/copy SHA-256 matched. See the [25-file intake manifest](../log_intake/20261119_stick/README.md) for other serial logs.
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_log_356_cw.txt](20261119_log_356_cw.txt) | 8499 | 8b2f028b62ae37118f392f01bcdc45174bc44f0a26ad749708264c71aa1a67c4 |
+| [20261119_log_355_cw.txt](20261119_log_355_cw.txt) | 8138 | b55701a005be22772a6b3cfe32b02d4114e165a028b163582a5e3fdfdf0e45ce |
+| [20261119_log_354_ccw.txt](20261119_log_354_ccw.txt) | 11011 | e672bca3ae1717acc2f6071cbbe3260c3252d5f0fe589ff768b06a3d15b9b89d |
+| [20261119_log_353_ccw.txt](20261119_log_353_ccw.txt) | 9160 | 131aabc5dbe018bfea59c22b7ced5630c6e029d720fcaf5daaf883a4fa9df11e |
+| [20261119_log_352_cw.txt](20261119_log_352_cw.txt) | 8786 | b0504bed158b07efd370de59a93780976deed48df61947443e8ad83c2a5f90e5 |
+| [20261119_log_351_cw.txt](20261119_log_351_cw.txt) | 8350 | 5029e4f89879ba26381f5db9cb51e1f348817f1a333f652349f56e3d435e2163 |
+| [20261119_log_350_ccw.txt](20261119_log_350_ccw.txt) | 9689 | 8707aa6d33f81abc629ea955e451a50f6b3d214edc164f8578aa801437744377 |
+| [20261119_log_349_ccw.txt](20261119_log_349_ccw.txt) | 9592 | 27ff035605a234cb9b88ec52005b1fc06698bf4c552287b5c9b38559ca0e0906 |
+| [20261119_log_348_ccw.txt](20261119_log_348_ccw.txt) | 13699 | f042a2c923e32736494e28f422b948da52a1715201c2a29c336b12e13691bc14 |
+| [20261119_log_347_ccw.txt](20261119_log_347_ccw.txt) | 9410 | 2824f86656cd8c1df475a9e3a42affb1303fc64437a68577fffb3330ca01fa22 |
+| [20261119_log_346_ccw.txt](20261119_log_346_ccw.txt) | 9081 | c65b8d11bfdefea6fd4597d81029167b87645e61ef8c9a0522d4557320434211 |
+| [20261119_log_345_ccw.txt](20261119_log_345_ccw.txt) | 8831 | 3563a281be716f5420decc917399eb2c8b9b4e8e3d250a5ea13b4b721b5a21fc |
+| [20261119_log_344_ccw.txt](20261119_log_344_ccw.txt) | 13548 | f0d2b4a61ddf930efba4accf773b58f0a25496ee4b2cea3bb6916e34b0f96e78 |
+| [20261119_log_343_cw.txt](20261119_log_343_cw.txt) | 11956 | 4abeba4514abd9b87149c8fa87b178a1c5c69a7ca5fb82f38a7c66c01a8005ff |
+| [20261119_log_342_cw.txt](20261119_log_342_cw.txt) | 12331 | c89ffda1832ce1e06abfeda0892c1ea2b46f46a3e9e4bcb2807a53f9f039edd9 |
+| [20261119_log_341_cw.txt](20261119_log_341_cw.txt) | 8575 | 1a516ca9fd817b78ca6a3d56d984582fb6939685ac2c6533bd293554547a89ea |
+
+## 2026-11-19 additional source intake (637-644)
+
+Complete original files, unchanged; source-before/source-after/copy SHA-256 verified during immediate intake. Date is intake date; physical reports and firmware not established. No new Surprise Rule acceptance claim.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_log_637_cw.txt](20261119_log_637_cw.txt) | 26597 | 1f2b826dbc8131b104c568128afd6ae372627ef1cad902ff5607046fe8d0dbf9 |
+| [20261119_log_638_cw.txt](20261119_log_638_cw.txt) | 29696 | 8b71fbd25f2079de3469b1f074cb9ea95b98ce82bfa5ef3d176bf3452bfda424 |
+| [20261119_log_639_cw.txt](20261119_log_639_cw.txt) | 99225 | b70aafae642b4aa81f825991a3e91dcae9850bab725903146909a5c4979dad0d |
+| [20261119_log_640_cw.txt](20261119_log_640_cw.txt) | 171336 | 222ee9f5f9c235f2b9dce7efa4ded8c166bc4a48130b87d5bef6a40363bcd5e9 |
+| [20261119_log_641_cw.txt](20261119_log_641_cw.txt) | 15763 | c24b673daec9faf3c19c91a64b4ec2d2c2eecc33f3efdfefa2c0b353ae1fef6e |
+| [20261119_log_642_cw.txt](20261119_log_642_cw.txt) | 33220 | 61abe9e4537492c49952a13ea880d0898a2fc91b16d39188aaf6544680e2cfb4 |
+| [20261119_log_643_cw.txt](20261119_log_643_cw.txt) | 29488 | 341da9f3f7ebe4e96e71cc1f97cd2cc5ec5d894ecc94a22f5873ea129b27d459 |
+| [20261119_log_644_cw.txt](20261119_log_644_cw.txt) | 32275 | 3b2dcbb0f23ab58555a994dbb747a9e7ef77fec06d313e45d45d8d38fd606a94 |

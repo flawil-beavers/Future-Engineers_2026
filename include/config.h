@@ -1368,11 +1368,14 @@ constexpr auto OBSTACLE_CAMERA_LOCAL_Y_MM = 0.0f;
 // Reference/evidence:simulation/RETURNED_RUNS_518_520_CAMERA_REVIEW.md.
 // distance = scale / (maxY - horizonY). Camera mount/lighting acceptance is
 // limited to the recorded setups; no universal range-accuracy claim.
-constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 52.0f;
-// Full-sensor square-pixel vertical model; needs physical50/100/150mm acceptance.
-constexpr auto OBSTACLE_CAMERA_FOCAL_Y_PX = OBSTACLE_CAMERA_FOCAL_X_PX;
+// Current fixed mount: approved 2026-11-19 centred50/100/150mm references,
+// lens-to-near-face350/500/700mm; sampled feet158/140/126px. The older
+// October mount (horizon52/scale33600) is not interchangeable with this one.
+constexpr auto OBSTACLE_CAMERA_GROUND_HORIZON_Y = 94.0f;
+// Joint vertical projection fit, not an assumed normal100mm sign height.
+constexpr auto OBSTACLE_CAMERA_FOCAL_Y_PX = 259.0f;
 constexpr auto OBSTACLE_CAMERA_PRINCIPAL_Y_PX = 119.5f;
-constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 33600.0f;
+constexpr auto OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX = 22400.0f;
 // The former centred-crop mode needed a V-shaped off-axis correction. In the
 // full-sensor mode, equal 400 mm forward-depth samples had maxY=136 (left) and
 // maxY=138 (right), so the old 0.11 slope badly overcorrected their range.

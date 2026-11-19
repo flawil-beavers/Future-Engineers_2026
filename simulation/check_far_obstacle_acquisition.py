@@ -57,6 +57,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &r){
         code+='uint8_t sectionInferredEmpty(uint8_t){return 0;}\n'
         code+=path[path.index('enum SurpriseOrder :'):path.index('SurpriseOrder surpriseOrderForSeat(')]
         code+=block(path,path.index('SurpriseOrder surpriseOrderForSeat('))+'\n'
+        code+=block(path,path.index('void rememberModifiedSign('))+'\n'
     for signature in ('int nearestSeatIndex(', 'bool recordSeatVote(',
                       'bool recordObservedSeatVote(',
                       'void prepareConsecutiveVote(', 'void expirePendingVotes(',

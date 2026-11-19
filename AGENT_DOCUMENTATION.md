@@ -26,7 +26,7 @@ and attempt final parking. `OBSTACLE_FIRST_LAP_TEST_ENABLED`,
 Surprise Rule participation defaults to enabled through
 `OBSTACLE_SURPRISE_RULE_ENABLED=1`; it must match the pre-attempt declaration.
 
-The latest recorded firmware change is the checked CCW first-lap view correction
+Before the November19 correction below, the latest recorded firmware change was the checked CCW first-lap view correction
 from commit `484a23e`. Later commits `284b8a2` and `8383d9b` add visualization
 tools and documentation. Logged control revisions are
 `20261111_checked_ccw_view`, `20261111_recovery_handoff` and
@@ -54,8 +54,7 @@ deviation and genuine sensor or motion faults remain stop conditions.
 ### Surprise Rule and camera approval
 
 The [implementation report](simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
-describes height recognition and the stored original passing colour. Real
-50 mm and 150 mm pillars have not been accepted with the mounted camera.
+describes height recognition and the stored original passing colour. Approved November19 stationary50/100/150mm references now pass current-source replay; normal dynamic runs remain unvalidated.
 The approved `20261027_green_400mm_01.png` is a normal-height reference only.
 The rejected or invalid October 26 references cannot support new acceptance.
 Consult the approval registry and obtain the required image approval before
@@ -120,3 +119,18 @@ with one source-checked checklist, consolidated rule metadata and kept active
 limitations visible. No firmware, original evidence or physical test changed.
 Next maintain concise findings here and follow the archive links for historical
 investigations instead of copying old procedures into the current handoff.
+
+
+## 2026-11-19 measured-height implementation (current)
+
+Latest changes correct the mounted-camera ground/height model using the user-approved November19 stationary series. All48 original image bundles are secured;45 approved,3 excluded. Evidence, metadata and hashes are in simulation/evidence/camera_diagnostics/. All192 original files were CRC/payload/hash/index verified. The previous incorrect classification and exact capture history are preserved in docs/history/HEIGHT_CAPTURE_INTAKE_20261119.md and simulation/CAMERA_HEIGHT_CAPTURE_REVIEW_20261119.md.
+
+Current-source replay now recognizes all45 approved images with correct visible colour and50/100/150mm class. Background-connected stems are narrowed for pillar association; original components remain available for occupancy/debugging. HSV thresholds, route geometry, speeds and parking control are unchanged. rememberModifiedSign() stores one seat/height, keeps visibleRed separate from effective original passing colour seat.red, and later laps retain that map. Rule participation remains enabled by default and must match the pre-run declaration. Current Surprise log revision20261119_measured_height.
+
+Four origin/main commits through caa2709 were downloaded and fast-forwarded (video tools/history consolidation); only AGENT_DOCUMENTATION.md conflicted when restoring local work. Preserved the remote concise handoff/history layout and archived the complete local November19 intake tail, with this updated current section.
+
+Additional stick originals637..644 were secured unchanged in simulation/evidence/parking_exit_diagnostics/ with README byte counts and SHA256; directionCW, installed firmware and physical outcomes unestablished. Earlier25-file intake and failed empty capture attempts remain documented. User told stick may be unplugged immediately after source/copy verification. No Surprise physical-run acceptance inferred from these older logs.
+
+Validation/build identity and exact next steps: see simulation/SURPRISE_RULE_MEASURED_VALIDATION_20261119.md (updated at session completion). Only M7 is affected; do not rebuild/upload M4 for this change. No robot upload or motion performed this session.
+
+Final validation:45/45 real frames,16 captured sequences,648 rendered/48 association/24 policy,52 far-acquisition,2807 later-lap,6 handoff and11 camera unit cases pass; current/legacy foot-gate and green occupancy checks pass. IDE M7 SUCCESS RAM484896/523624 flash597432/786432, bin600984B SHA256059f6fb03f35efc3f11c10cfcb8c17e32dd08d22234a14d4dfacdcef51bfc92a. M4 unchanged, not built; no upload. Next normal M7 CW/CCW physical acceptance with one special sign, secure complete logs first and verify one stored identity/original side on all3laps.

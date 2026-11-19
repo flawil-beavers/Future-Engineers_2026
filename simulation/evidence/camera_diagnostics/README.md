@@ -508,3 +508,314 @@ No camera constants changed. Evidence retained unchanged:
 | `20261027_green_400mm_01.rgb565` | 153600 | `29017858e4811e4fffcc906aefd6c8085b7ec34a5ab22a85f3539bbee77f753a` |
 | `20261027_green_400mm_01.serial.bin` | 156931 | `550697ca4567fb12d94e5b74add9783b1806cbb925aac413c4d4f9551d8ab570` |
 | `20261027_green_400mm_live.txt` | 1289 | `8c06a3a1beabea1e5bce4ec2d4b1aa0f3478c46935fc6b8fe44957fbe224fa08` |
+
+## 2026-11-19: rapid height-task capture, GREEN150 at500mm
+
+User confirmed USB connected, drive release OFF, stationary robot; GREEN150mm, centred,500mm lens to nearest block face. Three c0/camshot captures saved unchanged; RGB565 size/CRC/footer checked by the existing capture script. No height/colour computation or calibration performed. Images displayed and explicitly user-approved on2026-11-19; exact statuses in validation_status.json. Camera processing is deferred until the capture series is complete. Serial connections closed after each shot.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_150mm_center_500mm_01.serial.bin](20261119_green_150mm_center_500mm_01.serial.bin) | 155764 | c4851b7999b202333ae49a07ba25b557d5c413ea5b8d2a13f4dfd1afb59fa68a |
+| [20261119_green_150mm_center_500mm_01.rgb565](20261119_green_150mm_center_500mm_01.rgb565) | 153600 | cab7ecd0535f70b01883b8f4f869845b911d6a8b456d185e9f630f8f828eadbd |
+| [20261119_green_150mm_center_500mm_01.json](20261119_green_150mm_center_500mm_01.json) | 473 | 6f244afaed4fe0b6edc2bef7623b27745da5478e40451cdf5e0f37d2d1dd2871 |
+| [20261119_green_150mm_center_500mm_01.png](20261119_green_150mm_center_500mm_01.png) | 66670 | 6cb2c143af9d8ec6165a84acad0a3de4a9209876e8a870a88a61b4c45a7e61d9 |
+| [20261119_green_150mm_center_500mm_02.serial.bin](20261119_green_150mm_center_500mm_02.serial.bin) | 154915 | e05f4f01a61c1cabf04614f2d2ae373f666bddd7126fde1a440c34e03a6e474b |
+| [20261119_green_150mm_center_500mm_02.rgb565](20261119_green_150mm_center_500mm_02.rgb565) | 153600 | f90b1d66c57ec52054f074253f679db343081f1851d26e2c638b10cf64ac0b02 |
+| [20261119_green_150mm_center_500mm_02.json](20261119_green_150mm_center_500mm_02.json) | 472 | 9339b7c4d6f8f58f75d1d2d84da8b6d1a24c5a40df4a676f352261d34357beba |
+| [20261119_green_150mm_center_500mm_02.png](20261119_green_150mm_center_500mm_02.png) | 66630 | f122d395d5a07f47ee7c83528ba1100368f4080cbf2c4bb75d0aec30a9dfef02 |
+| [20261119_green_150mm_center_500mm_03.serial.bin](20261119_green_150mm_center_500mm_03.serial.bin) | 154916 | 534c314440c52d90722efd31af694191b290add9a88b8a4f8be13cd8aa546613 |
+| [20261119_green_150mm_center_500mm_03.rgb565](20261119_green_150mm_center_500mm_03.rgb565) | 153600 | 426748b1d996c3c17f505b7ed982f0d1fe9abf283abb9d967bd263896afe50c3 |
+| [20261119_green_150mm_center_500mm_03.json](20261119_green_150mm_center_500mm_03.json) | 472 | 04fcbda1fd23fbe367dbf8c50a8add7a8251eda56b116a2b2a6c262feeb9e32b |
+| [20261119_green_150mm_center_500mm_03.png](20261119_green_150mm_center_500mm_03.png) | 66707 | dd64f6fee864c58b282ef1cb538e078be5715d2afb0744d808f31b41651722ab |
+
+## 2026-11-19: rapid height-task capture, GREEN150 at700mm
+
+Same stationary robot/camera/light, GREEN150mm centred,700mm lens to near face. Three complete CRC/footer-checked captures. User explicitly approved all three displayed images. No colour/height computation; deferred until dataset complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_150mm_center_700mm_01.serial.bin](20261119_green_150mm_center_700mm_01.serial.bin) | 156936 | cc4305347b46181e15de4bd4b9a006a860067fdcfd31f09b979e5a3a33863dde |
+| [20261119_green_150mm_center_700mm_01.rgb565](20261119_green_150mm_center_700mm_01.rgb565) | 153600 | e2d861ae6df31b3bf59c0918a6afe2b8e1d54da15d9d727d357401303b5dc075 |
+| [20261119_green_150mm_center_700mm_01.json](20261119_green_150mm_center_700mm_01.json) | 480 | d7ffcd90e0276f0adc061895c4a6b58208b39eef6805c754cc78cff0fc42bf23 |
+| [20261119_green_150mm_center_700mm_01.png](20261119_green_150mm_center_700mm_01.png) | 63766 | 15d581bdb4a548ca2c0cd599f7d4eec3fac228722b8ea9edefb1af1db1bd474c |
+| [20261119_green_150mm_center_700mm_02.serial.bin](20261119_green_150mm_center_700mm_02.serial.bin) | 154916 | fbd3414915c6adc692c716992765958e6069ce12c6bb9e3a4da87f24f570edb8 |
+| [20261119_green_150mm_center_700mm_02.rgb565](20261119_green_150mm_center_700mm_02.rgb565) | 153600 | d15c41a6b37d055ed577462eb90c1b4ecb2bf1182d135960f55e080438059bbd |
+| [20261119_green_150mm_center_700mm_02.json](20261119_green_150mm_center_700mm_02.json) | 473 | b8739fe585e4b2a0ea4d5533fb8e5d39f068fa7195eb53688e6442766c35fd5c |
+| [20261119_green_150mm_center_700mm_02.png](20261119_green_150mm_center_700mm_02.png) | 66116 | 639e50c248709cc52f0d327b1278b1b1c2e7dc661216bcf76ebc7c39a071250e |
+| [20261119_green_150mm_center_700mm_03.serial.bin](20261119_green_150mm_center_700mm_03.serial.bin) | 154916 | 6f539f2eb62884b89497e89911753bd2e380b03c8c18dd9b383d3a0fbbb0085d |
+| [20261119_green_150mm_center_700mm_03.rgb565](20261119_green_150mm_center_700mm_03.rgb565) | 153600 | 0d0b125e3b3e300cc02cb1d1e6e20f2d571b5c0b0fd42f6275c411f4c5f231d9 |
+| [20261119_green_150mm_center_700mm_03.json](20261119_green_150mm_center_700mm_03.json) | 472 | 680c2e0300b7502bdd46146bf663e4c561c3a325bd57e400a646b6ace90e9ee1 |
+| [20261119_green_150mm_center_700mm_03.png](20261119_green_150mm_center_700mm_03.png) | 64099 | cb435592ccdb3cac5727b5552b9934a60605ccfcd6cfe3b15613b166de50751a |
+
+## 2026-11-19: rapid height-task capture, GREEN150 at350mm
+
+Same stationary robot/camera/light, GREEN150mm centred,350mm lens to near face. Three complete CRC/footer-checked captures. Images displayed; current approval status is in validation_status.json. No colour/height computation; deferred until dataset complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_150mm_center_350mm_01.serial.bin](20261119_green_150mm_center_350mm_01.serial.bin) | 155190 | e972e008ce095ffea9ee5946503a37024f2b5cf062a01d5be6f1f0e286756b49 |
+| [20261119_green_150mm_center_350mm_01.rgb565](20261119_green_150mm_center_350mm_01.rgb565) | 153600 | 9d57d74ac41be1e5402831379f6a676cd7c78f98dfeffc965a171eff521dcf5a |
+| [20261119_green_150mm_center_350mm_01.json](20261119_green_150mm_center_350mm_01.json) | 480 | 456958f559f65c1adfd8a67f190cb7101f137e328de2493b48d3296f8234b5b0 |
+| [20261119_green_150mm_center_350mm_01.png](20261119_green_150mm_center_350mm_01.png) | 66902 | 8eb37a27de473db3baf437db1b87824cbf9b44049f8ba4b19297883b4c0b0e4a |
+| [20261119_green_150mm_center_350mm_02.serial.bin](20261119_green_150mm_center_350mm_02.serial.bin) | 154920 | f0f2ad731c5523f7bc264812feb7a5428d263858c2f69dedf837cd287f81a46b |
+| [20261119_green_150mm_center_350mm_02.rgb565](20261119_green_150mm_center_350mm_02.rgb565) | 153600 | 33847842f604de9ef9451b33979ef7b0f5bd50d1f420bb2452616c816924217b |
+| [20261119_green_150mm_center_350mm_02.json](20261119_green_150mm_center_350mm_02.json) | 472 | 583dec7c6fc06c300a051c66a5afc4ce13bb96c3f4c5088712d7fa692b6bb85e |
+| [20261119_green_150mm_center_350mm_02.png](20261119_green_150mm_center_350mm_02.png) | 66927 | a1ce599af22a80618f3d8ca03914e9a1bac58e1078593c0961fb8341872673c5 |
+| [20261119_green_150mm_center_350mm_03.serial.bin](20261119_green_150mm_center_350mm_03.serial.bin) | 154920 | f0aa36e53a1b6be60be43090bac07186a21c7d8cee0455e9e071e25044938234 |
+| [20261119_green_150mm_center_350mm_03.rgb565](20261119_green_150mm_center_350mm_03.rgb565) | 153600 | d6ca3dfc372056e012652389da2f5ea218f81d2bbb4c1853e3d1800724059ada |
+| [20261119_green_150mm_center_350mm_03.json](20261119_green_150mm_center_350mm_03.json) | 472 | 57a08c78cd1c5f8b620d80dbd7f8d9078bc605e7241eaaeae23b6a85b5808f51 |
+| [20261119_green_150mm_center_350mm_03.png](20261119_green_150mm_center_350mm_03.png) | 66602 | afa26b15c8de3e5287d56f20ac2901fc729a8441064eb34ca0065028617123f8 |
+
+## 2026-11-19: rapid height-task capture, GREEN100 at500mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; GREEN100mm, lens to near face500mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_100mm_center_500mm_01.serial.bin](20261119_green_100mm_center_500mm_01.serial.bin) | 156728 | 71cd12109d65b4577ab7312ab361dd503882fd8ee1e1c20d30e78c86a066452d |
+| [20261119_green_100mm_center_500mm_01.rgb565](20261119_green_100mm_center_500mm_01.rgb565) | 153600 | 3bbbd72a58b7c302e4931872f87c21a062397c2f2c2bb78b7b306a8c018a0b32 |
+| [20261119_green_100mm_center_500mm_01.json](20261119_green_100mm_center_500mm_01.json) | 481 | acb61f707b0a378c72df973ec2d6fb36d54f1ef4a862dddb410e546d1da0e3bd |
+| [20261119_green_100mm_center_500mm_01.png](20261119_green_100mm_center_500mm_01.png) | 65461 | f4873a57a873a065a575d1f1402202b8c11b95abb585c81914153ed6081e263f |
+| [20261119_green_100mm_center_500mm_02.serial.bin](20261119_green_100mm_center_500mm_02.serial.bin) | 154919 | 2cb7d8ff014c45fc67666b4320704d4771a801d646fb3c49eb47fa92fdf06383 |
+| [20261119_green_100mm_center_500mm_02.rgb565](20261119_green_100mm_center_500mm_02.rgb565) | 153600 | 920f44fa1ab34c127161cbb39e6fc17a91a26c63e8730a4973ddb28561d5c902 |
+| [20261119_green_100mm_center_500mm_02.json](20261119_green_100mm_center_500mm_02.json) | 473 | 346b9dd6c2a6ffd8a512ade3604ee10b23bd2803a6fa5778c010a52b0cd90ebd |
+| [20261119_green_100mm_center_500mm_02.png](20261119_green_100mm_center_500mm_02.png) | 65794 | 6963a2d54a0d7bbddfc67137680cd9e6c3109524127db7e32efc04d48b02d99e |
+| [20261119_green_100mm_center_500mm_03.serial.bin](20261119_green_100mm_center_500mm_03.serial.bin) | 154920 | 25b7dc194ffb6a4b00373ef9c54f2c34450f34c7c832c8aeecd1cafe7d4c964f |
+| [20261119_green_100mm_center_500mm_03.rgb565](20261119_green_100mm_center_500mm_03.rgb565) | 153600 | 2d926f348cf5278a9a1a03001af73e7fa5680bf2f9f2b27f490b552f0fedbe81 |
+| [20261119_green_100mm_center_500mm_03.json](20261119_green_100mm_center_500mm_03.json) | 473 | fd8384bbc141c14b9f598976f0559c467ccf8d523f55ae98434b4d6671d528fc |
+| [20261119_green_100mm_center_500mm_03.png](20261119_green_100mm_center_500mm_03.png) | 65321 | b0457d042d3b5f1f388eafeb74219929bc535b5d7bdc157f9caa8d865a8af98a |
+
+## 2026-11-19: rapid height-task capture, GREEN100 at700mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; GREEN100mm, lens to near face700mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_100mm_center_700mm_01.serial.bin](20261119_green_100mm_center_700mm_01.serial.bin) | 156086 | 180a3fb3324091c8b9f69e1fa80a5dca4fb595375d664d6c0d761a350ae0a3d1 |
+| [20261119_green_100mm_center_700mm_01.rgb565](20261119_green_100mm_center_700mm_01.rgb565) | 153600 | 525aae3838988a78d8ed579928e0f341125ed96462c4015ef05502647ffd6591 |
+| [20261119_green_100mm_center_700mm_01.json](20261119_green_100mm_center_700mm_01.json) | 481 | 5f61666835fda18e21e1ac927c959622e331a26315847dbf701dfe63b4fc1841 |
+| [20261119_green_100mm_center_700mm_01.png](20261119_green_100mm_center_700mm_01.png) | 64958 | 377c4d8928e8e5d0664b54b308e51633eec5767ea7b167cef634f7186950cb9f |
+| [20261119_green_100mm_center_700mm_02.serial.bin](20261119_green_100mm_center_700mm_02.serial.bin) | 154918 | 0ffd0fd4ad38fa4f24be5e2acf43a2f62dfd54c9296fd7fabe5f9f23aea19cfb |
+| [20261119_green_100mm_center_700mm_02.rgb565](20261119_green_100mm_center_700mm_02.rgb565) | 153600 | f8bb02f3caed3709ba2348b2153bded3d88e9be0711454c592d1c43d2fe26ae1 |
+| [20261119_green_100mm_center_700mm_02.json](20261119_green_100mm_center_700mm_02.json) | 473 | 0d65b1b4fc9821d903d11f78fe96d7a0f5d6b50dd860a2a680c5ec67146e0dbe |
+| [20261119_green_100mm_center_700mm_02.png](20261119_green_100mm_center_700mm_02.png) | 64773 | 95f53367bdf24082c7bce2bd9f7a68c5b5e0b9d51a3bf093597569a81ceec343 |
+| [20261119_green_100mm_center_700mm_03.serial.bin](20261119_green_100mm_center_700mm_03.serial.bin) | 154918 | f874b1a0c54dac4872bac2f0f79531ffee93189e622332ead7aa2943985826c5 |
+| [20261119_green_100mm_center_700mm_03.rgb565](20261119_green_100mm_center_700mm_03.rgb565) | 153600 | cf9c867c1a4a3ce60b546060c9d4430cf89474130be2f87ae51c8750c04ed550 |
+| [20261119_green_100mm_center_700mm_03.json](20261119_green_100mm_center_700mm_03.json) | 473 | 619f634a6f69b19564833556bb5e49196851e81602791abceb9205325d14ae98 |
+| [20261119_green_100mm_center_700mm_03.png](20261119_green_100mm_center_700mm_03.png) | 64492 | ac3836fa278d75613598e8b506fd99b522b83fe652633d2ffd961cb446ec240a |
+
+## 2026-11-19: rapid height-task capture, GREEN50 at500mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; GREEN50mm, lens to near face500mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_50mm_center_500mm_01.serial.bin](20261119_green_50mm_center_500mm_01.serial.bin) | 155120 | b16399fed3d3377a06fb517d365e3e8da8c6e5d7eb153acd1a38cb4d4dec2cd7 |
+| [20261119_green_50mm_center_500mm_01.rgb565](20261119_green_50mm_center_500mm_01.rgb565) | 153600 | dbb71c5a98944f6781eb131ce1a7c1664dcc7f32e7c09d4a61490d50c0706d32 |
+| [20261119_green_50mm_center_500mm_01.json](20261119_green_50mm_center_500mm_01.json) | 477 | 52fa08b3452ffbd1021ed059c5885a8c8d5ca7002a73251a38f341459c74f567 |
+| [20261119_green_50mm_center_500mm_01.png](20261119_green_50mm_center_500mm_01.png) | 65144 | 5ff7ec262a151889b0b7237481a65814169387e3db28a76503710cf224609b6d |
+| [20261119_green_50mm_center_500mm_02.serial.bin](20261119_green_50mm_center_500mm_02.serial.bin) | 154920 | 3c9d29d9141303a58c3c068c7c424d30ce8bf7b2c7bdce9eb4671f7e09e2e5b0 |
+| [20261119_green_50mm_center_500mm_02.rgb565](20261119_green_50mm_center_500mm_02.rgb565) | 153600 | b1d606de77134e97216be0f5981496861a9d78405daaacf1f50c2011a5015945 |
+| [20261119_green_50mm_center_500mm_02.json](20261119_green_50mm_center_500mm_02.json) | 473 | fc7fc21f6ecc9abd3dd2e94a5842774e5452c9a4253e149cef244b93fb4649e2 |
+| [20261119_green_50mm_center_500mm_02.png](20261119_green_50mm_center_500mm_02.png) | 64941 | 3454396e1f7229eea89a7e8aca70c089065b2b36f7f92f95c346f7b68ca8826b |
+| [20261119_green_50mm_center_500mm_03.serial.bin](20261119_green_50mm_center_500mm_03.serial.bin) | 154919 | 8f1f03bec74d9eb1a1d3e066e2bd9e5ea71c572b7ade0eb9a3203486b109d132 |
+| [20261119_green_50mm_center_500mm_03.rgb565](20261119_green_50mm_center_500mm_03.rgb565) | 153600 | a97310219dbba402c2fc7c1c33fb8abe1b05e822034036c199b76d9115f7c437 |
+| [20261119_green_50mm_center_500mm_03.json](20261119_green_50mm_center_500mm_03.json) | 472 | d6532d1d1a0886347a0ad37a07984445a24da49fb09244b76482e966bcc61ec1 |
+| [20261119_green_50mm_center_500mm_03.png](20261119_green_50mm_center_500mm_03.png) | 64556 | 7fe63c60ee5e855a0bc705154453a692be4402e23f3b69c796834e7e4294928e |
+
+## 2026-11-19: rapid height-task capture, GREEN50 at700mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; GREEN50mm, lens to near face700mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_50mm_center_700mm_01.serial.bin](20261119_green_50mm_center_700mm_01.serial.bin) | 155576 | 88afaddae7c720c428d38d0b10270a56b17c29ccb1080f1518ca4719275563b6 |
+| [20261119_green_50mm_center_700mm_01.rgb565](20261119_green_50mm_center_700mm_01.rgb565) | 153600 | c39f060ddcbddaebadb698917e7fb6fee1754769ced1a8061a8bb5793e7cd64f |
+| [20261119_green_50mm_center_700mm_01.json](20261119_green_50mm_center_700mm_01.json) | 481 | 2f2323c185fa94c6f1a77594d8d50ebd0c0d42bf583738a6dade1741fd4d2f01 |
+| [20261119_green_50mm_center_700mm_01.png](20261119_green_50mm_center_700mm_01.png) | 64821 | 4fd25e3a08f90ebd6797f135f8ac3ccd42f0614fa9d4d9ad1e084b65f4963ec6 |
+| [20261119_green_50mm_center_700mm_02.serial.bin](20261119_green_50mm_center_700mm_02.serial.bin) | 154920 | 925932329754985553b6682da6b3c9acaee94131174667949a0e39e611bba432 |
+| [20261119_green_50mm_center_700mm_02.rgb565](20261119_green_50mm_center_700mm_02.rgb565) | 153600 | 9f4300bac77125b4c42c453de518e9f5a87e9f98b8949830a4dc77d466880aeb |
+| [20261119_green_50mm_center_700mm_02.json](20261119_green_50mm_center_700mm_02.json) | 473 | b49f68fa3031719c2571fe30d6eaa8b9f2e21e9f044d755382ffc410c1d6da6c |
+| [20261119_green_50mm_center_700mm_02.png](20261119_green_50mm_center_700mm_02.png) | 64352 | c573c0514d5c67dff8bae5fc13f43a49ee880b85785005ec58ba69fe15b65809 |
+| [20261119_green_50mm_center_700mm_03.serial.bin](20261119_green_50mm_center_700mm_03.serial.bin) | 154920 | 64c90ac44e20a715352798d3c6de0d5d09bb184cbe2f4ab46d2a4621109a0b38 |
+| [20261119_green_50mm_center_700mm_03.rgb565](20261119_green_50mm_center_700mm_03.rgb565) | 153600 | 93cb317c4bfcf7c3c6db6491c49e3608bcb090ca0c49e5207d617888d7f3f69d |
+| [20261119_green_50mm_center_700mm_03.json](20261119_green_50mm_center_700mm_03.json) | 473 | 6833e35bb779c1aeed21bbb5ffd9180beed8ba8fa480fec8704e62f2b854baa8 |
+| [20261119_green_50mm_center_700mm_03.png](20261119_green_50mm_center_700mm_03.png) | 64945 | 7793b4183f578b4fe747ac8fa99437cb491c5cab0f4726ddf2514fe09e66d3ca |
+
+## 2026-11-19: rapid height-task capture, GREEN50 at350mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; GREEN50mm, lens to near face350mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_green_50mm_center_350mm_01.serial.bin](20261119_green_50mm_center_350mm_01.serial.bin) | 156121 | b53550edb41520f1a239d6ed238d308c697198bfe9cdcf8d627c428a78592e24 |
+| [20261119_green_50mm_center_350mm_01.rgb565](20261119_green_50mm_center_350mm_01.rgb565) | 153600 | c749b72055782caee5762d14c3a05d0b291cddfe8142d9b822f4cd86dee65405 |
+| [20261119_green_50mm_center_350mm_01.json](20261119_green_50mm_center_350mm_01.json) | 481 | e2a48405636aa74e2c5c34f44abd89b0c7bf9544e653e1f115c2b73a028c1a70 |
+| [20261119_green_50mm_center_350mm_01.png](20261119_green_50mm_center_350mm_01.png) | 65107 | b3e55b81e13be081c98e12898433952d23e6c91f6216f4aebbc55b69f50b39e6 |
+| [20261119_green_50mm_center_350mm_02.serial.bin](20261119_green_50mm_center_350mm_02.serial.bin) | 154924 | 6e72239ecd1004ff90622815282fb8d2205ceb344dc3b7f15f9962d58d077949 |
+| [20261119_green_50mm_center_350mm_02.rgb565](20261119_green_50mm_center_350mm_02.rgb565) | 153600 | 04504b21cd39f03e56f57793056c72fc482fcfaffa7711cf9e727472a3005bd4 |
+| [20261119_green_50mm_center_350mm_02.json](20261119_green_50mm_center_350mm_02.json) | 472 | 0575f5ad1744e444ba4922c1597718f5f57fededce2e104ddf2f69065d0eb5d3 |
+| [20261119_green_50mm_center_350mm_02.png](20261119_green_50mm_center_350mm_02.png) | 65728 | a1d1070ef6de584064dcd8d1f5113b0f1f9075f1a6a849eb042a159c01d830aa |
+| [20261119_green_50mm_center_350mm_03.serial.bin](20261119_green_50mm_center_350mm_03.serial.bin) | 154924 | 350c745ca277d9dbdeb56e73cfa9e62c213553c42ae4d3529b3dba4c63c99c9a |
+| [20261119_green_50mm_center_350mm_03.rgb565](20261119_green_50mm_center_350mm_03.rgb565) | 153600 | 6607ea059a288ae7e7b645425226b86d92166246881992b05d1e5c718685f72d |
+| [20261119_green_50mm_center_350mm_03.json](20261119_green_50mm_center_350mm_03.json) | 472 | 234ae958760e704e8bd1e965c31f21dab7767c8dfa387c3a0ccc6987fb68cc75 |
+| [20261119_green_50mm_center_350mm_03.png](20261119_green_50mm_center_350mm_03.png) | 65544 | ca118123aec7c60c04561bfa0011eee130e4247dfd3e4b387129108ee1e956fa |
+
+## 2026-11-19: rapid height-task capture, RED150 at500mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED150mm, lens to near face500mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_150mm_center_500mm_01.serial.bin](20261119_red_150mm_center_500mm_01.serial.bin) | 156053 | 0a8331e7d3204e87e0c7fe9d97321f02426aea166cc71f066df49e99014ceca7 |
+| [20261119_red_150mm_center_500mm_01.rgb565](20261119_red_150mm_center_500mm_01.rgb565) | 153600 | a6843e254fa9f1b4d82c0caf3a86bc5e913db98818104817ea3861756df07bb7 |
+| [20261119_red_150mm_center_500mm_01.json](20261119_red_150mm_center_500mm_01.json) | 477 | 682ac9430eab24c1d7f498e323bac75e77d78b93a0d031712ce5edc8fc99d06e |
+| [20261119_red_150mm_center_500mm_01.png](20261119_red_150mm_center_500mm_01.png) | 65222 | 0b87d8288dd0f4a3179aef0da004e17e75c48387d2d66504fd78be737b871aa6 |
+| [20261119_red_150mm_center_500mm_02.serial.bin](20261119_red_150mm_center_500mm_02.serial.bin) | 155085 | 8ff4be9346e0ad98821de523759e68f310c6359b3729f642aed5d4ffc3ea65d9 |
+| [20261119_red_150mm_center_500mm_02.rgb565](20261119_red_150mm_center_500mm_02.rgb565) | 153600 | 4ec3ca8e39505417734af54f6acc595a2ec94c1f3363c9c8c74b4d564a016357 |
+| [20261119_red_150mm_center_500mm_02.json](20261119_red_150mm_center_500mm_02.json) | 473 | ccf9c4d5ea14594eb7880bf578b46234b5934bbe61d8a2993e6b54424d3c2632 |
+| [20261119_red_150mm_center_500mm_02.png](20261119_red_150mm_center_500mm_02.png) | 65358 | 08cff250ee6d06911a2c97e6c7ead746a3e5182a77df94a68e0e39ab61799862 |
+| [20261119_red_150mm_center_500mm_03.serial.bin](20261119_red_150mm_center_500mm_03.serial.bin) | 155088 | 899589c447348c66298d49312cb9363d031cda1d8a3e9f42a76c7ebd1869e076 |
+| [20261119_red_150mm_center_500mm_03.rgb565](20261119_red_150mm_center_500mm_03.rgb565) | 153600 | e6d846d0330a900120a113573d4c068d75a45ac6fc958a46cc85cd4384ded561 |
+| [20261119_red_150mm_center_500mm_03.json](20261119_red_150mm_center_500mm_03.json) | 473 | 9144a549180247a2b42f0dd216619e2381aec9b77a19a3ddd4bfc3c6a258b133 |
+| [20261119_red_150mm_center_500mm_03.png](20261119_red_150mm_center_500mm_03.png) | 65616 | 95d30dce7b11e0fcf02954130e60646f605efc31e26843aa74a671948fe176a9 |
+
+### 2026-11-19 RED150/700 capture interruption
+
+Two requests received zero serial bytes and timed out before any image header. COM7 USB device remained enumerated. No complete image acquired; no image approval requested. Serial closed after both failures. Await user reset with drive OFF and unchanged setup. Empty wire archives retained as failed attempts, not image evidence:
+
+- `20261119_red_150mm_center_700mm_01_failed_no_response.serial.bin`: 0 bytes; SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+- `20261119_red_150mm_center_700mm_01_failed_no_response_retry.serial.bin`: 0 bytes; SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+## 2026-11-19: rapid height-task capture, RED150 at700mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED150mm, lens to near face700mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_150mm_center_700mm_01.serial.bin](20261119_red_150mm_center_700mm_01.serial.bin) | 156042 | 0ae293da8663077a87c25774ecf072e4932719448268f25282dfc0343cd1529d |
+| [20261119_red_150mm_center_700mm_01.rgb565](20261119_red_150mm_center_700mm_01.rgb565) | 153600 | da06c6170b84cf8da5d471c153871e443ce6365efb500ab511a7e00acd496bb2 |
+| [20261119_red_150mm_center_700mm_01.json](20261119_red_150mm_center_700mm_01.json) | 472 | f147d1e2889c3af0d40560a801fc92b50dabf6afbbc403863d0bb0e54de3b617 |
+| [20261119_red_150mm_center_700mm_01.png](20261119_red_150mm_center_700mm_01.png) | 67086 | d7c25ed6fcb7d746490bb61351a91f921d518aa4505f6aa564422562b2367f17 |
+| [20261119_red_150mm_center_700mm_02.serial.bin](20261119_red_150mm_center_700mm_02.serial.bin) | 155069 | 0ab70f2373fd53d3301d377960ecdffa7e231e874687119b6d814f929aa50e11 |
+| [20261119_red_150mm_center_700mm_02.rgb565](20261119_red_150mm_center_700mm_02.rgb565) | 153600 | 4e69fb942437fdb972cf23e1582ea7240954defa88267ab34aea52b9a0c1640d |
+| [20261119_red_150mm_center_700mm_02.json](20261119_red_150mm_center_700mm_02.json) | 469 | 073621088f7a2b872cbaf30a5ffa883cf3e07ef0cbe1da4d2f20f74d4dcfde0f |
+| [20261119_red_150mm_center_700mm_02.png](20261119_red_150mm_center_700mm_02.png) | 67097 | 71c9675e1ab3338ef87390b5ef3079d3d391c5c236b49b554488d1935b14e759 |
+| [20261119_red_150mm_center_700mm_03.serial.bin](20261119_red_150mm_center_700mm_03.serial.bin) | 155071 | 25159b6d71c2e5f83e1d5ad4acf5c994dc9ef515e2c0a805b6f2c34dfa25d856 |
+| [20261119_red_150mm_center_700mm_03.rgb565](20261119_red_150mm_center_700mm_03.rgb565) | 153600 | b0e6dadb56293989f81b40207c341271b4afb60aa01a69c4968c16565a3ce976 |
+| [20261119_red_150mm_center_700mm_03.json](20261119_red_150mm_center_700mm_03.json) | 469 | 9f4af88bdb15a54e1a869da40f731ef5592e3678a61c58da7651afd711661a4b |
+| [20261119_red_150mm_center_700mm_03.png](20261119_red_150mm_center_700mm_03.png) | 66783 | c43da3fea660a3ff3b67ea342acc4ff79e72abf41f2f14f41dafae91ef683301 |
+
+## 2026-11-19: rapid height-task capture, RED150 at350mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED150mm, lens to near face350mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_150mm_center_350mm_01.serial.bin](20261119_red_150mm_center_350mm_01.serial.bin) | 155144 | 08cfac14eed4b707bc75086b707d1f5db0a698eab702c26fdc01fcba1850f41a |
+| [20261119_red_150mm_center_350mm_01.rgb565](20261119_red_150mm_center_350mm_01.rgb565) | 153600 | a344b101197a75303eaf8f13478d9d9978e52cdbff3d270596613bda6e99e289 |
+| [20261119_red_150mm_center_350mm_01.json](20261119_red_150mm_center_350mm_01.json) | 473 | ad46681f2d916d0701116d7973d00ff6bbfce744fb72578f098388272917fca5 |
+| [20261119_red_150mm_center_350mm_01.png](20261119_red_150mm_center_350mm_01.png) | 65522 | 4042b31e270b0134574bf3373ef6bc0dd73413f78818f57aa8e2f4a90511bd0a |
+| [20261119_red_150mm_center_350mm_02.serial.bin](20261119_red_150mm_center_350mm_02.serial.bin) | 155072 | 2b3976cc954281dab421e300d23cf19b5573e1f969c49d3df9d12e02691147b3 |
+| [20261119_red_150mm_center_350mm_02.rgb565](20261119_red_150mm_center_350mm_02.rgb565) | 153600 | e1321e6fb46266525e83bea2e79b6e5ab99901122ddbf6962b24163540305c1b |
+| [20261119_red_150mm_center_350mm_02.json](20261119_red_150mm_center_350mm_02.json) | 469 | c759d264154684640a9b2f98178a05d9e60e452154f89832c87fea4a84517311 |
+| [20261119_red_150mm_center_350mm_02.png](20261119_red_150mm_center_350mm_02.png) | 67825 | 99b5f580deb73f4c76eb478932b2c6d80239a3d8d9661003015080d92260c70b |
+| [20261119_red_150mm_center_350mm_03.serial.bin](20261119_red_150mm_center_350mm_03.serial.bin) | 155713 | f95f111b5e1deb2aa3683c0490135772e69e246134e572119cb8016cb268eef9 |
+| [20261119_red_150mm_center_350mm_03.rgb565](20261119_red_150mm_center_350mm_03.rgb565) | 153600 | d489fe94a955033a358787a10a0003129d269c46717c48339d3ba18beacdfc6f |
+| [20261119_red_150mm_center_350mm_03.json](20261119_red_150mm_center_350mm_03.json) | 469 | 311be161b899ece8fbf28d5955f4a54b92f9d82875866af92b58835bc9746740 |
+| [20261119_red_150mm_center_350mm_03.png](20261119_red_150mm_center_350mm_03.png) | 68211 | 019eabf970f118647aacf096bc5f62d03902cdb8caf1f5542abe85e6a9636e55 |
+
+## 2026-11-19: rapid height-task capture, RED100 at500mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED100mm, lens to near face500mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_100mm_center_500mm_01.serial.bin](20261119_red_100mm_center_500mm_01.serial.bin) | 156672 | 3cd153981d13174f9d1d7762c77a0cee58076d6e5d816d346e22b953d04a039f |
+| [20261119_red_100mm_center_500mm_01.rgb565](20261119_red_100mm_center_500mm_01.rgb565) | 153600 | fd5ae010d3588bc090f986ce9693c8548e60240406704fb553a06c78659987b5 |
+| [20261119_red_100mm_center_500mm_01.json](20261119_red_100mm_center_500mm_01.json) | 473 | 2f8576ab88b71e49e0bfc00917a7dcbecb36f96678b923769b99c37673c7dd89 |
+| [20261119_red_100mm_center_500mm_01.png](20261119_red_100mm_center_500mm_01.png) | 67294 | 998429c500763a3b4fb74a2ba9cc247691d2c8f9f749749fb5ccbcf5148b9399 |
+| [20261119_red_100mm_center_500mm_02.serial.bin](20261119_red_100mm_center_500mm_02.serial.bin) | 155074 | 2d60c181d83fa021ffbf4ba39dc98cea39981d9d68b039f21bb466aaefd3932e |
+| [20261119_red_100mm_center_500mm_02.rgb565](20261119_red_100mm_center_500mm_02.rgb565) | 153600 | 13a50f5a9fbfd929a296159a374e102cfe225aaacc6372721f725e8bfce2889b |
+| [20261119_red_100mm_center_500mm_02.json](20261119_red_100mm_center_500mm_02.json) | 468 | c602b02e4ff1f8631d5bd8149432a8af65406f3bc46a1d3fead915ecf9075349 |
+| [20261119_red_100mm_center_500mm_02.png](20261119_red_100mm_center_500mm_02.png) | 67520 | 3ab76d5740c3d1330956b82e7732a219d2d6a0e74346d8ba730cea47f5c19497 |
+| [20261119_red_100mm_center_500mm_03.serial.bin](20261119_red_100mm_center_500mm_03.serial.bin) | 155139 | 69cf09bd28071a0bd081b350fcca80701c3702996c6d7e078dbd93aed194d711 |
+| [20261119_red_100mm_center_500mm_03.rgb565](20261119_red_100mm_center_500mm_03.rgb565) | 153600 | 1a2f189e391419d32ef49194fb66e6e0a77cb26a93b9ab6ae52eed86e4948e26 |
+| [20261119_red_100mm_center_500mm_03.json](20261119_red_100mm_center_500mm_03.json) | 469 | 98a51d606a5f05add5a78d8bf052bbfe81de0afd571449ce127b9d36ee35ba08 |
+| [20261119_red_100mm_center_500mm_03.png](20261119_red_100mm_center_500mm_03.png) | 67349 | 0bd7525407643023b4baaeaed5ad965be022981b6072ee56de072544836cebc3 |
+
+## 2026-11-19: rapid height-task capture, RED100 at700mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED100mm, lens to near face700mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_100mm_center_700mm_01.serial.bin](20261119_red_100mm_center_700mm_01.serial.bin) | 155273 | 912ee16f07c2dbbf8b574d03008f5b9aee1731196f7720925b4155a294802c78 |
+| [20261119_red_100mm_center_700mm_01.rgb565](20261119_red_100mm_center_700mm_01.rgb565) | 153600 | 0648c295fd718dc263fba28b22104c85189caedfd29843203ab67db98451af86 |
+| [20261119_red_100mm_center_700mm_01.json](20261119_red_100mm_center_700mm_01.json) | 473 | 759dc47e1719c69f304c4fb5b6007fd8e6987513cff34d2abe2d618bc2038ff4 |
+| [20261119_red_100mm_center_700mm_01.png](20261119_red_100mm_center_700mm_01.png) | 67278 | 27cc78453b2e3a88ff0d53dacd51d79b62e3139219bb2dfca421f40f56e75ab4 |
+| [20261119_red_100mm_center_700mm_02.serial.bin](20261119_red_100mm_center_700mm_02.serial.bin) | 155072 | a234e069445b53afd8a106816a2c771b171a04b72619896915fa85aeddc7973a |
+| [20261119_red_100mm_center_700mm_02.rgb565](20261119_red_100mm_center_700mm_02.rgb565) | 153600 | 317d1af366f17fcab97ff3532789293e26ca2f5e8365fa5df64246b39933c4b6 |
+| [20261119_red_100mm_center_700mm_02.json](20261119_red_100mm_center_700mm_02.json) | 469 | d90c1bec0711f2e79dc1a87c0e7a0bd692dcd07b0d2eeac773701f9bc3494003 |
+| [20261119_red_100mm_center_700mm_02.png](20261119_red_100mm_center_700mm_02.png) | 67057 | 09d8d04fe8ad8171537863952317d9ec4777cbf88e09f720c652214a1f751ee0 |
+| [20261119_red_100mm_center_700mm_03.serial.bin](20261119_red_100mm_center_700mm_03.serial.bin) | 155072 | f696e842635239974410746163a6b5b003f0bbf4125b2c0e7286d5b57b503c49 |
+| [20261119_red_100mm_center_700mm_03.rgb565](20261119_red_100mm_center_700mm_03.rgb565) | 153600 | b3da1eecf5f3af53a500774378c2ed9f3383461d1bf653f5f0f1540707ba05b1 |
+| [20261119_red_100mm_center_700mm_03.json](20261119_red_100mm_center_700mm_03.json) | 469 | 6500e0d032ca3523d600f231f12e955823a5cfd11b7432b43e8505487f0d7af7 |
+| [20261119_red_100mm_center_700mm_03.png](20261119_red_100mm_center_700mm_03.png) | 66876 | c91bd9f5e6939896a4b75e6209fed3aad27957f8e3d9c8764e0f73839cd5b2c3 |
+
+## 2026-11-19: rapid height-task capture, RED50 at500mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED50mm, lens to near face500mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_50mm_center_500mm_01.serial.bin](20261119_red_50mm_center_500mm_01.serial.bin) | 155850 | 2b533610cda16817c455fc1ccc02f0bfc2d3c00adf7e3dd78b1f592319149be7 |
+| [20261119_red_50mm_center_500mm_01.rgb565](20261119_red_50mm_center_500mm_01.rgb565) | 153600 | b8744206233a3c3b09fb3b3b75f940c9d26509ba0638a63254dbe00cbcf66e99 |
+| [20261119_red_50mm_center_500mm_01.json](20261119_red_50mm_center_500mm_01.json) | 473 | b2dc450db3e64073e2cb89ae7963f8e5dfbc56f60902d2305e8eae4c0cf5e3b5 |
+| [20261119_red_50mm_center_500mm_01.png](20261119_red_50mm_center_500mm_01.png) | 66761 | c20caaf674b2003784220daea9ea77d2dcd0ebd9be3b2762b10f226cf2fcf8e3 |
+| [20261119_red_50mm_center_500mm_02.serial.bin](20261119_red_50mm_center_500mm_02.serial.bin) | 155074 | 55c3222d51e5f6522696bc60a46441d40eecdeb93f0e4127fe40e7a51e444683 |
+| [20261119_red_50mm_center_500mm_02.rgb565](20261119_red_50mm_center_500mm_02.rgb565) | 153600 | 43257934be31ea808782bf17bb88a3fff33d9a39be16cebf0a0a7adada44b977 |
+| [20261119_red_50mm_center_500mm_02.json](20261119_red_50mm_center_500mm_02.json) | 469 | d0472c2c3946bf615082d8eac35ad2a1c00a17851967a728e7a4f8074dadaccc |
+| [20261119_red_50mm_center_500mm_02.png](20261119_red_50mm_center_500mm_02.png) | 66737 | 0d7a862ff9df6e0f636577a61a97a4930260b6f6ba220252e9bbbe305ed48b37 |
+| [20261119_red_50mm_center_500mm_03.serial.bin](20261119_red_50mm_center_500mm_03.serial.bin) | 155074 | 297136d9503053bbb1c7e671e014ef6072e77b49484622a4b6c6b03c22bf510b |
+| [20261119_red_50mm_center_500mm_03.rgb565](20261119_red_50mm_center_500mm_03.rgb565) | 153600 | 9e200b350f81571c7b5d81455079bf758e65a78f09e16e442807592712822547 |
+| [20261119_red_50mm_center_500mm_03.json](20261119_red_50mm_center_500mm_03.json) | 468 | 95c840f3897e86ca38e7878e61d2f98637c346c69645a22ef6a4850523145b42 |
+| [20261119_red_50mm_center_500mm_03.png](20261119_red_50mm_center_500mm_03.png) | 66629 | 48597c821a74ebf33305a574097a47b9a1ce38df9e6608a95ea9df3fef13cbed |
+
+## 2026-11-19: rapid height-task capture, RED50 at700mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED50mm, lens to near face700mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_50mm_center_700mm_01.serial.bin](20261119_red_50mm_center_700mm_01.serial.bin) | 155145 | f0fdefcafad0d4b0a7077277e0585e63fe78a5f7a790d727b46685d912313ea2 |
+| [20261119_red_50mm_center_700mm_01.rgb565](20261119_red_50mm_center_700mm_01.rgb565) | 153600 | 4fdcfba169fb293c441a7d2f70052e09a0b9ce1c7cdc6cfbbe409d9802349e1f |
+| [20261119_red_50mm_center_700mm_01.json](20261119_red_50mm_center_700mm_01.json) | 473 | 1f5b04612b84edb371661fe42aa29fafb1dcd28494116113fee14dbd496f8273 |
+| [20261119_red_50mm_center_700mm_01.png](20261119_red_50mm_center_700mm_01.png) | 66079 | a7f3669cc2134fe2cd5daea84f5b5a96d1d5c6d288527e698a631a10c7091aef |
+| [20261119_red_50mm_center_700mm_02.serial.bin](20261119_red_50mm_center_700mm_02.serial.bin) | 155074 | eb32570f5e1ca1ffa83b780baec7493df3d1677ec4af04f7f223c6b6c40259bd |
+| [20261119_red_50mm_center_700mm_02.rgb565](20261119_red_50mm_center_700mm_02.rgb565) | 153600 | 3a72137af5f8492af6129d7324bd06c438f5320f64bc78dba64ae1a672f6a12f |
+| [20261119_red_50mm_center_700mm_02.json](20261119_red_50mm_center_700mm_02.json) | 469 | 990e447d14ab8d922c2de1da485449bfe6355c179de0123fd5d3c69f57a03fcc |
+| [20261119_red_50mm_center_700mm_02.png](20261119_red_50mm_center_700mm_02.png) | 65957 | 0488213888f96c215f3a77dfffb1f4a6bc6d55cf673fdd049012f35da8b44e29 |
+| [20261119_red_50mm_center_700mm_03.serial.bin](20261119_red_50mm_center_700mm_03.serial.bin) | 155074 | 8f007ffdf27b0122d2ecb92f8faa2776f1b7b2a5388c1766c9240893f693bc6a |
+| [20261119_red_50mm_center_700mm_03.rgb565](20261119_red_50mm_center_700mm_03.rgb565) | 153600 | 140a932eaad0a9fdca8f0929965f7b806a97df46457daa29d229d2797da6d060 |
+| [20261119_red_50mm_center_700mm_03.json](20261119_red_50mm_center_700mm_03.json) | 469 | 742dd3374a6384d84b8b3d7c93e4147c2dc59d8e9c6a18ef9ca9929d33d5d9bb |
+| [20261119_red_50mm_center_700mm_03.png](20261119_red_50mm_center_700mm_03.png) | 66609 | afd8caaccc1c268470e9cb7cd19270e2e6a9214014fce193f9f2de56d5f1fafc |
+
+## 2026-11-19: rapid height-task capture, RED50 at350mm
+
+User-reported setup: centred, fixed stationary robot/camera and normal light; RED50mm, lens to near face350mm. Three complete CRC/footer-checked raw captures. Approval status is in validation_status.json. No colour/height computation; evaluation deferred until collection is complete.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261119_red_50mm_center_350mm_01.serial.bin](20261119_red_50mm_center_350mm_01.serial.bin) | 155852 | 5fbadc78a44899666aad812ef5c2d430a02dd7aafbc10f7b16907ea46c83684f |
+| [20261119_red_50mm_center_350mm_01.rgb565](20261119_red_50mm_center_350mm_01.rgb565) | 153600 | 8b49fbf50156419987856d52535bbe6fc3799dfe718759d64ac69b2130ccddf3 |
+| [20261119_red_50mm_center_350mm_01.json](20261119_red_50mm_center_350mm_01.json) | 473 | de5950cf43729aa2731b5df8dd648dac33191d0c7d8d40eb8ac793723a49611d |
+| [20261119_red_50mm_center_350mm_01.png](20261119_red_50mm_center_350mm_01.png) | 66074 | 847743d007541da1e2d7da0003b613ea7092c597a623217113e3861956d01700 |
+| [20261119_red_50mm_center_350mm_02.serial.bin](20261119_red_50mm_center_350mm_02.serial.bin) | 155074 | 01b8f626db528e07defac73b93321fa1ea5c0a2cb9b42275e52ac73a06e3417f |
+| [20261119_red_50mm_center_350mm_02.rgb565](20261119_red_50mm_center_350mm_02.rgb565) | 153600 | e8c38312373233332daabef8bb00a1b916beeceb23e40864034dd37ce068ff8a |
+| [20261119_red_50mm_center_350mm_02.json](20261119_red_50mm_center_350mm_02.json) | 469 | 2b00d867fdd9a06bcbbba0c2e2b0f59fa9eb81bffcbe6e350674738fe682213f |
+| [20261119_red_50mm_center_350mm_02.png](20261119_red_50mm_center_350mm_02.png) | 66770 | 280a7bfa1395077b79d8934089f560390844a0e5e1ec551aed9b498d9ee38cb6 |
+| [20261119_red_50mm_center_350mm_03.serial.bin](20261119_red_50mm_center_350mm_03.serial.bin) | 155075 | 3d53dce5d8858a470ed88159b10d70f57818a88be57a16ac76d32f3d138c59a8 |
+| [20261119_red_50mm_center_350mm_03.rgb565](20261119_red_50mm_center_350mm_03.rgb565) | 153600 | 00fec516211291e8e101ee5cf50dac6ebcaf15836452568af693afdc9ad7a454 |
+| [20261119_red_50mm_center_350mm_03.json](20261119_red_50mm_center_350mm_03.json) | 469 | 801b286e328ad76a3673946ffc784cb250a3bbc942c012165c195ada9ec2eb91 |
+| [20261119_red_50mm_center_350mm_03.png](20261119_red_50mm_center_350mm_03.png) | 66555 | 96f2b3c461d29f3ad85f506b607573735474ca0d8cd398c42b0bf2db91e77718 |

@@ -1,0 +1,135 @@
+
+===== ROBOT INITIALIZATION START =====
+
+===== SERIAL INITIALIZED =====
+Enable switch is LOW - System starting in IDLE mode
+Initializing ToF: Left_ToF
+nav_long_range_active: 0
+Left_ToF distance_mode: 2
+Left_ToF timing_budget_us: 30062
+Initializing ToF: Right_ToF
+nav_long_range_active: 0
+Right_ToF distance_mode: 2
+Right_ToF timing_budget_us: 29966
+Initializing Gyro (BNO085) via SPI...
+BNO085 Found on SPI!
+BNO085 Streaming reports enabled.
+===== SENSORS INITIALIZED =====
+===== GYRO FOLLOWER INITIALIZED =====
+Calibration coefficients loaded from config
+
+===== INITIALIZATION COMPLETE =====
+
+System disabled. Pending mode: CAMERA_CALIBRATION
+Position initialized: (0.00, 0.00), heading=0.00°
+System disabled. Pending mode: OBSTACLE_LIVE_TEST
+Temporary mode until restart: OBSTACLE_LIVE_TEST
+Safe USB handoff active; terminal remains available.
+SYSTEM ENABLED
+Camera and vision initialized.
+[MAP] Reset
+Position initialized: (0.00, -1000.00), heading=0.00°
+[FIELD] Nominal exit pose x=0.0 y=-1000.0 heading=0.0
+[PATH] Known geometry ready points=145 length_mm=7142 turns=LEFT first_corner_mm=500
+
+===== LIVE ONE-LAP PURE PURSUIT TEST =====
+Camera discovery/path injection: ENABLED
+ToF pose correction: ENABLED (fresh frames only)
+Parking exit: BYPASSED
+Direction: LEFT/CCW
+Speed cap mm/s: 175
+Raw ToF stop: DISABLED (side ToF cannot distinguish pillar from wall)
+[LIVE PATH] Ready; 'z' or switch LOW stops immediately
+===========================================
+
+Resumed mode: OBSTACLE_LIVE_TEST
+[LIVE PATH] t_ms=583 idx=0/145 lap=0 injections=0 cte_mm=1.4 heading_err_deg=-0.1 pos=0,-1001 target=175..175 profile=0 measured=0..0 duty=0..0 phase=0 nudge_deg=0.3 scan_seat=-2 tof=472/456
+[GYRO] No data for 200ms, re-enabling reports...
+[PATH] Live avoidance injected seat=5 color=RED
+[MAP] Confirmed S0 station=2 side=LEFT color=RED
+[LIVE PATH] t_ms=889 idx=0/145 lap=0 injections=1 cte_mm=3.4 heading_err_deg=-0.1 pos=0,-1003 target=175..175 profile=175 measured=0..0 duty=0..136 phase=0 nudge_deg=0.0 scan_seat=-1 tof=473/458
+[LIVE PATH] t_ms=1197 idx=1/145 lap=0 injections=1 cte_mm=9.6 heading_err_deg=-0.3 pos=41,-1004 target=175..175 profile=175 measured=50..127 duty=136..139 phase=0 nudge_deg=0.0 scan_seat=-1 tof=472/461
+[SLIP] deviation=124.1%, angle=6, expected_arc=21.3, actual_arc=47.7, radius=1232.5 mm
+[LIVE PATH] t_ms=1504 idx=3/145 lap=0 injections=1 cte_mm=17.8 heading_err_deg=-1.5 pos=132,-1006 target=175..175 profile=175 measured=213..265 duty=94..127 phase=0 nudge_deg=0.0 scan_seat=-1 tof=473/457
+[LIVE PATH] t_ms=1811 idx=4/145 lap=0 injections=1 cte_mm=7.5 heading_err_deg=-4.3 pos=204,-1008 target=175..175 profile=175 measured=220..264 duty=81..82 phase=0 nudge_deg=0.0 scan_seat=-1 tof=474/457
+[LIVE PATH] t_ms=2118 idx=5/145 lap=0 injections=1 cte_mm=20.3 heading_err_deg=-6.4 pos=244,-1009 target=175..175 profile=175 measured=138..166 duty=89..110 phase=0 nudge_deg=0.0 scan_seat=-1 tof=475/456
+[LIVE PATH] t_ms=2426 idx=6/145 lap=0 injections=1 cte_mm=32.1 heading_err_deg=-7.9 pos=291,-1012 target=175..175 profile=175 measured=139..152 duty=122..123 phase=0 nudge_deg=0.0 scan_seat=-1 tof=479/456
+[LIVE PATH] t_ms=2733 idx=7/145 lap=0 injections=1 cte_mm=40.6 heading_err_deg=-8.8 pos=358,-1017 target=175..175 profile=175 measured=176..210 duty=109..119 phase=0 nudge_deg=0.0 scan_seat=-1 tof=480/452
+[LIVE PATH] t_ms=3040 idx=8/145 lap=0 injections=1 cte_mm=52.3 heading_err_deg=-8.7 pos=424,-1025 target=175..175 profile=175 measured=202..221 duty=89..95 phase=0 nudge_deg=0.0 scan_seat=-1 tof=483/443
+[SLIP] deviation=49.5%, angle=-11, expected_arc=16.4, actual_arc=24.6, radius=666.4 mm
+[LIVE PATH] t_ms=3348 idx=9/145 lap=0 injections=1 cte_mm=62.5 heading_err_deg=-6.9 pos=475,-1029 target=175..175 profile=175 measured=166..183 duty=95..102 phase=0 nudge_deg=0.0 scan_seat=-1 tof=9999/440
+[LIVE PATH] t_ms=3655 idx=11/145 lap=0 injections=1 cte_mm=56.6 heading_err_deg=-10.6 pos=524,-1031 target=175..175 profile=175 measured=152..159 duty=104..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=91/437
+[LIVE PATH] t_ms=3962 idx=12/145 lap=0 injections=1 cte_mm=32.3 heading_err_deg=-11.0 pos=582,-1032 target=175..175 profile=175 measured=176..180 duty=104..105 phase=1 nudge_deg=4.5 scan_seat=-2 tof=9999/432
+[LIVE PATH] t_ms=4270 idx=13/145 lap=0 injections=1 cte_mm=9.7 heading_err_deg=-8.1 pos=647,-1024 target=175..175 profile=175 measured=190..207 duty=103..104 phase=1 nudge_deg=13.7 scan_seat=-2 tof=9999/428
+[SLIP] deviation=79.3%, angle=-31, expected_arc=17.5, actual_arc=31.4, radius=215.6 mm
+[LIVE PATH] t_ms=4577 idx=14/145 lap=0 injections=1 cte_mm=10.3 heading_err_deg=1.0 pos=704,-1003 target=175..175 profile=175 measured=194..201 duty=102..102 phase=1 nudge_deg=25.8 scan_seat=-2 tof=9999/431
+[LIVE PATH] t_ms=4885 idx=15/145 lap=0 injections=1 cte_mm=23.4 heading_err_deg=12.7 pos=762,-969 target=175..175 profile=175 measured=205..207 duty=102..102 phase=1 nudge_deg=23.0 scan_seat=-2 tof=9999/437
+[LIVE PATH] t_ms=5192 idx=16/145 lap=0 injections=1 cte_mm=31.3 heading_err_deg=25.5 pos=812,-932 target=175..175 profile=175 measured=202..204 duty=101..102 phase=1 nudge_deg=13.3 scan_seat=7 tof=9999/446
+[MAP] Clear S1 station=0
+[LIVE PATH] t_ms=5500 idx=17/145 lap=0 injections=1 cte_mm=31.3 heading_err_deg=36.0 pos=852,-891 target=175..175 profile=175 measured=198..205 duty=101..102 phase=1 nudge_deg=1.0 scan_seat=-1 tof=9999/468
+[LIVE PATH] t_ms=5808 idx=18/145 lap=0 injections=1 cte_mm=22.6 heading_err_deg=35.8 pos=865,-827 target=175..175 profile=175 measured=199..212 duty=100..101 phase=1 nudge_deg=0.0 scan_seat=-1 tof=9999/531
+[LIVE PATH] t_ms=6116 idx=20/145 lap=0 injections=1 cte_mm=46.7 heading_err_deg=20.7 pos=874,-766 target=175..175 profile=175 measured=193..196 duty=101..101 phase=1 nudge_deg=0.0 scan_seat=-1 tof=9999/9999
+[SLIP] deviation=67.7%, angle=12, expected_arc=17.1, actual_arc=28.6, radius=609.4 mm
+[LIVE PATH] t_ms=6423 idx=21/145 lap=0 injections=1 cte_mm=59.1 heading_err_deg=6.6 pos=888,-714 target=175..175 profile=175 measured=168..186 duty=101..102 phase=1 nudge_deg=0.0 scan_seat=-1 tof=9999/9999
+[LIVE PATH] t_ms=6730 idx=22/145 lap=0 injections=1 cte_mm=60.0 heading_err_deg=-5.5 pos=908,-667 target=175..175 profile=175 measured=161..166 duty=103..103 phase=1 nudge_deg=1.7 scan_seat=-2 tof=347/9999
+[LIVE PATH] t_ms=7037 idx=23/145 lap=0 injections=1 cte_mm=51.5 heading_err_deg=-14.5 pos=931,-623 target=175..175 profile=175 measured=156..159 duty=103..104 phase=1 nudge_deg=10.4 scan_seat=9 tof=357/9999
+[SLIP] deviation=298.9%, angle=-25, expected_arc=5.9, actual_arc=23.5, radius=277.8 mm
+[LIVE PATH] t_ms=7345 idx=24/145 lap=0 injections=1 cte_mm=36.5 heading_err_deg=-19.4 pos=957,-579 target=175..175 profile=175 measured=155..166 duty=103..104 phase=1 nudge_deg=20.2 scan_seat=9 tof=372/9999
+[LIVE PATH] t_ms=7651 idx=25/145 lap=0 injections=1 cte_mm=21.7 heading_err_deg=-19.0 pos=977,-539 target=175..175 profile=175 measured=142..147 duty=104..105 phase=1 nudge_deg=23.8 scan_seat=9 tof=379/9999
+[LIVE PATH] t_ms=7959 idx=26/145 lap=0 injections=1 cte_mm=14.8 heading_err_deg=-9.7 pos=994,-486 target=175..175 profile=175 measured=165..169 duty=104..105 phase=1 nudge_deg=14.5 scan_seat=9 tof=383/9999
+[MAP] Clear S1 station=1
+[LIVE PATH] t_ms=8266 idx=27/145 lap=0 injections=1 cte_mm=13.6 heading_err_deg=2.1 pos=998,-437 target=175..175 profile=175 measured=159..161 duty=104..104 phase=1 nudge_deg=2.1 scan_seat=-1 tof=381/596
+[LIVE PATH] t_ms=8573 idx=28/145 lap=0 injections=1 cte_mm=15.3 heading_err_deg=11.8 pos=992,-387 target=175..175 profile=175 measured=156..162 duty=104..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=385/9999
+[SLIP] deviation=33.7%, angle=11, expected_arc=17.3, actual_arc=23.1, radius=666.4 mm
+[LIVE PATH] t_ms=8881 idx=29/145 lap=0 injections=1 cte_mm=21.7 heading_err_deg=13.5 pos=981,-339 target=175..175 profile=175 measured=149..157 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=388/9999
+[LIVE PATH] t_ms=9188 idx=30/145 lap=0 injections=1 cte_mm=29.3 heading_err_deg=11.0 pos=971,-294 target=175..175 profile=175 measured=144..156 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=381/9999
+[LIVE PATH] t_ms=9495 idx=31/145 lap=0 injections=1 cte_mm=36.8 heading_err_deg=7.1 pos=964,-245 target=175..175 profile=175 measured=137..160 duty=106..106 phase=1 nudge_deg=0.0 scan_seat=-1 tof=370/9999
+[SLIP] deviation=-62.2%, angle=6, expected_arc=65.0, actual_arc=24.6, radius=1232.5 mm
+[LIVE PATH] t_ms=9802 idx=32/145 lap=0 injections=1 cte_mm=62.2 heading_err_deg=1.4 pos=938,-192 target=175..175 profile=175 measured=162..173 duty=104..105 phase=1 nudge_deg=0.0 scan_seat=-2 tof=360/9999
+[MAP] Clear S1 station=2
+[LIVE PATH] t_ms=10110 idx=33/145 lap=0 injections=1 cte_mm=80.1 heading_err_deg=-3.9 pos=921,-139 target=175..175 profile=175 measured=156..169 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=351/9999
+[LIVE PATH] t_ms=10417 idx=34/145 lap=0 injections=1 cte_mm=92.3 heading_err_deg=-7.1 pos=909,-86 target=175..175 profile=175 measured=167..175 duty=104..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=348/9999
+[LIVE PATH] t_ms=10724 idx=35/145 lap=0 injections=1 cte_mm=100.1 heading_err_deg=-9.6 pos=902,-30 target=175..175 profile=175 measured=172..175 duty=104..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=348/9999
+[LIVE PATH] t_ms=11031 idx=36/145 lap=0 injections=1 cte_mm=104.8 heading_err_deg=-11.9 pos=898,25 target=175..175 profile=175 measured=172..176 duty=104..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=350/9999
+[LIVE PATH] t_ms=11339 idx=38/145 lap=0 injections=1 cte_mm=103.8 heading_err_deg=-13.7 pos=898,82 target=175..175 profile=175 measured=179..188 duty=103..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=354/9999
+[LIVE PATH] t_ms=11646 idx=39/145 lap=0 injections=1 cte_mm=100.9 heading_err_deg=-14.9 pos=900,136 target=175..175 profile=175 measured=170..182 duty=104..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=362/9999
+[LIVE PATH] t_ms=11953 idx=40/145 lap=0 injections=1 cte_mm=95.4 heading_err_deg=-15.7 pos=905,188 target=175..175 profile=175 measured=166..183 duty=104..104 phase=1 nudge_deg=0.0 scan_seat=-1 tof=376/598
+[LIVE PATH] t_ms=12260 idx=41/145 lap=0 injections=1 cte_mm=88.0 heading_err_deg=-16.2 pos=913,238 target=175..175 profile=175 measured=158..166 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=390/594
+[LIVE PATH] t_ms=12568 idx=42/145 lap=0 injections=1 cte_mm=77.8 heading_err_deg=-16.7 pos=923,288 target=175..175 profile=175 measured=164..168 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=405/585
+[LIVE PATH] t_ms=12875 idx=43/145 lap=0 injections=1 cte_mm=66.8 heading_err_deg=-16.8 pos=934,340 target=175..175 profile=175 measured=166..169 duty=105..105 phase=1 nudge_deg=0.0 scan_seat=-1 tof=416/568
+[LIVE PATH] t_ms=13183 idx=44/145 lap=0 injections=1 cte_mm=56.8 heading_err_deg=-16.1 pos=945,385 target=175..175 profile=175 measured=151..154 duty=105..106 phase=1 nudge_deg=0.0 scan_seat=-1 tof=431/563
+[SLIP] deviation=97.1%, angle=-6, expected_arc=14.3, actual_arc=28.3, radius=1232.5 mm
+[LIVE PATH] t_ms=13490 idx=45/145 lap=0 injections=1 cte_mm=41.8 heading_err_deg=-14.7 pos=960,438 target=175..175 profile=175 measured=167..168 duty=105..106 phase=1 nudge_deg=0.0 scan_seat=-1 tof=439/547
+[LIVE PATH] t_ms=13797 idx=46/145 lap=0 injections=1 cte_mm=33.8 heading_err_deg=-12.2 pos=971,483 target=175..175 profile=175 measured=151..153 duty=105..106 phase=1 nudge_deg=0.0 scan_seat=-1 tof=442/531
+[LIVE PATH] t_ms=14104 idx=47/145 lap=0 injections=1 cte_mm=21.9 heading_err_deg=-14.8 pos=981,536 target=175..175 profile=175 measured=164..165 duty=106..106 phase=1 nudge_deg=0.0 scan_seat=-1 tof=440/516
+[SLIP] deviation=123.6%, angle=-19, expected_arc=11.0, actual_arc=24.6, radius=376.2 mm
+[LIVE PATH] t_ms=14411 idx=48/145 lap=0 injections=1 cte_mm=17.4 heading_err_deg=-15.9 pos=984,583 target=175..175 profile=175 measured=154..154 duty=105..106 phase=1 nudge_deg=4.7 scan_seat=-2 tof=9999/495
+[LIVE PATH] t_ms=14719 idx=49/145 lap=0 injections=1 cte_mm=16.9 heading_err_deg=-15.6 pos=980,631 target=175..175 profile=175 measured=151..157 duty=106..106 phase=1 nudge_deg=13.8 scan_seat=-2 tof=9999/479
+[LIVE PATH] t_ms=15026 idx=50/145 lap=0 injections=1 cte_mm=19.5 heading_err_deg=-12.7 pos=970,678 target=175..175 profile=175 measured=145..156 duty=107..107 phase=1 nudge_deg=27.8 scan_seat=-2 tof=9999/470
+[LIVE PATH] t_ms=15334 idx=51/145 lap=0 injections=1 cte_mm=18.3 heading_err_deg=-7.6 pos=950,725 target=175..175 profile=175 measured=159..166 duty=106..107 phase=1 nudge_deg=35.0 scan_seat=-2 tof=9999/471
+[SLIP] deviation=-28.0%, angle=-32, expected_arc=34.9, actual_arc=25.2, radius=207.3 mm
+[LIVE PATH] t_ms=15641 idx=52/145 lap=0 injections=1 cte_mm=14.3 heading_err_deg=0.7 pos=920,770 target=175..175 profile=175 measured=159..172 duty=106..107 phase=1 nudge_deg=27.0 scan_seat=-2 tof=9999/471
+[LIVE PATH] t_ms=15948 idx=53/145 lap=0 injections=1 cte_mm=14.5 heading_err_deg=10.8 pos=885,808 target=175..175 profile=175 measured=161..173 duty=106..106 phase=1 nudge_deg=21.4 scan_seat=13 tof=9999/487
+[LIVE PATH] t_ms=16255 idx=54/145 lap=0 injections=1 cte_mm=24.6 heading_err_deg=17.2 pos=837,837 target=175..175 profile=175 measured=163..175 duty=106..107 phase=1 nudge_deg=13.0 scan_seat=13 tof=9999/512
+[SLIP] deviation=-51.6%, angle=8, expected_arc=48.4, actual_arc=23.4, radius=921.7 mm
+[LIVE PATH] t_ms=16563 idx=55/145 lap=0 injections=1 cte_mm=42.1 heading_err_deg=21.4 pos=790,855 target=175..175 profile=175 measured=157..173 duty=106..106 phase=1 nudge_deg=4.6 scan_seat=13 tof=9999/9999
+[LIVE PATH] t_ms=16870 idx=56/145 lap=0 injections=1 cte_mm=59.0 heading_err_deg=17.6 pos=744,868 target=175..175 profile=175 measured=152..153 duty=107..107 phase=1 nudge_deg=5.4 scan_seat=13 tof=9999/9999
+[LIVE PATH] t_ms=17177 idx=57/145 lap=0 injections=1 cte_mm=69.7 heading_err_deg=9.1 pos=703,880 target=175..175 profile=175 measured=134..146 duty=107..108 phase=1 nudge_deg=16.7 scan_seat=13 tof=9999/9999
+[LIVE PATH] t_ms=17485 idx=58/145 lap=0 injections=1 cte_mm=73.0 heading_err_deg=-0.6 pos=654,898 target=175..175 profile=175 measured=149..162 duty=108..109 phase=1 nudge_deg=35.0 scan_seat=13 tof=9999/9999
+[SLIP] deviation=241.2%, angle=-23, expected_arc=7.2, actual_arc=24.7, radius=305.2 mm
+[MAP] Clear S2 station=1
+[PATH] Perception blocked at S2 station=0 forward_mm=135
+[LIVE PATH] ABORT: unresolved station reached perception limit
+
+===== LIVE OBSTACLE PATH TEST RESULT =====
+Result: FAIL
+Direction: LEFT/CCW
+Completed laps: 0
+Obstacle injections: 1
+Maximum cross-track error mm: 104.8
+Maximum heading error deg: 36.0
+Failure reason: ABORT: unresolved station reached perception limit
+==========================================
+
+Mode OBSTACLE_LIVE_TEST failed.
+SYSTEM DISABLED
