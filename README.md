@@ -108,6 +108,8 @@ We simulated the steering linkage in Fusion 360 and used the inner and outer whe
 
 ## Drive selection and low-speed control
 
+We connect the DC motor to the LEGO drivetrain with a custom manufactured metal coupling shaft. Its precise fit kept the connection stable through repeated driving tests. We mounted the motor on the lower chassis stage so we could reach it for maintenance and swap gearmotors easily while comparing gearbox ratios.
+
 Early in the season we tested the 50:1 and 100:1 gearmotors on the robot, comparing acceleration and speed control under load. For the World Final, we prioritised higher driving speed and tuned the new drivetrain for slow manoeuvres.
 
 | Stage and gearbox | Output speed at 6 V, no-load / rated | Rated torque | What we observed and chose |
