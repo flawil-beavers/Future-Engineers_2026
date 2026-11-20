@@ -37,3 +37,37 @@ The first-lap horizon now permits checked colour acquisition through a corner ou
 [Official rules](WRO_2026_RULES.md) remain canonical; consult official clarifications before new rule-dependent changes. Video artifacts and reconstruction assumptions remain in [video guide](simulation/VIDEO_VISUALIZATION.md) and history; log poses are anchors, not independent physical truth.
 
 Final IDE-managed M7 build SUCCESS: RAM452176/523624B, flash601872/786432B; firmware.bin605424B SHA256`bd1d75611c2e50cb15df5a63f126d29d20fefdd43ab0856b5e90c406e7f9d597`. M4 unchanged/not built. Existing Serial macro and unused-helper warnings remain. No robot upload/movement or extra commit.
+
+## 2026-11-18: README source review
+
+Updated README operation for the current full Obstacle run, rear-ToF ownership
+and pins, fused IMU heading, measured versus nominal geometry, final-parking
+recovery and current validation limits. Added the supplied challenge videos,
+moved BOM before assembly and corrected the listed cost sum to CHF 304.65.
+No firmware, physical run or evidence log changed. The team confirms unchanged
+dimensions after adding rear ToF; mass needs remeasurement, photos will be
+added later, and CAD/print exports and wiring still need updating. Print
+settings remain 0.2 mm without supports. Next replace those assets and reconcile
+the final specification via DOCUMENTATION_TODO.md. README.pdf remains unchanged
+at the user's explicit request.
+
+## 2026-11-20: CAD and print documentation
+
+Linked supplied `CAD/Car_v74.f3z` and moved its unchanged binary G-code into
+`CAD/printing/`. Original slicer screenshots are in `Photos/build-instructions/`
+as `Car_v74_prusaslicer_models.jpg` and `Car_v74_prusaslicer_gcode.jpg`.
+At the user's direction, earlier CAD versions are retained through Git history.
+Updated README assembly downloads, screenshots and print settings,
+the CAD guide and documentation checklist; fixed the supplied team-photo link.
+SHA-256 checks verified every moved asset unchanged. Job metadata confirms
+PrusaSlicer 2.9.6, MK4IS, PLA, 0.4 mm nozzle, 0.2 mm layers, 15% infill,
+67.67 g and estimated 3 h 1 min 6 s. Screenshot uses support enforcers only.
+Next confirm version 74 matches the frozen robot, replace robot photographs and
+update wiring before final documentation/release checks. README.pdf remains
+deferred. No firmware or physical validation changed.
+
+The subsequently supplied `CAD/Car_v74.3mf` is linked in both READMEs as the
+printing entry point. Archive integrity and saved configuration were checked:
+17 part meshes, plate arrangement, MK4IS, PLA, 0.4 mm nozzle, 0.2 mm layers,
+15% infill, support enforcers only and no brim. Instructions explain opening
+it as a PrusaSlicer project and selecting the intended printer/material profile.

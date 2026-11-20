@@ -30,12 +30,13 @@ Stefan Gemperli
 
 <br>
 
-![Team Photo](Photos/Team-photo.JPG)
+![Flawil Beavers team photo, 2026](Photos/Teamphoto_26.png)
 
 ## Table of Contents
 
 - [Team Introduction](#team-introduction)
 - [Team Members](#team-members)
+- [Bill of Materials (BOM)](#bill-of-materials-bom)
 - [Assembly](#assembly)
 - [Mechanical Design](#mechanical-design)
 - [Mobility System](#mobility-system)
@@ -46,7 +47,6 @@ Stefan Gemperli
 - [Distance Sensors](#distance-sensors)
 - [Camera System](#camera-system)
 - [Wiring Diagram](#wiring-diagram)
-- [Bill of Materials (BOM)](#bill-of-materials-bom)
 - [Software Architecture](#software-architecture)
 - [Navigation Strategy](#navigation-strategy)
 - [State Machine](#state-machine)
@@ -64,15 +64,157 @@ regenerate README.pdf and remove or resolve the remaining inline TODO comments. 
 
 <!-- World Final documentation maintenance is tracked separately in the [Documentation TODO](DOCUMENTATION_TODO.md). -->
 
-<!-- TODO: Consider moving the Bill of Materials closer to the Assembly section
-so builders can find the required parts before starting. -->
+# Bill of Materials (BOM)
+
+## Electronics
+
+| Component                           | Quantity | Purpose                                 |
+| ----------------------------------- | -------- | --------------------------------------- |
+| Arduino GIGA R1 WiFi                | 1        | Main robot controller                   |
+| Adafruit BNO085 9-DOF IMU           | 1        | Gyroscope-based orientation measurement |
+| Arducam BO462 Camera                | 1        | Object and colour detection             |
+| Adafruit VL53L4CX ToF Sensor        | 3        | Wall tracking, clearance and rear parking reference |
+| Qwiic/STEMMA QT sensor cable        | 3        | Replaceable sensor communication        |
+| Pololu Dual MC33926 Motor Driver    | 1        | Drive motor control                     |
+| LM2596S-5 DC-DC Converter           | 1        | Voltage regulation for electronics      |
+| TXS0104E Logic Level Converter      | 1        | 3.3V ↔ 5V signal level translation      |
+| SVM330-Y Digital Voltmeter          | 1        | Battery voltage monitoring              |
+| MTS-102 ON-ON Toggle Switch         | 2        | Main power and physical enable/start    |
+
+## Drive System
+
+| Component                                        | Quantity | Purpose                 |
+| ------------------------------------------------ | -------- | ----------------------- |
+| DFRobot 6 V 530 RPM Encoder Motor (1:30 reduction) | 1        | Main drive motor        |
+| Rear Drive Wheels (43.2 mm diameter)             | 2        | Vehicle propulsion      |
+| Axles and Bearings                               | Various  | Mechanical transmission |
+
+### Alternative Motor Tested
+
+| Component                                       | Quantity | Result                                                            |
+| ----------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1        | Rejected due to insufficient torque and lower driving consistency |
+
+## Steering Components
+
+| Component                       | Quantity | Purpose              |
+| ------------------------------- | -------- | -------------------- |
+| TowerPro MG90S Metal Gear Servo | 1        | Front wheel steering |
+
+### Alternative Servo Tested
+
+| Component                         | Quantity | Result                                       |
+| --------------------------------- | -------- | -------------------------------------------- |
+| PDI-1102HB 2g Digital Micro Servo | 1        | Rejected due to insufficient steering torque |
+
+## Power System
+
+| Component                           | Quantity | Purpose                 |
+| ----------------------------------- | -------- | ----------------------- |
+| 14500 Li-Ion Battery (3.7V, 750mAh) | 4 total (2 installed) | 2S robot pack plus one charging/spare 2S pair |
+| Custom 3D Printed Battery Holder    | 2        | Secure battery mounting |
+| Battery Wiring Harness              | 1        | Power distribution      |
+
+### Previous Design
+
+| Component                      | Quantity | Result                                                         |
+| ------------------------------ | -------- | -------------------------------------------------------------- |
+| Commercial 2xAA Battery Holder | 1        | Replaced due to inefficient mounting and reduced accessibility |
+
+## Mechanical Components
+
+| Component                 | Quantity | Purpose               |
+| ------------------------- | -------- | --------------------- |
+| Custom 3D Printed Chassis | 1        | Main robot structure  |
+| Custom Sensor Mounts      | Multiple | Sensor positioning    |
+| Custom Battery Holders    | 2        | Battery retention     |
+| Screws, Nuts and Spacers  | Various  | Assembly and mounting |
+
+## Robot Specifications
+
+The team confirms that the rear-ToF addition does not change the overall dimensions. The table distinguishes the nominal route/exit model from the latest measured parking contour, recorded in the [measured-envelope report](simulation/RETURNED_651_656_PARKING_20261105.md).
+
+| Parameter              | Value                |
+| ---------------------- | -------------------- |
+| Earlier Recorded Mass  | 670 g; remeasurement required after rear-ToF addition |
+| Physical Wheelbase     | 98 mm measured; nominal lap model uses 100 mm |
+| Nominal Track Width    | 100 mm               |
+| Nominal Robot Length Used for Bay Sizing | 165 mm |
+| Measured Straight Longitudinal Extent | 158 mm (35 mm rear + 98 mm wheelbase + 25 mm front) |
+| Measured Full-Steering Longitudinal Extent | 170 mm (35 + 98 + 37 mm) |
+| Measured Straight Outside Wheel Width | 123 mm; general route/exit envelope retains 125 mm |
+| Nominal Maximum Swept Width | approximately 135 mm; steering-dependent footprint checked along each path |
+| Wheel Diameter         | 43.2 mm              |
+| Drive Configuration    | Rear-Wheel Drive     |
+| Steering Configuration | Front-Wheel Steering |
+
+The 127 mm effective wheelbase in the calibrated Ackermann model is a turning-model parameter, separate from the 98 mm physical axle spacing. Final-parking checks include the measured front reach at full steering; a straight bounding box alone is insufficient.
+
+## Cost Overview
+
+| Component                      | Approximate Cost (CHF) |
+| ------------------------------ | ---------------------- |
+| Arduino GIGA R1 WiFi           | 60.90                  |
+| BNO085 IMU                     | 24.95                  |
+| VL53L4CX Sensors (3x)          | 59.70                  |
+| Qwiic Cables                   | 23.10                  |
+| MG90S Servo                    | 7.90                   |
+| DFRobot 530 RPM Encoder Motor | 13.90                  |
+| 14500 Batteries (4x)           | 31.60                  |
+| Voltmeter                      | ~5.00                  |
+| Switches                       | 7.60                   |
+| Pololu MC33926 Driver          | ~25.00                 |
+| LM2596S-5 DC-DC Converter      | ~2.00                  |
+| TXS0104E Logic Level Converter | ~3.00                  |
+| Arducam BO462 Camera           | ~30.00                 |
+| 3D Printed Parts               | ~10.00                 |
+
+### Estimated Total Cost
+
+**Approximately 304.65 CHF for the listed items**, including four batteries (two installed and two spare).
+
+These are recorded project estimates rather than current quotations. Fasteners, additional wiring, shipping and other spares can change the total.
 
 # Assembly
 
-Gather all required materials according to the [**Bill of Materials (BOM)**](#bill-of-materials-bom) and print all necessary **[3D‑Printed‑Parts](./CAD/Car_v71.3mf)**. Just use 0.2 mm layer height and no support.\
-Use **M3 screws** and **M3nS/M3n nuts** for all mechanical components, and **M2 and M 2.5 screws** with **M2n and M2.5n nuts** for electronic parts.
+Gather the required materials from the [Bill of Materials (BOM)](#bill-of-materials-bom). The current supplied mechanical design is version 74. Its PrusaSlicer project, editable Fusion 360 archive, prepared print job and slicer screenshots are linked below. The [CAD guide](CAD/README.md) describes the files and the steering-analysis workflow.
 
-Start by building the base and then working your way up to the second stage. Always wire all components you add. See the following images for a better understanding:
+## CAD and 3D Printing
+
+| File | Purpose |
+| --- | --- |
+| [Car v74 PrusaSlicer project](CAD/Car_v74.3mf) | Printable parts with their build-plate arrangement and slicer settings. Open as a project in PrusaSlicer to prepare a print or adapt the settings to your printer. |
+| [Car v74 Fusion 360 archive](CAD/Car_v74.f3z) | Editable assembly, including the linked second-stage design. Import into Autodesk Fusion to inspect or modify the parts and export meshes for slicing. |
+| [Car v74 binary G-code](CAD/printing/Car_v74_0.4n_0.2mm_PLA_MK4IS_3h1m.bgcode) | Prepared print job for the Original Prusa MK4 Input Shaper with a 0.4 mm nozzle and PLA. |
+
+The version 74 parts are arranged together on one build plate in PrusaSlicer 2.9.6. The plate includes the chassis stages, battery holders, camera holder, motor cover, steering parts, ToF mounts, spacers and switch/display holders. The screenshots show the part arrangement and the resulting toolpaths.
+
+| Preparation | Sliced toolpaths |
+| --- | --- |
+| ![Version 74 parts arranged on the PrusaSlicer build plate](Photos/build-instructions/Car_v74_prusaslicer_models.jpg) | ![Version 74 G-code preview showing layers, feature types and estimated printing time](Photos/build-instructions/Car_v74_prusaslicer_gcode.jpg) |
+
+| Print setting | Supplied version 74 job |
+| --- | --- |
+| Slicer | PrusaSlicer 2.9.6 |
+| Printer | Original Prusa MK4 Input Shaper |
+| Nozzle | 0.4 mm |
+| Material | Prusament PLA profile |
+| Layer height | 0.2 mm, SPEED profile |
+| Infill | 15% |
+| Supports | For support enforcers only, as shown in the preparation screenshot |
+| Brim | Disabled |
+| Estimated filament | 67.67 g, approximately 22.69 m |
+| Estimated printing time | 3 h 1 min 6 s in normal mode |
+
+The chassis parts were designed to print without supports. The supplied slicer profile enables supports only where support enforcers are applied. The time and material values above are slicer estimates. The `.bgcode` file contains the prepared printer instructions for this configuration.
+
+To prepare your own print, download the [version 74 `.3mf` project](CAD/Car_v74.3mf) and open it as a project in PrusaSlicer to load the parts, arrangement and settings together. Select the profile for your printer, nozzle and material, review the sliced preview, then export the print job. The Fusion archive provides the editable mechanical design if you need to modify a part before slicing.
+
+## Mechanical Assembly
+
+Use **M3 screws** and **M3nS/M3n nuts** for mechanical components, and **M2 and M2.5 screws** with **M2n and M2.5n nuts** for electronic parts.
+
+Build the base first, then work up to the second stage, wiring components as they are installed. The following photographs show the earlier assembly sequence, before the rear-ToF addition.
 
 | Building Instruction | | |
 |---|---|---|
@@ -140,7 +282,7 @@ During testing, we observed low-speed surging and chassis shaking. Our former mi
 
 We introduced pulse-density drive for targets up to 120 mm/s. Short powered slots overcome breakaway friction, while their frequency of occurrence controls average power. We use a 120-PWM carrier with 5 ms slots (200 Hz), encoder-based PI feedback and compensation for steering load. Tuning the pulse strength and integral response improved speed tracking without the excessive noise and overspeed of our earlier settings.
 
-We achieved better low-speed control, although some speed ripple remains. The faster gearbox represents a deliberate compromise between competitive driving speed and smooth creeping motion.
+Earlier tests improved average low-speed tracking, although speed ripple and chassis shaking remain validation concerns. Those mean-speed results do not establish smooth operation of the current robot under every load and battery condition. The faster gearbox represents a compromise between driving speed and smooth creeping motion.
 
 <!-- TODO: Revalidate the current 30:1 drivetrain at low speeds in forward and
 reverse, straight and full-lock, with charged and lower-voltage packs. Record
@@ -192,7 +334,7 @@ The MG90S was selected because it provides:
 - Better durability
 - More accurate steering
 
-The more powerful servo drive significantly improved navigation accuracy but requires a bit more space. However, it's worth it.
+The larger servo improved steering repeatability under load at the cost of additional mounting space.
 
 # Power Budget
 
@@ -201,6 +343,8 @@ The more powerful servo drive significantly improved navigation accuracy but req
 The robot carries two 14500 Li-Ion cells wired in series. This creates a 2S pack with a nominal voltage of 7.4 V (8.4 V when fully charged). We own four cells in total: one matched pair is used in the robot while the second pair is charged or kept ready as a spare. Connecting cells in series increases voltage while the pack capacity remains the capacity of one cell.
 
 ### Estimated Current Consumption
+
+The values below are component-level estimates, not measured battery current. Components operate on different supply rails, so their current sum does not account for conversion efficiency or establish pack runtime.
 
 | Component | Typical Current |
 |------------|------------|
@@ -216,7 +360,7 @@ The robot carries two 14500 Li-Ion cells wired in series. This creates a 2S pack
 | LM2596S-5 DC-DC Converter | 5 mA |
 | TXS0104E Logic Level Converter | 2 mA |
 | Voltage Display | 20 mA |
-| **Total** | **1042 mA** |
+| **Sum of listed component currents** | **1042 mA** |
 
 ### Peak Current Consumption
 
@@ -227,7 +371,9 @@ During acceleration, steering corrections and obstacle avoidance, the motor and 
 | Drive Motor | 800 mA |
 | MG90S Servo | 700 mA |
 | Remaining Electronics | 492 mA |
-| **Estimated peak current** | **≈ 2.0 A** |
+| **Sum of estimated component peaks** | **≈ 2.0 A** |
+
+Regulator output current and battery-side peak current still require measurement on the finished wiring.
 
 # Electronics Architecture
 
@@ -251,12 +397,12 @@ Reasons for selection:
 The M7 core manages:
 
 - Camera capture and image processing
-- Front/side ToF and IMU communication
+- Two side-ToF sensors and IMU communication
 - Navigation algorithms
 - Steering control
 - Motor control
 
-The M4 core owns the rear VL53L4CX through a dedicated 100 kHz software-I2C bus on pins A3/A4. It filters measurements and sends fixed-size status frames to the M7 over OpenAMP/RPC. If the M4 or rear sensor stops responding, the M7 receives an invalid status instead of blocking the control loop.
+The M4 core owns the rear VL53L4CX through a dedicated 100 kHz software-I2C bus: A3 is SDA and A4 is SCL. It filters measurements and sends fixed-size status frames to the M7 over OpenAMP/RPC. If the M4 or rear sensor stops responding, the M7 marks the reading unavailable instead of waiting indefinitely in the control loop.
 
 All three hardware-I2C ports were already in use: one for each side ToF sensor and the third for the camera's configuration connection. Adding the rear ToF to a shared port would require extra sensor-selection and startup sequencing, because the ToF sensors initially use the same address. We would have to enable them separately and assign different addresses, then handle possible address conflicts after a sensor reset. To avoid this additional wiring and shared-bus complexity, we chose a separate software-I2C bus for the rear sensor and assigned its communication and measurement processing to M4.
 
@@ -274,11 +420,11 @@ The BNO085 was selected because of its high accuracy, low drift and reliable sen
 
 ### Usage
 
-In our vehicle, the gyroscope is the primary function used from the IMU. It is used to verify and control the robot's turning angles, providing accurate and repeatable rotation measurements. This approach has proven to be highly reliable during testing.
+The firmware requests the BNO085 game rotation vector at 100 Hz and uses its yaw for heading estimation and turn control. This fused orientation report uses the gyroscope and accelerometer without a magnetometer reference. Encoder distance supplies translational motion for the position estimate.
 
 The magnetometer was also evaluated but was ultimately not used. We observed significant heading drift and instability, most likely caused by magnetic interference from the motor, wiring and other electronic components inside the vehicle.
 
-The accelerometer is not used for position or speed estimation. Instead, we rely on the motor encoder for movement feedback, which provides more consistent and predictable results for our application.
+We do not integrate raw accelerometer readings into position or speed. The accelerometer still contributes internally to the game rotation vector; the motor encoder provides movement feedback.
 
 By focusing on the gyroscope data, we achieved accurate turn control while avoiding the limitations of the other sensors in our specific robot design.
 
@@ -361,111 +507,11 @@ In a stationary reliability test under the available indoor lighting, both offic
 
 # Wiring Diagram
 
+The diagram below shows the earlier wiring. The current robot also has a rear VL53L4CX connected to M4's software-I2C bus (SDA A3, SCL A4); the side sensors remain on M7. Rear measurements reach M7 through on-board OpenAMP/RPC, without an additional external signal cable between the cores. The diagram still needs to be updated for this sensor and the final power connections.
+
 ![Wiring Diagram](Electronics/Wiring_Diagram_FE2026.png)
-# Bill of Materials (BOM)
 
-## Electronics
-
-| Component                           | Quantity | Purpose                                 |
-| ----------------------------------- | -------- | --------------------------------------- |
-| Arduino GIGA R1 WiFi                | 1        | Main robot controller                   |
-| Adafruit BNO085 9-DOF IMU           | 1        | Gyroscope-based orientation measurement |
-| Arducam BO462 Camera                | 1        | Object and colour detection             |
-| Adafruit VL53L4CX ToF Sensor        | 3        | Wall tracking, clearance and rear parking reference |
-| Qwiic/STEMMA QT sensor cable        | 3        | Replaceable sensor communication        |
-| Pololu Dual MC33926 Motor Driver    | 1        | Drive motor control                     |
-| LM2596S-5 DC-DC Converter           | 1        | Voltage regulation for electronics      |
-| TXS0104E Logic Level Converter      | 1        | 3.3V ↔ 5V signal level translation      |
-| SVM330-Y Digital Voltmeter          | 1        | Battery voltage monitoring              |
-| MTS-102 ON-ON Toggle Switch         | 2        | Power and subsystem switching           |
-
-## Drive System
-
-| Component                                        | Quantity | Purpose                 |
-| ------------------------------------------------ | -------- | ----------------------- |
-| DFRobot 6 V 530 RPM Encoder Motor (1:30 reduction) | 1        | Main drive motor        |
-| Rear Drive Wheels (43.2 mm diameter)             | 2        | Vehicle propulsion      |
-| Axles and Bearings                               | Various  | Mechanical transmission |
-
-### Alternative Motor Tested
-
-| Component                                       | Quantity | Result                                                            |
-| ----------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| DFRobot Micro Metal Geared Motor 310 RPM (50:1) | 1        | Rejected due to insufficient torque and lower driving consistency |
-
-## Steering System
-
-| Component                       | Quantity | Purpose              |
-| ------------------------------- | -------- | -------------------- |
-| TowerPro MG90S Metal Gear Servo | 1        | Front wheel steering |
-
-### Alternative Servo Tested
-
-| Component                         | Quantity | Result                                       |
-| --------------------------------- | -------- | -------------------------------------------- |
-| PDI-1102HB 2g Digital Micro Servo | 1        | Rejected due to insufficient steering torque |
-
-## Power System
-
-| Component                           | Quantity | Purpose                 |
-| ----------------------------------- | -------- | ----------------------- |
-| 14500 Li-Ion Battery (3.7V, 750mAh) | 4 total (2 installed) | 2S robot pack plus one charging/spare 2S pair |
-| Custom 3D Printed Battery Holder    | 2        | Secure battery mounting |
-| Battery Wiring Harness              | 1        | Power distribution      |
-
-### Previous Design
-
-| Component                      | Quantity | Result                                                         |
-| ------------------------------ | -------- | -------------------------------------------------------------- |
-| Commercial 2xAA Battery Holder | 1        | Replaced due to inefficient mounting and reduced accessibility |
-
-## Mechanical Components
-
-| Component                 | Quantity | Purpose               |
-| ------------------------- | -------- | --------------------- |
-| Custom 3D Printed Chassis | 1        | Main robot structure  |
-| Custom Sensor Mounts      | Multiple | Sensor positioning    |
-| Custom Battery Holders    | 2        | Battery retention     |
-| Screws, Nuts and Spacers  | Various  | Assembly and mounting |
-
-## Robot Specifications
-
-| Parameter              | Value                |
-| ---------------------- | -------------------- |
-| Total Weight           | 670 g                |
-| Wheelbase              | 100 mm               |
-| Track Width            | 100 mm               |
-| Overall Length         | 165 mm               |
-| Outside Wheel Width    | 125 mm               |
-| Maximum Swept Width    | approximately 135 mm |
-| Wheel Diameter         | 43.2 mm              |
-| Drive Configuration    | Rear-Wheel Drive     |
-| Steering Configuration | Front-Wheel Steering |
-
-## Cost Overview
-
-| Component                      | Approximate Cost (CHF) |
-| ------------------------------ | ---------------------- |
-| Arduino GIGA R1 WiFi           | 60.90                  |
-| BNO085 IMU                     | 24.95                  |
-| VL53L4CX Sensors (3x)          | 59.70                  |
-| Qwiic Cables                   | 23.10                  |
-| MG90S Servo                    | 7.90                   |
-| DFRobot 530 RPM Encoder Motor | 13.90                  |
-| 14500 Batteries (4x)           | 31.60                  |
-| Voltmeter                      | ~5.00                  |
-| Switches                       | 7.60                   |
-| Pololu MC33926 Driver          | ~25.00                 |
-| LM2596S-5 DC-DC Converter      | ~2.00                  |
-| TXS0104E Logic Level Converter | ~3.00                  |
-| Arducam BO462 Camera           | ~30.00                 |
-| 3D Printed Parts               | ~10.00                 |
-
-### Estimated Total Cost
-
-**Approximately 301-331 CHF**
-
-(The exact total depends on manufacturing costs, spare parts and shipping fees.)
+The BOM includes an LM2596S-5 regulator, a TXS0104E level converter and a voltage display. Their final supply rails, signal connections and regulator loading need to be reconciled with the physical wiring before this diagram can serve as a complete build reference.
 
 # Software Architecture
 
@@ -506,7 +552,7 @@ The Open Challenge uses a **hybrid gyro-stabilized wall-following strategy**. It
 
 ### Geometric correction
 
-Unlike basic robots that use raw ToF data, our system calculates the **perpendicular distance** to the wall. Using the gyro heading relative to the target, we apply a cosine correction:
+The controller estimates the **perpendicular distance** to the wall from the sensor range and gyro heading error:
 
 $$
 d_{perp} = d_{raw} \cdot \cos(\theta_{error})
@@ -519,7 +565,7 @@ This prevents "phantom distance" increases when the robot is tilted relative to 
 The steering output is the sum of two PD (Proportional-Derivative) controllers:
 
 - **Primary Control:** Gyroscope-based PD maintains a global grid heading (0°, 90°, 180°, 270°).
-- **Secondary Control:** ToF-based PD nudges the robot to maintain exactly 300 mm from the followed wall.
+- **Secondary Control:** ToF-based PD corrects distance error around the 300 mm target.
 
 At the start, while `nav_following_wall == SIDE_UNKNOWN`, the controller selects a 300 ms side-ToF timing budget for long-range discovery of the track direction. As soon as it determines which side to follow, it restores the normal 30 ms budget before the first turn. Subsequent wall following, gyro-controlled 90 degree turns and wall reacquisition all retain the 30 ms budget; losing the wall at a later corner does not make the followed side unknown again. Encoder feedback keeps the requested speed consistent as battery voltage and steering load change.
 
@@ -538,6 +584,14 @@ The Obstacle Challenge uses a known field model, camera observations and **Pure 
 
 Pure Pursuit converts the selected lookahead point into curvature and an Ackermann steering request. Lookahead and speed adapt to the route section. Before and during motion, the software checks steering reachability, wall and pillar envelopes, cross-track error, sensor freshness and progress. The first lap discovers the layout; the confirmed seat map is then used to build a smoother route for laps two and three.
 
+When a required seat remains unresolved, the controller can brake, collect fresh frames and evaluate bounded observation paths from the measured pose. Each new motion needs a fresh path check. The current CCW first-lap correction permits additional target aiming only after the protected pillar bypass, with a checked steering arc; it does not increase the steering limit. Invalid pose, substantial deviation and sensor or motion faults still cause a stop. See the [first-lap view report](simulation/LAP1_CHECKED_CCW_VIEW_20261111.md).
+
+### Modified-sign recognition
+
+`OBSTACLE_SURPRISE_RULE_ENABLED` currently defaults to `1`. The implementation estimates pillar height from the visible top and ground contact, requires three independent confirming frames, and stores the selected seat's inferred original colour for route generation on all three laps. Visible colour remains available for diagnostics. This setting is separate from `O3`, which changes which stations are inspected.
+
+The [implementation report](simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md) records model checks and the [rules reference](WRO_2026_RULES.md) links the official task. Real 50 mm and 150 mm pillars have not yet been accepted with the mounted camera; the approved normal-height reference does not establish that capability.
+
 ### Starting from the parking lot
 
 The parking lot is 200 mm deep and `1.5 * robot length` long, giving 247.5 mm for the current 165 mm robot. Before moving, the rear ToF normalises the longitudinal start to 50 mm rear-body clearance. The robot then executes a five-segment Ackermann exit whose swept footprint was checked against both magenta pieces and placement tolerances. The last arc ends from gyro feedback when the robot is parallel instead of trusting a fixed theoretical travel distance.
@@ -546,7 +600,11 @@ After the exit, side-ToF measurements of the magenta piece and a bounded reverse
 
 ### Final parking
 
-After three laps, the final-parking controller approaches the parking section from the established field frame. It scans across the fixed and movable magenta pieces, measures their inside faces, checks that their separation agrees with `1.5 * robot length`, and constructs the bay coordinate frame. A mirrored seven-segment path places the robot in the centre of the bay for either driving direction. The final state is accepted only when the complete footprint is inside the parking lot, steering is straight and the gyro confirms that the vehicle is parallel.
+After three laps, the final-parking controller approaches the parking section from the established field frame. It scans across the fixed and movable magenta pieces, measures their inside faces, checks their separation against the configured bay size and constructs the bay coordinate frame. The normal entry uses a mirrored seven-segment sequence. Measured curvature and stopping behaviour can trigger replanning; a bounded multi-point search is available when the short candidates fail.
+
+Completion requires a stationary, parallel pose with straight wheels and the complete measured footprint inside the bay. The robot can stop at a valid contained pose without making an unnecessary longitudinal centring move. The planner checks steering-dependent wheel reach and the swept path in both driving directions.
+
+The latest [parking recheck](simulation/LAP1_PARKING_RECHECK_20261111.md) passed 96 of 120 approach-model cases. All 24 remaining aborts occurred at a 232.5 mm measured gap within the accepted measurement range. These are model results; they do not establish physical parking reliability. The [original log index](simulation/evidence/parking_exit_diagnostics/README.md) and [physical reports](simulation/RETURNED_651_656_PARKING_20261105.md) retain the separate real-run outcomes.
 
 # State Machine
 
@@ -578,7 +636,7 @@ Pure Pursuit lap 1: discover, vote and inject pillar routes
         |
 Pure Pursuit laps 2-3: follow the confirmed optimized map
         |
-Final approach, bay scan, seven-segment parking and verification
+Final approach, bay scan, checked entry/recovery and verification
         |
 Controlled hold (or immediate safe abort from any failed gate)
 ```
@@ -590,11 +648,15 @@ The development process follows a repeated **plan - build - test - analyse - imp
 | Subsystem | Test evidence | Decision or improvement |
 |---|---|---|
 | Steering geometry | Physical turning-radius measurements across practical steering angles gave approximately 2.35% mean prediction error after compensating a +0.6 degree servo-neutral offset. | Use measured Ackermann geometry and gyro-bounded final alignment instead of relying only on CAD angles. See [Ackermann calibration](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md). |
-| Low-speed drive | At an 80 mm/s target, average measured speed improved from 59.4 to 71.0 mm/s after increasing integral adaptation. At a 60 mm/s target, straight and full-lock tests stayed within the defined +/-10 mm/s mean tolerance across charged and lower-voltage packs. | Retain a 120 PWM, 200 Hz pulse-density carrier, closed-loop speed PI and a small full-lock load feed-forward term. |
+| Low-speed drive | Earlier tests improved mean speed from 59.4 to 71.0 mm/s at an 80 mm/s target; 60 mm/s straight/full-lock cases met the +/-10 mm/s mean tolerance. These averages do not establish acceptable speed ripple, noise or stall behaviour on the current robot. | Retain the 120 PWM, 200 Hz pulse-density carrier and speed PI; keep loaded forward/reverse validation across battery conditions open. |
 | Camera pipeline | Both official colours were valid in 2025/2025 consecutive frames, with 79.62-79.63 ms frame intervals and no DMA errors. | Keep continuous double-buffer capture and the tested 24 MHz input-divider profile, which preserves rather than increases internal speed; reject the faster PLL profile that produced lighting bands. |
 | Parking exit | The five-segment physical exit completed without contact. Gyro-controlled final alignment stopped after 162.6 mm with 0.9 degree final heading error. | Replace a fixed-distance final turn with bounded heading feedback and preserve swept-envelope preflight checks. See [parking-exit validation](simulation/PARKING_EXIT_PATH_SIMULATION.md). |
 | Rear parking reference | A 7.16 V test corrected rear range from 46.3 to 60.7 mm and passed the 5 mm canonical tolerance and encoder/ToF agreement gates. Consecutive mirrored runs also completed without contact. | Use stationary multi-sample verification and a bounded micro-correction rather than accepting one noisy reading. |
 | Obstacle route | Physical runs demonstrated camera-controlled single-pillar avoidance, complete laps in both directions and three-lap execution. Later difficult adjacent-pillar and parking-entry cases were retained as regression evidence. | Build the first-lap route from live seat evidence, use a confirmed map for later laps, and stop safely when a seat or connector cannot be proven. |
+| Final parking | November 5 runs 655/656 were reported nearly perfect CCW; CW 651 had poor/incomplete physical parking despite estimated completion, and 654 aborted during replanning. Later approach-model checks passed 96/120, with all failures at a 232.5 mm gap. | Use the measured steering envelope and verified containment; preserve the narrow-gap limitation and distinguish estimated completion from physical acceptance. |
+| Modified-sign height | Synthetic height/association checks pass, but approved real evidence covers a normal-height pillar only. | Keep real 50/150 mm height recognition unvalidated until accepted mounted-camera evidence is available. |
+
+These records cover different firmware revisions. The archived physical runs predate the November 11 perception and parking changes, so they are historical demonstrations rather than acceptance of the current source. The [current handoff](AGENT_DOCUMENTATION.md) identifies revisions and validation limits; complete logs and hashes are in the [evidence index](simulation/evidence/parking_exit_diagnostics/README.md).
 
 These tests also exposed interactions between subsystems. Lower battery voltage increased drivetrain breakaway effort; steering load changed motor speed; camera timing affected control-loop availability; and parking accuracy depended on the robot footprint, Ackermann radius, encoder stopping distance, ToF geometry and gyro error together. The software therefore records these quantities in the same run instead of evaluating each component in isolation.
 
@@ -610,6 +672,8 @@ $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
 & $pio run --environment giga_r1_m7
 ```
 
+These two builds are needed for an initial complete installation. For later changes, build only the affected core; rebuild both when a shared interface or protocol changes. Run commands from the repository root to reuse the existing PlatformIO cache and incremental build output.
+
 For a complete installation, upload the rear-sensor M4 image first and the main M7 image second:
 
 ```powershell
@@ -620,7 +684,9 @@ $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
 
 The serial monitor runs at 115200 baud. `STARTUP_ROBOT_MODE` in `include/config.h` selects the competition mode; the current configuration starts the Obstacle Challenge. Set it to `MODE_OPEN_CHALLENGE` for the Open Challenge and rebuild M7. The power switch supplies the robot, while the separate enable/start switch begins or pauses the selected program without requiring a computer or phone on the competition field.
 
-All build-time mode and test switches are grouped at the top of `include/config.h`. For the current Obstacle setup, leave `STARTUP_ROBOT_MODE=MODE_OBSTACLE_CHALLENGE`, set the enable switch LOW, power on, wait for the blue ready light, then enable the robot. The current test gates continue after parking exit and stop after the first lap. `OBSTACLE_STARTUP_CHECK_ALL_STATIONS=true` selects the surprise layout after a new M7 build; alternatively, send `O3` while disabled for the current power cycle (`O` selects the official layout). The separate `include/parking_exit_diagnostics_config.h` controls only parking-exit logging. Changing the mode or a gate in the header requires rebuilding and uploading M7 before it affects the robot.
+The startup and run-stage switches are grouped at the top of `include/config.h`. For the current Obstacle setup, leave `STARTUP_ROBOT_MODE=MODE_OBSTACLE_CHALLENGE`, set the enable switch LOW, power on, wait for the blue ready light, then enable the robot. The current configuration performs parking exit, three laps and a final-parking attempt: `OBSTACLE_FIRST_LAP_TEST_ENABLED`, `OBSTACLE_THREE_LAP_TEST_ENABLED` and `OBSTACLE_FINAL_PARKING_TEST_ONLY` are all false, and final entry is armed. Although `OBSTACLE_PARKING_EXIT_TEST_ONLY` is true, enabled entry discovery makes the current run continue after the exit.
+
+`OBSTACLE_STARTUP_CHECK_ALL_STATIONS=true` requests inspection of every station after rebuilding M7. Alternatively, serial `O3` selects that inspection layout while disabled for the current power cycle; `O` selects the official layout and lowercase `l` selects Open Challenge. Neither `O` nor `O3` changes modified-sign participation: set `OBSTACLE_SURPRISE_RULE_ENABLED` before building to match the declared attempt. The separate `include/parking_exit_diagnostics_config.h` controls parking-exit logging. Header changes require rebuilding and uploading the affected image.
 
 Dedicated modes are provided for servo centre, turn radius, motor minimum drive, speed PI, ToF diagnostics, camera colour/distance calibration and isolated obstacle-path tests. Their results are applied through `include/config.h`, and the same production code paths are then used by the challenge modes.
 
@@ -637,8 +703,10 @@ Dedicated modes are provided for servo centre, turn radius, motor minimum drive,
 # Robot Photos
 
 <!-- TODO: Replace these photographs after the robot is frozen so every final
-component and wiring change is visible, and add the final team photograph. See
+component and wiring change is visible. See
 DOCUMENTATION_TODO.md. -->
+
+These June 2026 photographs show the earlier robot. The current robot includes the rear-ToF sensor described above; replacement robot photographs will be added by the team. The supplied 2026 team photograph appears in [Team Members](#team-members).
 
 | ![Left](Photos/robot/PXL_20260617_185159148.MP.jpg) | ![Back](Photos/robot/PXL_20260617_185207747.MP.jpg) | ![Right](Photos/robot/PXL_20260617_185218350.MP.jpg) |
 |---|---|---|
@@ -829,10 +897,7 @@ For the Open Challenge's initial direction discovery, the side-sensor timing bud
 
 ### Result
 
-- Improved measurement stability
-- Better performance on dark surfaces
-- Reliable wall detection during normal operation
-- Consistent navigation close to walls
+The longer discovery budget improves the opportunity to obtain a usable dark-wall return. Actual wall-edge timing and perpendicular-wall returns remain dependent on surface, angle and range; competition-like CW/CCW validation is still open. Filtering does not make an invalid reading reliable.
 
 ## Failure Mode 8 – Battery Voltage Drop
 
@@ -852,13 +917,11 @@ A lower battery voltage reduces the power available to the drive motor.
 
 ### Solution
 
-A closed-loop PID speed controller continuously adjusts the motor output using encoder feedback.
+A closed-loop PI speed controller adjusts motor output using encoder feedback, feed-forward and bounded load compensation.
 
 ### Result
 
-- Constant vehicle speed
-- Improved repeatability
-- Consistent behaviour throughout a run
+Encoder feedback reduces speed changes within the available motor effort. Low battery voltage, full-lock tyre scrub and breakaway friction can still cause tracking error or stalls; the earlier mean-speed results do not guarantee constant speed throughout every run.
 
 # Conclusion
 
