@@ -1,14 +1,21 @@
-# World Final Documentation TODO
+# World Final documentation checklist
 
-This checklist tracks the documentation work that remains before the WRO Future Engineers World Final. Keep it synchronized with the physical robot and competition software. Do not mark an item complete using simulation or telemetry alone when physical validation is required.
+Use this checklist to compare the published documentation with the finished
+robot and competition firmware. Confirm items that require physical validation
+on the robot and record the results.
 
-Complete the checklist after the hardware and competition software are frozen. Before the repository deadline, remove resolved TODO wording from the published documentation, regenerate `README.pdf`, and review the current official Future Engineers rules, Documentation Rubric, Questions & Answers and any announced surprise rule.
+Once the hardware and competition software are final, clear resolved TODOs
+from the published documentation, regenerate `README.pdf` and review the
+official rules, Documentation Rubric, Questions & Answers and any announced
+surprise rule before the repository deadline.
 
 The canonical official links used for this checklist are recorded in the [WRO 2026 Rules Reference](WRO_2026_RULES.md).
 
 - [x] Replace the June robot photographs with the supplied front, rear, left, right, top and bottom views of the current robot (November 20).
 - [x] Link the supplied 2026 team photo in the README (November 20). Public GitHub rendering remains part of the final repository link check below.
-- [ ] Remeasure mass after the rear-ToF addition; 670 g is the earlier recorded value. The team confirms unchanged dimensions (November 18). Confirm final height and reconcile the nominal 165 mm bay-sizing length with the measured 158/170 mm straight/steered extent before freezing the specification; retain the measured 98 mm wheelbase and 123 mm straight width separately from nominal route/exit constants.
+- [x] Record the final mass of 680 g with the rear ToF installed (team confirmation, November 20).
+- [x] Record the final robot height of 115 mm (team confirmation, November 20).
+- [x] Record the target parking gap of 237.5 mm between the inside faces of the markers (team confirmation, November 20). The firmware's initial estimate is 247.5 mm.
 - [x] Add and link the supplied version 74 Fusion archive, printable `.3mf` project, MK4 Input Shaper binary G-code and PrusaSlicer preparation/toolpath screenshots; document how to open the project and adapt printer settings, plus printer, nozzle, material, layer height, infill, supports and estimates. Earlier CAD versions remain available in Git history (November 20).
 - [x] Confirm version 74 is the current CAD model, including the rear-ToF mount (team confirmation, November 20).
 - [x] Confirm that all 17 version 74 parts print without supports in their saved orientations and document the setting in the CAD guide (team confirmation, November 20).
@@ -37,9 +44,10 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Review the latest official Future Engineers rules, Documentation Rubric, Questions & Answers and any announced surprise rule. Apply any newer clarification before submission.
 - [ ] Push the updated documentation to `main`. Confirm the submitted URL shows the revised README, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
-- [ ] Regenerate `README.pdf` from the final `README.md`, inspect every rendered page and print the required hardcopy for the World Final.
+- [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 22 rendered pages and decode the three QR codes from the PDF (November 20).
+- [ ] Print the required hardcopy for the World Final.
 - [ ] Scan the repository and both challenge-video QR codes from the final printed PDF. Verify the canonical repository URL, final video destinations and public access; confirm both video QR codes appear in their respective challenge subsections.
 
 November 18 README update: the team confirms the rear-ToF addition, unchanged dimensions and unchanged print settings (0.2 mm, no supports). The README reflects current full-run flags, measured parking geometry, modified-sign implementation and recorded validation limits.
 
-November 20 documentation update: the team confirmed v74 includes the rear-ToF mount. The linked `.3mf` contains 17 meshes with the saved plate and print settings. The README links the current CAD, team photo, six current robot views, challenge videos, revision 1 wiring diagram and engineering evidence. PDF work remains deferred.
+November 20 documentation update: the team confirmed v74 includes the rear-ToF mount. The linked `.3mf` contains 17 meshes with the saved plate and print settings. The README links the current CAD, team photo, six current robot views, challenge videos, revision 1 wiring diagram and engineering evidence. The regenerated journal includes the confirmed mass, height and target bay gap.

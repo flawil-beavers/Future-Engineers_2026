@@ -1,4 +1,4 @@
--- QR codes are generated as vectors by XeLaTeX, only for PDF/LaTeX output.
+-- QR codes are generated locally, only for PDF/LaTeX output.
 -- Video links in README.md are the source of truth; no remote QR service.
 local function youtube_url(url)
   local id = url:match('^https://youtu%.be/([%w_-]+)')
@@ -12,9 +12,11 @@ local function youtube_url(url)
 end
 
 local function qr_block(url, label)
+  local image_path = 'local_workspace/pdf-build/qr/' .. pandoc.utils.sha1(url) .. '.png'
+  pandoc.pipe('python', {'scripts/render-documentation-qr.py', image_path}, url)
   return '\\begin{center}\n\\begin{minipage}{0.95\\linewidth}\n'
     .. '\\centering\n\\textbf{' .. label .. '}\\par\\medskip\n'
-    .. '\\DocumentationQr{' .. url .. '}\\par\\medskip\n'
+    .. '\\DocumentationQr{' .. image_path .. '}\\par\\medskip\n'
     .. '{\\small\\url{' .. url .. '}}\n'
     .. '\\end{minipage}\n\\end{center}\n'
 end
@@ -28,12 +30,7 @@ function Pandoc(doc)
   end
   local includes = doc.meta['header-includes'] or pandoc.MetaList({})
   includes:insert(pandoc.MetaBlocks({pandoc.RawBlock('latex',
-    '\\usepackage{graphicx}\n\\usepackage{qrcode}\n\\input{docs/pdf/qr-layout.tex}\n'
-      .. '\\makeatletter\n\\newcommand{\\DocumentationQr}[1]{\\begingroup\\color{black}'
-      .. '\\let\\DocumentationRestore\\@minipagerestore'
-      .. '\\def\\@minipagerestore{\\DocumentationRestore\\parskip=0pt\\lineskip=0pt'
-      .. '\\lineskiplimit=0pt\\parindent=0pt\\leftskip=0pt\\rightskip=0pt\\parfillskip=0pt}'
-      .. '\\qrcode[height=28mm,level=M,nolink,padding]{#1}\\endgroup}\n\\makeatother\n'
+    '\\usepackage{graphicx}\n\\newcommand{\\DocumentationQr}[1]{\\includegraphics[width=33mm]{#1}}\n'
       .. '\\newcommand{\\DocumentationRepositoryQr}{'
       .. qr_block(repository, 'Source code and engineering documentation') .. '}')}))
   doc.meta['header-includes'] = includes

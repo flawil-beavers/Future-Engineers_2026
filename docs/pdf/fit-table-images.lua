@@ -1,3 +1,18 @@
+local print_widths = {
+  ["Component"] = { 0.31, 0.12, 0.43, 0.14 },
+  ["Artifact"] = { 0.30, 0.70 },
+  ["Specification"] = { 0.56, 0.44 },
+  ["Stage and gearbox"] = { 0.22, 0.19, 0.15, 0.44 },
+  ["Factor"] = { 0.18, 0.82 },
+  ["Symbol"] = { 0.25, 0.75 },
+  ["Load"] = { 0.38, 0.20, 0.21, 0.21 },
+  ["Regulator"] = { 0.22, 0.18, 0.16, 0.22, 0.22 },
+  ["Function"] = { 0.33, 0.67 },
+  ["Sensor"] = { 0.28, 0.72 },
+  ["Firmware area"] = { 0.30, 0.70 },
+  ["Subsystems"] = { 0.18, 0.35, 0.47 },
+}
+
 -- Pandoc's default LaTeX image sizing uses the full text width. Inside the
 -- README's three-column photo tables that makes each image wider than its
 -- cell, clipping both neighbouring images and captions. Apply an explicit
@@ -30,15 +45,19 @@ function Table(table)
   -- descriptive columns most of the width and keep quantity/value columns
   -- compact so long BOM results remain inside the page margins.
   local column_count = #adjusted.colspecs
-  local widths = nil
+  local header = adjusted.head.rows[1]
+  local first_heading = header and pandoc.utils.stringify(header.cells[1].contents)
+  local widths = print_widths[first_heading]
+  if widths and #widths ~= column_count then widths = nil end
+
   local engineering_evidence = column_count == 3
-    and adjusted.head.rows[1] ~= nil
-    and pandoc.utils.stringify(adjusted.head.rows[1].cells[1].contents) == "Subsystem"
-    and pandoc.utils.stringify(adjusted.head.rows[1].cells[2].contents) == "Test evidence"
-    and pandoc.utils.stringify(adjusted.head.rows[1].cells[3].contents) == "Decision or improvement"
+    and (first_heading == "Subsystems" or (
+      first_heading == "Subsystem"
+      and pandoc.utils.stringify(header.cells[2].contents) == "Test evidence"
+      and pandoc.utils.stringify(header.cells[3].contents) == "Decision or improvement"))
   if engineering_evidence then
     -- This is not a BOM: both evidence and decisions contain long prose.
-    widths = { 0.18, 0.42, 0.40 }
+    widths = widths or { 0.18, 0.42, 0.40 }
     if FORMAT:match("latex") then
       local function align_row(row)
         for _, cell in ipairs(row.cells) do
@@ -53,9 +72,9 @@ function Table(table)
         for _, row in ipairs(body.body) do align_row(row) end
       end
     end
-  elseif column_count == 2 then
+  elseif not widths and column_count == 2 then
     widths = { 0.68, 0.32 }
-  elseif column_count == 3 then
+  elseif not widths and column_count == 3 then
     widths = { 0.48, 0.14, 0.38 }
   end
 

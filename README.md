@@ -87,6 +87,7 @@ The photographs illustrate the original two-stage assembly sequence.
 | --- | ---: |
 | Length | 158 mm straight, 170 mm at full lock |
 | Width across wheels (straight) | 123 mm |
+| Height | 115 mm |
 | Wheelbase | 98 mm |
 | Drive-wheel diameter | 43.2 mm |
 | Mass | 680 g |
@@ -362,7 +363,7 @@ On laps 2 and 3, we reuse the map to plan smoother routes. If two signs are clos
 
 **Motion checks and parking.** Throughout the run, we check that the readings are recent, the car can make the planned turn, and it is making progress without straying too far from the route. The planner checks the space taken up by the body and wheels as the car moves and steers. If the car turns or stops differently than planned during parking, the controller can recheck the rest of the entry. It verifies that the car is stopped, parallel and fully inside the bay with its wheels straight. [Final parking verification](src/final_parking.cpp#L2863-L2906)
 
-We configure a robot length of **165 mm**, which gives an initial bay length of **247.5 mm**. Once we have a valid measurement from the parking scan, we use it to locate the movable bay wall. [Robot length](include/config.h#L410-L411) · [Nominal bay length](include/config.h#L864-L865) · [Bay wall calculation](src/final_parking.cpp#L205-L210)
+Our target parking gap is **237.5 mm (23.75 cm)** between the inner faces of the two markers. The firmware starts with a **247.5 mm** estimate based on its configured robot length of **165 mm**. Once the parking scan produces a valid gap measurement, the controller uses it to locate the movable wall. [Robot length](include/config.h#L410-L411) · [Nominal bay length](include/config.h#L864-L865) · [Bay wall calculation](src/final_parking.cpp#L205-L210)
 
 ### Modified traffic sign
 

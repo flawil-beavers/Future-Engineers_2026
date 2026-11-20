@@ -38,4 +38,5 @@ Spot-check the claims and links in the README against these files.
 - [x] [Team, robot and assembly photos](img/) — Check the captions and every image in the rendered README.
 - [x] [Open video](https://www.youtube.com/watch?v=koMCLdpg0-I) and [Obstacle video](https://www.youtube.com/watch?v=5dCMkFn-6TI) — Check previews, signed-out playback and at least 30 seconds of autonomous driving in each.
 - [x] [Public GitHub repository](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main) — Check the rendered README and its links on GitHub.
-- [ ] [README.pdf](README.pdf) — Review after regeneration. Check page breaks and diagram legibility, then scan the repository and both video QR codes from the printout.
+- [x] [README.pdf](README.pdf) — Reviewed all 22 rendered pages and decoded the repository and both video QR codes from the PDF.
+- [ ] Scan the three QR codes from the printed journal.

@@ -38,6 +38,16 @@ The first-lap horizon now permits checked colour acquisition through a corner ou
 
 Final IDE-managed M7 build SUCCESS: RAM452176/523624B, flash601872/786432B; firmware.bin605424B SHA256`bd1d75611c2e50cb15df5a63f126d29d20fefdd43ab0856b5e90c406e7f9d597`. M4 unchanged/not built. Existing Serial macro and unused-helper warnings remain. No robot upload/movement or extra commit.
 
+## 2026-11-20: Supporting documentation proofreading
+
+The [rear ToF guide](REAR_TOF_M4_SETUP.md#parking-position-configuration)
+now matches the current controller's 60 mm/s correction, 500 ms settling
+period, two discarded frames and one retry for a remaining error up to
+15 mm. The CAD guide, documentation checklist, simulation guide and two
+validation reports have first-pass wording edits. Next, confirm the language
+for the German guides and reports, then continue with the calibration and
+evidence references in [the proofreading checklist](PROOFREADING_CHECKLIST.md).
+
 ## 2026-11-18: README source review
 
 Updated README operation for the current full Obstacle run, rear-ToF ownership
@@ -100,4 +110,9 @@ The [README wiring section](README.md#wiring-and-signal-interfaces) records
 the rationale, and the [rear setup guide](REAR_TOF_M4_SETUP.md#wiring) records
 the connection method. No new firmware or physical test.
 
-The team supplied six current robot photos. The [README photo gallery](README.md#robot-photos) now shows the front, rear, left, right, top and bottom, including the rear ToF and both battery holders. Next record final measurements and include the new photos in the final PDF export.
+The team confirmed 680 g mass, 115 mm height and a 237.5 mm target parking
+gap. The firmware's initial gap estimate remains 247.5 mm. Regenerated the
+22-page journal with all six current robot photos. The print build now renders
+the Mermaid flowcharts and generates QR images with OpenCV. All three codes
+decoded from the rendered PDF. Next merge the documentation into `main`,
+verify the public links and scan the QR codes from the printed copy.
