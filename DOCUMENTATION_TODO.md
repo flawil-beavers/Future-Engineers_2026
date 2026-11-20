@@ -12,7 +12,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [x] Add and link the supplied version 74 Fusion archive, printable `.3mf` project, MK4 Input Shaper binary G-code and PrusaSlicer preparation/toolpath screenshots; document how to open the project and adapt printer settings, plus printer, nozzle, material, layer height, infill, supports and estimates. Earlier CAD versions remain available in Git history (November 20).
 - [x] Confirm version 74 is the current CAD model, including the rear-ToF mount (team confirmation, November 20).
 - [ ] Check the CAD and print assets against any subsequent physical changes before submitting the final documentation.
-- [x] Replace the June schematic with the supplied [revision 1 wiring diagram](Electronics/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
+- [x] Replace the June schematic with the supplied [revision 1 wiring diagram](img/diagrams/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
 - [x] Verify that the drawing's rear-ToF pin labels match the M4 firmware (A3 SDA, A4 SCL).
 - [ ] Annotate the diagram with the internal M4-to-M7 OpenAMP/RPC link.
 - [x] Identify the Arducam GC2145, Mini-360 adjustable step-down module, generic 3.3 V to 5 V logic-level shifter and BerryBase SVM330-Y display. Retain the team's BOM quantities and project cost estimates.

@@ -7,7 +7,7 @@ on:
       - README.pdf
       - docs/pdf/**
       - scripts/build-documentation.ps1
-      - Photos/**
+      - img/**
       - .github/workflows/documentation-pdf.yml
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ jobs:
               README.pdf)
                 pdf_changed=true
                 ;;
-              README.md|docs/pdf/*.tex|docs/pdf/pandoc.yaml|docs/pdf/*.lua|scripts/build-documentation.ps1|Photos/*)
+              README.md|docs/pdf/*.tex|docs/pdf/pandoc.yaml|docs/pdf/*.lua|scripts/build-documentation.ps1|img/*)
                 source_changed=true
                 ;;
             esac

@@ -54,7 +54,7 @@ at the user's explicit request.
 ## 2026-11-20: CAD and print documentation
 
 Linked supplied `CAD/Car_v74.f3z` and moved its unchanged binary G-code into
-`CAD/printing/`. Original slicer screenshots are in `Photos/build-instructions/`
+`CAD/printing/`. Original slicer screenshots are in `img/assembly/`
 as `Car_v74_prusaslicer_models.jpg` and `Car_v74_prusaslicer_gcode.jpg`.
 At the user's direction, earlier CAD versions are retained through Git history.
 Updated README assembly downloads, screenshots and print settings,
@@ -85,7 +85,7 @@ changes. Next verify signed-out videos, replace robot photos,
 record physical measurements, then complete the PDF/hardcopy checks in
 [DOCUMENTATION_TODO.md](DOCUMENTATION_TODO.md).
 
-The supplied [revision 1 wiring PNG](Electronics/Wiring_Diagram_FE2026_v1.png)
+The supplied [revision 1 wiring PNG](img/diagrams/Wiring_Diagram_FE2026_v1.png)
 replaces the June drawing. The corrected PNG shows rear I²C SDA on A3 and
 SCL on A4, matching M4 source. Reconcile the regulator and level-shifter
 labels with the BOM before the final documentation export.

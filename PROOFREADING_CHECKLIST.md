@@ -9,7 +9,7 @@
 
 ## Hardware and assembly references
 
-- [ ] [Wiring diagram](Electronics/Wiring_Diagram_FE2026_v1.png) — Check pins, power rails and component labels against the BOM.
+- [ ] [Wiring diagram](img/diagrams/Wiring_Diagram_FE2026_v1.png) — Check pins, power rails and component labels against the BOM.
 - [ ] [CAD guide](CAD/README.md) — Check the [printing project](CAD/Car_v74.3mf), [Fusion model](CAD/Car_v74.f3z), [prepared print job](CAD/printing/Car_v74_0.4n_0.2mm_PLA_MK4IS_3h1m.bgcode) and [steering calibration workflow](CAD/README.md#workflow).
 - [ ] [Ackermann calibration](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md#turning-radius-comparison) and [measured parking contour](simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation) — Check dimensions and turning-radius figures.
 - [ ] Component references — [Motor](https://www.bastelgarage.ch/6v-530rpm-30-1-micro-gear-motor-with-encoder), [regulator](https://sph.ethz.ch/materials/product/10.2.4), [voltmeter](https://www.berrybase.ch/detail/0191f2bebc0d71c7afa5fd3d0c6cde11) and [ToF pinout](https://learn.adafruit.com/adafruit-vl53l4cx-time-of-flight-distance-sensor/pinouts).
@@ -35,7 +35,7 @@ Spot-check the claims and links in the README against these files.
 
 ## Final media and print checks
 
-- [ ] [Team, robot and assembly photos](Photos/) — Check the captions and every image in the rendered README.
+- [ ] [Team, robot and assembly photos](img/) — Check the captions and every image in the rendered README.
 - [ ] [Open video](https://www.youtube.com/watch?v=koMCLdpg0-I) and [Obstacle video](https://www.youtube.com/watch?v=5dCMkFn-6TI) — Check previews, signed-out playback and at least 30 seconds of autonomous driving in each.
 - [ ] [Public GitHub repository](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main) — Check the rendered README and its links on GitHub.
 - [ ] [README.pdf](README.pdf) — Review after regeneration. Check page breaks and diagram legibility, then scan the repository and both video QR codes from the printout.

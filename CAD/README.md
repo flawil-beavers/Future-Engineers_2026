@@ -10,7 +10,7 @@ The current supplied model is [Car version 74](Car_v74.f3z), exported on Novembe
 
 The [prepared binary G-code](printing/Car_v74_0.4n_0.2mm_PLA_MK4IS_3h1m.bgcode) was produced by PrusaSlicer 2.9.6 for an Original Prusa MK4 Input Shaper, 0.4 mm nozzle and PLA. The job uses 0.2 mm layers, 15% infill and no brim. The screenshot's support setting is **For support enforcers only**. Estimated consumption is 67.67 g (22.69 m), with a normal-mode print time of 3 h 1 min 6 s. These are slicer estimates.
 
-See the main README's [CAD and 3D Printing section](../README.md#cad-and-3d-printing) for the settings table, [build-plate arrangement](../Photos/build-instructions/Car_v74_prusaslicer_models.jpg), [toolpath preview](../Photos/build-instructions/Car_v74_prusaslicer_gcode.jpg) and assembly instructions. Adapt the `.3mf` project for other printer configurations. Use the Fusion archive when changing the mechanical design.
+See the main README's [CAD and 3D Printing section](../README.md#cad-and-3d-printing) for the settings table, [build-plate arrangement](../img/assembly/Car_v74_prusaslicer_models.jpg), [toolpath preview](../img/assembly/Car_v74_prusaslicer_gcode.jpg) and assembly instructions. Adapt the `.3mf` project for other printer configurations. Use the Fusion archive when changing the mechanical design.
 
 Earlier CAD versions, including the version 71 PrusaSlicer project and version 72 Fusion archive, are available in Git history.
 

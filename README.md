@@ -2,7 +2,7 @@
 
 We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, coached by **Stefan Gemperli**. We designed and built a four-wheel autonomous car for the WRO 2026 Future Engineers World Final.
 
-![Flawil Beavers team photo, 2026](Photos/Teamphoto_26.png)
+![Flawil Beavers team photo, 2026](img/team/Teamphoto_26.png)
 
 ## Contents
 
@@ -57,7 +57,7 @@ The CHF 10 fastener estimate covers the hardware used. We bought only a small qu
 
 | Plate arrangement | Toolpath preview |
 | --- | --- |
-| ![Version 74 parts on the PrusaSlicer build plate](Photos/build-instructions/Car_v74_prusaslicer_models.jpg) | ![Version 74 sliced paths and print estimate](Photos/build-instructions/Car_v74_prusaslicer_gcode.jpg) |
+| ![Version 74 parts on the PrusaSlicer build plate](img/assembly/Car_v74_prusaslicer_models.jpg) | ![Version 74 sliced paths and print estimate](img/assembly/Car_v74_prusaslicer_gcode.jpg) |
 
 All 17 parts fit on one build plate. We print in PLA with 0.2 mm layers and 15% infill. Use the orientations saved in the PrusaSlicer project so every part prints without supports. We recommend printing one part at a time to reduce stringing and surface defects caused by travel between parts.
 
@@ -71,12 +71,12 @@ The photographs illustrate the original two-stage assembly sequence.
 
 | Building Instruction | | |
 |---|---|---|
-| ![General Pieces](Photos/build-instructions/PXL_20260531_062612987.MP.jpg) Prepare all the printed parts | ![Servo linkage](Photos/build-instructions/PXL_20260531_062619468.MP.jpg) Screw the servo linkage onto the servo | ![Steering Rod](Photos/build-instructions/PXL_20260531_062629739.MP.jpg) Connect the tie rod to both of the steering arms using M3n nylon lock nuts |
-| ![DC Motor](Photos/build-instructions/PXL_20260531_062952891.MP.jpg) Fit the drive coupling to the motor shaft| ![Base Plate](Photos/build-instructions/PXL_20260531_063232503.MP.jpg) Fix the DC motor onto the first stage using the DC Motor Cover and screw the servo in place| ![Battery Holder assembly](Photos/build-instructions/PXL_20260531_063344414.MP.jpg) Prepare the battery holders (2x) |
-| ![Battery Holder Connection](Photos/build-instructions/PXL_20260531_065603142.MP.jpg) Screw the battery holders onto the first stage | ![Battery Connector Wiring](Photos/build-instructions/PXL_20260531_065845130.MP.jpg) Connect protruding screws to the wires and screw nut on | ![Wiring](Photos/build-instructions/PXL_20260531_071506514.MP.jpg) Use M2 screws to fix the motor driver in place and wire everything up (use Wagos for GND and VCC) |
-| ![LEGO drivetrain assembly](Photos/build-instructions/PXL_20260531_072809927.MP.jpg) Fit the LEGO gears, axles and wheels. | ![Upper-stage sensors with earlier wiring](Photos/build-instructions/PXL_20260531_074835064.MP.jpg) Fasten the sensors to the upper stage using M2.5 screws and nuts. This photo shows the earlier ToF-to-BNO085 wiring. See the [current wiring](#wiring-and-signal-interfaces). | ![M2.5 Nuts location](Photos/build-instructions/PXL_20260531_074841767.MP.jpg) The ToF sensors are mounted via the ToF Mounts that are fastened with M3 screws |
-| ![Arduino Connection](Photos/build-instructions/PXL_20260531_075033876.MP.jpg) Place the Arduino Giga on top of the Arduino Spacer and fasten with M3 Screws | ![Cable Management](Photos/build-instructions/PXL_20260601_121901176.MP.jpg) Route the power and signal wiring through the upper stage | ![Cables moving up](Photos/build-instructions/PXL_20260601_121915804.MP.jpg) Thread the wires to the arduino through the Second stage |
-| ![Connecting both stages](Photos/build-instructions/PXL_20260601_123524626.MP.jpg) Screw the second stage onto the first one while making sure to include the wago holder and on off switch | | |
+| ![General Pieces](img/assembly/PXL_20260531_062612987.MP.jpg) Prepare all the printed parts | ![Servo linkage](img/assembly/PXL_20260531_062619468.MP.jpg) Screw the servo linkage onto the servo | ![Steering Rod](img/assembly/PXL_20260531_062629739.MP.jpg) Connect the tie rod to both of the steering arms using M3n nylon lock nuts |
+| ![DC Motor](img/assembly/PXL_20260531_062952891.MP.jpg) Fit the drive coupling to the motor shaft| ![Base Plate](img/assembly/PXL_20260531_063232503.MP.jpg) Fix the DC motor onto the first stage using the DC Motor Cover and screw the servo in place| ![Battery Holder assembly](img/assembly/PXL_20260531_063344414.MP.jpg) Prepare the battery holders (2x) |
+| ![Battery Holder Connection](img/assembly/PXL_20260531_065603142.MP.jpg) Screw the battery holders onto the first stage | ![Battery Connector Wiring](img/assembly/PXL_20260531_065845130.MP.jpg) Connect protruding screws to the wires and screw nut on | ![Wiring](img/assembly/PXL_20260531_071506514.MP.jpg) Use M2 screws to fix the motor driver in place and wire everything up (use Wagos for GND and VCC) |
+| ![LEGO drivetrain assembly](img/assembly/PXL_20260531_072809927.MP.jpg) Fit the LEGO gears, axles and wheels. | ![Upper-stage sensors with earlier wiring](img/assembly/PXL_20260531_074835064.MP.jpg) Fasten the sensors to the upper stage using M2.5 screws and nuts. This photo shows the earlier ToF-to-BNO085 wiring. See the [current wiring](#wiring-and-signal-interfaces). | ![M2.5 Nuts location](img/assembly/PXL_20260531_074841767.MP.jpg) The ToF sensors are mounted via the ToF Mounts that are fastened with M3 screws |
+| ![Arduino Connection](img/assembly/PXL_20260531_075033876.MP.jpg) Place the Arduino Giga on top of the Arduino Spacer and fasten with M3 Screws | ![Cable Management](img/assembly/PXL_20260601_121901176.MP.jpg) Route the power and signal wiring through the upper stage | ![Cables moving up](img/assembly/PXL_20260601_121915804.MP.jpg) Thread the wires to the arduino through the Second stage |
+| ![Connecting both stages](img/assembly/PXL_20260601_123524626.MP.jpg) Screw the second stage onto the first one while making sure to include the wago holder and on off switch | | |
 
 # Mobility and Mechanical Design
 
@@ -84,9 +84,9 @@ The photographs illustrate the original two-stage assembly sequence.
 
 Our screw-fastened two-stage chassis gives us access to the drivetrain below and the sensors and controller above. The commercial dual-cell holder we first used limited where we could place the batteries and held them tightly, which slowed swaps. We replaced it with two self designed 3D-printed holders mounted low on opposite sides of the chassis. Each cell is accessible from below, and the layout distributes the battery mass across the chassis.
 
-![Underside CAD view showing the two open battery holders and the space to reach each cell](Photos/Battery-holders-underside.jpg)
+![Underside CAD view showing the two open battery holders and the space to reach each cell](img/diagrams/Battery-holders-underside.jpg)
 
-![Ackermann steering geometry used to lay out the linkage](Photos/Ackermann-construction.png)
+![Ackermann steering geometry used to lay out the linkage](img/diagrams/Ackermann-construction.png)
 
 The steering arms are angled toward the centre of the rear axle so the inner front wheel turns more sharply than the outer wheel. This reduces scrub through a corner. The compact linkage trades steering travel for clearance at full lock. The first PDI-1102HB micro servo moved inconsistently under load. The larger MG90S improved repeatability and required more mounting space. We adjusted the mounting heights several times to accommodate different screw lengths and nuts that we had at hand. Therefore, some components connect at different heights now.
 
@@ -200,7 +200,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 
 ## Wiring and signal interfaces
 
-[![WRO Future Engineers 2026 wiring diagram, revision 1](Electronics/Wiring_Diagram_FE2026_v1.png)](Electronics/Wiring_Diagram_FE2026_v1.png)
+[![WRO Future Engineers 2026 wiring diagram, revision 1](img/diagrams/Wiring_Diagram_FE2026_v1.png)](img/diagrams/Wiring_Diagram_FE2026_v1.png)
 
 | Function | Interface |
 | --- | --- |
@@ -423,9 +423,9 @@ Use the latest [main branch](https://github.com/flawil-beavers/Future-Engineers_
 
 These six views document the June build before the rear sensor was added.
 
-| ![Left](Photos/robot/PXL_20260617_185159148.MP.jpg) | ![Rear](Photos/robot/PXL_20260617_185207747.MP.jpg) | ![Right](Photos/robot/PXL_20260617_185218350.MP.jpg) |
+| ![Left](img/robot/PXL_20260617_185159148.MP.jpg) | ![Rear](img/robot/PXL_20260617_185207747.MP.jpg) | ![Right](img/robot/PXL_20260617_185218350.MP.jpg) |
 |---|---|---|
-| ![Front](Photos/robot/PXL_20260617_185228987.MP.jpg) | ![Top](Photos/robot/PXL_20260617_185256705.MP.jpg) | ![Bottom](Photos/robot/PXL_20260617_185318976.MP.jpg) |
+| ![Front](img/robot/PXL_20260617_185228987.MP.jpg) | ![Top](img/robot/PXL_20260617_185256705.MP.jpg) | ![Bottom](img/robot/PXL_20260617_185318976.MP.jpg) |
 
 # AI Use Declaration
 
