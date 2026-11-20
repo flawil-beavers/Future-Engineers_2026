@@ -24,8 +24,9 @@ void Vision::begin()
         rgb.r = (r5 << 3) | (r5 >> 2);
         rgb.g = (g6 << 2) | (g6 >> 4);
         rgb.b = (b5 << 3) | (b5 >> 2);
-        colorLookup[raw] = static_cast<uint8_t>(
-            classifyColor(rgbToHSV(rgb)));
+        const uint8_t color=static_cast<uint8_t>(classifyColor(rgbToHSV(rgb)));
+        if(raw & 1U)colorLookup[raw >> 1] |= color << 4;
+        else colorLookup[raw >> 1] = color;
     }
 }
 
@@ -51,7 +52,7 @@ void Vision::measurePillarHeight(const uint8_t *buffer,uint16_t width,
     const auto matches=[&](int x,int y) {
         if(x<0 || x>=width || y<0 || y>=height)return false;
         const int sx=ROTATE_180 ? width-1-x:x,sy=ROTATE_180 ? height-1-y:y;
-        return colorLookup[readRGB565Raw(buffer,uint32_t(sy)*width+sx)]==
+        return lookupColor(readRGB565Raw(buffer,uint32_t(sy)*width+sx))==
             static_cast<uint8_t>(blob.color);
     };
     // A shallow connected wall strip can widen the ROI box. Locate the
@@ -264,7 +265,7 @@ bool Vision::findGreenSeatCandidate(
                 if (x < 0 || x >= width)
                     continue;
                 const uint16_t raw = rawAt(x, y);
-                if (colorLookup[raw] == static_cast<uint8_t>(ColorType::GREEN))
+                if (lookupColor(raw) == static_cast<uint8_t>(ColorType::GREEN))
                 {
                     ++greenSamples;
                     continue;
@@ -714,7 +715,7 @@ void Vision::processComponent(
                     if(x<0 || x>=sampleWidth*PIXEL_STEP)continue;
                     const int sx=ROTATE_180 ? sampleWidth*PIXEL_STEP-1-x:x;
                     const int sy=ROTATE_180 ? sampleHeight*PIXEL_STEP-1-y:y;
-                    if(colorLookup[readRGB565Raw(buffer,sy*sampleWidth*PIXEL_STEP+sx)]!=
+                    if(lookupColor(readRGB565Raw(buffer,sy*sampleWidth*PIXEL_STEP+sx))!=
                        static_cast<uint8_t>(color))continue;
                     ++count;xsum+=x;ysum+=y;
                     if(x<candidate.minX)candidate.minX=x;
@@ -852,7 +853,7 @@ bool Vision::update(
                 sourceX;
 
             const uint16_t raw = readRGB565Raw(buffer, pixelIndex);
-            ColorType color = static_cast<ColorType>(colorLookup[raw]);
+            ColorType color = static_cast<ColorType>(lookupColor(raw));
             // Reuse an already-read pixel every 16 pixels in each direction.
             // No HSV conversion, extra image pass, automatic gain or extra log.
             if ((gridX & 7U) == 0 && (gridY & 7U) == 0) {

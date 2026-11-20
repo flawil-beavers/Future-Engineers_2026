@@ -61,7 +61,7 @@ int main(){
   bool ok=final_parking_complete()&&finalFootprintContained()&&!collision&&robot_logger.writes==1;
   ++total;bad+=!ok;maxTravel=fmaxf(maxTravel,travel);
   auto p=entryLocalPose(hostPose);
-  std::cout<<"MEASURED "<<dir<<" gap/radius/yaw="<<gap<<"/"<<scale<<"/"<<yaw<<" success="<<ok<<" end="<<p.x_mm<<"/"<<p.y_mm<<"/"<<p.heading_deg<<" travel="<<travel<<" ms="<<hostTime-1000<<"\n";
+  std::cout<<"MEASURED "<<dir<<" gap/radius/yaw="<<gap<<"/"<<scale<<"/"<<yaw<<" success="<<ok<<" collision="<<collision<<" end="<<p.x_mm<<"/"<<p.y_mm<<"/"<<p.heading_deg<<" travel="<<travel<<" ms="<<hostTime-1000<<"\n";
   if(!ok)std::cout<<robot_logger.lines.str();
  }
  std::cout<<"MEASURED PARKING "<<total<<" FAILED "<<bad<<" max_travel="<<maxTravel<<"\n";
@@ -74,4 +74,8 @@ if stress:
                           'for(float gap:{232.5f,242.5f,247.5f,252.5f,262.5f})')
     source=source.replace('for(float scale:{1.f,1.15f,1.5f})',
                           'for(float scale:{.95f,1.f,1.05f,1.1f,1.15f,1.5f})')
-run('parking-current-capture-range' if stress else 'parking-measured-651-656',source)
+without_overlap='--without-brake-servo-overlap' in sys.argv
+if without_overlap:
+    source=source.replace('            prepositionEntrySteeringDuringBrake(pose);','')
+run('parking-without-brake-servo-overlap' if without_overlap else
+    'parking-current-capture-range' if stress else 'parking-measured-651-656',source)

@@ -59,6 +59,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
         'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
         'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void connectKnownLaterLapRoute(', 'void shortenKnownInnerRoute(',
+        'void addLaterLapStartMiddleReserve(',
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(', 'float lapHandoffWeight()',
         'PathPoint lapHandoffTarget(', 'float lapHandoffSpeed(')

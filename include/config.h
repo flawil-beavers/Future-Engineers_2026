@@ -878,9 +878,10 @@ constexpr auto OBSTACLE_FINAL_PARKING_TARGET_LOCAL_Y_MM =
 // The adaptive planner checks the full steered contour and measured gap.
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_X_MM =
     270.26f - OBSTACLE_FINAL_PARKING_REARWARD_SHIFT_MM;
-// A closer capture shortens entry and reduces the initial diagonal swing.
+// Keep 20mm straight-wheel clearance from the marker tips during alignment.
+// log2: the former10mm lane left too little physical tracking reserve.
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_LOCAL_Y_MM =
-    OBSTACLE_PARKING_WIDTH_MM+OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f+10.0f;
+    OBSTACLE_PARKING_WIDTH_MM+OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*0.5f+20.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_HEADING_DEG = 0.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_PRACTICE_START_X_MM = -500.0f;
 constexpr auto OBSTACLE_FINAL_PARKING_PRACTICE_START_Y_MM = -1000.0f;
@@ -909,11 +910,11 @@ constexpr uint32_t OBSTACLE_FINAL_PARKING_SCAN_TIMEOUT_MS = 25000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_CAPTURE_TIMEOUT_MS = 25000;
 constexpr uint32_t OBSTACLE_FINAL_PARKING_SEGMENT_TIMEOUT_MS = 10000;
 
-constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_SPEED = 120;
+constexpr auto OBSTACLE_FINAL_PARKING_APPROACH_SPEED = 150;
 constexpr auto OBSTACLE_FINAL_PARKING_SCAN_SPEED = 60;
 // Alignment is outside the marker sampling phase; do not raise scan speed
 // and lose a narrow marker with a slower ToF cadence.
-constexpr auto OBSTACLE_FINAL_PARKING_ALIGN_SPEED = 100;
+constexpr auto OBSTACLE_FINAL_PARKING_ALIGN_SPEED = 130;
 constexpr auto OBSTACLE_FINAL_PARKING_CAPTURE_SPEED = 100;
 constexpr auto OBSTACLE_FINAL_PARKING_ENTRY_SPEED = 60;
 constexpr auto OBSTACLE_FINAL_PARKING_STEER_SETTLE_MS = 400;
@@ -1247,6 +1248,9 @@ constexpr auto OBSTACLE_LATER_LAP_OUTER_PLATEAU_WAYPOINTS = 3;
 // Model reserve for a sampled later-lap route; physical acceptance still
 // requires driving logs. Existing pursuit steering limit remains unchanged.
 constexpr auto OBSTACLE_LATER_LAP_ROUTE_RESERVE_MM = 5.0f;
+// Extra passing-side room before/after a solitary start-middle sign. The
+// smooth correction is zero at the lap seam and400mm away; lap1 is unchanged.
+constexpr float OBSTACLE_LATER_LAP_START_MIDDLE_EXTRA_MM = 20.0f;
 // Try progressively smaller shortening/smoothing candidates; protect passing
 // plateaus and seam, and keep modeled geometric reserves within 1 mm of before.
 constexpr auto OBSTACLE_LATER_LAP_SMOOTH_MAX_SHIFT_MM = 40.0f;
@@ -1336,7 +1340,8 @@ constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 800UL;
 // Slow before an unresolved station enters its short trusted camera window,
 // giving the asynchronous camera time for two independent frames. This remains
 // above the drivetrain's observed sub-90 mm/s oscillation region.
-constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 100.0f;
+// Moderate lap1 increase: preserve all observation/hold gates and recovery speeds.
+constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 120.0f;
 // Corner-view scan reverse only: 70 mm/s is a modest step above the
 // previously driven 60 mm/s. Keep the 60 mm/s return and all travel/pose
 // limits unchanged until the faster reverse is measured on the field.

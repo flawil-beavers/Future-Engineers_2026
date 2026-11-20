@@ -27,6 +27,7 @@ DiscoveryStation discoveryStations[12];
 bool greenSeatCandidateThisFrame[OBSTACLE_SEAT_COUNT]={};
 uint32_t greenSeatCandidateLastSeenMs[OBSTACLE_SEAT_COUNT]={};
 int parkingEntryTargetStation=-1,clearDispatch=0;
+constexpr int CORNER_VIEW_IDLE=0;int cornerViewPhase=1,cornerViewStation=6;
 constexpr int COURSE_STATIONS_PER_SECTION=3;
 bool stationResolved(uint8_t s){return s!=6 || discoveryStations[s].observedClear;}
 void logParkingStartClearImage(uint8_t,const PositionEstimate &){}

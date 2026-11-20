@@ -181,10 +181,12 @@ private:
     VisionResult result;
     uint32_t frameSequence = 0;
 
-    // RGB565 has only 65,536 possible input values. Build the exact current
-    // RGB->HSV->colour result once at startup, then classify each sampled
-    // camera pixel with one indexed byte load instead of several divisions.
-    uint8_t colorLookup[65536];
+    // Six colour values fit in four bits. Keep the exact65536-entry mapping
+    // while releasing32KiB of internal RAM for USB host/FAT allocations.
+    uint8_t colorLookup[32768];
+    uint8_t lookupColor(uint16_t raw) const {
+        return (colorLookup[raw >> 1] >> ((raw & 1U) * 4U)) & 0x0fU;
+    }
 
     // We inspect every second pixel.
     static constexpr uint8_t PIXEL_STEP = 2;

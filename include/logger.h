@@ -82,6 +82,7 @@ private:
     uint8_t connect_attempts;
     uint8_t mount_attempts;
     uint8_t retry_cycles;
+    const char *diagnostic_stage = nullptr;
     // A save operates on a stable prefix of log_buffer. Bytes are retained in
     // RAM until the complete prefix has been flushed and the file closed.
     size_t flush_target_length;
@@ -103,6 +104,7 @@ private:
     void retry_or_fail(const char *reason);
     void restart_full_flush(const char *reason);
     void finish_attempt(bool success);
+    void log_save_stage(const char *stage);
     void remove_written_prefix(size_t count);
 };
 

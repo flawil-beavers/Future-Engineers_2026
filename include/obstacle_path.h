@@ -239,3 +239,7 @@ void obstacle_path_log_run_telemetry();
 /** Freeze only recovery motion timers during an actual main-loop gyro hold. */
 void obstacle_path_sensor_hold();
 void obstacle_path_sensor_resume();
+
+struct PositionEstimate;
+bool obstacle_path_parking_handoff_pose(PositionEstimate &pose,float *distanceMm=nullptr);
+void obstacle_path_allow_rolling_finish(bool allowed);

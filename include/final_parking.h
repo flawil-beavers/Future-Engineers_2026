@@ -28,3 +28,9 @@ void final_parking_sensor_hold();
 // Resume the same parking state, excluding gyro-pause time from its timeout.
 void final_parking_sensor_resume();
 const char *final_parking_trace_phase();
+
+struct PositionEstimate;
+// Bounded read-only planning during laps2/3; never issues drive commands.
+void final_parking_prepare_approach(int8_t turn_sign,const PositionEstimate &arrival);
+bool final_parking_rolling_ready(const PositionEstimate &pose);
+bool final_parking_start_rolling(int8_t turn_sign);

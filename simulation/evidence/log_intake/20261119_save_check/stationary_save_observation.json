@@ -1,0 +1,93 @@
+{
+  "test": "stationary pause/disable/save command p, then read-only position query t",
+  "drive_release_off": true,
+  "no_reset_upload_or_drive_command": true,
+  "reported_new_upload_initially_failed_then_user_confirmed_ready": true,
+  "old_linker_heap_capacity_bytes": 38352,
+  "new_observed_heap_capacity_bytes": 71112,
+  "observed_phases": [
+    {
+      "stage": "power_settle",
+      "used": 35616,
+      "peak": 35616,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "connect",
+      "used": 35644,
+      "peak": 35644,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "mount",
+      "used": 42432,
+      "peak": 42432,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "directory_open",
+      "used": 42944,
+      "peak": 42944,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "directory_scan",
+      "used": 43268,
+      "peak": 43780,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "file_open",
+      "used": 42944,
+      "peak": 43780,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "write_flush",
+      "used": 44484,
+      "peak": 44484,
+      "reserved": 71112,
+      "allocation_failures": 0
+    },
+    {
+      "stage": "finalize_verify",
+      "used": 44484,
+      "peak": 44484,
+      "reserved": 71112,
+      "allocation_failures": 0
+    }
+  ],
+  "position_query_responded": true,
+  "usb_original_file_pending": false,
+  "original_captures": [
+    {
+      "file": "20261119_stationary_pause_save_01.serial.bin",
+      "bytes": 792,
+      "sha256": "38e9391b80e2c340d9c7d6585f991c55893f389b70f3e767580aacd517742088"
+    },
+    {
+      "file": "20261119_stationary_pause_save_01.meta.json",
+      "bytes": 210,
+      "sha256": "54ef14ada93500bb78c7029548c502acad8975348fd96d59f0ee73bbd5d845d1"
+    },
+    {
+      "file": "20261119_after_save_position_query_01.serial.bin",
+      "bytes": 41,
+      "sha256": "7eb2c1bfb689ad7e89bc2df8aca0642287bf3b82598ea3e1df3a912bcb6f0b48"
+    }
+  ],
+  "interpretation": "Successful on-media stationary save confirmed by complete original, matching final disable marker, and live application response afterward. Observed heap exceeds prior entire capacity, strong support for the former allocation-failure mechanism; old crash error code unavailable.",
+  "usb_original_file": {
+    "path": "simulation/evidence/log_intake/20261119_stationary_usb_save/20261119_log_1.txt",
+    "bytes": 930,
+    "sha256": "7dd527741778dcf321e7238faad9fc04f05d23858fbcebd35059ba58e370a91b",
+    "verified_source_copy": true,
+    "snapshot_end": "SYSTEM DISABLED"
+  }
+}

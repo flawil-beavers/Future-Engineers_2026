@@ -1188,3 +1188,22 @@ Complete original files, unchanged; source-before/source-after/copy SHA-256 veri
 | [20261119_log_642_cw.txt](20261119_log_642_cw.txt) | 33220 | 61abe9e4537492c49952a13ea880d0898a2fc91b16d39188aaf6544680e2cfb4 |
 | [20261119_log_643_cw.txt](20261119_log_643_cw.txt) | 29488 | 341da9f3f7ebe4e96e71cc1f97cd2cc5ec5d894ecc94a22f5873ea129b27d459 |
 | [20261119_log_644_cw.txt](20261119_log_644_cw.txt) | 32275 | 3b2dcbb0f23ab58555a994dbb747a9e7ef77fec06d313e45d45d8d38fd606a94 |
+
+## 2026-11-19 new full-file intake, log2CCW
+
+User: aligning too close to wall, slow approach/abrupt parking handover; light contact with far start GREEN near end lap2; otherwise good. Installed RAM-mitigated M7 reported from prior test, exact flash hash not read back. Full source copied unchanged before analysis and source-before/after/copy SHA256 checked; user released stick. This is a complete source file, not a completed-run claim.
+
+| Original | Bytes | SHA256 |
+| --- | ---: | --- |
+| [20261119_log_2_ccw.txt](20261119_log_2_ccw.txt) | 138372 | ca40714175cfadcdad327c866291551c2e70f34470409c31170d484be7499a05 |
+
+## 2026-11-19 CW batch, logs3--6
+
+Complete source originals secured before analysis, source-before/after/copy SHA256 verified; user released stick immediately. User reports earlier missed/wrong-way pillars and parking stops; latest run correctly recognizes50mm RED but parking stops. All4 report measured_height20261119 and recovery_handoff20261111; exact installed binary not read back. First2 user-paused, last2 autonomous parking aborts; complete file does not mean completed mission.
+
+| Original | Bytes | SHA256 |
+| --- | ---: | --- |
+| [20261119_log_3_cw.txt](20261119_log_3_cw.txt) | 98495 | 07fd4ec064b140b6c1bd722f5429dcb475e50836c259e4eb9bacaa748ec3d835 |
+| [20261119_log_4_cw.txt](20261119_log_4_cw.txt) | 62327 | 0379446f767a296bc02aa8de55c0f92498e71a37a48b9156dde2fc44bd76a0d5 |
+| [20261119_log_5_cw.txt](20261119_log_5_cw.txt) | 140019 | 89c36184a46474dcecfb90201e122476902960fa5ad05c5c564420351470e795 |
+| [20261119_log_6_cw.txt](20261119_log_6_cw.txt) | 145310 | ecb427fb7f67a77efe49eb314f32195f4050aff38e1a11ae283544ecc4d55a0b |

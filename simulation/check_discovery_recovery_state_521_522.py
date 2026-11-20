@@ -28,6 +28,7 @@ int completedLaps=0;float curvature=0,steering=0,commandedSpeed=100;
 bool discoveryHolding=false,discoveryBlocked=false,cornerViewAttempted[12]={},cornerViewExtraUsed=false;
 struct Seat{bool confirmed=false,red=false;}seats[24];
 struct Pose{float y_mm=0;}pose;
+float parkingFinishSpeed(float s,const Pose&){return s;}
 int routeTurnSign=1;float runtimeSpeedCapMmS=0;
 int discoveryHoldStation=-1,discoveryBlockedStation=-1,cornerViewStation=-1,cornerViewPhase=0,cornerViewObservationTraceCount=0;
 uint32_t nowMs=1000,discoveryHoldStartMs=0,cornerViewPhaseMs=0;
@@ -50,6 +51,18 @@ void update(){
 }
 int main(){int n=0,bad=0;
  selectedStation=-1;update();++n;if(motorSpeed!=100||discoveryHolding)++bad;
+ // Moving lap1: use the new cap only in the existing observation window.
+ commandedSpeed=260;selectedStation=4;
+ for(float distance:{341.f,500.f,750.f,751.f}){
+  selectedForward=distance;update();++n;
+  const int expected=distance<=750?static_cast<int>(OBSTACLE_DISCOVERY_SPEED_MM_S):260;
+  if(motorSpeed!=expected||discoveryHolding)++bad;
+ }
+ commandedSpeed=90;selectedForward=500;update();++n;if(motorSpeed!=90)++bad;
+ commandedSpeed=260;
+ for(int lap:{1,2}){completedLaps=lap;update();++n;if(motorSpeed!=260)++bad;}
+ completedLaps=0;runtimeTestMode=true;update();++n;if(motorSpeed!=260)++bad;
+ runtimeTestMode=false;commandedSpeed=100;selectedForward=335;
  for(int station=0;station<12;++station){
   selectedStation=station;discoveryHolding=discoveryBlocked=false;
   discoveryHoldStation=discoveryBlockedStation=-1;cornerViewPhase=0;

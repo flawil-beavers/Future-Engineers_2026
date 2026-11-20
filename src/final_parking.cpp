@@ -93,6 +93,7 @@ bool scanLineEstablished = false;
 bool scanWallRegistered = false;
 int8_t scanAlignSign = 1;
 uint8_t scanAlignTurns = 0;
+uint8_t scanGeometryRetries = 0;
 uint32_t scanAlignStartMs = 0;
 
 PositionEstimate lastFixedMarkerPose{};
@@ -114,6 +115,15 @@ bool practiceMode = false;
 bool initialBrakeStarted = false;
 float approachOuterShiftX = OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM;
 bool approachDirectLane = false;
+const float APPROACH_SHIFTS[]={-100.0f,100.0f,200.0f,350.0f,400.0f,450.0f,500.0f,550.0f,600.0f,650.0f};
+struct ApproachPreparation {
+    PositionEstimate arrival{},sample{};
+    uint8_t candidate=0,variant=0;
+    uint16_t steps=0;
+    bool started=false,ready=false,failed=false,outer=false;
+    int8_t direction=1;
+} approachPreparation;
+
 uint32_t wallSequence = 0, finalTraceMs = 0;
 uint16_t finalTraceCount = 0;
 uint8_t initialWallFrames = 0;
@@ -606,6 +616,25 @@ bool parkingApproachSteering(const PositionEstimate &pose, bool outer, int &stee
     return true;
 }
 
+// Faster while the acquisition still has useful travel; approach a reversal
+// at60mm/s. Include the longitudinal gate so an already parallel robot does
+// not crawl all the way to the scan start merely because its Y is correct.
+int parkingLineAcquisitionSpeed(const PositionEstimate &pose, int maximum,
+    float minimumX, float lateralWindow)
+{
+    const float lateral=fabsf(pose.y_mm-OBSTACLE_FINAL_PARKING_SCAN_Y_MM)/lateralWindow;
+    const float longitudinal=fmaxf(0.0f,minimumX-pose.x_mm)/100.0f;
+    const float blend=clampFloat(fmaxf(lateral,longitudinal),0.0f,1.0f);
+    return static_cast<int>(60.0f+blend*(maximum-60.0f));
+}
+
+int parkingApproachSpeed(const PositionEstimate &pose)
+{
+    if (pose.x_mm < approachOuterShiftX) return OBSTACLE_FINAL_PARKING_APPROACH_SPEED;
+    return parkingLineAcquisitionSpeed(pose,OBSTACLE_FINAL_PARKING_APPROACH_SPEED,
+        OBSTACLE_FINAL_PARKING_SCAN_START_X_MM,100.0f);
+}
+
 void advanceParkingPose(PositionEstimate &pose, int steering, float distance)
 {
     const float radius=Ackermann::getTurnRadius(static_cast<float>(steering));
@@ -661,50 +690,66 @@ bool parkingApproachPoseSafe(const PositionEstimate &pose)
             OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM);
 }
 
+// The same checked sample is used by stopped and incremental planning.
+int advanceApproachPreflight(PositionEstimate &pose,bool &outer)
+{
+    if(!parkingApproachPoseSafe(pose))return -1;
+    if(approachDirectLane)for(float dy:{-40.0f,40.0f})
+    {
+        PositionEstimate uncertain=pose;uncertain.y_mm+=dy;
+        if(!parkingApproachPoseSafe(uncertain))return -1;
+    }
+    outer=outer || pose.x_mm>=approachOuterShiftX;
+    if(outer && pose.x_mm>=OBSTACLE_FINAL_PARKING_SCAN_START_X_MM &&
+       linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM))return 1;
+    if(pose.x_mm>1100.0f)return -1;
+    int steering=0;if(!parkingApproachSteering(pose,outer,steering))return -1;
+    advanceParkingPose(pose,steering,2.0f*motorDirectionForFieldMotion(+1));
+    return 0;
+}
+
 bool parkingApproachPreflight(PositionEstimate pose)
 {
     bool outer=false;
-    for (int step=0; step<1200; ++step)
+    for(int step=0;step<1200;++step)
     {
-        if (!parkingApproachPoseSafe(pose)) return false;
-        if (approachDirectLane)
-        {
-            for (float dy:{-40.0f,40.0f})
-            {
-                PositionEstimate uncertain=pose;uncertain.y_mm+=dy;
-                if (!parkingApproachPoseSafe(uncertain)) return false;
-            }
-        }
-        outer=outer || pose.x_mm>=approachOuterShiftX;
-        if (outer && pose.x_mm>=OBSTACLE_FINAL_PARKING_SCAN_START_X_MM &&
-            linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM)) return true;
-        if (pose.x_mm>1100.0f) return false;
-        int steering=0;
-        if (!parkingApproachSteering(pose,outer,steering)) return false;
-        advanceParkingPose(pose,steering,2.0f*motorDirectionForFieldMotion(+1));
+        serviceEntryPlanner();
+        const int result=advanceApproachPreflight(pose,outer);
+        if(result)return result>0;
     }
     return false;
 }
 
 bool chooseParkingApproach(const PositionEstimate &pose)
 {
-    // Stay on the extended straight instead of entering the next corner.
-    // A late shift may be needed behind an inner start RED. Every candidate checks
-    // the complete motion against all known pillars, walls and both pieces.
-    // Keep the shift early enough to settle before the next outer wall;
-    // preflight rejects a candidate intersecting a known pillar or marker.
-    const float candidates[]={350.0f,400.0f,450.0f,500.0f,550.0f,600.0f,
-        OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM};
-    for (bool direct:{true,false}) for (float candidate:candidates)
+    for(bool direct:{true,false})for(float candidate:APPROACH_SHIFTS)
     {
-        // Only the direct lane has the full +/-40mm lateral uncertainty
-        // sweep. Preserve the learned bypass's established shift interval.
-        if (!direct && candidate<500.0f) continue;
-        approachDirectLane=direct;
-        approachOuterShiftX=candidate;
-        if (parkingApproachPreflight(pose)) return true;
+        if(!direct && candidate<500.0f)continue;
+        approachDirectLane=direct;approachOuterShiftX=candidate;
+        if(parkingApproachPreflight(pose))return true;
     }
     return false;
+}
+
+bool preparedApproachFits(const PositionEstimate &pose)
+{
+    return approachPreparation.ready &&
+        fabsf(pose.x_mm-approachPreparation.arrival.x_mm)<=40.0f &&
+        fabsf(pose.y_mm-approachPreparation.arrival.y_mm)<=40.0f &&
+        fabsf(wrap180(pose.heading_deg-approachPreparation.arrival.heading_deg))<=5.0f;
+}
+
+void resetPreparationVariant()
+{
+    auto &p=approachPreparation;
+    p.sample=p.arrival;p.outer=false;p.steps=0;
+    if(p.variant)
+    {
+        int cell=p.variant-1;if(cell>=13)++cell; // centre was checked first
+        p.sample.x_mm+=(cell%3-1)*40.0f;
+        p.sample.y_mm+=((cell/3)%3-1)*40.0f;
+        p.sample.heading_deg+=(cell/9-1)*5.0f;
+    }
 }
 
 bool parkingApproachCommandSafe(PositionEstimate pose, int steering, int direction)
@@ -847,6 +892,7 @@ bool scanAlignmentPreflight(PositionEstimate pose)
     int turns=0;
     for (int mm=0; mm<=1440; mm+=2)
     {
+        serviceEntryPlanner();
         if (pose.x_mm>=800.0f && linePoseReady(pose,OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
             return true;
         if ((sign>0 && pose.x_mm>=1080.0f) || (sign<0 && pose.x_mm<=800.0f))
@@ -1839,6 +1885,34 @@ entryPlanSelected:
     // outside the rail tips; its node bounds already stop at localY320mm.
     if(allowEscape && requestedMargin==0 && start.y_mm<=320.0f &&
        planBoundedParkingRecovery(field))return true;
+    // A narrow measured bay can need a different starting X, not smaller
+    // collision margins. The ordinary escape budget can be spent on curved
+    // prefixes before reaching this simple alternative. Outside both tips,
+    // try a short straight staging retreat with a complete checked tail.
+    if(allowEscape && requestedMargin==0 && start.y_mm>=250.0f &&
+       start.x_mm>240.0f && start.x_mm<=280.0f && fabsf(start.heading_deg)<=2.0f &&
+       measuredGapMm<OBSTACLE_FINAL_PARKING_GAP_MM-10.0f)
+    {
+        for(float retreat:{60.0f,40.0f})
+        {
+            PositionEstimate staging=field;
+            advanceEntryModel(staging,0,-retreat,entryRadiusScale);
+            // Staging is now at localX<=240, so this branch cannot recurse.
+            if(!planParkingEntry(staging,true) || adaptiveEntryCount>=ENTRY_PLAN_CAPACITY)continue;
+            EntryCandidate combined;PositionEstimate local=start;
+            appendEntry(combined,local,-1,0,retreat);
+            for(uint8_t i=0;i<adaptiveEntryCount;++i)
+                appendEntry(combined,local,adaptiveEntry[i].direction,
+                    adaptiveEntry[i].steering,adaptiveEntry[i].distanceMm);
+            if(!combined.count || !entryStartRadiusEnvelopeSafe(combined,field) ||
+               !entryCandidateSafe(combined,field,adaptiveEndpoints))continue;
+            adaptiveEntryCount=combined.count;
+            for(uint8_t i=0;i<combined.count;++i)adaptiveEntry[i]=combined.segments[i];
+            segmentIndex=0;entryQuickRecipe=false;
+            Serial.println("[FINAL PARK PLAN] Narrow bay: checked straight staging and complete entry");
+            return true;
+        }
+    }
     adaptiveEntryCount=0;entrySafetyMargin=3.0f;
     return false;
 }
@@ -1959,6 +2033,35 @@ void requestEntryReplan(const char *reason)
     Serial.print("[FINAL PARK REPLAN] ");Serial.println(reason);
 }
 
+// Overlap an already required brake with the next servo movement. Never
+// start the following drive early. Every intermediate wheel angle and10mm
+// of possible coast must retain the existing contour/radius checks.
+void prepositionEntrySteeringDuringBrake(const PositionEstimate &pose)
+{
+    const uint8_t count=adaptiveEntryCount ? adaptiveEntryCount:OBSTACLE_FINAL_PARKING_SEGMENT_COUNT;
+    if(segmentIndex+1>=count)return;
+    const int from=activeEntrySegment().steering*routeTurnSign;
+    const int to=(adaptiveEntryCount ? adaptiveEntry[segmentIndex+1]:PARKING_SEGMENTS[segmentIndex+1]).steering*routeTurnSign;
+    const float coast=fmaxf(10.0f,entryBrakeTravelMm+3.0f);
+    if(coast>20.0f)return;
+    const int samples=static_cast<int>(ceilf(fabsf(static_cast<float>(to-from))/5.0f));
+    for(int i=0;i<=samples;++i)
+    {
+        const int angle=samples ? from+(to-from)*i/samples:to;
+        for(float scale:{entryRadiusScale*.85f,entryRadiusScale*1.15f})
+        {
+            PositionEstimate swept=pose;
+            for(int mm=0;mm<=static_cast<int>(ceilf(coast));++mm)
+            {
+                serviceEntryPlanner();
+                if(!parkingEntryPoseSafe(swept,angle))return;
+                advanceEntryModel(swept,angle,activeEntrySegment().direction,scale);
+            }
+        }
+    }
+    servo_disabled=false;set_steering(to);steer(to);
+}
+
 void beginEntrySettle()
 {
     const int steering=activeEntrySegment().steering*routeTurnSign;
@@ -1979,6 +2082,64 @@ void enterTestHold(const char *reason)
 }
 } // namespace
 
+void final_parking_prepare_approach(int8_t turn_sign,const PositionEstimate &arrival)
+{
+    if(state!=FP_IDLE || initialBrakeStarted)return;
+    auto &p=approachPreparation;
+    if(!p.started)
+    {
+        p.started=true;p.arrival=arrival;p.direction=turn_sign<0?-1:1;
+        routeTurnSign=p.direction;outerSensor=routeTurnSign>0?TOF_RIGHT:TOF_LEFT;
+        resetPreparationVariant();
+    }
+    if(p.ready || p.failed)return;
+    const uint32_t startedUs=micros();
+    for(int work=0;work<12 && uint32_t(micros()-startedUs)<1200U;++work)
+    {
+        const unsigned count=sizeof(APPROACH_SHIFTS)/sizeof(APPROACH_SHIFTS[0]);
+        approachDirectLane=p.candidate<count;
+        approachOuterShiftX=APPROACH_SHIFTS[p.candidate%count];
+        if(!approachDirectLane && approachOuterShiftX<500.0f)
+        {++p.candidate;p.variant=0;resetPreparationVariant();continue;}
+        const int result=advanceApproachPreflight(p.sample,p.outer);
+        if(result<0 || ++p.steps>=1200)
+        {
+            ++p.candidate;p.variant=0;
+            if(p.candidate>=2*count){p.failed=true;return;}
+            resetPreparationVariant();
+        }
+        else if(result>0)
+        {
+            if(++p.variant==27){p.ready=true;return;}
+            resetPreparationVariant();
+        }
+    }
+}
+
+bool final_parking_rolling_ready(const PositionEstimate &pose)
+{
+    return state==FP_IDLE && !initialBrakeStarted && approachPreparation.direction>0 &&
+        preparedApproachFits(pose) && gyro_is_healthy() && dc_state==DC_ENABLED &&
+        current_speed>=0.0f && current_speed<=190.0f &&
+        measured_speed>=0.0f && measured_speed<=190.0f;
+}
+
+bool final_parking_start_rolling(int8_t turn_sign)
+{
+    const PositionEstimate pose=get_position_struct();
+    if(turn_sign<0 || !final_parking_rolling_ready(pose))return false;
+    int steering=0;
+    if(!parkingApproachSteering(pose,false,steering) ||
+       !parkingApproachCommandSafe(pose,steering,+1))return false;
+    initialBrakeStarted=true;
+    runStartDistance=stateStartDistance=get_distance();stateStartMs=millis();
+    state=FP_APPROACH_LANE;
+    Serial.println("[FINAL PARK] revision=20261119_direct_handoff");
+    Serial.print("[FINAL PARK] Prepared rolling handoff; outward shift x=");
+    Serial.println(approachOuterShiftX,1);
+    return true;
+}
+
 void final_parking_reset()
 {
     state = FP_IDLE;
@@ -1996,6 +2157,7 @@ void final_parking_reset()
     scanWallRegistered = false;
     scanAlignSign = 1;
     scanAlignTurns = 0;
+    scanGeometryRetries = 0;
     scanAlignStartMs = 0;
     movingCandidateStored = false;
     latestWallRange = 0.0f;
@@ -2011,6 +2173,7 @@ void final_parking_reset()
     initialBrakeStarted = false;
     approachOuterShiftX = OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM;
     approachDirectLane=false;
+    approachPreparation=ApproachPreparation{};
     wallSequence = finalTraceMs = 0;
     finalTraceCount = initialWallFrames = 0;
     initialWallCorrection = 0.0f;
@@ -2083,7 +2246,7 @@ void final_parking_start_entry_practice(int8_t turn_sign)
     stateStartMs=millis();
     state=FP_CAPTURE_BRAKE;
     stop(true);
-    Serial.println("[FINAL PARK] revision=20261111_recovery_handoff");
+    Serial.println("[FINAL PARK] revision=20261119_direct_handoff");
     Serial.print("[FINAL PARK PRACTICE] entry_only=yes turn=");
     Serial.print(routeTurnSign>0 ? "CCW":"CW");
     Serial.print(" gap_mm=");Serial.print(measuredGapMm,1);
@@ -2132,13 +2295,13 @@ bool final_parking_update(int8_t turn_sign)
         // measured standstill, clear it before the low-speed parking command
         // (CW may reverse relative to the completed lap).
         stop(false);
-        if (!chooseParkingApproach(pose))
+        if (!(preparedApproachFits(pose) || chooseParkingApproach(pose)))
         {
             abortParking("approach_swept_preflight");
             return true;
         }
         Serial.println("[FINAL PARK] Learned-route approach swept preflight PASS");
-        Serial.println("[FINAL PARK] revision=20261111_recovery_handoff");
+        Serial.println("[FINAL PARK] revision=20261119_direct_handoff");
         // The stopped geometric search may outlast the 200-ms sensor age.
         // Service queued reports before attempting the first motion; a
         // genuinely stale/missing report still follows the normal hold.
@@ -2185,7 +2348,7 @@ bool final_parking_update(int8_t turn_sign)
             { abortParking("approach_motion_clearance"); return true; }
             servo_disabled = false;
             set_steering(steering);
-            set_speed(motorDirectionForFieldMotion(+1)*OBSTACLE_FINAL_PARKING_APPROACH_SPEED);
+            set_speed(motorDirectionForFieldMotion(+1)*parkingApproachSpeed(pose));
         }
         if (pose.x_mm >= approachOuterShiftX)
         {
@@ -2209,7 +2372,7 @@ bool final_parking_update(int8_t turn_sign)
         { abortParking("outer_motion_clearance"); return true; }
         servo_disabled = false;
         set_steering(steering);
-        set_speed(motorDirectionForFieldMotion(+1)*OBSTACLE_FINAL_PARKING_APPROACH_SPEED);
+        set_speed(motorDirectionForFieldMotion(+1)*parkingApproachSpeed(pose));
         if (pose.x_mm >= OBSTACLE_FINAL_PARKING_SCAN_START_X_MM &&
             linePoseReady(pose, OBSTACLE_FINAL_PARKING_SCAN_Y_MM))
         {
@@ -2304,7 +2467,7 @@ bool final_parking_update(int8_t turn_sign)
             state=FP_SCAN_ALIGN_DRIVE;
         }
         driveFieldLine(scanAlignSign,OBSTACLE_FINAL_PARKING_SCAN_Y_MM,
-            OBSTACLE_FINAL_PARKING_ALIGN_SPEED);
+            parkingLineAcquisitionSpeed(pose,OBSTACLE_FINAL_PARKING_ALIGN_SPEED,800.0f,30.0f));
         if (!scanCommandSafe(pose,motorDirectionForFieldMotion(scanAlignSign)))
         { abortParking("scan_alignment_clearance"); return true; }
         const bool boundary=scanAlignSign>0 ? pose.x_mm>=1080.0f : pose.x_mm<=800.0f;
@@ -2378,6 +2541,25 @@ bool final_parking_update(int8_t turn_sign)
         }
         if (!applyScanLocalization())
         {
+            // A mixed/grazing edge can shorten the apparent bay (log6:222mm).
+            // Do not widen the accepted gap or enter using that geometry.
+            // Retrace the checked outer corridor and acquire both rails anew.
+            if (scanGeometryRetries<1)
+            {
+                const PositionEstimate retryPose=get_position_struct();
+                scanPhase=0;classFrames=0;movingCandidateStored=false;
+                measuredGapMm=0.0f;
+                if (scanAlignmentPreflight(retryPose))
+                {
+                    ++scanGeometryRetries;
+                    scanAlignSign=retryPose.x_mm<1000.0f ? 1:-1;
+                    scanAlignStartMs=millis();scanAlignTurns=0;
+                    servo_disabled=false;
+                    state=FP_SCAN_ALIGN_DRIVE;
+                    Serial.println("[FINAL PARK] Uncertain marker geometry; checked rescan");
+                    return true;
+                }
+            }
             abortParking("dual_marker_geometry");
             return true;
         }
@@ -2583,6 +2765,7 @@ bool final_parking_update(int8_t turn_sign)
             entryBrakeStartDistance=get_distance();
             entryBrakeDirection=segment.direction;
             stop(true);stateStartMs=millis();state=FP_SEGMENT_BRAKE;
+            prepositionEntrySteeringDuringBrake(pose);
             return true;
         }
         float remaining=segment.distanceMm-distanceSince(stateStartDistance);

@@ -11,11 +11,29 @@
 #include <USB/PluggableUSBSerial.h>
 #include <string.h>
 #include <errno.h>
+#include "platform/mbed_stats.h"
 
 #define SERIAL_HW _UART_USB_
 
 static USBHostMSD msd;
 static mbed::FATFileSystem usb_fs("usb");
+
+// Terminal-only diagnostics while stopped: identify the last USB call reached
+// before a fatal error. No log-buffer allocation or new driving output.
+void USBLogger::log_save_stage(const char *stage)
+{
+    if(diagnostic_stage && strcmp(diagnostic_stage,stage)==0)return;
+    diagnostic_stage=stage;
+    if(dc_state==DC_ENABLED || !_SerialUSB.connected())return;
+    mbed_stats_heap_t heap={};
+    mbed_stats_heap_get(&heap);
+    SERIAL_HW.print("[LOGGER USB] stage=");SERIAL_HW.print(stage);
+    SERIAL_HW.print(" heap_used/peak/reserved/fails=");
+    SERIAL_HW.print(heap.current_size);SERIAL_HW.print('/');
+    SERIAL_HW.print(heap.max_size);SERIAL_HW.print('/');
+    SERIAL_HW.print(heap.reserved_size);SERIAL_HW.print('/');
+    SERIAL_HW.println(heap.alloc_fail_cnt);
+}
 
 USBLogger::USBLogger()
     : buffer_head(0),
@@ -177,6 +195,8 @@ void USBLogger::write_to_usb()
 
 void USBLogger::begin_attempt()
 {
+    diagnostic_stage=nullptr;
+    log_save_stage("power_settle");
     logger_state = LOGGER_POWER_SETTLE;
     state_started_ms = millis();
     next_attempt_ms = state_started_ms + 300;
@@ -307,6 +327,7 @@ void USBLogger::update()
     case LOGGER_CONNECT_QUICK:
         if ((long)(now - next_attempt_ms) < 0)
             return;
+        log_save_stage("connect");
         if (msd.connect()) {
             logger_state = LOGGER_MOUNT;
             next_attempt_ms = now;
@@ -331,6 +352,7 @@ void USBLogger::update()
     case LOGGER_CONNECT_EXTENDED:
         if ((long)(now - next_attempt_ms) < 0)
             return;
+        log_save_stage("connect");
         if (msd.connect()) {
             logger_state = LOGGER_MOUNT;
             next_attempt_ms = now;
@@ -345,10 +367,12 @@ void USBLogger::update()
     case LOGGER_MOUNT: {
         if ((long)(now - next_attempt_ms) < 0)
             return;
+        log_save_stage("mount");
         const int error = usb_fs.mount(&msd);
         if (error == 0) {
             filesystem_mounted = true;
             next_probe_number = 1;
+            log_save_stage("directory_open");
             directory_scan = opendir("/usb");
             if (directory_scan == nullptr) {
                 retry_or_fail("Could not read USB log directory.");
@@ -365,6 +389,7 @@ void USBLogger::update()
     }
 
     case LOGGER_SCAN_DIRECTORY:
+        log_save_stage("directory_scan");
         // Walk the directory once instead of reopening log_1..log_N on every
         // save. Each fopen caused another FAT name search, growing quadratically.
         for (uint8_t entries = 0; entries < 16; ++entries) {
@@ -391,6 +416,7 @@ void USBLogger::update()
         return;
 
     case LOGGER_OPEN_FILE:
+        log_save_stage("file_open");
         if (session_file_num < 1) {
             for (uint8_t probes = 0; probes < 4; ++probes) {
                 snprintf(
@@ -424,6 +450,7 @@ void USBLogger::update()
 
     case LOGGER_WRITE: {
         if (flush_offset >= flush_target_length) {
+            log_save_stage("finalize_verify");
             bool finalized = true;
             if (buffer_overflow &&
                 fprintf(active_file,
@@ -468,6 +495,7 @@ void USBLogger::update()
         }
 
         static const size_t CHUNK_SIZE = 4096;
+        log_save_stage("write_flush");
         const size_t remaining = flush_target_length - flush_offset;
         const size_t requested =
             remaining < CHUNK_SIZE

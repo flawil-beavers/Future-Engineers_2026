@@ -1,0 +1,20 @@
+{
+  "volume_label": "PHILIPP",
+  "format": "FAT32",
+  "test": "32x256KiB random write/flush/close/reopen/SHA256; own temporary file only",
+  "cycles_completed": 32,
+  "bytes_verified": 8388608,
+  "errors": [],
+  "removed_test_file": true,
+  "duration_seconds": 1.56,
+  "user_confirmed_previous_stick_was_emptied": true,
+  "filesystem_check": {
+    "command": "chkdsk (read only, without repair flags)",
+    "result": "Windows has scanned the file system and found no problems",
+    "format": "FAT32",
+    "capacity_bytes": 15711830016,
+    "free_bytes_before_test": 15687589888
+  },
+  "robot_observation": "four short/four long red only when saving; no working Arduino serial/DFU interface in previous passive check",
+  "limitations": "PC test does not reproduce robot USB-host power, cable, firmware or heap conditions. Repeated temporary-file test is not full-capacity/power-loss endurance testing. Exact Mbed crash cause not established; installed firmware unverified."
+}

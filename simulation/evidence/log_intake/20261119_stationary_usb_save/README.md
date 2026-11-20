@@ -1,0 +1,7 @@
+# Stationary USB save verification, 2026-11-19
+
+User uploaded the RAM-headroom version after reporting an initial failed upload, then confirmed ready with driveOFF. Agent sent only `p` (pause/disable/save), then `t` (position query). No drive/reset/upload or additional camera command. Serial observation: ../20261119_save_check/stationary_save_observation.json and original captures alongside it. All USB phases through finalize_verify completed, zero failed allocations; position query responded after saving.
+
+User moved the previously emptied stick to laptop. Immediately copied complete original log_1.txt unchanged as20261119_log_1.txt; source-before/source-after/copySHA256 verified, then user told stick can be removed.930B, ends with newline; contains startup, camera/vision initialization, idle/driveOFF and final SYSTEM DISABLED matching the requested snapshot. This is a NEW successful stationary save, not either missing earlier run and not a full challenge run. Byte count/hash in manifest.json.
+
+Live heap used42432B at mount and44484B peak during write, with71112B capacity and zero failed allocations. Earlier whole heap capacity38352B is below this observed requirement, strongly supporting the former save-time allocation-failure mechanism. Installed flash not read back; phase output and measured capacity match the prepared M7 build69afd090f0d0347d930125a1b52f9c2734b339a9f7997ef720822f9ffd9d8882. The historical fatal error code remains unavailable. Next normal full-run save check; no guarantee yet for long logs or every medium/power condition.

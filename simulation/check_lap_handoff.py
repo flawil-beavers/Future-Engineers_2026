@@ -19,8 +19,15 @@ void layoutB(int dir){
  learned();joinSameColourStraightEnds(livePath,true);roundKnownCornerPairs(livePath,true);
 }
 int main(){
- for(int dir:{-1,1})for(float speed:{135.f,180.f,260.f}){
-  layoutB(dir);lap1CommandValid=true;lap1SpeedMmS=speed;
+ for(int startMiddle:{0,1,2})for(int dir:{-1,1})for(float speed:{135.f,180.f,260.f}){
+  layoutB(dir);
+  if(startMiddle){
+   for(auto &s:seats)s.confirmed=s.injected=false;
+   const int middle=dir<0?2:3;
+   seats[middle].confirmed=seats[middle].injected=true;seats[middle].red=startMiddle==2;
+   learned();
+  }
+  lap1CommandValid=true;lap1SpeedMmS=speed;
   lap1LookaheadMm=firstLapLookahead(speed);
   if(nearCorner(baselinePath[0].distanceMm))lap1LookaheadMm*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
   PositionEstimate pose{livePath[0].x,livePath[0].y,connectorRouteHeading(livePath,0)};

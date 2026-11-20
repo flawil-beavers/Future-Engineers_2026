@@ -2269,6 +2269,8 @@ void printVisionDebug()
         Serial.print(" phase/good/bad="); Serial.print(sync.wordsRemaining);
         Serial.print("/"); Serial.print(sync.goodPhaseStreak);
         Serial.print("/"); Serial.print(sync.badPhaseStreak);
+        Serial.print(" capture_error_bits/bad_phase_total=");Serial.print(sync.errorBits);
+        Serial.print("/");Serial.print(sync.badPhaseCount);
         Serial.print(" lap/index/blocked="); Serial.print(obstacle_path_lap());
         Serial.print("/"); Serial.print(obstacle_path_progress_index());
         Serial.print("/"); Serial.print(obstacle_path_blocked_station());
@@ -3305,9 +3307,25 @@ void obstacle_challenge_update(
             newCameraFrame = false;
     }
 
+    const int8_t parkingTurnSign = OBSTACLE_PARKING_EXIT_ENABLED
+        ? (oc_parking_exit_steering>0 ? -1:1):OBSTACLE_DEFAULT_TURN_SIGN;
+    if(OBSTACLE_FINAL_PARKING_ENABLED && !OBSTACLE_FIRST_LAP_TEST_ENABLED &&
+       !OBSTACLE_THREE_LAP_TEST_ENABLED && obstacle_path_lap()>=1)
+    {
+        PositionEstimate arrival;
+        if(obstacle_path_parking_handoff_pose(arrival))
+            final_parking_prepare_approach(parkingTurnSign,arrival);
+        obstacle_path_allow_rolling_finish(final_parking_rolling_ready(get_position_struct()));
+    }
     if (!obstacle_path_complete())
     {
         obstacle_path_update(newCameraFrame);
+        if(!obstacle_path_complete())return;
+    }
+    if(final_parking_active() || final_parking_start_rolling(parkingTurnSign))
+    {
+        final_parking_update(parkingTurnSign);
+        oc_complete=final_parking_complete();
         return;
     }
 
@@ -3317,7 +3335,7 @@ void obstacle_challenge_update(
     {
         oc_lap_finish_braking = true;
         oc_lap_finish_brake_ms = millis();
-        stop(true);
+        if(dc_state!=DC_HOLDING)stop(true);
         Serial.println("[LAPS] Target reached; finish brake");
     }
     if (millis() - oc_lap_finish_brake_ms < OBSTACLE_LAP_FINISH_BRAKE_MS)
@@ -3345,10 +3363,6 @@ void obstacle_challenge_update(
         return;
     }
 
-    const int8_t parkingTurnSign =
-        OBSTACLE_PARKING_EXIT_ENABLED
-            ? (oc_parking_exit_steering > 0 ? -1 : 1)
-            : OBSTACLE_DEFAULT_TURN_SIGN;
     if (final_parking_update(parkingTurnSign))
     {
         oc_complete = final_parking_complete();

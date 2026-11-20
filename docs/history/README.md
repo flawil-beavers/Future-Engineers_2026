@@ -28,3 +28,5 @@ Original logs, image approval status and evidence metadata stay in
 This archive contains documentation, not replacement telemetry.
 
 - [November19 height-camera intake and pre-correction replay](HEIGHT_CAPTURE_INTAKE_20261119.md): original acquisition/approval history and initial failure evidence. Current correction/validation is in the active handoff and measured-height review.
+
+- [November19 handoff before CW logs3--6](AGENT_DOCUMENTATION_20261119_BEFORE_CW_BATCH.md): exact prior active summary, build identities, saved USB/camera evidence and limitations. Current status is in the root handoff and linked CW review. Links inside this exact snapshot originally resolved from the repository root.

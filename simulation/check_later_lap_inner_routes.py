@@ -122,7 +122,14 @@ int main(){
         a, b = results['before']['metrics'][i], results['after']['metrics'][i]
         assert b['length_mm'] <= a['length_mm']+.05
         assert b['target_s'] <= a['target_s']+.001
-        assert b['absolute_turn_rad'] <= a['absolute_turn_rad']+.011
+        inner_colour = 2 if c['direction'] < 0 else 1
+        continuous_inner = all(colour in (0, inner_colour) for colour in c['colors'][6:])
+        # Only a continuous inner corridor may use the new small connection;
+        # mixed bypasses retain the original tight absolute-turn allowance.
+        extra_turn = .201 if continuous_inner else .011
+        assert b['absolute_turn_rad'] <= a['absolute_turn_rad']+extra_turn
+        if c['mode'] == 0:
+            assert b['absolute_turn_rad'] > a['absolute_turn_rad']+.011
         print('TARGET', c['direction'], c['mode'], 'saved_mm', round(a['length_mm']-b['length_mm'], 2),
               'target_s_saved', round(a['target_s']-b['target_s'], 3))
     for i in (2, 6):

@@ -33,6 +33,7 @@ enum {DC_DISABLED,DC_ENABLED};int dc_state=DC_DISABLED;
 struct Printer{operator bool(){return false;}template<class T>void print(T){}template<class T>void println(T){}}terminal;
 #define SERIAL_HW terminal
 std::vector<std::string> names;int directoryReads=0,opens=0,flushes=0;
+std::vector<std::string> saveStages;
 bool shortWrite=false,readFault=false;
 struct DIR{size_t index=0;};struct dirent{char d_name[256];};
 DIR* opendir(const char*){return new DIR;}
@@ -56,6 +57,8 @@ struct FS{int mount(MSD*){return 0;}int unmount(){return 0;}}usb_fs;
 #define fflush countedFlush
 #define fwrite faultWrite
 void USBLogger::update_terminal(){}
+void USBLogger::log_save_stage(const char*s){
+ if(saveStages.empty()||saveStages.back()!=s)saveStages.push_back(s);}
 '''
     for sig in ('USBLogger::USBLogger()', 'void USBLogger::clear()', 'bool USBLogger::is_busy() const',
                 'void USBLogger::write_to_usb()', 'void USBLogger::begin_attempt()',
@@ -73,13 +76,16 @@ int main(){std::filesystem::create_directories(base);
  for(auto s:{"notes.txt","log_888.tmp","log_999.txt.bak","log_123garbage","log_-1.txt"})names.push_back(s);
  USBLogger l;std::string original(75852,'x');original.replace(0,9,"RUN_START");original.replace(original.size()-7,7,"RUN_END");
  memcpy(l.log_buffer,original.data(),original.size());l.buffer_head=original.size();l.write_to_usb();
- dc_state=DC_ENABLED;l.update();assert(directoryReads==0&&opens==0);
+ dc_state=DC_ENABLED;auto stageCount=saveStages.size();l.update();
+ assert(directoryReads==0&&opens==0&&saveStages.size()==stageCount);
  dc_state=DC_DISABLED;int updates=0;
  while(l.is_busy()){clockMs+=400;int before=directoryReads;l.update();
   assert(directoryReads-before<=16);assert(++updates<200);}
  assert(l.logger_state==l.LOGGER_SUCCESS_FEEDBACK&&l.buffer_head==0);
  assert(load(base+"log_547.txt")==original);assert(opens==3);
  assert(flushes==20); // 19 chunks plus final flush; previous 149+1.
+ assert((saveStages==std::vector<std::string>{"power_settle","connect","mount",
+     "directory_open","directory_scan","file_open","write_flush","finalize_verify"}));
  std::cout<<"LOGGER 546 files: "<<directoryReads<<" directory reads, "<<opens<<" opens, "<<flushes<<" flushes, complete snapshot\n";
  l.clear();assert(l.logger_state==l.LOGGER_IDLE);
  // An interrupted write retains the whole RAM prefix and retries to a NEW

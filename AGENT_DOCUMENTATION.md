@@ -1,136 +1,39 @@
-# Agent documentation and engineering handoffs
+# Current robot engineering handoff
 
-Current handoff consolidated on 2026-11-17. Read this first, then the linked
-report and relevant evidence before continuing an investigation. Mandatory
-workspace instructions are in [AGENTS.md](AGENTS.md).
+Updated2026-11-20 after bounded later-lap efficiency and clearance; mandatory instructions are in [AGENTS.md](AGENTS.md). This is the current summary. Earlier build identities, rejected approaches and original reports remain in the [history index](docs/history/README.md), including the [exact pre-batch handoff](docs/history/AGENT_DOCUMENTATION_20261119_BEFORE_CW_BATCH.md). Historical test procedures are not active orders.
 
-## History and evidence
+## Current source and validation
 
-The [history index](docs/history/README.md) leads to the preserved engineering
-history and superseded test procedures. Historical instructions describe their
-own builds; they are not the active test sequence. The archive retains exact
-original text, firmware hashes, physical reports and rejected approaches.
+Normal O mode exits parking, drives3laps and attempts final parking. Practice/first-lap/three-lap-only flags remain off; Surprise Rule enabled by default and must match pre-run declaration. Current source revisions: path20261120_lap23_efficiency, parking20261119_direct_handoff, height20261119_measured_height. OnlyM7 affected; M4 unchanged. Final prepared binary/build identity is recorded below; no agent upload, reset, motion or extra commit.
 
-- [Original logs and metadata](simulation/evidence/parking_exit_diagnostics/README.md).
-- [Camera evidence](simulation/evidence/camera_diagnostics/README.md) and
-  [image approval registry](simulation/evidence/camera_diagnostics/validation_status.json).
-- [Current test checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md).
-- [Parking diagnostics plan](PARKING_POSE_IMPLEMENTATION_PLAN.md).
-- [Official rules reference](WRO_2026_RULES.md).
+- [Later-lap efficiency](simulation/LAP23_EFFICIENCY_REVIEW_20261120.md): only continuous inner normal sections may use0.20rad extra total connection turn; mixed bypasses retain0.01rad and all speed/force/time budgets.2809 cost comparisons:8 faster/0 slower (3 normal configurations, capped repeats,2 empty controls).6573 dynamics,2807 geometry/body audits,18 handoffs and parking controls pass; same53.969/66.897mm nominal minima. Real gain depends on MCU30ms optional budget; normal runs still required. Six unchanged USB originals reverified/released; no new evidence run.
+- [Later-lap clearance](simulation/LAP23_CLEARANCE_REVIEW_20261120.md): optional smooth20mm start-middle passing correction on laps2/3; lap1 unchanged. Known-map2807 cases pass; independent measured-body audit minimum53.969mm pillar/66.897mm inner wall. Negative control reproduces43.143mm before. No new50mm runtime stop or universal physical guarantee. Handoff18/18, parking maps24 and approach2970 pass. Six unchanged USB originals reverified/released; no new runs.
+- [Lap1 pace](simulation/LAP1_TEMPO_20261119.md): moving unresolved-station cap100->120mm/s; existing340mm hold/800ms grace, camera votes, geometry and recovery unchanged. Speed/recovery33, view policy270/archived286, frozen CAD1736 plus100/120 comparison112 pass. Actual recognition at higher speed still needs ordinary run acceptance. No new USB logs; six originals reverified/released.
+- [Direct parking handoff](simulation/DIRECT_PARKING_HANDOFF_20261119.md): prepare sampled inner/outer arrival routes during laps2/3; conditional rolling CCW handoff, measured CW reversal brake; overlap safe servo settling with braking, preserving400ms servo age and60mm/s entry. Tests24 learned maps/12 rolling approaches,24 measured entries,102 braking cases pass. Fixed two-arc recipe is not universally clear with the measured footprint; checked fallback remains. No new physical acceptance run.
+- [Current CW batch review](simulation/CW_LOGS_3_6_REVIEW_20261119.md): first-lap colour-horizon correction, targeted EMPTY guard, checked marker rescan and narrow-gap staging fallback; exact tests, evidence and unresolved cases.
+- [CCW log2 review](simulation/PARKING_APPROACH_LOG2_REVIEW_20261119.md):10mm inward scan/capture shift,150/130mm/s approach/alignment maxima, terminal60mm/s blend and15mm CCW startGREEN-pair later-lap reserve. Parked target and entry speed unchanged. Physical contact was not reproduced by logged poses; pose/model/time discrepancy remains.
+- [Measured camera/rule validation](simulation/SURPRISE_RULE_MEASURED_VALIDATION_20261119.md) and [approval registry](simulation/evidence/camera_diagnostics/validation_status.json):45 approved50/100/150mm reference frames pass;3 excluded. Never use wrapped/rejected images or an unapproved new reference.
+- [USB heap mitigation](simulation/USB_SAVE_HEAP_REVIEW_20261119.md): unchanged colour LUT packed to4bits,32768B freed. Full new logs2--6 now saved and hash-verified without truncation, beyond the earlier930B stationary save. Runtime peak44484 exceeded old38352B heap; new heap71112B showed zero allocation failures. Old missing runs remain unrecovered.
 
-## Current firmware and validation status
+## Received CW batch and evidence
 
-Source checked on 2026-11-17. Normal `O` runs exit parking, drive three laps
-and attempt final parking. `OBSTACLE_FIRST_LAP_TEST_ENABLED`,
-`OBSTACLE_THREE_LAP_TEST_ENABLED` and `OBSTACLE_FINAL_PARKING_TEST_ONLY` are false.
-Surprise Rule participation defaults to enabled through
-`OBSTACLE_SURPRISE_RULE_ENABLED=1`; it must match the pre-attempt declaration.
+Complete original logs3--6 are in [portable evidence index](simulation/evidence/parking_exit_diagnostics/README.md); bytes/SHA256 and source identity are in the [batch review](simulation/CW_LOGS_3_6_REVIEW_20261119.md). Immediate [intake manifest](simulation/evidence/log_intake/20261119_batch_3_6/manifest.json) preserves originals; resumed and direct-approach source verification found no changed/new files. User immediately released stick on each intake. Copies unchanged; no source deletion. Evidence/index/handoff are staged/tracked, not a claim of a new commit or remote sync.
 
-Before the November19 correction below, the latest recorded firmware change was the checked CCW first-lap view correction
-from commit `484a23e`. Later commits `284b8a2` and `8383d9b` add visualization
-tools and documentation. Logged control revisions are
-`20261111_checked_ccw_view`, `20261111_recovery_handoff` and
-`20261111_height_rule` for path, final parking and Surprise Rule respectively.
+Physical report: earlier CW missedRED and wrong GREEN passage; latest obstacle part good with smallRED, parking stops. Logs3/4 end user mode_pause;5 aborts scan_motion_clearance,6 aborts dual_marker_geometry at222.4mm. Both reaching parking have old20261111_recovery_handoff, before the prepared wider scan line. Source binary not read back. Log3 omitsRED18 after not_upcoming rejection then falseCLEAR. Log4 confirmsRED middle2 while no expected startGREEN is seen; exact camera/colour cause remains unestablished. Log6 correctly stores50mm visibleRED15 as effectiveGREEN; earlier3/5 store150mm visibleGREEN15 as effectiveRED. No hard-coded layout.
 
-The latest recorded IDE-managed M7 build succeeded with RAM 484,896 / 523,624
-bytes and flash 597,064 / 786,432 bytes. Its 600,616-byte binary has SHA-256
-`fb49725aadef397cbcce99110e5239eb5fd919883c496da24b275de948ba3765`.
-This is a historical build identity, not a fresh build or an installed-firmware
-readback. M4 was unchanged. The latest archived runs predate these November 11
-changes, so they do not establish physical acceptance of current firmware.
+## Results and remaining limits
 
-### First-lap perception
+Current tests: speed/recovery33; far52; recovery dispatch33; approved frames45 and captured sequences16; rendered648/association48/policy24; corner3 regression2 plus negative control; occupancy/EMPTY controls;565 evidence10/rejoin27; parking quick3/registration5; braking handoff6; measured entry24; new scan retry/safety controls pass. Accepted-span parking stress114/120 park;6 cases at232.5mm with15--50% curve-radius change still safely abort. All24 nominal measured-gap cases pass. Model results exclude unmeasured traction, actuator lag and real reflections; do not claim all parking or wrong-colour problems solved.
 
-The [checked CCW view report](simulation/LAP1_CHECKED_CCW_VIEW_20261111.md)
-records the bounded extra target rotation after the existing protected bypass.
-CW behavior and the protected bypass remain unchanged. Model checks show an
-earlier visibility window in the targeted CCW case, not a real detection rate.
+The first-lap horizon now permits checked colour acquisition through a corner out to its1600mm calibration limit; EMPTY retains its own nearer/heading gates and active same-station searches. Invalid gap permits one fully checked rescan, not relaxed geometry. Narrow-gap fallback checks the entire straight staging prefix plus tail before moving. True sensor/pose/brake faults and an unsafe or twice-invalid scan remain stop conditions.
 
-The [retry and parking recheck](simulation/LAP1_PARKING_RECHECK_20261111.md)
-documents braking and re-observation after bounded view drift or rejected
-view paths. New motion still needs full preflight. Invalid pose, substantial
-deviation and genuine sensor or motion faults remain stop conditions.
+## Exact next steps
 
-### Surprise Rule and camera approval
+1. User normal upload ofM7 only. No auto-upload or motion authorized by this review. Use [current normal-run checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md), not archived sweeps.
+2. Normal CW/CCW runs; immediately copy full original logs, SHA256-verify, release stick and update portable evidence before analysis. Preserve [parking pose diagnostics plan](PARKING_POSE_IMPLEMENTATION_PLAN.md).
+3. Compare later-lap timings and accepted/retained inner-route record; verify real later-lap wheel/body clearances and smooth start-middle passage; verify lap1 early recognition at120mm/s, earlyRED18 association, both startGREEN passages, once-only special identity/effective colour across3laps, parked pose/parallel completion, real wheel clearance, conditional CCW rolling handoff and actual planning pauses. Keep the232.5mm/large-radius limitation visible.
+4. If log4-like wrong colour recurs, capture a stationary image only with driveOFF and obtain user image approval before analysis. The new cached error-bit field helps distinguish capture errors; it does not prove hardware damage.
 
-The [implementation report](simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
-describes height recognition and the stored original passing colour. Approved November19 stationary50/100/150mm references now pass current-source replay; normal dynamic runs remain unvalidated.
-The approved `20261027_green_400mm_01.png` is a normal-height reference only.
-The rejected or invalid October 26 references cannot support new acceptance.
-Consult the approval registry and obtain the required image approval before
-using additional reference images. Synthetic tests do not replace this check.
+[Official rules](WRO_2026_RULES.md) remain canonical; consult official clarifications before new rule-dependent changes. Video artifacts and reconstruction assumptions remain in [video guide](simulation/VIDEO_VISUALIZATION.md) and history; log poses are anchors, not independent physical truth.
 
-### Final parking and exit analysis
-
-The latest [parking recheck](simulation/LAP1_PARKING_RECHECK_20261111.md)
-documents a remaining planner failure at a 232.5 mm gap within the accepted
-measurement range. The current approach matrix passes 96 of 120 model cases;
-all 24 aborts occur at that gap. Reported 248.9 mm and 249.6 mm gaps pass their
-separate modeled cases. Universal parking reliability is not established.
-
-The [measured-envelope report](simulation/RETURNED_651_656_PARKING_20261105.md)
-records physical dimensions and outcomes. Runs 652 and 653 have user-reported
-interruption and slippery-floor exclusions respectively. Preserve those reports.
-The handoff planning latency remains a separate physical validation concern.
-
-Parking-exit diagnostics remain passive analysis of normal runs. Retain servo
-centre 80 and existing motion, braking, reversal and pose-correction diagnostics.
-Encoder/ToF disagreement alone does not identify backlash or absolute pose
-accuracy. Follow the diagnostics plan before continuing that investigation.
-
-## Exact next steps for robot validation
-
-1. Use the current checklist for normal CW and CCW runs with unchanged hardware
-   and normal saving. Do not revive archived batch-specific test instructions.
-2. Secure complete original logs first, verify hashes and immediately release
-   the USB stick. Record firmware identity and physical outcome in the evidence
-   index before analysis, following AGENTS.md.
-3. Compare fresh first-lap frames, votes and recovery with the linked reports.
-   Check that extra CCW aiming stays outside the protected bypass.
-4. Check measured parking registration, first-command progress, final physical
-   containment, parallel stopping and actual clearance. Retain the narrow-gap
-   planner limitation until separately resolved and validated.
-5. For Surprise Rule acceptance, review approved real height evidence and the
-   stored seat identity, visible/original colour and passing side on each lap.
-   Keep unvalidated height detection explicit.
-
-## Video documentation
-
-Use [the reproduction guide](simulation/VIDEO_VISUALIZATION.md). The latest
-run 633 map export is
-`local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_video_synced_large_text_1x.mp4`.
-It is 1080 square at 30 fps, lasts 196.9 seconds and uses 42-pixel labels.
-Align its start to DJI0066 at 4:39.788. The earlier log-timed export ends early
-relative to the footage; use the video-synchronized export in Kdenlive.
-
-The calibrated clock maps one logged second to about 1.03447 filmed seconds.
-Logged poses are anchors; footage fills gaps. The filmed top green pillar is
-drawn at seat 14, with the original assignment retained in the manifest.
-Displayed ToF distances intersect modeled surfaces; untimed closing rear
-references have estimated display windows. These are reconstruction assumptions.
-Original footage, transform caches and the one-time stabilization utility remain
-local inputs. Full revision history is in the archive.
-
-## 2026-11-17: documentation consolidation
-
-Archived the complete prior handoff, obstacle checklist, connector guide and
-rules reference under docs/history/. Replaced competing current/next procedures
-with one source-checked checklist, consolidated rule metadata and kept active
-limitations visible. No firmware, original evidence or physical test changed.
-Next maintain concise findings here and follow the archive links for historical
-investigations instead of copying old procedures into the current handoff.
-
-
-## 2026-11-19 measured-height implementation (current)
-
-Latest changes correct the mounted-camera ground/height model using the user-approved November19 stationary series. All48 original image bundles are secured;45 approved,3 excluded. Evidence, metadata and hashes are in simulation/evidence/camera_diagnostics/. All192 original files were CRC/payload/hash/index verified. The previous incorrect classification and exact capture history are preserved in docs/history/HEIGHT_CAPTURE_INTAKE_20261119.md and simulation/CAMERA_HEIGHT_CAPTURE_REVIEW_20261119.md.
-
-Current-source replay now recognizes all45 approved images with correct visible colour and50/100/150mm class. Background-connected stems are narrowed for pillar association; original components remain available for occupancy/debugging. HSV thresholds, route geometry, speeds and parking control are unchanged. rememberModifiedSign() stores one seat/height, keeps visibleRed separate from effective original passing colour seat.red, and later laps retain that map. Rule participation remains enabled by default and must match the pre-run declaration. Current Surprise log revision20261119_measured_height.
-
-Four origin/main commits through caa2709 were downloaded and fast-forwarded (video tools/history consolidation); only AGENT_DOCUMENTATION.md conflicted when restoring local work. Preserved the remote concise handoff/history layout and archived the complete local November19 intake tail, with this updated current section.
-
-Additional stick originals637..644 were secured unchanged in simulation/evidence/parking_exit_diagnostics/ with README byte counts and SHA256; directionCW, installed firmware and physical outcomes unestablished. Earlier25-file intake and failed empty capture attempts remain documented. User told stick may be unplugged immediately after source/copy verification. No Surprise physical-run acceptance inferred from these older logs.
-
-Validation/build identity and exact next steps: see simulation/SURPRISE_RULE_MEASURED_VALIDATION_20261119.md (updated at session completion). Only M7 is affected; do not rebuild/upload M4 for this change. No robot upload or motion performed this session.
-
-Final validation:45/45 real frames,16 captured sequences,648 rendered/48 association/24 policy,52 far-acquisition,2807 later-lap,6 handoff and11 camera unit cases pass; current/legacy foot-gate and green occupancy checks pass. IDE M7 SUCCESS RAM484896/523624 flash597432/786432, bin600984B SHA256059f6fb03f35efc3f11c10cfcb8c17e32dd08d22234a14d4dfacdcef51bfc92a. M4 unchanged, not built; no upload. Next normal M7 CW/CCW physical acceptance with one special sign, secure complete logs first and verify one stored identity/original side on all3laps.
+Final IDE-managed M7 build SUCCESS: RAM452176/523624B, flash601872/786432B; firmware.bin605424B SHA256`bd1d75611c2e50cb15df5a63f126d29d20fefdd43ab0856b5e90c406e7f9d597`. M4 unchanged/not built. Existing Serial macro and unused-helper warnings remain. No robot upload/movement or extra commit.
