@@ -71,3 +71,21 @@ printing entry point. Archive integrity and saved configuration were checked:
 17 part meshes, plate arrangement, MK4IS, PLA, 0.4 mm nozzle, 0.2 mm layers,
 15% infill, support enforcers only and no brim. Instructions explain opening
 it as a PrusaSlicer project and selecting the intended printer/material profile.
+
+## 2026-11-20: World Final journal rewrite
+
+Audited the official rubric, General Rules and Q&A. The team confirms v74
+includes the current rear mount, identifies the Arducam GC2145 and replacement
+power components, and confirms the public GitHub URL was submitted. Keep
+firmware on current `main`; record the actual competition commit and settings
+when known. The README now links tracked evidence and identifies historical
+test conditions. Local logs 76/111, 122, 204–209 and 227 corroborate the
+camera, exit, crawl-speed and rear-reference examples. No new runs or firmware
+changes. Next verify signed-out videos, replace robot photos,
+record physical measurements, then complete the PDF/hardcopy checks in
+[DOCUMENTATION_TODO.md](DOCUMENTATION_TODO.md).
+
+The supplied [revision 1 wiring PNG](Electronics/Wiring_Diagram_FE2026_v1.png)
+replaces the June drawing. The corrected PNG shows rear I²C SDA on A3 and
+SCL on A4, matching M4 source. Reconcile the regulator and level-shifter
+labels with the BOM before the final documentation export.
