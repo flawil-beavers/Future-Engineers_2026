@@ -29,10 +29,10 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 | Pololu Dual MC33926 motor driver | 1 | Bidirectional drive control | ~25.00 |
 | Adjustable Mini-360 DC-DC step-down module | 1 | Voltage regulation | ~2.00 |
 | Generic 3.3 V to 5 V logic-level shifter | 1 | Signal-level translation | ~3.00 |
-| [BerryBase SVM330-Y](https://www.berrybase.ch/detail/0191f2bebc0d71c7afa5fd3d0c6cde11) | 1 | Two-wire yellow LED voltage display, 0.28 in, 3.2–30 V | ~5.00 |
+| BerryBase SVM330-Y | 1 | Two-wire yellow LED voltage display, 0.28 in, 3.2–30 V | ~5.00 |
 | Generic 10 × 15 mm rocker switch | 1 | Main battery power (SW2) | ~0.20 |
 | MTS-102 ON–ON toggle switch | 1 | Physical start/enable (SW1) | 3.80 |
-| [DFRobot 6 V encoder gearmotor, 30:1](https://www.bastelgarage.ch/6v-530rpm-30-1-micro-gear-motor-with-encoder) | 1 | Rear-axle propulsion | 13.90 |
+| DFRobot 6 V encoder gearmotor, 30:1 | 1 | Rear-axle propulsion | 13.90 |
 | TowerPro MG90S servo | 1 | Front steering linkage | 7.90 |
 | 14500 Li-ion cells, 3.7 V and 750 mAh each | 4 total, 2 installed | One 2S pack on the robot and one spare pair | 31.60 |
 | 3D-printed chassis and all custom CAD parts, including mounts and battery holders | 1 set, 2 holders | Supports and locates the mechanical and electronic assemblies | ~10.00 |
