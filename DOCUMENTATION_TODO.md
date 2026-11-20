@@ -11,6 +11,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Remeasure mass after the rear-ToF addition; 670 g is the earlier recorded value. The team confirms unchanged dimensions (November 18). Confirm final height and reconcile the nominal 165 mm bay-sizing length with the measured 158/170 mm straight/steered extent before freezing the specification; retain the measured 98 mm wheelbase and 123 mm straight width separately from nominal route/exit constants.
 - [x] Add and link the supplied version 74 Fusion archive, printable `.3mf` project, MK4 Input Shaper binary G-code and PrusaSlicer preparation/toolpath screenshots; document how to open the project and adapt printer settings, plus printer, nozzle, material, layer height, infill, supports and estimates. Earlier CAD versions remain available in Git history (November 20).
 - [x] Confirm version 74 is the current CAD model, including the rear-ToF mount (team confirmation, November 20).
+- [x] Confirm that all 17 version 74 parts print without supports in their saved orientations and document the setting in the CAD guide (team confirmation, November 20).
 - [ ] Check the CAD and print assets against any subsequent physical changes before submitting the final documentation.
 - [x] Replace the June schematic with the supplied [revision 1 wiring diagram](img/diagrams/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
 - [x] Verify that the drawing's rear-ToF pin labels match the M4 firmware (A3 SDA, A4 SCL).
@@ -20,7 +21,8 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Recheck power budget by rail against the finished schematic and measure typical and peak battery and regulator currents if available. Existing current figures are planning estimates based on datasheet values and engineering allowances.
 - [x] Move the Bill of Materials before Assembly and update the README navigation (November 18).
 - [x] Replace the historical Open Challenge video and add the supplied Obstacle Challenge link and matching previews (November 18): Open `koMCLdpg0-I`, Obstacle `5dCMkFn-6TI`.
-- [ ] Confirm signed-out public or unlisted access after the team publishes both supplied videos. Verify titles and at least 30 seconds of autonomous driving in each.
+- [x] Confirm both challenge videos are available (team confirmation, November 20).
+- [ ] Verify the titles, signed-out playback from `main` and at least 30 seconds of autonomous driving in each video during the final link check.
 - [ ] Revalidate the current 30:1 drivetrain at low speeds in forward and reverse, straight and full-lock, with charged and lower-voltage packs. Record mean speed, instantaneous speed ripple, shaking/noise, stalls, stopping behaviour and current consumption. Update the low-speed discussion and test results in `README.md` with the findings and any further fixes; earlier mean-speed passes do not establish that the currently reported problems are resolved.
 - [ ] Validate camera colour and distance calibration under competition-like lighting and add the resulting detection and reliability metrics.
 - [ ] Confirm the final camera clock and timing configuration and reconcile the camera description and engineering testing table with its measured frame intervals. If reverting from 24 MHz with input divide-by-two to 12 MHz without that divider, compare the current full-FOV configuration under varied lighting and motion before claiming equivalent reliability. Do not attribute a performance improvement to 24 MHz itself; distinguish continuous-capture and vertical-blanking improvements from the external clock setting.
@@ -29,9 +31,10 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Run the final full-field validation matrix in both directions, including difficult adjacent pillars, parked starts, three laps, final parking and lower-voltage operation. Record run counts, completion rate, time, minimum measured clearance and every intervention/contact.
 - [ ] Use the latest `main` for firmware. Record the evaluated and actual competition commit IDs and any local M7/M4 configuration, CAD and calibration changes in a version note when known.
 - [x] Submit the public GitHub URL (team confirmation, November 20).
-- [ ] Confirm the organizer's evaluation cutoff and the commit milestones, including how the one-fifth-code requirement is applied. General Rules §7 gives November 24 as the two-week milestone counted back from December 8, subject to the organizer's announced deadline.
+- [x] Confirm the organizer's November 24 evaluation cutoff (team confirmation, November 20).
+- [ ] Verify the commit history against the General Rules §7 milestones, including the one-fifth-code requirement for the first commit.
 - [ ] Review the latest official Future Engineers rules, Documentation Rubric, Questions & Answers and any announced surprise rule. Apply any newer clarification before submission.
-- [ ] Confirm the GitHub repository is public, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
+- [ ] Push the updated documentation to `main`. Confirm the submitted URL shows the revised README, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
 - [ ] Regenerate `README.pdf` from the final `README.md`, inspect every rendered page and print the required hardcopy for the World Final.
 - [ ] Scan the repository and both challenge-video QR codes from the final printed PDF. Verify the canonical repository URL, final video destinations and public access; confirm both video QR codes appear in their respective challenge subsections.

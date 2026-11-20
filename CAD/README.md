@@ -4,11 +4,11 @@ This folder contains the editable Fusion 360 model, the PrusaSlicer project, the
 
 ## Current design and printing
 
-For printing, download the [version 74 PrusaSlicer project](Car_v74.3mf). It contains 17 part meshes, their build-plate arrangement and the saved slicer settings. Open it **as a project** in PrusaSlicer, select the profile for your printer, nozzle and material, slice and review the toolpaths, then export the print job. The saved configuration uses the MK4 Input Shaper, 0.4 mm nozzle, PLA, 0.2 mm layers, 15% infill, support enforcers only and no brim.
+For printing, download the [version 74 PrusaSlicer project](Car_v74.3mf). It contains 17 part meshes, their build-plate arrangement and the saved slicer settings. Open it **as a project** in PrusaSlicer and select the profile for your printer, nozzle and material. Keep the saved part orientations and set **Supports** to **None** when reslicing. All 17 parts print without supports in those orientations. Review the toolpaths, then export the print job. The reference settings are MK4 Input Shaper, 0.4 mm nozzle, PLA, 0.2 mm layers, 15% infill and no brim.
 
 The current supplied model is [Car version 74](Car_v74.f3z), exported on November 20, 2026. The archive includes the root assembly and its linked second-stage design. Import the `.f3z` archive into Autodesk Fusion to edit the assembly, inspect the joints or export meshes for slicing.
 
-The [prepared binary G-code](printing/Car_v74_0.4n_0.2mm_PLA_MK4IS_3h1m.bgcode) was produced by PrusaSlicer 2.9.6 for an Original Prusa MK4 Input Shaper, 0.4 mm nozzle and PLA. The job uses 0.2 mm layers, 15% infill and no brim. The screenshot's support setting is **For support enforcers only**. Estimated consumption is 67.67 g (22.69 m), with a normal-mode print time of 3 h 1 min 6 s. These are slicer estimates.
+The [prepared binary G-code](printing/Car_v74_0.4n_0.2mm_PLA_MK4IS_3h1m.bgcode) was produced by PrusaSlicer 2.9.6 for an Original Prusa MK4 Input Shaper, 0.4 mm nozzle and PLA. The job uses 0.2 mm layers, 15% infill and no brim. Estimated consumption is 67.67 g (22.69 m), with a normal-mode print time of 3 h 1 min 6 s. These are slicer estimates.
 
 See the main README's [CAD and 3D Printing section](../README.md#cad-and-3d-printing) for the settings table, [build-plate arrangement](../img/assembly/Car_v74_prusaslicer_models.jpg), [toolpath preview](../img/assembly/Car_v74_prusaslicer_gcode.jpg) and assembly instructions. Adapt the `.3mf` project for other printer configurations. Use the Fusion archive when changing the mechanical design.
 
