@@ -27,10 +27,11 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 | Qwiic/STEMMA QT cables | 2 | Cut into pigtails for direct ToF-to-GIGA wiring | 23.10 |
 | Arducam GC2145 camera | 1 | On-board traffic-sign vision | ~30.00 |
 | Pololu Dual MC33926 motor driver | 1 | Bidirectional drive control | ~25.00 |
-| [Adjustable Mini-360 DC-DC step-down module](https://sph.ethz.ch/materials/product/10.2.4) | 1 | Voltage regulation | ~2.00 |
+| Adjustable Mini-360 DC-DC step-down module | 1 | Voltage regulation | ~2.00 |
 | Generic 3.3 V to 5 V logic-level shifter | 1 | Signal-level translation | ~3.00 |
 | [BerryBase SVM330-Y](https://www.berrybase.ch/detail/0191f2bebc0d71c7afa5fd3d0c6cde11) | 1 | Two-wire yellow LED voltage display, 0.28 in, 3.2–30 V | ~5.00 |
-| MTS-102 ON-ON switches | 2 | Main power and physical start/enable | 7.60 |
+| Generic 10 × 15 mm rocker switch | 1 | Main battery power (SW2) | ~0.20 |
+| MTS-102 ON–ON toggle switch | 1 | Physical start/enable (SW1) | 3.80 |
 | [DFRobot 6 V encoder gearmotor, 30:1](https://www.bastelgarage.ch/6v-530rpm-30-1-micro-gear-motor-with-encoder) | 1 | Rear-axle propulsion | 13.90 |
 | TowerPro MG90S servo | 1 | Front steering linkage | 7.90 |
 | 14500 Li-ion cells, 3.7 V and 750 mAh each | 4 total, 2 installed | One 2S pack on the robot and one spare pair | 31.60 |
@@ -39,7 +40,7 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 | Metal coupling shaft | 1 | Connects the DC motor to the LEGO drive axle | |
 | Metal screws and nuts (M3, M2.5 and M2), including some nuts with rubber inserts and springs and washers | As required | Fastens chassis parts and mounts | ~10.00 |
 | Wiring harness (cables, WAGOs, screw to cable connectors, etc.) | 1 | Power distribution | |
-| **Total for priced items** | | **Recorded project estimates** | **314.65** |
+| **Total for priced items** | | **Recorded project estimates** | **311.05** |
 
 The CHF 10 fastener estimate covers the hardware used. We bought only a small quantity for this build.
 
@@ -76,7 +77,7 @@ The photographs illustrate the original two-stage assembly sequence.
 | ![Battery Holder Connection](img/assembly/PXL_20260531_065603142.MP.jpg) Screw the battery holders onto the first stage | ![Battery Connector Wiring](img/assembly/PXL_20260531_065845130.MP.jpg) Connect protruding screws to the wires and screw nut on | ![Wiring](img/assembly/PXL_20260531_071506514.MP.jpg) Use M2 screws to fix the motor driver in place and wire everything up (use Wagos for GND and VCC) |
 | ![LEGO drivetrain assembly](img/assembly/PXL_20260531_072809927.MP.jpg) Fit the LEGO gears, axles and wheels. | ![Upper-stage sensors with earlier wiring](img/assembly/PXL_20260531_074835064.MP.jpg) Fasten the sensors to the upper stage using M2.5 screws and nuts. This photo shows the earlier ToF-to-BNO085 wiring. See the [current wiring](#wiring-and-signal-interfaces). | ![M2.5 Nuts location](img/assembly/PXL_20260531_074841767.MP.jpg) The ToF sensors are mounted via the ToF Mounts that are fastened with M3 screws |
 | ![Arduino Connection](img/assembly/PXL_20260531_075033876.MP.jpg) Place the Arduino Giga on top of the Arduino Spacer and fasten with M3 Screws | ![Cable Management](img/assembly/PXL_20260601_121901176.MP.jpg) Route the power and signal wiring through the upper stage | ![Cables moving up](img/assembly/PXL_20260601_121915804.MP.jpg) Thread the wires to the arduino through the Second stage |
-| ![Connecting both stages](img/assembly/PXL_20260601_123524626.MP.jpg) Screw the second stage onto the first one while making sure to include the wago holder and on off switch | | |
+| ![Connecting both stages](img/assembly/PXL_20260601_123524626.MP.jpg) Fit the WAGO holder and main power rocker (SW2), then screw the two stages together. | | |
 
 # Mobility and Mechanical Design
 
@@ -157,7 +158,7 @@ A steady request of 60 PWM units therefore powers about half the slots at 120 PW
 
 ## Power budget
 
-Two 14500 Li-ion cells in series give **7.4 V nominal, 8.4 V fully charged and 750 mAh nominal pack capacity**. The wiring diagram shows the switched pack feeding the motor driver and the GIGA's VIN. A separate step-down module supplies the servo's 5 V rail.
+Two 14500 Li-ion cells in series give **7.4 V nominal, 8.4 V fully charged and 750 mAh nominal pack capacity**. The main power rocker (SW2) switches the battery supply to the motor driver, the GIGA's VIN and the step-down module that supplies the servo's 5 V rail.
 
 We estimate an average while driving and a peak case with the listed loads occurring together. The motor row estimates the motor's contribution to the driver's pack-input current while the bridge applies PWM. The GIGA's own electronics are modelled as an equivalent 3.3 V load, with the camera and external sensors listed separately.
 
@@ -210,7 +211,8 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 | Left and right VL53L4CX | Separate M7 hardware I²C buses, `Wire` and `Wire2` |
 | Rear VL53L4CX | M4 software I²C at 100 kHz, SDA A3 and SCL A4 |
 | Arducam GC2145 | GIGA camera connector, DCMI pixel input and I²C configuration |
-| Physical start/enable | A2, active HIGH |
+| Main power rocker (SW2) | Switches the positive battery lead |
+| Physical start/enable toggle (SW1) | A2, active HIGH |
 | Rear measurement transfer | On-chip OpenAMP/RPC, fixed-size frames with sequence and status |
 
 [Main pin assignments](include/config.h#L104-L133) · [Rear ToF pins](src/m4/rear_tof_m4.cpp#L10-L17)
@@ -307,7 +309,7 @@ We project a usable range with $d_{\perp}=d_{\mathrm{raw}}\cos(\theta_{\mathrm{e
 flowchart TD
     accTitle: Open Challenge flow
     accDescr: The robot finds a wall, repeats wall following and gyro-controlled turns, and stops after three laps and finish travel.
-    start(["Start switch"]) --> discover["Discover which wall to follow"]
+    start(["Start toggle (SW1)"]) --> discover["Discover which wall to follow"]
     discover --> follow["Follow with heading and wall-distance control"]
     follow -->|"Corner detected"| turn["Turn 90° using gyro feedback"]
     turn --> reacquire["Reacquire the wall"]
@@ -396,13 +398,13 @@ Configure the firmware before the attempt in `include/config.h`.
 - **Challenge mode.** Set [`STARTUP_ROBOT_MODE`](include/config.h#L25) to `MODE_OPEN_CHALLENGE` for Open or `MODE_OBSTACLE_CHALLENGE` for Obstacle. The default Obstacle mode exits the parking bay, drives three laps and attempts final parking.
 - **Obstacle Challenge participation.** Edit the value in [`#define OBSTACLE_SURPRISE_RULE_ENABLED 1`](include/config.h#L959) to match your declaration. Keep `1` (the default) if you are participating in the Modified Traffic Sign Surprise Rule. Change it to `0` if you are opting out and want the firmware to use ordinary sign handling.
 
-After changing either setting, rebuild and upload the `giga_r1_m7` environment using the commands above. These settings are compiled into the uploaded firmware. Power on with the physical start switch LOW and wait for the controller to reach its waiting state. On the judge's signal, set the switch HIGH. The robot then drives autonomously using its onboard sensors and controller.
+After changing either setting, rebuild and upload the `giga_r1_m7` environment using the commands above. These settings are compiled into the uploaded firmware. With the start toggle (SW1) LOW, turn on the main power rocker (SW2) and wait for the controller to reach its waiting state. On the judge's signal, set SW1 HIGH. The robot then drives autonomously using its onboard sensors and controller.
 
 ## Reproduce the evidence
 
 Use the latest [main branch](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main) for the actively maintained firmware. Record the Git commit used to build the firmware (run `git rev-parse HEAD` before building), along with the challenge mode and any local settings, so results can be compared as `main` evolves. Capture diagnostics and run telemetry can be read during bench work at **115200 baud**. Each physical run record should pair logged state with the observed contact, intervention and finish result.
 
-**Automatic USB logging.** Before a test, plug a FAT32-formatted USB flash drive into the GIGA’s USB host port. We buffer diagnostics and telemetry in RAM while the car drives. The firmware automatically saves them as a numbered `log_*.txt` file when the car stops at the end of either challenge or when we end a test by setting the start switch LOW. The GIGA’s RGB LED shows red while saving and green when the save succeeds. Wait for the green light to go out before removing the drive.
+**Automatic USB logging.** Before a test, plug a FAT32-formatted USB flash drive into the GIGA’s USB host port. We buffer diagnostics and telemetry in RAM while the car drives. The firmware automatically saves them as a numbered `log_*.txt` file when the car stops at the end of either challenge or when we end a test by setting the start toggle (SW1) LOW. The GIGA’s RGB LED shows red while saving and green when the save succeeds. Wait for the green light to go out before removing the drive.
 
 - **Steering calibration.** Follow the [CAD calibration workflow](CAD/README.md#workflow) to compare predicted turning radii with measurements from the robot.
 - **Does the camera recognise the sign?** We test the detection software on images of signs whose colour and height we already know. Separate test cases check that the planner chooses the correct passing side for a modified sign. [How to rerun the sign check](simulation/README.md#sign-recognition-check)
