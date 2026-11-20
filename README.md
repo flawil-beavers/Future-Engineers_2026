@@ -81,6 +81,18 @@ The photographs illustrate the original two-stage assembly sequence.
 
 # Mobility and Mechanical Design
 
+## Robot specifications
+
+| Specification | Recorded value |
+| --- | ---: |
+| Length | 158 mm straight, 170 mm at full lock |
+| Width across wheels (straight) | 123 mm |
+| Wheelbase | 98 mm |
+| Drive-wheel diameter | 43.2 mm |
+| Mass | 680 g |
+
+See [parking bay sizing](#obstacle-challenge-strategy) for the nominal length.
+
 ## Chassis and steering
 
 Our screw-fastened two-stage chassis gives us access to the drivetrain below and the sensors and controller above. The commercial dual-cell holder we first used limited where we could place the batteries and held them tightly, which slowed swaps. We replaced it with two self designed 3D-printed holders mounted low on opposite sides of the chassis. Each cell is accessible from below, and the layout distributes the battery mass across the chassis.
@@ -436,4 +448,4 @@ These six views show the current robot. The rear view shows the rear ToF sensor 
 
 # AI Use Declaration
 
-We used OpenAI Codex (GPT Sol) extensively and Antigravity, GitHub Copilot and Cline occasionally to extend our Open Challenge firmware, develop the Obstacle Challenge solution and tune camera frame rate with the robot connected. AI also helped build simulations, write tests, analyse logs, edit this README, estimate current draw, stabilise drone footage and create simulation visuals. AI use was limited to our laptops. The robot drove autonomously on its onboard firmware.
+We used several AI systems to support our work, primarily OpenAI Codex (GPT Sol), with occasional use of Antigravity, GitHub Copilot and Cline. They helped us extend our Open Challenge firmware, develop the Obstacle Challenge solution and tune the camera frame rate with the robot connected. They also helped us build simulations, write tests, analyse logs, edit this README, estimate current draw, stabilise drone footage and create simulation visuals. We used these tools from our laptops. The robot drove autonomously using its onboard firmware.

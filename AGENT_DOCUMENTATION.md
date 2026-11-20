@@ -88,8 +88,9 @@ record physical measurements, then complete the PDF/hardcopy checks in
 The supplied [revision 1 wiring PNG](img/diagrams/Wiring_Diagram_FE2026_v1.png)
 replaces the June drawing. The updated export shows motor controls and outputs
 on M2, the corrected voltmeter polarity and the current component labels.
-Rear I²C remains SDA on A3 and SCL on A4, matching M4 source. Verify the power
-rails, ground return and module terminals on the robot before the final export.
+Rear I²C remains SDA on A3 and SCL on A4, matching M4 source. The team confirmed
+the power wiring on the robot, including the Mini-360 output and loads, ground
+return, module terminals, voltmeter tap and motor supply.
 
 The team confirmed that each ToF uses a half STEMMA QT/Qwiic lead with
 jumpers directly to the GIGA. Separate ToF buses avoid startup address

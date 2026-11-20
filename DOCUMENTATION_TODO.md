@@ -18,7 +18,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [x] Document the internal M4-to-M7 OpenAMP/RPC link in the [README data-flow diagram](README.md#control-ownership-and-data-flow).
 - [x] Identify the Arducam GC2145, Mini-360 adjustable step-down module, generic 3.3 V to 5 V logic-level shifter and BerryBase SVM330-Y display. Retain the team's BOM quantities and project cost estimates.
 - [x] Check the updated wiring drawing for consistent M2 motor connections, voltmeter polarity, and labels for the switches, camera, ToFs, Mini-360 and generic level shifter (November 20).
-- [ ] Check the power wiring against the robot. Confirm the Mini-360 output voltage and loads, where `GND` and `GND 2` join, and whether the Mini-360 and level shifter symbols match the terminals on the installed modules. Verify the voltmeter tap and motor supply.
+- [x] Verify the power wiring against the robot, including the Mini-360 output and loads, ground return, module terminals, voltmeter tap and motor supply (team confirmation, November 20).
 - [ ] Recheck power budget by rail against the finished schematic and measure typical and peak battery and regulator currents if available. Existing current figures are planning estimates based on datasheet values and engineering allowances.
 - [x] Move the Bill of Materials before Assembly and update the README navigation (November 18).
 - [x] Replace the historical Open Challenge video and add the supplied Obstacle Challenge link and matching previews (November 18): Open `koMCLdpg0-I`, Obstacle `5dCMkFn-6TI`.
