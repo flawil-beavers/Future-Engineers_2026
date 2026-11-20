@@ -37,6 +37,30 @@ are documented in [VIDEO_VISUALIZATION.md](VIDEO_VISUALIZATION.md).
 | `evidence/parking_exit/` | Straight and full-lock top-down robot photographs used to define the swept footprint. |
 | `evidence/parking_exit_diagnostics/` | Immutable returned parking-exit logs and their run metadata. |
 
+## Sign recognition check
+
+Run from the repository root with Python and a C++17-capable `g++` on your `PATH`.
+
+```powershell
+python simulation/check_surprise_rule.py
+```
+
+This checks recognition against approved camera images and exercises the
+passing rules for modified signs. [Camera validation report](SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#pruefungen)
+
+## Route clearance check
+
+Use the same tools from the repository root. The first command generates the
+later-lap test cases. The second measures the clearance between the modelled
+chassis and wheels and the signs and inner wall.
+
+```powershell
+python simulation/check_later_laps.py
+python simulation/check_later_lap_physical_clearance.py
+```
+
+[Clearance study and model limits](LAP23_CLEARANCE_REVIEW_20261120.md#validation)
+
 ## Parking-exit model
 
 The parking-exit search uses the Ackermann measurements maintained in `CAD/`,

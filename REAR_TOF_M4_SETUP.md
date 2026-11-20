@@ -7,7 +7,11 @@ API as `get_tof_distance(TOF_REAR)`.
 
 ## Wiring
 
-Connect a Qwiic-to-pin cable as follows:
+Use one half of a cut four-pin STEMMA QT/Qwiic cable. Plug the connector into
+the rear ToF sensor and use jumper wires from the cut end directly to the GIGA.
+Follow the pin assignments below. The rear sensor has its own software I²C
+bus on M4. The README explains the shared-bus tests and why the three ToF buses
+and the BNO085 SPI connection are separate. [Sensor wiring rationale](README.md#wiring-and-signal-interfaces)
 
 | VL53L4CX | GIGA R1 |
 | --- | --- |

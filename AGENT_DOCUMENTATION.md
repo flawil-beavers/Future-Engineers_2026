@@ -89,3 +89,11 @@ The supplied [revision 1 wiring PNG](Electronics/Wiring_Diagram_FE2026_v1.png)
 replaces the June drawing. The corrected PNG shows rear I²C SDA on A3 and
 SCL on A4, matching M4 source. Reconcile the regulator and level-shifter
 labels with the BOM before the final documentation export.
+
+The team confirmed that each ToF uses a half STEMMA QT/Qwiic lead with
+jumpers directly to the GIGA. Separate ToF buses avoid startup address
+conflicts and soldered XSHUT leads. The shared IMU/ToF I²C trial gave
+unreliable heading readings, so the BNO085 uses SPI over separate jumpers.
+The [README wiring section](README.md#wiring-and-signal-interfaces) records
+the rationale, and the [rear setup guide](REAR_TOF_M4_SETUP.md#wiring) records
+the connection method. No new firmware or physical test.
