@@ -6,7 +6,7 @@ Complete the checklist after the hardware and competition software are frozen. B
 
 The canonical official links used for this checklist are recorded in the [WRO 2026 Rules Reference](WRO_2026_RULES.md).
 
-- [ ] Replace the June robot photographs with final front, rear, left, right, top and bottom views showing the rear ToF, final wiring, camera mount and chassis. The team will add the replacements later (confirmed November 18).
+- [x] Replace the June robot photographs with the supplied front, rear, left, right, top and bottom views of the current robot (November 20).
 - [x] Link the supplied 2026 team photo in the README (November 20). Public GitHub rendering remains part of the final repository link check below.
 - [ ] Remeasure mass after the rear-ToF addition; 670 g is the earlier recorded value. The team confirms unchanged dimensions (November 18). Confirm final height and reconcile the nominal 165 mm bay-sizing length with the measured 158/170 mm straight/steered extent before freezing the specification; retain the measured 98 mm wheelbase and 123 mm straight width separately from nominal route/exit constants.
 - [x] Add and link the supplied version 74 Fusion archive, printable `.3mf` project, MK4 Input Shaper binary G-code and PrusaSlicer preparation/toolpath screenshots; document how to open the project and adapt printer settings, plus printer, nozzle, material, layer height, infill, supports and estimates. Earlier CAD versions remain available in Git history (November 20).
@@ -15,9 +15,10 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Check the CAD and print assets against any subsequent physical changes before submitting the final documentation.
 - [x] Replace the June schematic with the supplied [revision 1 wiring diagram](img/diagrams/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
 - [x] Verify that the drawing's rear-ToF pin labels match the M4 firmware (A3 SDA, A4 SCL).
-- [ ] Annotate the diagram with the internal M4-to-M7 OpenAMP/RPC link.
+- [x] Document the internal M4-to-M7 OpenAMP/RPC link in the [README data-flow diagram](README.md#control-ownership-and-data-flow).
 - [x] Identify the Arducam GC2145, Mini-360 adjustable step-down module, generic 3.3 V to 5 V logic-level shifter and BerryBase SVM330-Y display. Retain the team's BOM quantities and project cost estimates.
-- [ ] Verify the Mini-360 output setting and loads, grounds, signal-shifter connections, voltmeter tap and motor supply on the actual robot. Revision 1 shows a 5 V servo rail and retains the LM2596S-5 and TXS0104ED labels. Reconcile those labels with the confirmed BOM.
+- [x] Check the updated wiring drawing for consistent M2 motor connections, voltmeter polarity, and labels for the switches, camera, ToFs, Mini-360 and generic level shifter (November 20).
+- [ ] Check the power wiring against the robot. Confirm the Mini-360 output voltage and loads, where `GND` and `GND 2` join, and whether the Mini-360 and level shifter symbols match the terminals on the installed modules. Verify the voltmeter tap and motor supply.
 - [ ] Recheck power budget by rail against the finished schematic and measure typical and peak battery and regulator currents if available. Existing current figures are planning estimates based on datasheet values and engineering allowances.
 - [x] Move the Bill of Materials before Assembly and update the README navigation (November 18).
 - [x] Replace the historical Open Challenge video and add the supplied Obstacle Challenge link and matching previews (November 18): Open `koMCLdpg0-I`, Obstacle `5dCMkFn-6TI`.
@@ -41,4 +42,4 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 
 November 18 README update: the team confirms the rear-ToF addition, unchanged dimensions and unchanged print settings (0.2 mm, no supports). The README reflects current full-run flags, measured parking geometry, modified-sign implementation and recorded validation limits.
 
-November 20 documentation update: the team confirmed v74 includes the rear-ToF mount. The linked `.3mf` contains 17 meshes with the saved plate and print settings. The README links the current CAD, team photo, challenge videos, revision 1 wiring diagram and engineering evidence. The June vehicle photos are identified as historical. PDF work remains deferred.
+November 20 documentation update: the team confirmed v74 includes the rear-ToF mount. The linked `.3mf` contains 17 meshes with the saved plate and print settings. The README links the current CAD, team photo, six current robot views, challenge videos, revision 1 wiring diagram and engineering evidence. PDF work remains deferred.

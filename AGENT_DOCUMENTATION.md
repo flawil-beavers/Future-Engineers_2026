@@ -86,9 +86,10 @@ record physical measurements, then complete the PDF/hardcopy checks in
 [DOCUMENTATION_TODO.md](DOCUMENTATION_TODO.md).
 
 The supplied [revision 1 wiring PNG](img/diagrams/Wiring_Diagram_FE2026_v1.png)
-replaces the June drawing. The corrected PNG shows rear I²C SDA on A3 and
-SCL on A4, matching M4 source. Reconcile the regulator and level-shifter
-labels with the BOM before the final documentation export.
+replaces the June drawing. The updated export shows motor controls and outputs
+on M2, the corrected voltmeter polarity and the current component labels.
+Rear I²C remains SDA on A3 and SCL on A4, matching M4 source. Verify the power
+rails, ground return and module terminals on the robot before the final export.
 
 The team confirmed that each ToF uses a half STEMMA QT/Qwiic lead with
 jumpers directly to the GIGA. Separate ToF buses avoid startup address
@@ -97,3 +98,5 @@ unreliable heading readings, so the BNO085 uses SPI over separate jumpers.
 The [README wiring section](README.md#wiring-and-signal-interfaces) records
 the rationale, and the [rear setup guide](REAR_TOF_M4_SETUP.md#wiring) records
 the connection method. No new firmware or physical test.
+
+The team supplied six current robot photos. The [README photo gallery](README.md#robot-photos) now shows the front, rear, left, right, top and bottom, including the rear ToF and both battery holders. Next record final measurements and include the new photos in the final PDF export.

@@ -25,7 +25,7 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 | Adafruit BNO085 | 1 | IMU for absolute heading measurement | 24.95 |
 | Adafruit VL53L4CX | 3 | Left, right and rear time-of-flight ranging | 59.70 |
 | Qwiic/STEMMA QT cables | 2 | Cut into pigtails for direct ToF-to-GIGA wiring | 23.10 |
-| Arducam GC2145 camera | 1 | On-board traffic-sign vision | ~30.00 |
+| Arducam B0462 camera (GC2145) | 1 | On-board traffic-sign vision | ~30.00 |
 | Pololu Dual MC33926 motor driver | 1 | Bidirectional drive control | ~25.00 |
 | Adjustable Mini-360 DC-DC step-down module | 1 | Voltage regulation | ~2.00 |
 | Generic 3.3 V to 5 V logic-level shifter | 1 | Signal-level translation | ~3.00 |
@@ -205,12 +205,13 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 
 | Function | Interface |
 | --- | --- |
-| Drive motor and encoder | Motor driver direction D5/D6 and PWM D7, quadrature encoder D3/D2 |
+| Drive motor and encoder | Motor driver channel M2, direction D5/D6 and PWM D7. Encoder A on D3 and B on D2. |
 | Steering servo signal | D4 |
 | BNO085 IMU | `SPI1` with chip select D10, interrupt A0 and reset A1 |
-| Left and right VL53L4CX | Separate M7 hardware I²C buses, `Wire` and `Wire2` |
+| Left VL53L4CX | M7 hardware I²C (`Wire`), SDA D20 and SCL D21 |
+| Right VL53L4CX | M7 hardware I²C (`Wire2`), SDA D9 and SCL D8 |
 | Rear VL53L4CX | M4 software I²C at 100 kHz, SDA A3 and SCL A4 |
-| Arducam GC2145 | GIGA camera connector, DCMI pixel input and I²C configuration |
+| Arducam B0462 (GC2145) | 20-pin GIGA camera connector, DCMI pixel input and I²C configuration |
 | Main power rocker (SW2) | Switches the positive battery lead |
 | Physical start/enable toggle (SW1) | A2, active HIGH |
 | Rear measurement transfer | On-chip OpenAMP/RPC, fixed-size frames with sequence and status |
@@ -423,11 +424,15 @@ Use the latest [main branch](https://github.com/flawil-beavers/Future-Engineers_
 
 # Robot Photos
 
-These six views document the June build before the rear sensor was added.
+These six views show the current robot. The rear view shows the rear ToF sensor below the main power switch, and the bottom view shows both battery holders.
 
-| ![Left](img/robot/PXL_20260617_185159148.MP.jpg) | ![Rear](img/robot/PXL_20260617_185207747.MP.jpg) | ![Right](img/robot/PXL_20260617_185218350.MP.jpg) |
-|---|---|---|
-| ![Front](img/robot/PXL_20260617_185228987.MP.jpg) | ![Top](img/robot/PXL_20260617_185256705.MP.jpg) | ![Bottom](img/robot/PXL_20260617_185318976.MP.jpg) |
+| Left | Rear | Right |
+| :---: | :---: | :---: |
+| ![Left side of the robot](img/robot/robot-left.jpg) | ![Rear of the robot with the rear ToF sensor](img/robot/robot-rear.jpg) | ![Right side of the robot with the voltage display](img/robot/robot-right.jpg) |
+
+| Front | Top | Bottom |
+| :---: | :---: | :---: |
+| ![Front of the robot with the camera](img/robot/robot-front.jpg) | ![Top of the robot with the controller and wiring](img/robot/robot-top.jpg) | ![Underside of the robot with both battery holders](img/robot/robot-bottom.jpg) |
 
 # AI Use Declaration
 
