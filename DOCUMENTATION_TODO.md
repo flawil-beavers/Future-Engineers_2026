@@ -46,7 +46,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
 - [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 22 rendered pages and decode the three QR codes from the PDF (November 20).
 - [ ] Print the required hardcopy for the World Final.
-- [ ] Scan the repository and both challenge-video QR codes from the final printed PDF. Verify the canonical repository URL, final video destinations and public access; confirm both video QR codes appear in their respective challenge subsections.
+- [x] Verify that the repository and both challenge-video QR codes scan correctly (team confirmation, November 21).
 
 November 18 README update: the team confirms the rear-ToF addition, unchanged dimensions and unchanged print settings (0.2 mm, no supports). The README reflects current full-run flags, measured parking geometry, modified-sign implementation and recorded validation limits.
 

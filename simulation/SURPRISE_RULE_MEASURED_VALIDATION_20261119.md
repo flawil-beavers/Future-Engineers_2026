@@ -1,19 +1,48 @@
-# Gemessene Sonderregel-Version vom 19. November 2026
+# Modified-sign camera calibration, 19 November 2026
 
-## Ergebnis und Aenderung
+## Results and changes
 
-Alle45 vom Nutzer freigegebenen Bilder aus der aktuellen Montage liefern jetzt die richtige sichtbare Farbe und Hoehenklasse50/100/150mm. Keine fehlende Zielkomponente, kein Fehler ueber30mm in der gemessenen Kameravorwaertsdistanz; groesster gemessener Fehler13.1mm. Die drei ausgeschlossenen Bilder bleiben ausgeschlossen. Die45 Bilder decken mittige stationaere Ziele350/500/700mm ab;100mm wurde nur500/700mm aufgenommen. Dies ist ein Offline-Nachweis an realen Bildern, keine Zuverlaessigkeitsgarantie waehrend Fahrt oder bei anderen Blickwinkeln.
+The revised calibration correctly identified the visible colour and height
+class in all **45 approved images** from the current camera mount. It found the
+target in every image, and the largest error in forward distance was **13.1 mm**.
+The images show centred, stationary signs at **350, 500 and 700 mm**. We tested
+50 mm and 150 mm signs at all three distances, and 100 mm signs at 500 and
+700 mm. These results describe recognition on the recorded images. Recognition
+in motion and at other viewing angles still needs physical validation.
 
-Ausgangsbefund mit alter Kalibrierung: nur11/45 richtige Klassen, siehe [unveraenderter Ausgangsbericht](CAMERA_HEIGHT_CAPTURE_REVIEW_20261119.md). Die urspruenglichen Bilder und Freigaben bleiben unter [Kameraevidenz](evidence/camera_diagnostics/README.md). Alle48 kompletten Rohbildtransfers wurden CRC/Footer-geprueft;192 Dateien stimmen mit SHA256 und Git-Index ueberein.
+The earlier calibration classified the height correctly in **11 of 45**
+images. We checked the CRC and footer on all 48 complete raw transfers. The
+three excluded images remain outside the validation set, and the 192 archived
+files matched their SHA-256 records and the Git index.
+[Initial review](CAMERA_HEIGHT_CAPTURE_REVIEW_20261119.md) · [Camera evidence and approvals](evidence/camera_diagnostics/README.md)
 
-- Bodenmodell der aktuellen Montage: Horizont94px, Skala22400mm*px; vertikale Brennweite259px. Gemessene abgetastete Bodenpunkte158/140/126px bei350/500/700mm. Eine gleich gewichtete1/Distanz-Ausgleichsrechnung ueber diese drei Stationen ergibt ungefaehr94.6px/22430mm*px. Die gerundete Wahl bleibt innerhalb der gemessenen Fehler. Der gemeinsame vertikale Pinhole-Abgleich der roten50/100/150mm-Aufstellungen liefert ungefaehr259px; GREEN bleibt ein unabhaengiger Farbvergleich. Modellfenster fuer Hoehen und bestehende HSV-Grenzen wurden nicht erweitert.
-- An zwei GREEN150-Aufnahmen war der Block mit einem gleichfarbigen Hintergrundstreifen verbunden. Die bereits gemessene untere Stammbreite/-mitte begrenzt jetzt die Kandidatengeometrie; Pixel werden mit unveraenderter HSV-Klassifikation nachgezaehlt. Die volle rohe Komponente bleibt fuer Belegung und Diagnose erhalten. Raumweite Komponenten, fehlende Hoehenmessung und duenne Linien erhalten dadurch keinen Freipass.
-- `rememberModifiedSign()` speichert die eine Sonderposition samt Hoehe. `visibleRed` bleibt die sichtbare Farbe; `seat.red` ist die urspruengliche wirksame Farbe fuer Karte, Umfahrung und spaetere Runden. Der bestehende Pfad wird erst nach dieser Festlegung aufgebaut. Erste tatsaechlich angetroffene Saeule bleibt geschuetzt; ein spaeterer Block in der Startgeraden ist laut Regel moeglich. Kein zweiter Sonderblock und kein erneutes Umdrehen der Farbe.
-- Drei frische Frames fuer einen Sonderblock, normale Zwei-Frame-Bestaetigung, bestehendes Ablauf-/Widerspruchsverhalten und Kartenfreeze in Runde2/3 bleiben bestehen. Zwei freigegebene GREEN50-Bildfolgen enthalten nur zwei Bilder: diese bestaetigen korrekterweise noch keinen Sonderblock.
+- **Distance and height.** We measured the sign's base at image rows 158, 140
+  and 126 px for distances of 350, 500 and 700 mm. An equally weighted fit
+  against inverse distance gave a horizon of about 94.6 px and a scale of
+  22,430 mm·px. The firmware uses 94 px and 22,400 mm·px. The pinhole fit to the
+  red signs gave a vertical focal length of about 259 px. The green signs
+  provided an independent colour comparison. We retained the height windows
+  and HSV thresholds.
+- **Green signs against a green background.** In two images of the 150 mm green
+  sign, the target joined a same-colour background strip. We use the measured
+  width and centre of the lower part of the sign to constrain the candidate,
+  then recount its pixels with the existing HSV classifier. We keep the full
+  raw component for occupancy and diagnostics. Candidates still need plausible
+  geometry and a valid height measurement.
+- **Modified-sign map entry.** `rememberModifiedSign()` records the one accepted
+  modified position and its height. The map retains the observed colour in
+  `visibleRed` and uses the original colour in `seat.red` to choose the passing
+  side. The first sign encountered remains protected. A later sign on the
+  starting straight can be eligible. The planner builds the route from the
+  stored original colour and reuses it on later laps.
+- **Confirmation.** We require three fresh matching frames for a modified sign
+  and normally two for a standard sign. The existing expiry, disagreement
+  and later-lap map settings still apply. Two approved sequences of a 50 mm
+  green sign contained only two frames and correctly remained unconfirmed.
 
-## Aktuelle Bildmessungen
+## Image measurements
 
-| Farbe | Hoehe mm | Abstand mm | Bilder korrekt | Modellhoehe mm | Modelldistanz mm |
+| Colour | Sign height (mm) | Measured distance (mm) | Correct images | Estimated height (mm) | Estimated distance (mm) |
 | --- | ---: | ---: | ---: | --- | --- |
 | GREEN | 50 | 350 | 2 | 51.4..51.4 | 350.0..350.0 |
 | GREEN | 50 | 500 | 2 | 47.1..48.8 | 487.0..509.1 |
@@ -32,32 +61,56 @@ Ausgangsbefund mit alter Kalibrierung: nur11/45 richtige Klassen, siehe [unverae
 | RED | 150 | 500 | 3 | 143.5..143.5 | 487.0..487.0 |
 | RED | 150 | 700 | 3 | 143.4..143.4 | 700.0..700.0 |
 
-## Pruefungen
+## Verification
 
-- `simulation/check_surprise_rule.py`:648 synthetische Projektionen,48 Zuordnungen CW/CCW,24 Regel-/Fehlerfaelle;45 hashgepruefte aktuelle reale Bilder mit Hoehe/Farbe/Abstand/Zielposition;16 echte Bildfolgen pruefen Bestaetigung und gespeicherte Originalfarbe bis Runde3. Alle bestanden. Reale Zweiframe-Sonderfolgen bleiben erwartungsgemaess unbestaetigt.
-- `simulation/check_far_obstacle_acquisition.py`:52 Faelle bestanden, inklusive Kartenfreeze und Umfahrungsdispatch.
-- `simulation/check_green_seat_visibility.py`: synthetische Belegung/Helligkeit/Hintergrund-/Bodenlinien, Fussgate und Negativkontrolle bestanden. Sein fester Archiv-Abfragepunkt ist kein Nachweis fuer alle Sonderhoehen.
-- `simulation/check_parking_seat_foot.py`: historische Pixel unter ihrer Oktober-Kalibrierung plus aktuelle geometrische Fussgates bestanden. Historische Pixelkoordinaten wurden nicht faelschlich als neue Montage behandelt.
-- `simulation/check_later_laps.py`:2807 Routen-/Zustandsfaelle bestanden.
-- `simulation/check_lap_handoff.py`: alle sechs Richtungs-/Geschwindigkeitsfaelle bestanden, kein Zielpunktsprung beim Uebergang.
-- `scripts/test-camera-image.py`5 und `scripts/test-camera-pillar-support.py`6 Tests bestanden.
+| Check | Recorded result |
+| --- | --- |
+| `simulation/check_surprise_rule.py` | Passed 648 synthetic projections, 48 CW/CCW association cases, 24 rule and error cases, 45 hash-verified images and 16 recorded image sequences. The sequences check confirmation and reuse of the original colour through lap 3. The two-frame modified-sign sequences remained unconfirmed. |
+| `simulation/check_far_obstacle_acquisition.py` | Passed 52 cases, including map freeze and selection of the passing manoeuvre. |
+| `simulation/check_green_seat_visibility.py` | Passed synthetic occupancy, brightness, background and floor-line cases, base validation and the negative control. Its fixed archived query point covers a limited set of sign heights. |
+| `simulation/check_parking_seat_foot.py` | Passed the historical pixel cases using their October calibration and the current geometry checks for the sign base. |
+| `simulation/check_later_laps.py` | Passed 2,807 route and state cases. |
+| `simulation/check_lap_handoff.py` | Passed all six direction and speed cases without an initial steering target jump. |
+| `scripts/test-camera-image.py` and `scripts/test-camera-pillar-support.py` | Passed five and six tests, respectively. |
 
-IDE-PlatformIO `giga_r1_m7`: SUCCESS; RAM484896/523624B, Flash597432/786432B; Firmware600984B, SHA256 `059f6fb03f35efc3f11c10cfcb8c17e32dd08d22234a14d4dfacdcef51bfc92a`. M4 wird von diesen Aenderungen nicht verwendet und wurde nicht gebaut. Keine Uebertragung auf den Roboter. Bestehende Serial-/Legacy-Warnungen bleiben.
+The IDE-managed PlatformIO build for `giga_r1_m7` succeeded. It used
+484,896 of 523,624 bytes of RAM and 597,432 of 786,432 bytes of flash. The
+600,984-byte binary had SHA-256
+`059f6fb03f35efc3f11c10cfcb8c17e32dd08d22234a14d4dfacdcef51bfc92a`.
+Existing Serial and legacy warnings remained. M4 and robot upload were
+outside this build.
 
-## Zusammenfuehrung und naechster physischer Nachweis
+## Physical follow-up
 
-Vier Remote-Commits bis `caa2709` heruntergeladen und per Fast-forward zusammengefuehrt. Sie betreffen Visualisierung und Dokumentationshistorie. Den einzigen Konflikt beim Wiederanwenden lokaler Aenderungen im Handoff durch Beibehalten der neuen knappen Remote-Struktur und Archivierung des lokalen Originaltexts geloest. Keine Remote-Fahrcodeaenderung ging verloren. Lokale Mess-/Implementierungsaenderungen werden darueber einmalig committed; kein Push beauftragt.
+The camera model affects every distance and sign-position estimate made from
+the image. At this revision, the next validation step was to use the same
+mount during ordinary clockwise and anticlockwise runs. The test plan called
+for a standard first sign and one modified 50 or 150 mm sign, with the declared
+participation matching the firmware setting. Check the expected original
+colour and passing side on all three laps. Save the complete original logs and
+look for `[SURPRISE] revision=20261119_measured_height` and exactly one
+`locked seat/height/visible/original` record.
 
-Routen, Geschwindigkeit, Lenkparameter und Einparksteuerung wurden nicht angepasst. Die neue Kamerageometrie wirkt allerdings auf alle Kameradistanz-/Platzprojektionen; daher muss sie mit unveraenderter jetziger Montage bei normalen CW-/CCW-Fahrten geprueft werden. Teilnahme vor dem Start passend zur weiterhin aktivierten Sonderregel deklarieren. M7 normal selbst hochladen; erster normaler Block und jeweils ein50/150mm-Sonderblock pro Lauf, erwartete Originalfarbe und korrekte Seite auf allen drei Runden beobachten. Neue komplette Logs zuerst sichern; darin `[SURPRISE] revision=20261119_measured_height` und genau eine `locked seat/height/visible/original`-Zeile pruefen.
+This camera test covers stationary recognition. The separate parking limit at
+a 232.5 mm gap remains documented in the engineering handoff. Use normal
+saved runs for follow-up. [Engineering handoff](../AGENT_DOCUMENTATION.md)
 
-Bekannte separate Park-Limitation232.5mm bleibt im aktiven Handoff dokumentiert. Kein stehender Kameratest beweist vollstaendiges Parken oder fehlerfreie dynamische Erkennung. Keine weiteren Sonderbewegungen fuer Diagnose erforderlich.
+The original review checked the official season page, the 9 November surprise
+rule and the Q&A on 19 November. It recorded no newer clarification at that
+time. [WRO season page](https://wro-association.org/competition/2026-season/) · [Surprise Rule](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf) · [WRO Q&A](https://wro-association.org/competition/questions-answers/)
 
-Regeln am19. November erneut ueber die [offizielle Saisonseite](https://wro-association.org/competition/2026-season/), die [Sonderregel vom9. November](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf) und [offizielle Q&A](https://wro-association.org/competition/questions-answers/) geprueft; keine neue Sonderregel-Klarstellung gefunden.
+## Revision record
 
-Quellidentitaet (SHA256):
+The local branch fast-forwarded through `caa2709`, incorporating four remote
+commits for visualisation and documentation history. The handoff conflict was
+resolved by keeping the remote summary structure and archiving the original
+local text. The camera revision retained the route, speed, steering and parking
+settings.
 
-- `src/vision.cpp`: `89615bf7c65450de85e27e3d2c413c0116a3f75894cd6c374f3d4384be04d7cb`
-- `src/obstacle_path.cpp`: `39476fa7543f6a6e4c4c34e3649a4eea09a13b58a3826979a79f0923bac2778f`
-- `include/config.h`: `9bd289ba8a01aec77b0f2186bd6b1ac002b013087ac719a4080174378dfd71fb`
-- `include/vision.h`: `c112c3ee7596627cf4d6f4921f8f0dc878572b1b278568ed00503d9f25b5f180`
-- `include/obstacle_sign_height.h`: `e81121e081f852ee4baa0a1ccc7cc6f8686f02524b076846020fe9b0b71062f5`
+| Source file | SHA-256 |
+| --- | --- |
+| `src/vision.cpp` | `89615bf7c65450de85e27e3d2c413c0116a3f75894cd6c374f3d4384be04d7cb` |
+| `src/obstacle_path.cpp` | `39476fa7543f6a6e4c4c34e3649a4eea09a13b58a3826979a79f0923bac2778f` |
+| `include/config.h` | `9bd289ba8a01aec77b0f2186bd6b1ac002b013087ac719a4080174378dfd71fb` |
+| `include/vision.h` | `c112c3ee7596627cf4d6f4921f8f0dc878572b1b278568ed00503d9f25b5f180` |
+| `include/obstacle_sign_height.h` | `e81121e081f852ee4baa0a1ccc7cc6f8686f02524b076846020fe9b0b71062f5` |

@@ -1,10 +1,21 @@
-# CAD Folder
+# CAD and steering calibration
 
-This folder contains the editable Fusion 360 model, the PrusaSlicer project, the prepared print job, the scripts used to characterize the Ackermann steering geometry, and the generated reference outputs.
+We use version 74 of the CAD model for the current robot, including the rear
+ToF mount. Use the print files to reproduce the parts and the calibration
+scripts to compare the steering geometry with measurements from the car.
 
 ## Current design and printing
 
-For printing, download the [version 74 PrusaSlicer project](Car_v74.3mf). It contains 17 part meshes, their build-plate arrangement and the saved slicer settings. Open it **as a project** in PrusaSlicer and select the profile for your printer, nozzle and material. Keep the saved part orientations and set **Supports** to **None** when reslicing. All 17 parts print without supports in those orientations. Review the toolpaths, then export the print job. The reference settings are MK4 Input Shaper, 0.4 mm nozzle, PLA, 0.2 mm layers, 15% infill and no brim.
+Open the [version 74 PrusaSlicer project](Car_v74.3mf) **as a project** to load
+all 17 meshes and their plate arrangement. Select the profiles for your
+printer, nozzle and material. Keep the saved orientations and select
+**Supports → None** when reslicing. The saved profile has automatic supports
+disabled and enables supports for enforcers only. All 17 parts can print
+without supports in their saved orientations. Inspect the sliced toolpaths
+before exporting your print job.
+
+The reference settings are MK4 Input Shaper, a 0.4 mm nozzle, PLA, 0.2 mm
+layers, 15% infill and no brim.
 
 The current supplied model is [Car version 74](Car_v74.f3z), exported on November 20, 2026. The archive includes the root assembly and its linked second-stage design. Import the `.f3z` archive into Autodesk Fusion to edit the assembly, inspect the joints or export meshes for slicing.
 
@@ -80,17 +91,17 @@ same swept-envelope and tolerance process.
 ### What it does
 
 1. Loads `ackermann_data.csv` (from the current user's home directory or the current directory).
-2. Normalizes the wheel angles from `[0, 360]` into the standard `[-180, +180]` range.
+2. Wraps the wheel angles into the range from −180° inclusive to +180° exclusive.
 3. Fits a **3rd-order polynomial** to the left and right wheel angle data:
    `Angle_Wheel = a·x³ + b·x² + c·x + d`
 4. Plots the data and fitted curves:
    - Servo angle vs. wheel angles (with fits)
    - Servo angle vs. pin-slot slide distance
 5. Saves the figure as `ackermann_analysis.png` in the same folder as the script.
-6. Generates `ackermann_lut.h` — a C++ header for the PlatformIO firmware containing:
-   - The fitted polynomial coefficients
-   - A high-performance **lookup table (LUT)** with linear interpolation
-   - Helper functions `getLeftWheelAngle()`, `getRightWheelAngle()`, `getLeftWheelAngleLUT()`, and `getRightWheelAngleLUT()`
+6. Generates [`ackermann_lut.h`](ackermann_lut.h) with the two cubic fits,
+   wheel-angle tables and a helper to interpolate the left wheel angle.
+   [The firmware wrapper](../include/ackermann_kinematics.h) adds right-wheel
+   interpolation and converts between servo command and turn radius.
 
 ### Requirements
 
@@ -103,8 +114,11 @@ same swept-envelope and tolerance process.
 
 1. Import `Car_v74.f3z` into Autodesk Fusion and open the editable assembly.
 2. Run `AckermannExporter.py` from the *Scripts and Add-Ins* dialog and enter the desired sweep angle.
-3. Run `analyze_ackermann.py` to generate the plot and the C++ header:
+3. From the `CAD/` directory, run `analyze_ackermann.py` to regenerate the
+   plot and the C++ header.
    ```bash
    python analyze_ackermann.py
    ```
-4. In the current case, the firmware does **not** yet use `ackermann_lut.h`. The robot drives the steering servo directly by command angle and uses its own turn-radius calibration (see `calibration.cpp`, which fits the Ackermann `K` factor). Use the generated `ackermann_analysis.png` to verify the steering geometry, and treat `ackermann_lut.h` as a reference for the wheel-angle vs. servo-angle relationship. If you later want the firmware to consume this header, copy `ackermann_lut.h` into `include/` and call `Ackermann::getLeftWheelAngle()` / `Ackermann::getRightWheelAngle()` (or the LUT variants) — but that integration is not currently part of the firmware.
+4. Use [the plot](ackermann_analysis.png) to check the steering geometry.
+   Compare the model's turn-radius predictions with the full-circle
+   measurements from the robot. [Measured turning radii](ACKERMANN_KINEMATICS_DOCUMENTATION.md#turning-radius-comparison)

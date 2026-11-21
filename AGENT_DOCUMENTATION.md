@@ -38,15 +38,26 @@ The first-lap horizon now permits checked colour acquisition through a corner ou
 
 Final IDE-managed M7 build SUCCESS: RAM452176/523624B, flash601872/786432B; firmware.bin605424B SHA256`bd1d75611c2e50cb15df5a63f126d29d20fefdd43ab0856b5e90c406e7f9d597`. M4 unchanged/not built. Existing Serial macro and unused-helper warnings remain. No robot upload/movement or extra commit.
 
-## 2026-11-20: Supporting documentation proofreading
+## 2026-11-21: Supporting documentation proofreading
+
+Reviewed the files linked from the World Final README. The [Ackermann
+report](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md#turning-radius-comparison)
+checks the original circle log against the current CAD-based radius function.
+The 98 mm physical wheelbase and 127 mm model parameter serve different
+calculations. The 16.15 mm right-turn RMSE belongs to the historical
+servo-command fit. The historical CAD table gives 2.56% mean absolute
+relative error over its eight entries from 15° to 40°.
 
 The [rear ToF guide](REAR_TOF_M4_SETUP.md#parking-position-configuration)
-now matches the current controller's 60 mm/s correction, 500 ms settling
-period, two discarded frames and one retry for a remaining error up to
-15 mm. The CAD guide, documentation checklist, simulation guide and two
-validation reports have first-pass wording edits. Next, confirm the language
-for the German guides and reports, then continue with the calibration and
-evidence references in [the proofreading checklist](PROOFREADING_CHECKLIST.md).
+records the current correction and retry settings and distinguishes the
+40 mm exit-model rear extent from the 35 mm measured final-parking contour.
+Translated the camera validation report and run inspector guide into English
+at the team's request and updated the camera report anchors. Verified local
+README references, the 28 linked images, CAD archive integrity and the four
+CW evidence hashes. The inspector's artwork, parser and app tests passed.
+Next, the team proofreads the supporting documents using the
+[proofreading checklist](PROOFREADING_CHECKLIST.md). Signed-out video
+playback was unavailable for independent verification in this pass.
 
 ## 2026-11-18: README source review
 
@@ -114,5 +125,6 @@ The team confirmed 680 g mass, 115 mm height and a 237.5 mm target parking
 gap. The firmware's initial gap estimate remains 247.5 mm. Regenerated the
 22-page journal with all six current robot photos. The print build now renders
 the Mermaid flowcharts and generates QR images with OpenCV. All three codes
-decoded from the rendered PDF. Next merge the documentation into `main`,
-verify the public links and scan the QR codes from the printed copy.
+decoded from the rendered PDF, and the team confirmed on November 21 that all
+three scan correctly. Next merge the documentation into `main`, verify the
+public links and print the journal.

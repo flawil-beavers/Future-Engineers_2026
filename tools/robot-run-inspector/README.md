@@ -1,241 +1,166 @@
 # Robot Run Inspector
 
-Eigenständiges Offline-Programm für Roboterlogs. Keine Installation, kein
-Python, kein Server und keine Internetverbindung erforderlich.
+Open a saved robot log in your browser to review the run, compare the estimated
+path with the recorded plan and save your physical observations. The inspector
+works offline in a current version of Edge, Chrome or Firefox.
 
-## Start
+## Open and review a run
 
-`Start Robot Run Inspector.cmd` oder `Robot Run Inspector.html` doppelklicken.
-In einem aktuellen Edge-, Chrome- oder Firefox-Browser öffnen. Den gesamten
-Ordner auf den Wettbewerbslaptop kopieren; die HTML-Datei funktioniert auch
-allein. Vor der Abreise bei ausgeschaltetem WLAN mit einem echten Log testen.
+1. Double-click `Start Robot Run Inspector.cmd` or open
+   `Robot Run Inspector.html` in your browser. The HTML file is self-contained.
+2. Choose the original TXT file from the USB drive or drag it into the window.
+   If the file contains multiple `[OC] New obstacle run` markers, choose the
+   run under **Laufabschnitt**.
+3. Review the findings, sensor summary and flagged events. Click a line button
+   to see the original log around that event. You can also search the log or
+   enter a line number directly.
+4. Use the full-run map to see where events occurred. Use **Spur** to inspect
+   an individual trace and compare plan and estimated motion, where both are
+   recorded.
+5. Under **Physische Beobachtung**, record the layout, battery, any contact or
+   intervention, the actual finish position and the video filename.
 
-1. Originales TXT-Log vom USB-Stick auswählen oder ins Fenster ziehen.
-2. Bei mehreren expliziten `[OC] New obstacle run`-Markern den Abschnitt wählen.
-3. Befund, Sensorübersicht und Auffälligkeiten prüfen. Zeilenbuttons öffnen
-   den Originalkontext. Logsuche und direkte Zeilenauswahl sind verfügbar.
-4. Soll-/Istspuren einzeln auswählen. Quellen, Runden und lokale/Feldrahmen bleiben getrennt. Violett zeigt vorhandene Sollreferenzen, Grün die Roboterschätzung; Punkte öffnen den Originalkontext.
-5. Physische Beobachtungen und Video-Dateinamen ergänzen.
-6. HTML-Bericht oder JSON speichern; Drucken ermöglicht die PDF-Ausgabe.
+You can copy the folder to the competition laptop and check it with a real log
+while Wi-Fi is off. Opening a log requires no connection to the robot.
 
-Der HTML-Bericht enthält den ausgewählten Abschnitt und alle seine Fahrspuren.
-JSON enthält alle Abschnitte und die Originalzeilen. Downloads werden im vom
-Browser gewählten Ordner gespeichert. Für Repository-Arbeit Berichte nach
-`local_workspace/robot-run-inspector/` verschieben; Rohlogs separat unverändert
-nach der Evidenz-Anleitung in `AGENTS.md` archivieren. Ein Bericht ist keine
-Evidenzarchivierung. Beobachtungen bleiben bis zum JSON-Export nur im Arbeitsspeicher. Zum Wiederladen zuerst dasselbe Original-Log öffnen, dann den JSON-Bericht unter „Physische Beobachtung“ auswählen. SHA-256, Dateigrösse und Abschnittsgrenzen müssen übereinstimmen; die Diagnose wird weiterhin aus dem Original berechnet. Ohne verfügbaren Originalhash ist die Wiederherstellung gesperrt.
+## Read the map and timings
 
-## Unterstützte Daten
+The full-run view shows the field and a detail of the parking exit, route
+connection and final parking. A thick solid line shows the estimated drive.
+A thin dark dashed line shows the selected accepted plan. Purple dotted lines
+show logged before-and-after pose corrections in field coordinates. Grey
+points show isolated discovery positions. Gaps over two seconds, timestamp
+resets, changes of coordinate frame and explicit pose corrections break the
+trace. Local positions from the initial rear-gap adjustment are available in
+the individual trace.
 
-- Build-Kennungen aus `build=` (Modul-Builds, kein Firmware-Binärnachweis).
-- Explizite CW/CCW- und Completed-lap-Marker; keine Ableitung aus Dateinamen.
-- Gyro-Sensor-Timeouts, Stream-Neustarts und getrennte Hauptschleifenpausen.
-- Sicherheits-/Testhalte, Park-/Corner-Abbrüche, Park-Endprüfung, Schlupfindikatoren.
-- Abgelaufene Hindernis-Beobachtungshalte, verworfene Routenanschlüsse und
-  Anzahl/Maximalbetrag expliziter PARK_DIAG-Posekorrekturen.
-- Getrennte Zähler/Befunde für Gesamtlog-Überlauf und PARK_DIAG overflow/truncated-Diagnoselimits.
-- Positionen aus PARK_DIAG, CONNECTOR_TRACK, LATER_TRACK, DISCOVERY_TRACE und
-  FINAL_PARK_TRACE. Gleicher Massstab beider Achsen; geschätzte Feldansicht, kein Kollisionsnachweis.
-- Neue ToF-Datensätze aus PARK_DIAG v2 sowie seitliche FINAL_PARK_TRACE-Werte.
-- SHA-256 der unveränderten importierten Dateibytes, wenn der Browser lokale
-  Web-Crypto unterstützt. Sonst wird der fehlende Hash ausdrücklich angezeigt.
+- **Runde** selects all laps and parking, one lap, or **Parken / ohne Runde**.
+  The connector belongs to lap 1. Parking stays in the parking selection even
+  when a record still carries the last lap number. Corrections follow their
+  logged phase.
+- **Spuren** selects the plan, the estimated drive or both.
+- **FE-Spielfeld** toggles the official mat artwork. The nominal walls,
+  confirmed signs and known parking boundaries remain visible.
+- **Planversion** appears when several route revisions are available. **Letzter
+  Plan in Auswahl** uses the route active at the last field-position record
+  in the selection. You can pick an earlier logged revision to compare it
+  with the same drive. The dashed trace shows a single selected revision.
 
-## Grenzen
+Sign markers come from confirmed map, avoidance or stored start-position
+records in the selected run. Labels show the colour and position index, for
+example R or G followed by a number. Icons mark nominal centres using
+100 mm lateral offsets and 500 mm station spacing. They can be drawn when the
+travel direction is known. The map reflects what the robot recorded, and the
+icons use a fixed size. Magenta parking boundaries require both logged
+`fixed_line_x` and `gap_mm` values.
 
-Keine Roboterverbindung, kein Upload und keine zusätzlichen Fahrbewegungen.
-Der Inspector selbst verändert keine Firmware und erzeugt keine Roboterlogs.
-Keine Bildauswertung, Spannungsmessung oder automatische Ursachengarantie.
-Ein Software-Containment-Ergebnis bestätigt nicht die tatsächliche Parkposition.
-Fehlende Fehler-/Ergebnisdaten bedeuten unbekannt, nicht erfolgreich.
-Ein vollständiges Original kann nicht allein aus dem Dateiinhalt bestätigt
-werden. Dateien mit `excerpt` im Namen werden zusätzlich als Ausschnitt markiert.
-Die Diagnoseaufzeichnung kann begrenzt sein, während das restliche Log weitergeht.
-Bei zusammengefügten Logs ohne eindeutige Laufstartmarker ist keine sichere
-Lauftrennung möglich; mehrere PARK_DIAG_CONFIG-Marker werden gemeldet.
-Zeitangaben gelten nur für erfasste Datensätze, nicht als vollständige Laufdauer.
-ToF-Statistiken sind Beobachtungswerte, keine Aussage über Hardwaregesundheit.
-Dateien bis 20 MB; UTF-8/ASCII-Text, Binärdaten werden abgewiesen.
+The inspector reads run and lap times from `RUN_START`, `RUN_LAP` and
+`RUN_END`. Total time includes observation holds, sensor pauses, braking and
+final parking. If a complete run lacks a start or a confirmed finish, the
+inspector shows the observed time span and leaves the completion time
+unknown. An interrupted run or excerpt cannot establish completion.
+[Run telemetry](../../simulation/RUN_TELEMETRY.md)
 
-Alle Oberflächenressourcen sind eingebettet; die Content Security Policy
-verbietet Netzwerkverbindungen. Dateiinhalt wird als Text behandelt.
+## Compare an individual trace
 
-## Entwicklerprüfung
+The individual view keeps each source, lap and coordinate frame separate.
+Purple shows a recorded reference, green shows the estimated path, and yellow
+shows steering targets ahead of the robot. Click a point to open its log
+context. Both axes use the same scale.
 
-Mit Node.js: `node tools/robot-run-inspector/test-inspector.cjs` aus dem
-Repository-Root. Der Parser wird direkt aus der gelieferten HTML-Datei geprüft,
-einschliesslich historischer Fehlerlogs und synthetischer Grenzfälle.
-`node tools/robot-run-inspector/test-app.cjs` prüft Import, Abschnittswechsel,
-Suche, Zeilensprung und Exporte mit einem minimalen DOM-Testadapter. Dies ist
-keine visuelle Browserprüfung.
+| Log data | What the comparison measures |
+| --- | --- |
+| `PARK_DIAG` v2 | The nominal trace integrates requested curvature using the actual encoder travel. The inspector compares it with the estimated pose in the same record and reports mean, RMS, maximum, X/Y difference and wrapped heading difference. It separates the local start from each field rebase. |
+| `CONNECTOR_POINT` and `CONNECTOR_TRACK` | The inspector matches each recorded position to the nearest eligible segment of the associated plan snapshot. It uses projections that fall within a recorded segment and respects missing indices and plan changes. The nearest segment on a loop may belong to a different point in time. |
+| `LATER_TRACK` and other target records | The target is the point ahead used for steering. Its distance from the robot is a lookahead distance. A full path comparison requires a recorded plan or comparable reference. |
 
-## Soll-/Istvergleich (Version 1.1)
+Red links show comparison distances. The table lists the 20 largest.
+**Abweichungen als CSV speichern** exports every comparable point in the
+selected trace. The chart draws up to 400 clickable points and 120 distance
+markers. The statistics and CSV use the complete comparable set.
 
-- PARK_DIAG v2: `pose` und `nominal` desselben Datensatzes werden überlagert. Mittelwert, RMS, Maximum, ΔX/ΔY und gewickelte Winkelabweichung werden berechnet. Die nominale Spur integriert Sollkrümmung über den tatsächlichen Encoderweg; sie ist kein unabhängiger zeitbasierter Plan. Lokaler Start und jedes Feld-Rebase sind getrennte Spuren. Korrekturen/fehlende Positionen unterbrechen Linien.
-- CONNECTOR_POINT: zusammenhängende connector/route-Wegpunkte des jeweiligen Snapshots bilden die violette Referenz. Pro CONNECTOR_TRACK-Position wird der kürzeste Abstand zu einem protokollierten Segment berechnet, dessen orthogonale Projektion innerhalb des Segments liegt. Keine Extrapolation über Enden, Indexlücken oder Planwechsel. Ausschnitte sind keine vollständige Routenkarte; bei Schleifen ist die räumlich nächste Stelle nicht zwingend die zeitlich richtige.
-- LATER_TRACK und weitere Spuren: vorausliegende `target`- bzw. `tx/ty`-Lenkziele erscheinen gelb. Ihr Abstand ist kein synchroner Positionsfehler. Fehlt eine vergleichbare Sollreferenz, wird keine Abweichung erfunden. Insbesondere liefern spätere Runden und FINAL_PARK_TRACE allein keine vollständige Sollbahn.
-- Rote Verbindungen zeigen Vergleichsabstände. Die Tabelle zeigt die 20 grössten; CSV exportiert alle vergleichbaren Datensätze der gewählten Spur. HTML-Berichte enthalten ebenfalls Overlays und Kennzahlen für alle Spuren des Abschnitts.
-- Bis zu 400 anklickbare Positionspunkte und 120 Abstandsmarkierungen halten die Grafik übersichtlich. Kennzahlen/CSV nutzen alle vergleichbaren Datensätze. Kein Vergleich ist ein externer Nachweis tatsächlicher Bewegung oder Genauigkeit.
+Accepted final-parking scans and explicitly applied initial wall corrections
+are counted and break the estimated trace. When present, the `cs=` sequence
+number identifies each applied nonzero wall correction, including repeated
+corrections of the same size. In older records the viewer uses changes in the
+reported value, which leaves identical repeated corrections ambiguous. A
+rejected scan is shown as an event. A correction in a local or unknown frame
+stays out of the field view. When both formats describe a field correction,
+the viewer deduplicates events within 10 ms and 0.15 mm of coordinate rounding.
 
-Der Inspector läuft auf dem Laptop; für seine Verwendung ist kein Firmware-Upload nötig.
+## Save and reopen your review
 
-## Korrekturzuordnung (Version 1.2)
+| Control | What it saves |
+| --- | --- |
+| **HTML-Bericht speichern** | The selected run, its timings, all its individual traces and the current full-run map selection. |
+| **JSON speichern** | All run sections, original lines and your observations so you can restore the review later. |
+| **Drucken / PDF** | The browser print view. Select your printer or save as PDF. |
+| **SVG speichern** | The selected field view with your current lap, trace, plan and artwork settings. |
 
-Akzeptierte FINAL PARK SCAN-Registrierungen und explizite anfängliche Wandkorrekturen werden gezählt und unterbrechen die Istspur. Abgelehnte Scans bleiben Ereignisse ohne angewandte Korrektur.
+The browser saves files in its configured download location. Observations
+stay in memory until you export JSON. To recover them, first open the same
+original log and then choose **Beobachtungen aus JSON wieder laden** under
+**Physische Beobachtung**. The original's SHA-256, byte count and run section
+bounds must match. The browser needs local Web Crypto support to calculate the
+hash. The inspector recalculates its findings from the original on every import.
 
-Neue LATER_TRACK/FINAL_PARK_TRACE-Datensätze können ein kompaktes `cs=` enthalten: Die laufende Korrektur-ID ändert sich nur bei einer tatsächlich angewandten nichtnulligen ToF-/Wandkorrektur. Ein gespeicherter letzter Korrekturwert zerlegt die Spur dadurch nicht wiederholt; auch zwei gleich grosse neue Korrekturen bleiben unterscheidbar. Aufzeichnungsrate und Datensatzlimits ändern sich nicht. Höchstens 14 zusätzliche ASCII-Bytes pro vorhandener Zeile, also 6.160 Bytes bei den kombinierten Limits von 200 und 240 Datensätzen; kein grösserer RAM-Logpuffer.
+For work in this repository, keep generated reports under
+`local_workspace/robot-run-inspector/`. Archive the original text separately,
+byte for byte. [Run evidence index](../../simulation/evidence/parking_exit_diagnostics/README.md) · [Evidence instructions](../../AGENTS.md)
 
-Alte Logs bleiben lesbar. Ohne Ereignis-ID erkennt der Inspector Wertänderungen, weist aber ausdrücklich darauf hin, dass identische wiederholte Werte nicht eindeutig zugeordnet werden können.
-## Gesamtlauf mit Pfosten (Version 1.1)
+## What the log can establish
 
-Nach dem TXT-Import zeigt die neue Ansicht das gesamte Feld und ein Detail
-für Ausparken, Anschluss und Endparken. Die bestehende Einzelspur-Auswahl bleibt
-verfügbar. Farben trennen die Diagnosephasen und Runden; graue Punkte sind
-vereinzelte Erkundungspositionen. Anschlusspläne sind gestrichelt, Scan-Endpunkte
-und Posekorrekturen punktiert. Zeitlücken über 2 Sekunden, Zeitrücksprünge und
-explizite Park-Posekorrekturen werden nicht als durchgehende Fahrt verbunden.
-Die lokale hintere Positionierung vor dem Feldreset gehört nicht zur Feldkarte.
+The inspector reads explicit direction and completed-lap markers and
+`build=` identifiers reported by individual modules. It flags gyro timeouts,
+stream restarts, main-loop pauses, test and safety stops, parking outcomes,
+corner aborts, suspected slip, observation timeouts, rejected connections
+and logged pose corrections. It reports total-log overflow separately from
+truncated or overflowing parking diagnostics. It displays ToF measurements
+from `PARK_DIAG` v2 and side ranges from `FINAL_PARK_TRACE`.
 
-Pfosten erscheinen nur aus bestätigten Map-/Avoidance- oder gespeicherten
-Startplatz-Records dieses Laufabschnitts. R/G plus Zahl bezeichnet Farbe und
-Sitzindex. Zentren folgen nominalen CW/CCW-Sitzen (100 mm seitlicher Versatz,
-500 mm Stationsabstand), nicht den verworfenen Kamera-Projektionen. Symbole
-sind keine maßstäblichen Pfostenkörper; die Map kann unvollständig/falsch sein.
-Ohne eindeutige Richtung werden Pfosten ausgelassen. Fehlende Fahrdaten bleiben
-Lücken; eine volle Runde wird nicht aus einer Zeichnung behauptet.
+The path is the robot's estimate. Use physical observations or video to
+judge actual contact, movement and parking containment. A missing marker
+leaves the associated result unknown. Single-session logs without distinct
+start markers can contain multiple parking configurations that cannot be
+split reliably into runs. The inspector flags filenames containing
+`excerpt`. Completeness depends on the provenance of the original file.
 
-`SVG speichern` exportiert die Ansicht des ausgewählten Abschnitts. Der normale
-HTML-Bericht enthält sie ebenfalls. Alles wird direkt im Browser erzeugt;
-Python, Matplotlib, Server und Internet sind weiterhin nicht erforderlich.
+The detailed firmware setting records `RUN_POSE` and route revisions within
+the logging budget. Normal firmware records compact start, lap and finish
+markers plus any available `PARK_DIAG`, `CONNECTOR_TRACK`, `LATER_TRACK` and
+`FINAL_PARK_TRACE` traces. An incomplete route block or missing base revision
+leaves a gap. [Run telemetry and detail settings](../../simulation/RUN_TELEMETRY.md)
 
-## Offizielle FE-Spielmatte (Version 1.4)
+The importer accepts UTF-8 or ASCII text up to 20 MB. The page treats the log
+as text, embeds its resources and uses a Content Security Policy that blocks
+network connections.
 
-Der Hintergrund verwendet die offizielle Spielmatte, einschließlich der
-blauen/orangen Linien, gedruckten Startfelder, Pfostensitze und Mittelgrafik.
-Die frühere schematische Ebene, Stationsbeschriftungen, Richtungspfeile und
-`Spielfeld anzeigen` wurden entfernt. Der Hintergrund ist immer sichtbar,
-auch ohne Feldpositionsdaten. Lokale Positionen bleiben in der Einzelspur.
+## Playfield artwork and development checks
 
-Quelle: [WRO 2026 FE Game Mat](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf),
-verlinkt auf der [offiziellen Saisonseite](https://wro-association.org/competition/2026-season/).
-Saisonseite und [Q&A](https://wro-association.org/competition/questions-answers/)
-am 2026-10-09 geprüft. Artwork und Marken gehören ihren jeweiligen Eigentümern;
-die Umwandlung macht daraus kein eigenes Matten-Design.
+The official playfield artwork is embedded in both field views and their
+exports. The source PDF's 3,210 mm MediaBox includes a 5 mm bleed on each
+side. Its 3,200 × 3,200 mm TrimBox spans −1,600 to +1,600 mm on each axis.
+The field origin is at the centre, with +X right and +Y up. The starting
+straight is at the bottom in both directions. The outer and inner wall
+overlays are nominally at ±1,500 mm and ±500 mm. The 24 printed sign positions
+match the nominal coordinates to within 0.6 mm in the artwork.
+[Official game mat](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf) · [Source and asset metadata](assets/fe-2026-mat.json)
 
-`assets/fe-2026-mat.svg` ist aus der offiziellen PDF mit `pdftocairo -svg`
-abgeleitet; `assets/fe-2026-mat.json` enthält Quellen-/Asset-Hashes und PDF-Boxen.
-Die MediaBox umfasst 3210 mm einschließlich Beschnitt. Die TrimBox schneidet
-5 mm pro Seite ab und ergibt 3200 × 3200 mm (PDF-Rundungsabweichung <0,01 mm).
-Die vollständige TrimBox liegt bei X/Y −1600…+1600 mm, Mittelpunkt (0,0),
-+X nach rechts und +Y nach oben. Außenwände liegen nominal bei ±1500 mm,
-Innenwände bei ±500 mm. Der Startabschnitt ist unten; CW/CCW spiegelt die
-Matte nicht. Beide Ansichten nutzen denselben Maßstab/Transform wie die Spuren.
-Die gedruckten 24 Pfostensitze stimmen innerhalb 0,6 mm mit den nominalen
-Roboterkoordinaten überein; keine unabhängige Vermessung des echten Tisches.
+Run these checks from the repository root with Python and Node.js.
 
-Wände sind eine getrennte nominale Overlay-Ebene. Magenta-Parkbegrenzungen
-werden nur bei protokolliertem `fixed_line_x` und `gap_mm` gezeichnet; fehlende
-Geometrie wird als unbekannt bezeichnet. Gedruckte Pfostensitze bedeuten keine
-vorhandenen Pfosten. Nur bestätigte Log-Sitze erscheinen als farbige Objekte.
-Spuren/Pläne liegen darüber und haben einen dünnen weißen Kontrastrand.
-
-Das SVG ist in die HTML eingebettet und wird in beiden Ansichten wiederverwendet.
-SVG-Download und HTML-Bericht enthalten die Grafik ebenfalls; keine externen
-Dateien/Fonts/Netzwerkzugriffe zur Laufzeit. Wegen des vollständigen Artworks
-ist die HTML etwa 8,6 MB groß. Planwahl, Zeitdaten und bestehende Log-Trennung
-bleiben erhalten.
-
-Prüfen (ohne Zusatzbibliotheken):
-
-```text
+```powershell
 python tools/robot-run-inspector/check-field-asset.py
 node tools/robot-run-inspector/test-inspector.cjs
 node tools/robot-run-inspector/test-app.cjs
 ```
 
-Nur zur Regeneration sind Python und Popplers `pdftocairo` auf PATH nötig:
+The parser tests use the delivered HTML and cover historical logs and synthetic
+edge cases. The application test uses a minimal DOM adapter to check import,
+run selection, search, line jumps and exports.
 
-```text
-python tools/robot-run-inspector/build-field-asset.py
-```
-
-Das Programm lädt eine fehlende Quellen-PDF nach `local_workspace/`, überprüft
-SHA-256, erzeugt SVG/Metadaten und aktualisiert die markierte Einbettung in der
-HTML. Bei geänderter Quelle stoppt es zur Prüfung von Beschnitt/Ausrichtung.
-Die PDF und rohe Konvertierung bleiben ignoriert. SVG-Bytes können zwischen
-Poppler-Versionen variieren; Asset-Metadaten und HTML werden zusammen erzeugt.
-
-## Lauftelemetrie und Zeit (Version 1.3)
-
-In einer ausdrücklich aktivierten Detail-Firmware zeichnet `RUN_POSE` v1
-die geschätzte Spur über den Lauf, soweit das Logbudget reicht. Die normale
-Firmware erzeugt nur kompakte Start-/Runden-/Abschlussmarker; vorhandene
-PARK_DIAG-/CONNECTOR_TRACK-/LATER_TRACK-/FINAL_PARK_TRACE-Spuren bleiben
-verfügbar. Lokale
-Positionen sind in der Einzelspur verfügbar, Feldpositionen im Gesamtlauf.
-Fortlaufende Messpunkte verbinden auch Anschluss und Runde; Korrekturen,
-Rahmenwechsel und Zeitlücken bleiben getrennt. Der Planselektor zeigt die zuletzt
-aktive Route, eine gewählte protokollierte Version in der gewählten Runde.
-Gestrichelte Linien sind akzeptierte Pläne, keine gefahrenen Positionen. Fehlende
-Basisversionen und unvollständige Routenblöcke werden nicht gezeichnet.
-
-Gesamtzeit und Rundenzeiten kommen aus `RUN_START`, `RUN_LAP` und `RUN_END`.
-Halte, Sensorpausen, Bremsen und abschließendes Parken zählen zur Gesamtzeit.
-Ohne Start und bestätigten Abschluss, bei Abbruch/Stopp oder Excerpt bleibt
-die Abschlusszeit unbekannt; die beobachtete Zeitspanne wird separat angezeigt.
-Alte Logs erhalten keine nachträglich erfundene erfolgreiche Abschlusszeit.
-Begrenzte Telemetrie wird sichtbar gemeldet. SVG/HTML-Exporte übernehmen die
-Planwahl, HTML enthält auch die Zeiten. Details und normale CW/CCW-Prüfung:
-[`simulation/RUN_TELEMETRY.md`](../../simulation/RUN_TELEMETRY.md).
-
-### Darstellung von Posekorrekturen
-
-Violett punktiert verbindet ausschließlich die protokollierten Vorher-/Nachher-
-X/Y-Positionen einer Korrektur im Feldrahmen, nicht eine gefahrene Strecke.
-Die Legende verwendet dasselbe Punktmuster; der SVG-Titel nennt die Endpunkte.
-Lokale/unbekannte Korrekturrahmen und Rebases werden nicht als Feldsprung
-gezeichnet. Explizite Korrekturen unterbrechen die durchgezogene Fahrspur.
-Bei gemischten Formaten bleiben PARK_DIAG-Korrekturen erhalten, wenn neue
-RUN_EVENT-Daten fehlen; doppelte Meldungen desselben Sprungs werden einmal
-gezeichnet (Zeitabstand maximal10ms, X/Y-Rundungsabweichung maximal0,15mm).
-Kleine Korrekturen sind im Gesamtlauf entsprechend kurz; z.B. log476:27,1mm.
-
-
-## Runden- und Spurauswahl (Version 1.5)
-
-Im Gesamtlauf wählt „Runde“ alle Runden, Runde 1/2/3 oder „Parken / ohne Runde“.
-Beide Feldansichten und SVG-/HTML-Exporte übernehmen diese Auswahl. Feld und
-bestätigte Pfosten bleiben sichtbar. Aus- und Endparken gehören zur separaten
-Parkauswahl, auch wenn ein Parkdatensatz noch die Nummer der letzten Runde trägt.
-Der Anschluss gehört zur Runde 1. Versteckte Phasen werden nicht durch eine
-neue Verbindung überbrückt. Posekorrekturen folgen ihrer protokollierten Phase.
-
-„FE-Spielfeld“ zeigt oder versteckt ausschließlich das offizielle Matten-Artwork.
-Wände, bestätigte Pfosten und bekannte Parkbegrenzungen bleiben in beiden
-Ansichten sichtbar, ebenso Fahrspur und ausgewählter Plan. SVG-/HTML-Exporte
-übernehmen die Hintergrundwahl. Die separate Auswahl „Spuren“ zeigt Plan + Fahrspur, nur Fahrspur oder nur
-Plan, unabhängig vom Hintergrund. Der Planversionsselektor mit „Letzter Plan
-in Auswahl“ erscheint nur bei mehreren Läufen/Abschnitten in derselben Datei;
-bei einer einzelnen Sitzung wird dieser Plan automatisch gewählt. Geschätzte Fahrt ist
-dick, farbig und durchgezogen; akzeptierte Pläne sind dünn, dunkel gestrichelt
-und liegen darüber. Violett punktiert bleibt ausschließlich Posekorrektur.
-„Letzter Plan in Auswahl“ verwendet die Route des letzten Feldpositionsdatensatzes
-der gewählten Runde. Eine explizite Planversion erlaubt den manuellen Vergleich
-mit einer anderen protokollierten Version. Es ist eine ausgewählte Planversion,
-kein zeitlicher Replay aller während einer Runde aktivierten Versionen.
-
-Der Filter erleichtert Plan-/Ist-Vergleiche ohne überlagerte Runden. „Alle Runden“
-bleibt für Übergänge und den gesamten Ablauf sinnvoll. Übersicht, Zeiten, Rohlog
-und separate Einzelspur-Auswahl bleiben vom Gesamtlauf-Filter unabhängig.
-Alte Logs zeigen nur vorhandene Daten: einzelne Erkundungspositionen in Runde 1,
-spätere LATER_TRACK-Punkte in ihrer Runde, Anschlusspläne nur in Runde 1.
-Fehlende Fahrspuren oder Pläne werden ausdrücklich gemeldet, nicht ergänzt.
-
-## Zusammengeführter Stand1.6
-
-Gesamtansicht, Runden-/Ebenenfilter und offline eingebettete Matte ergänzen den
-Soll/Ist-Vergleich, CSV und hashgebundene Beobachtungen. Planversionsauswahl
-hängt von vorhandenen Routenrevisionen ab, nicht von Laufabschnitten.
-Die normale Firmware ergänzt nur kompakte Start-/Runden-/Abschlusszeiten.
-Neue vollständige RUN_POSE-/RUN_ROUTE-Spuren benötigen eine ausdrücklich
-aktivierte Detailkonfiguration; historische Spurlücken bleiben unbekannt.
-Siehe `simulation/RUN_TELEMETRY.md` für Grenzen und Aktivierung.
+To regenerate the artwork, install Poppler's `pdftocairo` and run
+`python tools/robot-run-inspector/build-field-asset.py`. The script checks the
+source PDF hash, updates the SVG and metadata, and replaces the marked
+embedded asset in the HTML. It stores the input PDF and raw conversion in
+`local_workspace/` and stops for review if the source changes. SVG bytes can
+vary by Poppler version. [Embedded SVG source](assets/fe-2026-mat.svg)

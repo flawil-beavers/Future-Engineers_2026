@@ -1,10 +1,9 @@
-# Drive Simulation Folder
+# Driving simulations and test evidence
 
-This folder contains the offline driving-geometry tools, their generated
-visualizations, curated robot-log fixtures, and the physical reference images
-used to define conservative robot envelopes. The programs support design and
-verification; they do not run on the Arduino and cannot replace physical
-contact testing.
+We use these offline checks to test sign recognition, measure route clearance
+in the model and compare parking paths with recorded runs. The models use
+measurements and photographs of the robot to estimate the space taken up by
+the chassis and wheels. We check for actual contact during physical runs.
 
 ## Files
 
@@ -16,7 +15,7 @@ are documented in [VIDEO_VISUALIZATION.md](VIDEO_VISUALIZATION.md).
 | `check_open_wall_following_20261028.py` | Compares 11200 wall-following commands in 560 scenarios with the pre-change Open controller and executes actual ToF filtering for first-corner timing; unresolved findings documented in `OPEN_CHALLENGE_REVIEW_20261027.md`. |
 | `review_open_challenge_20261027.py` | Source-backed Open navigation audit: CW/CCW mission, frame freshness, servo resume and explicit unresolved corner/finish/mode-state findings; see `OPEN_CHALLENGE_REVIEW_20261027.md`. |
 | `visualize_robot_run.py` | Whole-run SVG/PNG images with logged pillar maps, field context and parking/merge detail; usage in `ROBOT_RUN_VISUALIZATION.md`. |
-| `corner_extra_view_check.py` | Additional90 mm reverse arc: both log398 scan poses,486 perturbed geometric cases, coast reserve, full-seat clearance and ideal reciprocal return; no camera or controller acceptance. |
+| `corner_extra_view_check.py` | Checks an additional 90 mm reverse arc from both log 398 scan poses across 486 geometric cases. Covers coast reserve, sign-position clearance and ideal return geometry. Camera and controller acceptance require separate checks. |
 | `parking_exit_swept_search.py` | Standard-library swept-footprint search and validation for the parking-exit manoeuvre. |
 | `parking_exit_path.svg` | Generated top-down visualization of the selected parking-exit and localization path. |
 | `PARKING_EXIT_PATH_SIMULATION.md` | Parking-exit coordinate system, footprint, search, selected path, limitations, and physical-validation history. |
@@ -46,7 +45,7 @@ python simulation/check_surprise_rule.py
 ```
 
 This checks recognition against approved camera images and exercises the
-passing rules for modified signs. [Camera validation report](SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#pruefungen)
+passing rules for modified signs. [Camera validation report](SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#verification)
 
 ## Route clearance check
 

@@ -1,6 +1,10 @@
-# CW logs3--6: first-lap association and parking, 2026-11-19
+# Clockwise runs 3–6, 19 November 2026
 
-Complete USB originals were copied before history or analysis, with source-before/after and copy SHA256 verification; user immediately released the stick. Resume verification found no changed or additional files. Complete source file does not imply completed mission. Logs1/2 in the intake repeat previously secured evidence.
+We reviewed four runs to understand missed signs on lap 1 and stops during
+final parking. We copied the original USB files before analysis and verified
+the SHA-256 hashes against the source. A later check found the same files.
+Logs 1 and 2 in the intake duplicate evidence already archived. A complete
+file can record an interrupted or failed attempt.
 
 | Original | Bytes | SHA256 |
 | --- | ---: | --- |
@@ -11,37 +15,106 @@ Complete USB originals were copied before history or analysis, with source-befor
 
 ## Physical reports and installed identity
 
-User reports: first CW run missed RED in the third/final non-start straight, passed on its left, then contacted it on lap2; second run hit the farther startGREEN; third had difficulties in the third section and stopped before parking. Latest run drove the obstacle part well and recognized the small RED, then stopped at parking. Logs3/4 are user-paused;5/6 autonomously abort during parking. Both logs reaching parking report `20261111_recovery_handoff`, predating the prepared scan-line/speed correction. All4 report measured_height20261119; exact installed binary not read back. Log6 changes the modified seat15 to50mm visibleRED/effectiveGREEN; logs3/5 store150mm visibleGREEN/effectiveRED. No hard-coded test map added.
+The team reported that the first CW run missed a red sign on the third
+non-start straight, passed to its left and contacted it on lap 2. The next
+run hit the farther green sign on the starting straight. The third had
+difficulty in the third section and stopped before parking. In the latest
+run, the team reported that the obstacle section went well, including
+recognition of the small red sign, and that the car stopped during parking.
+
+Logs 3 and 4 record a user pause. Logs 5 and 6 record autonomous parking
+aborts. Both parking logs report `20261111_recovery_handoff`, which predates
+the revised scan line and speed profile. All four report the
+`20261119_measured_height` camera revision. The source identity comes from
+the logs. The installed binary was unavailable for readback.
+
+Log 6 records a 50 mm modified sign at seat 15 with visible red and original
+green. Logs 3 and 5 record a 150 mm sign with visible green and original red.
 
 ## Findings and changes
 
-1. **Visible RED rejected as too far around the corner (log3).** RED18 is already projected near(900,500) at ranges934--1255mm before S3. The corner-relevance extension incorrectly required range<=600mm, the EMPTY observation window, while colour acquisition supports the calibrated longer range. Later, two oblique dropout views mark its station CLEAR; the frozen later-lap map omits the RED. Use the colour calibration maximum1600mm for this existing extension, preserving6deg ray agreement, seat snap, side disambiguation and consecutive votes. A next-loop remote seat remains rejected. This explains a concrete missing-pillar map, not every camera dropout.
+1. **A red sign was discarded around the corner in log 3.** Before S3, the
+   camera projected red seat 18 near (900, 500) mm at ranges of 934–1,255 mm.
+   The acquisition check used the 600 mm empty-view limit. Two later
+   oblique views marked the station clear, so the sign was missing from the
+   later-lap map. We extended the colour check to its calibrated 1,600 mm
+   limit. It retains the 6° ray agreement, position and side checks, and
+   consecutive votes. A remote seat on the next loop is still rejected.
+2. **An oblique view counted as empty in log 3.** The first corner station
+   was cleared from views roughly 34–46° away from the section heading.
+   Ordinary first-station empty votes now require heading alignment within
+   25° and retain the existing 450 mm range. Targeted corner observations
+   and parking scouts can still check the station. Unresolved stations
+   continue through the existing observation and recovery states.
+3. **Log 4 records a different colour at the start.** The camera summaries
+   show red and no confirmed green. The map associates the red component
+   with middle seat 2, which excludes the expected end positions under the
+   solitary-middle rule. No approved original image establishes the cause.
+   We kept the colour thresholds and position checks and added cached
+   `errorBits` and `badPhaseCount` to the existing bounded `DRIVE_CAM` line.
+4. **The scan path failed its clearance check in log 5.** At
+   (638.3, −1,228.7 mm, 181.7°), even the 15 mm sweep with neutral steering
+   failed the inflated wheel and rail check. The scan line prepared after
+   log 2 moves the car 10 mm inward and passes the same model check. That
+   change retains 20 mm of nominal clearance from the rail tips, approach
+   and alignment limits of 150 and 130 mm/s, and the blend down to 60 mm/s.
+   The scan itself runs at 60 mm/s.
+5. **The marker scan returned an invalid gap in log 6.** The fixed and movable
+   marker positions were reported as 556.1 and 333.6 mm. The estimated gap
+   was 222.4 mm, outside the accepted 247.5 ± 15 mm range. The
+   controller now clears the invalid result and can scan both markers once
+   more if it has a fresh stopped wall reference and the entire return path
+   is clear. An unsafe return path or a second invalid gap still stops
+   parking. We replayed the logged heading and X position on the revised
+   scan line. Those estimates come from the robot's telemetry.
+6. **The previous search stalled in narrow 232.5 mm gaps.** With the
+   281.5 mm capture line, it failed all 24 perturbations before motion.
+   If the normal search fails at a near-parallel capture X of 240–280 mm
+   and the measured gap is more than 10 mm below nominal, the fallback
+   checks a 40 or 60 mm straight retreat and the entire path that follows.
+   The next search starts at X ≤ 240 mm, so the retreat search does not
+   repeat recursively. The existing margins and first-arc radius checks
+   still apply. The change recovered 18 of 24 model cases. The six
+   remaining cases safely stopped after motion with radius deviations of
+   +15% or +50%.
 
-2. **Oblique EMPTY evidence (log3).** Its first corner station is cleared with section heading error~34--46deg. Require <=25deg section alignment for ordinary first-station absence within the existing450mm range. Confirmed colour can still be acquired farther away. Existing targeted corner observation of that same station and parking scouts remain eligible, preserving the previously checked565 recovery. No new motion/hold state is introduced; unresolved stations retain their checked re-observation path.
-
-3. **Different colour at start (log4), unresolved.** No startGREEN is confirmed; a close RED component is ultimately associated with middle seat2, whose official solitary-middle inference removes the expected end seats. Raw camera summaries show RED and absentGREEN, unlike the other runs. No approved original images/per-object truth from this run establish why. Do not call it a proved HSV, byte-order, hardware or distance defect. Preserve colour thresholds and geometry gates; append cached camera errorBits/badPhaseCount to the existing bounded DRIVE_CAM line for future normal-run diagnosis. No extra images, captures or dense logging.
-
-4. **Scan path clearance (log5).** At(638.3,-1228.7,181.7deg), even the neutral15mm scan sweep fails the existing inflated wheel/rail check. Moving the scan/capture line10mm inward (already prepared from log2) makes that exact sweep pass. Maintain20mm nominal tip reserve, current final parked target,150/130mm/s free approach/alignment maxima and terminal60mm/s blend. Scan speed stays60mm/s, entry speed unchanged.
-
-5. **Invalid dual-rail measurement (log6).** Fixed556.1/moving333.6 yields222.4mm gap, outside the247.5+/-15mm gate. It previously aborted immediately. With a fresh stopped wall reference and a fully checked return/alignment corridor, permit one repeated scan of both rails. Clear invalid measured-gap state before planning that return; reset the ordinary scan phases on restart. Do not widen the accepted gap or enter using invalid geometry. A repeated bad measurement or unsafe retry path still rejects entry. Model replay uses the new safe lane and recorded heading/X, not an independently measured physical pose.
-
-6. **Known232.5mm accepted-gap planner hole.** Current capture281.5mm high still fails all24 narrow-gap perturbations before motion with the prior bounded search. Add a fallback only after its ordinary families fail, for near-parallel captureX240..280mm outside the tips and measured gap<nominal-10mm. Try a40/60mm straight staging retreat, and accept only a complete freshly swept tail plus combined path. The child startsX<=240mm, preventing recursive staging. Existing margins and first-arc radius-envelope checks remain. This improves18/24 narrow cases;6 with +15% or +50% curve-radius deviation still safely abort after motion. Do not claim universal narrow-gap recovery.
-
-Gyro polling during approach preflight remains; also service queued gyro reports during scan-alignment preflight. No first-lap speed reduction, HSV change, M4 change, robot upload, reset, motion or additional commit.
+During scan-alignment preflight, the controller now services queued gyro
+reports, as it already did during the approach preflight.
 
 ## Verification
 
-- New archived-numeric corner regression2 passes; reverting only the old600mm gate reproduces rejection. Distant next-loop seat remains rejected.
-- GREEN occupancy589, nearer-view621 and oblique-clear3 controls pass. Targeted565 empty/occupied evidence10 and checked rejoin27 pass, including the old-veto negative control.
-- Far acquisition52 and UNKNOWN/recovery dispatch25 pass.
-- Approved images45/45; captured sequences16; rendered648, association48, rule policy24 pass. No unapproved/rejected image used.
-- Full parking quick3/3 and registration5 pass; existing recovery/braking handoff6 pass.
-- Measured248.9/249.6mm parking24/24 pass, both directions, radius1/1.15/1.5.
-- New log5/6 scan regression passes: old sweep rejected/new lane accepted; one bad scan recovers to250.3mm modeled gap/capture without modeled collision; repeat-invalid remains rejected.
-- Accepted-span stress120:114 park,6 narrow-gap cases abort, no modeled collision. Before the staging fallback96 park/24 narrow aborts. CAD, ideal ToF and synthetic colour tests do not establish physical acceptance or fix log4's colour source.
+| Check | Recorded result |
+| --- | --- |
+| Archived corner association | Two cases passed. Restoring the old 600 mm gate reproduced the rejection, and the distant seat on the next loop remained rejected. |
+| Empty and occupied positions | Green occupancy case 589, nearer-view case 621 and three oblique-clear cases passed. The case 565 check passed ten observations and 27 rejoins, including the old-veto control. |
+| Far acquisition and recovery | 52 far-acquisition and 25 unresolved-position/recovery cases passed. |
+| Modified signs | All 45 approved images, 16 captured sequences, 648 rendered cases, 48 association cases and 24 rule cases passed. |
+| Parking sequence | Three quick sequences, five registrations and six recovery or braking handoffs passed. |
+| Measured-gap parking | All 24 cases passed in both directions with 248.9 and 249.6 mm gaps and radius factors of 1, 1.15 and 1.5. |
+| Scan replays from logs 5 and 6 | The old scan sweep failed and the revised line passed. One invalid scan recovered to a modelled 250.3 mm gap without a modelled collision. A second invalid scan was rejected. |
+| Accepted-gap stress test | **114 of 120** model cases parked and six stopped safely in narrow gaps. The previous search parked in 96 cases and stopped in 24. Neither model produced a collision in this test. |
 
-Next: upload onlyM7 normally and perform normal CW/CCW runs. Secure originals first. Check early RED18 recognition, GREEN start passage, parking scan geometry/retry and physical clearance/final containment. Do not revive historical special sweeps or use invalid wrapped images. If wrong visible colour recurs, obtain a short user-approved stationary camera sample before changing colour thresholds.
+The replay uses modelled geometry, idealised ToF measurements and synthetic
+colour checks where applicable. Physical clearance and the source of the
+colour observation in log 4 still require run evidence.
 
-Final IDE-managed M7 build SUCCESS: RAM452136/523624B, flash599200/786432B; firmware.bin602752B SHA256`332b21f986d6f48efa276998d4bca92c9f6c17d371662256b54b50402fb11948`. M4 unchanged/not built. Existing Serial macro and unused-helper warnings remain. No robot upload/movement or extra commit.
+We tested an 80 mm retreat first in a host fixture. It increased the
+stress-test failures from six to 12 of 120, including new failures at
+5–10% radius deviation. The production search kept the tested order.
+Reproduce the comparison by changing only the retreat candidate order in
+the accepted-range stress fixture.
 
-Rejected follow-up experiment: preferring an80mm staging retreat before60/40mm increases the narrow-gap stress failures from6 to12/120 (no modeled collision), including new5--10% radius deviations. It was applied only to a generated host fixture, never to production. Keep the tested60/40mm ordering; do not infer that a larger retreat always helps. Reproducible with the accepted-range-stress fixture after replacing only its retreat candidate order.
+## Build and follow-up
+
+The IDE-managed M7 build succeeded. It used 452,136 of 523,624 bytes of RAM
+and 599,200 of 786,432 bytes of flash. The 602,752-byte binary had SHA-256
+`332b21f986d6f48efa276998d4bca92c9f6c17d371662256b54b50402fb11948`.
+Existing Serial macro and unused-helper warnings remained. This revision
+covered the M7 source and host checks.
+
+The physical follow-up for this revision was to check early recognition of
+red seat 18, green sign passage at the start, marker scan and retry, actual
+wheel clearance and final containment during ordinary CW and CCW runs. If
+the wrong visible colour recurs, the next diagnostic is a user-approved
+stationary camera sample before changing thresholds.
+[Current engineering handoff](../AGENT_DOCUMENTATION.md)
