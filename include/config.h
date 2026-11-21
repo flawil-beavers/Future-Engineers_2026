@@ -70,12 +70,7 @@ constexpr auto OBSTACLE_LAP_FINISH_RUNOUT_MM = 90.0f;
 // over three laps before declaring the complete vehicle clear of the corner.
 constexpr auto OBSTACLE_FINAL_CORNER_POSITION_RESERVE_MM = 250.0f;
 // Final parking is reached only when both lap-test flags are false.
-// ENTRY_ARMED=false keeps physical bay entry locked; TEST_ONLY=true stages
-// the manoeuvre and applies TEST_SEGMENT_LIMIT after entry is armed.
 constexpr bool OBSTACLE_FINAL_PARKING_ENABLED = true;
-constexpr bool OBSTACLE_FINAL_PARKING_TEST_ONLY = false;
-constexpr bool OBSTACLE_FINAL_PARKING_ENTRY_ARMED = true;
-constexpr auto OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT = 7;
 // Legacy full-approach practice inside O (normally false). The separate
 // MODE_FINAL_PARKING_PRACTICE starts at capture, without exit/laps/scan.
 constexpr bool OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED = false;
@@ -707,6 +702,7 @@ constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1600UL;
 // and legal-pillar clearance; CW log poses also remain inside the window.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM = 85.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S = 60.0f;
+constexpr float OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S = 100.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS = 400UL;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS = 1600UL;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_BRAKE_MS = 150UL;
@@ -843,16 +839,10 @@ constexpr auto OBSTACLE_PARKING_EXIT_MIN_WALL_DIFFERENCE_MM = 80.0f;
 constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CCW_MM = 500.0f;
 constexpr auto OBSTACLE_PARKING_TO_FIRST_CORNER_CW_MM = 500.0f;
 
-constexpr auto OBSTACLE_FINAL_PARKING_SEGMENT_COUNT = 7;
 static_assert(
     OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN == 1 ||
         OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN == -1,
     "Parking-practice turn sign must be +1 (CCW) or -1 (CW)");
-static_assert(
-    OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT >= 0 &&
-        OBSTACLE_FINAL_PARKING_TEST_SEGMENT_LIMIT <=
-            OBSTACLE_FINAL_PARKING_SEGMENT_COUNT,
-    "Final-parking segment limit must be in the generated path");
 
 // Measured 2026-11-05; kinematic CAD turn radii remain separately calibrated.
 constexpr auto OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM = 35.0f;
@@ -1160,6 +1150,9 @@ constexpr auto OBSTACLE_PATH_MAX_SPEED = 260.0f;
 // Exit, discovery and final runout retain
 // their original speeds. Runtime test caps still have priority.
 constexpr auto OBSTACLE_LATER_LAP_SPEED_FACTOR = 2.00f;
+constexpr float OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S = 600.0f;
+constexpr float OBSTACLE_LATER_LAP_STRAIGHT_CURVATURE_PER_MM = 1.0f/2500.0f;
+constexpr float OBSTACLE_LATER_LAP_STRAIGHT_PILLAR_DISTANCE_MM = 250.0f;
 // Engineering budgets, not measured tyre friction/CG limits. mm, s units.
 // Combined 800 lateral / 500 motor longitudinal acceleration is < 0.10 g.
 constexpr float OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS = 800.0f;
@@ -1185,6 +1178,7 @@ constexpr auto OBSTACLE_CURVATURE_SPEED_GAIN = 950.0f;
 // 20 mm in the approach where the green-left rear wheel touched in log_54 and
 // about 27 mm at the peak, while retaining estimated body-to-wall margin.
 constexpr auto OBSTACLE_LAP1_CLEARANCE_MM = 260.0f;
+constexpr float OBSTACLE_LAP1_MODERATE_CLEARANCE_MM = 210.0f;
 // CW parking-start section, every official GREEN on an inner seat:
 // the centre line already passes 100 mm outside that seat. A 200 mm
 // centre-to-pillar aim needs just 100 mm lateral route displacement, versus
@@ -1222,13 +1216,11 @@ constexpr auto OBSTACLE_PARKING_CCW_GREEN_LAP1_PLATEAU_WAYPOINTS = 1;
 constexpr auto OBSTACLE_OPTIMIZED_OUTER_CLEARANCE_MM = 210.0f;
 // Official normal-section solitary middles only: less lateral excursion.
 constexpr auto OBSTACLE_OPTIMIZED_MODERATE_CLEARANCE_MM = 210.0f;
-// Known official CW GREEN end signs with a moderate outward bypass:
-// 230 mm centre clearance retains the swept wheel/pillar reserve without
-// inheriting the 260 mm discovery excursion toward the opposite wall.
+// Known official CW GREEN end signs with a moderate outward bypass retain
+// the established swept wheel/pillar reserve.
 constexpr auto OBSTACLE_OPTIMIZED_END_CLEARANCE_MM = 230.0f;
-// Normal-section solitary middles permit a shorter extreme displacement, preserving
-// more wall reserve. End-pair passing plateaus retain their 210mm target.
-constexpr auto OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM = 190.0f;
+// Normal-section solitary middles permit a shorter extreme displacement.
+constexpr auto OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM = 210.0f;
 // Preserve the learned lap-1 route around the start/lap seam. This prevents
 // a new avoidance shape from jumping sideways under a middle starting sign
 // during the 1 -> 2 handoff. Fade into the later-lap route farther away.

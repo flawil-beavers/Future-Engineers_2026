@@ -85,14 +85,21 @@ uint32_t gyro_last_valid_report_ms=0;
 bool restart_gyro_stream(){++restarts;gyro_stream_healthy=false;return true;}
 '''+function('src/sensors.cpp','void update_gyro()')+'\n'+function('src/sensors.cpp','bool gyro_is_healthy()')+r'''
 void tick(uint32_t delta=50){nowMs+=delta;update_gyro();}
+void recover(){
+ tick(10);assert(!gyro_is_healthy());
+ for(int i=0;i<20;++i)tick(10);
+ assert(gyro_is_healthy());
+}
 int main(){
  update_gyro();assert(gyro_is_healthy());
  bno.event=false;for(int i=0;i<5;++i)tick();assert(restarts==1&&!gyro_is_healthy());
- bno.event=true;tick(10);assert(gyro_is_healthy());
+ bno.event=true;
+ for(int i=0;i<5;++i){tick(90);assert(!gyro_is_healthy());}
+ recover();
  sensor_value.sensorId=99;for(int i=0;i<5;++i)tick();assert(restarts==2&&!gyro_is_healthy());
- sensor_value.sensorId=7;tick(10);assert(gyro_is_healthy());
+ sensor_value.sensorId=7;recover();
  pin=HIGH;for(int i=0;i<5;++i)tick();assert(restarts==3&&!gyro_is_healthy());
- pin=LOW;tick(10);assert(gyro_is_healthy());
+ pin=LOW;recover();
  sensor_value.un.gameRotationVector.real=NAN;tick(10);
  assert(!gyro_is_healthy()&&std::isfinite(current_degree));
  sensor_value.un.gameRotationVector.real=1;tick(10);assert(gyro_is_healthy());
@@ -104,11 +111,11 @@ int main(){
   sensor_value.un.gameRotationVector.k=sin(rad);};
  yaw(90);tick(10);float before=current_degree;
  bno.reset=true;tick(10);assert(!gyro_is_healthy());
- yaw(-60);tick(10);assert(gyro_is_healthy()&&fabs(current_degree-before)<.001);
+ yaw(-60);recover();assert(fabs(current_degree-before)<.001);
  yaw(-50);tick(10);assert(fabs(current_degree-before-10)<.001);
  bno.event=false;for(int i=0;i<22;++i)tick();
- float retained=current_degree; bno.event=true;yaw(170);tick(10);
- assert(gyro_is_healthy()&&fabs(current_degree-retained)<.001);
+ float retained=current_degree; bno.event=true;yaw(170);recover();
+ assert(fabs(current_degree-retained)<.001);
  yaw(-175);tick(10);assert(fabs(current_degree-retained-15)<.001);
  nowMs+=201;assert(!gyro_is_healthy());
  // Slow geometry loops must consume notification packets ahead of the next
@@ -144,26 +151,47 @@ int main(){
 check('serial',serial)
 
 mode = common+r'''
-enum RobotMode {MODE_NONE,MODE_OBSTACLE_CHALLENGE,MODE_HOLD,MODE_TURN_RADIUS_CAL,MODE_MANUAL};
+enum RobotMode {MODE_NONE,MODE_OBSTACLE_CHALLENGE,MODE_HOLD,MODE_TURN_RADIUS_CAL,MODE_MANUAL,
+ MODE_FINAL_PARKING_PRACTICE,MODE_CAMERA_DISTANCE_CAL};
 enum ModeResult {MODE_RESULT_RUNNING,MODE_RESULT_COMPLETED,MODE_RESULT_FAILED};
 RobotMode current_mode=MODE_OBSTACLE_CHALLENGE,pending_mode=MODE_NONE;
-ModeResult nextResult=MODE_RESULT_COMPLETED;bool parked=true;int stops=0;
+ModeResult nextResult=MODE_RESULT_COMPLETED;bool parked=true;int stops=0,starts=0;
 bool resume_after_save=false;
-struct Logger {bool is_busy(){return false;}}robot_logger;
-void mode_resume(){}
+struct Logger {bool busy=false;bool is_busy(){return busy;}}robot_logger;
+bool drivesEnabled=false;
+void mode_resume();
+void system_enable(){drivesEnabled=true;}
+void system_disable(){drivesEnabled=false;}
+void stop(bool){}
+void set_obstacle_ready_led(bool){}
 ModeResult update_active_mode(){return nextResult;}
 const char *mode_name(RobotMode){return "test";}
 bool turn_radius_cal_waiting_for_right(){return false;}
 bool final_parking_complete(){return parked;}
 void stop_mode(RobotMode){++stops;}
-'''+function('src/mode_manager.cpp','void mode_update()')+r'''
+bool start_mode(RobotMode mode){assert(mode==MODE_OBSTACLE_CHALLENGE);++starts;return true;}
+'''+function('src/mode_manager.cpp','void mode_update()')+function(
+    'src/mode_manager.cpp','void mode_pause()')+function('src/mode_manager.cpp','void mode_resume()')+r'''
 int main(){
- mode_update();assert(current_mode==MODE_HOLD&&stops==0&&pending_mode==MODE_NONE);
+ mode_update();assert(current_mode==MODE_HOLD&&stops==0&&pending_mode==MODE_OBSTACLE_CHALLENGE);
  nextResult=MODE_RESULT_RUNNING;mode_update();assert(current_mode==MODE_HOLD&&stops==0);
  current_mode=MODE_OBSTACLE_CHALLENGE;parked=false;mode_update();assert(stops==0);
- nextResult=MODE_RESULT_FAILED;mode_update();assert(current_mode==MODE_NONE&&stops==1);
- current_mode=MODE_MANUAL;nextResult=MODE_RESULT_COMPLETED;mode_update();assert(stops==2);
- std::cout<<"PASS actual dispatcher: park hold retained, normal failure/completion cleanup preserved\n";
+ nextResult=MODE_RESULT_FAILED;mode_update();
+ assert(current_mode==MODE_NONE&&stops==1&&pending_mode==MODE_OBSTACLE_CHALLENGE);
+ // OFF requests a save. A following ON queues a new start, and OFF
+ // again cancels that deferred start even if the file closes afterwards.
+ robot_logger.busy=true;mode_pause();mode_resume();mode_update();
+ assert(!drivesEnabled&&starts==0&&resume_after_save);
+ mode_pause();robot_logger.busy=false;mode_update();
+ assert(!drivesEnabled&&starts==0&&!resume_after_save);
+ mode_resume();
+ assert(drivesEnabled&&starts==1&&current_mode==MODE_OBSTACLE_CHALLENGE&&pending_mode==MODE_NONE);
+ mode_pause();robot_logger.busy=true;mode_resume();mode_update();
+ assert(!drivesEnabled&&starts==1&&resume_after_save);
+ robot_logger.busy=false;nextResult=MODE_RESULT_RUNNING;mode_update();
+ assert(drivesEnabled&&starts==2&&current_mode==MODE_OBSTACLE_CHALLENGE);
+ current_mode=MODE_MANUAL;nextResult=MODE_RESULT_COMPLETED;mode_update();assert(stops==3);
+ std::cout<<"PASS actual dispatcher: park hold, abort restart after save, OFF cancels queued restart\n";
 }
 '''
 check('mode',mode)
@@ -364,14 +392,19 @@ check('seat-command',seat)
 
 parking_pause = common+r'''
 uint32_t nowMs=0,stateStartMs=100,sensorHoldStartMs=0,scanAlignStartMs=200;
+uint32_t fixedProgressMs=300;
+constexpr int FP_FIXED_DRIVE=1;
+int state=FP_FIXED_DRIVE;
 uint32_t millis(){return nowMs;} bool sensorHoldPending=false,active=true;
+bool entryBrakeEvidenceValid=true;
 uint8_t sensorHoldTraceCount=0;bool final_parking_active(){return active;}
 void traceParking(bool){}
 '''+function('src/final_parking.cpp','void final_parking_sensor_hold()')+'\n'+function('src/final_parking.cpp','void final_parking_sensor_resume()')+r'''
 int main(){
  nowMs=500;final_parking_sensor_hold();
  nowMs=700;final_parking_sensor_hold();nowMs=1500;final_parking_sensor_resume();
- assert(stateStartMs==1100&&scanAlignStartMs==1200&&!sensorHoldPending);
+ assert(stateStartMs==1100&&scanAlignStartMs==1200&&fixedProgressMs==1300&&
+  !sensorHoldPending&&!entryBrakeEvidenceValid);
  final_parking_sensor_resume();assert(stateStartMs==1100);
  sensorHoldTraceCount=6;nowMs=1600;final_parking_sensor_hold();
  nowMs=2600;final_parking_sensor_resume();assert(stateStartMs==2100);

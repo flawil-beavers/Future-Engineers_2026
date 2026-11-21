@@ -183,8 +183,7 @@ uint8_t discoveryTraceCount = 0;
 enum CornerViewPhase : uint8_t { CORNER_VIEW_IDLE, CORNER_VIEW_SETTLE,
     CORNER_VIEW_REVERSE, CORNER_VIEW_OBSERVE, CORNER_VIEW_RETURN,
     CORNER_VIEW_RETURN_BRAKE, CORNER_VIEW_EXTRA_SETTLE, CORNER_VIEW_EXTRA_REVERSE,
-    CORNER_VIEW_EXTRA_OBSERVE, CORNER_VIEW_EXTRA_RETURN_SETTLE,
-    CORNER_VIEW_EXTRA_FORWARD, CORNER_VIEW_EXTRA_BRAKE, CORNER_VIEW_LOCKED,
+    CORNER_VIEW_LOCKED,
     CORNER_VIEW_REBASE_BRAKE };
 CornerViewPhase cornerViewPhase = CORNER_VIEW_IDLE;
 bool cornerViewAttempted[OBSTACLE_SEAT_COUNT / 2] = {};
@@ -199,14 +198,15 @@ float cornerViewRequestedMinRange = OBSTACLE_DISCOVERY_VIEW_MIN_MM;
 uint8_t cornerViewStoppedFrames = 0;
 uint8_t cornerViewObservationTraceCount = 0;
 bool cornerViewCanResume = false;
-bool cornerViewExtraUsed = false;
 uint8_t cornerViewExtraTriedMask = 0;
 uint16_t cornerViewSearchCycle = 0;
 uint32_t cornerViewLastNoSafeTraceMs = 0;
 int cornerViewExtraSteering = 0;
-PositionEstimate cornerViewExtraOrigin, cornerViewExtraReturnPose;
-float cornerViewExtraStartEncoder = 0, cornerViewExtraReturnEncoder = 0;
-float cornerViewExtraMeasuredMm = 0;
+PositionEstimate cornerViewExtraOrigin;
+float cornerViewExtraStartEncoder = 0;
+float cornerViewExtraDistanceMm = 0;
+float cornerViewSearchStartEncoder = 0;
+uint32_t cornerViewLastSearchMs = 0;
 PathPoint
 findLookahead(const PathPoint *path, const PositionEstimate &pose,
                         float lookaheadMm);
@@ -730,6 +730,27 @@ bool recordObservedSeatVote(uint8_t id,const Blob &blob)
     }
     const auto order=surpriseOrderForSeat(id);
     const auto height=obstacle_sign_height::classify(blob);
+    // CW46 accepted a stationary, short-looking RED fragment as the first
+    // middle pillar. The same setup has the first sign at the far end
+    // (CW47). In this one parked view require the full normal first sign.
+    const bool cwStartMiddleRed = routeTurnSign<0 && id==2 &&
+        sectionLayoutMode==OBSTACLE_SECTION_LAYOUT_OFFICIAL && parkingEntryObserving &&
+        order==SURPRISE_FIRST && blob.color==ColorType::RED;
+    if (cwStartMiddleRed && height!=obstacle_sign_height::NORMAL)
+        return false;
+    // A far, oblique short component can be the visible part of a normal
+    // pillar. Leave the seat open until it can be seen nearer or more centrally.
+    const float imageOffset=fabsf(blob.centerX-OBSTACLE_CAMERA_PRINCIPAL_X_PX);
+    const float adjustedFoot=blob.maxY-OBSTACLE_CAMERA_FOOT_EDGE_SLOPE*imageOffset;
+    // CCW42: the normal GREEN at the first middle station presented a
+    // repeatable short fragment at 24 degrees. Do not spend the one surprise
+    // identity on this station until the short silhouette is more central.
+    if (order!=SURPRISE_FIRST && height==obstacle_sign_height::SHORT &&
+        routeTurnSign>0 && id/COURSE_SEATS_PER_STATION==4 && imageOffset>88.0f)
+        return false;
+    if (order!=SURPRISE_FIRST && height==obstacle_sign_height::SHORT && imageOffset>96.0f &&
+        adjustedFoot-OBSTACLE_CAMERA_GROUND_HORIZON_Y<OBSTACLE_CAMERA_GROUND_RANGE_SCALE_MM_PX/480.0f)
+        return false;
     // An unusable primary top must not consume this frame before the mapped
     // GREEN fallback can supply a narrower, valid measurement. Only useful
     // height evidence votes; the existing400ms window still expires old votes.
@@ -745,9 +766,11 @@ bool recordObservedSeatVote(uint8_t id,const Blob &blob)
     if(height!=obstacle_sign_height::UNKNOWN && seat.heightFrames<255)++seat.heightFrames;
     const bool modified=height==obstacle_sign_height::SHORT || height==obstacle_sign_height::TALL;
     const bool first=order==SURPRISE_FIRST;
-    const bool ready=first ||
-        (height==obstacle_sign_height::NORMAL && seat.heightFrames>=OBSTACLE_SEAT_CONFIRM_VOTES) ||
-        (modified && order==SURPRISE_LATER && seat.heightFrames>=OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES);
+    const bool ready=cwStartMiddleRed
+        ? seat.heightFrames>=OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES
+        : first ||
+          (height==obstacle_sign_height::NORMAL && seat.heightFrames>=OBSTACLE_SEAT_CONFIRM_VOTES) ||
+          (modified && order==SURPRISE_LATER && seat.heightFrames>=OBSTACLE_SURPRISE_HEIGHT_CONFIRM_FRAMES);
     if(!recordSeatVote(seat,blob.color,ready))return false;
     if(!first && modified)
         rememberModifiedSign(id,height);
@@ -2150,9 +2173,16 @@ float validatedClearanceForSeat(uint8_t seatIndex)
         seatIndex < 6 && !seats[seatIndex].red &&
         seats[seatIndex].lateralMm < 0.0f)
         return OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
-    if (targetsOuterExtreme(seats[seatIndex]) &&
-        upcomingAdjacentStationUnresolved(seatIndex))
-        return OBSTACLE_OUTER_SAFE_CLEARANCE_MM;
+    const bool compactFirstLap = !runtimeTestMode && completedLaps == 0 &&
+        sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
+        seatIndex >= 6;
+    if (targetsOuterExtreme(seats[seatIndex]))
+    {
+        if (compactFirstLap || upcomingAdjacentStationUnresolved(seatIndex))
+            return OBSTACLE_OUTER_SAFE_CLEARANCE_MM;
+    }
+    else if (compactFirstLap)
+        return OBSTACLE_LAP1_MODERATE_CLEARANCE_MM;
     return OBSTACLE_LAP1_CLEARANCE_MM;
 }
 
@@ -2186,7 +2216,10 @@ float optimizedClearanceForSeat(uint8_t seatIndex)
         sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
         seatIndex < 6 && !seats[seatIndex].red &&
         seats[seatIndex].lateralMm < 0.0f)
-        return OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
+        // The protected seam stays on the learned path. The far start GREEN
+        // needs extra swept-wheel room as the line bends into the first turn.
+        return seatIndex == 4 ? OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM + 15.0f
+                              : OBSTACLE_PARKING_CW_INNER_GREEN_CLEARANCE_MM;
     if (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL &&
         seatIndex >= 6 && seatIndex % 6 / 2 == 1 && targetsOuterExtreme(seats[seatIndex]))
         return OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM;
@@ -2430,6 +2463,27 @@ bool earlyMiddleViewPathSafe(const PathPoint *path, uint8_t seatIndex)
 
 void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours = false);
 void roundKnownCornerPairs(PathPoint *route, bool injectedOnly = false, bool mixedColours = false);
+float smoothLaneBlend(float distance, float start, float end)
+{
+    const float t = clampFloat((distance - start) / (end - start), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+int ccwDiscoveryTallRedExitSeat()
+{
+    if (routeTurnSign <= 0 || completedLaps != 0 ||
+        sectionLayoutMode != OBSTACLE_SECTION_LAYOUT_OFFICIAL)
+        return -1;
+    // A visible tall GREEN is driven as RED. On the last straight it
+    // pushes the car out of the central view of the two third positions.
+    constexpr uint8_t innerFirst = 19;
+    const auto &sign = seats[innerFirst];
+    return sign.confirmed && sign.injected && sign.red &&
+        sign.modifiedSign && sign.heightMm == 150 ? innerFirst : -1;
+}
+
+void shapeCcwDiscoveryAfterTallSign(PathPoint *route);
+void shapeCcwDiscoveryReturnCorner(PathPoint *route);
 
 void rebuildLivePath()
 {
@@ -2494,6 +2548,16 @@ void rebuildLivePath()
     telemetryRouteDirty=true;
 }
 
+void rebuildDiscoveryPath()
+{
+    rebuildLivePath();
+    if (ccwDiscoveryTallRedExitSeat() < 0)
+        return;
+    shapeCcwDiscoveryAfterTallSign(livePath);
+    shapeCcwDiscoveryReturnCorner(livePath);
+    recomputeSpeedProfile(livePath);
+}
+
 int8_t earlierExtremeAdjacentSeat(uint8_t seatIndex)
 {
     for (uint8_t other = 0; other < OBSTACLE_SEAT_COUNT; ++other)
@@ -2528,7 +2592,7 @@ void injectSeat(uint8_t seatIndex, bool delayed)
     seat.injected = true;
     if (injectionCount < 65535)
         ++injectionCount;
-    rebuildLivePath();
+    rebuildDiscoveryPath();
     if (parkingEntryConnectorActive)
     {
         parkingEntryConnectorChangedSeat =
@@ -2596,10 +2660,11 @@ void activateCcwStoredSeats(float currentDistanceMm)
     for (uint8_t seatIndex = 0; seatIndex < 4; ++seatIndex)
     {
         const uint8_t bit = static_cast<uint8_t>(1U << seatIndex);
+        const float approach = OBSTACLE_PARKING_CCW_STORED_SEAT_APPROACH_MM +
+            (seats[seatIndex].red ? 0.0f : 300.0f);
         if (!(parkingCcwStoredSeatMask & bit) ||
             cyclicDistanceForward(currentDistanceMm,
-                seats[seatIndex].pathDistanceMm) >
-                    OBSTACLE_PARKING_CCW_STORED_SEAT_APPROACH_MM)
+                seats[seatIndex].pathDistanceMm) > approach)
             continue;
         parkingCcwStoredSeatMask &= static_cast<uint8_t>(~bit);
         injectSeat(seatIndex, true);
@@ -2648,7 +2713,8 @@ void preserveLaterLapSeam(PathPoint *route)
 
 bool laterLapRouteSafe(const PathPoint *route,
                        float *minimumWall = nullptr, float *minimumPillar = nullptr,
-                       uint32_t startedUs = 0, uint32_t budgetUs = 0)
+                       uint32_t startedUs = 0, uint32_t budgetUs = 0,
+                       uint16_t first = 0, uint16_t end = 0)
 {
     if (minimumWall) *minimumWall=INFINITY;
     if (minimumPillar) *minimumPillar=INFINITY;
@@ -2657,7 +2723,8 @@ bool laterLapRouteSafe(const PathPoint *route,
     // Check the physical pose implied by each route tangent, including the
     // seam and every confirmed pillar. This is a geometric preflight, not a
     // substitute for motor/sensor tracking validation during the test laps.
-    for (uint16_t i = 0; i < pathLength; ++i)
+    if (end == 0) end = pathLength;
+    for (uint16_t i = first; i < end; ++i)
     {
         if(budgetUs && uint32_t(micros()-startedUs)>=budgetUs)return false;
         const uint16_t previous = (i + pathLength - 1) % pathLength;
@@ -2741,6 +2808,17 @@ void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedC
             const float d=cyclicDistanceForward(baselinePath[ia].distanceMm,baselinePath[i].distanceMm);
             if (d>span) continue;
             float t=d/span; t=t*t*(3.0f-2.0f*t);
+            if (!injectedOnly && !mixedColours && section!=0)
+            {
+                // Use one straight line between the passing lanes, with
+                // tangent-continuous transitions onto the two plateaus.
+                constexpr float blendMm=180.0f;
+                const float fromEnd=fminf(d,span-d);
+                const float travel=fromEnd<blendMm
+                    ? fromEnd*fromEnd/(2.0f*blendMm) : fromEnd-0.5f*blendMm;
+                t=travel/(span-blendMm);
+                if(d>0.5f*span)t=1.0f-t;
+            }
             const float offset=offsetA+t*(offsetB-offsetA);
             route[i].x=baselinePath[i].x+nx*offset;
             route[i].y=baselinePath[i].y+ny*offset;
@@ -3003,14 +3081,22 @@ float laterLapInwardTrackingSpeed(float speed, const PositionEstimate &pose,
        !isfinite(pose.heading_deg))return 0;
     const float tangent=connectorRouteHeading(route,index)*PI/180.0f;
     const float nx=-sinf(tangent),ny=cosf(tangent);
+    const float crossTrack=nx*(pose.x_mm-route[index].x)+ny*(pose.y_mm-route[index].y);
+    const float ordinaryMaximum=OBSTACLE_PATH_MAX_SPEED*OBSTACLE_LATER_LAP_SPEED_FACTOR;
+    if(speed>ordinaryMaximum)
+    {
+        const float angle=fabsf(wrap180(pose.heading_deg-tangent*180.0f/PI));
+        const float aligned=fminf(clampFloat((6.0f-angle)/3.0f,0.0f,1.0f),
+            clampFloat((35.0f-fabsf(crossTrack))/20.0f,0.0f,1.0f));
+        speed=ordinaryMaximum+aligned*(speed-ordinaryMaximum);
+    }
     const float towardCentre=-nx*route[index].x-ny*route[index].y;
     if(fabsf(towardCentre)<1.0f)return speed;
     const float sign=towardCentre>0 ? 1.0f:-1.0f;
     const float h=pose.heading_deg*PI/180.0f;
     const float inwardHeading=sign*(nx*cosf(h)+ny*sinf(h));
     if(inwardHeading<=0)return speed;
-    const float inwardError=sign*(nx*(pose.x_mm-route[index].x)+
-                                  ny*(pose.y_mm-route[index].y));
+    const float inwardError=sign*crossTrack;
     //617 diverged toward the inner wall while the same route worked in618.
     //Anticipate the measured heading error over the existing response budget,
     //rather than maintaining full speed until the correction is too tight.
@@ -3025,13 +3111,21 @@ float laterLapTrackingSpeed(float speed, float requestedCurvature, int steering)
     // Include the quantized CAD command as well as the pursuit request.
     const float actualCurvature=abs(steering)<2 ? 0.0f :
         1.0f/Ackermann::getTurnRadius(steering);
-    return fminf(speed,laterLapCurvatureSpeed(
-        fmaxf(fabsf(requestedCurvature),fabsf(actualCurvature))));
+    const float curvature=fmaxf(fabsf(requestedCurvature),fabsf(actualCurvature));
+    const float ordinary=OBSTACLE_PATH_MAX_SPEED*OBSTACLE_LATER_LAP_SPEED_FACTOR;
+    if(speed>ordinary && curvature<OBSTACLE_LATER_LAP_STRAIGHT_CURVATURE_PER_MM)
+    {
+        const float straightness=clampFloat(2.0f*(1.0f-
+            curvature/OBSTACLE_LATER_LAP_STRAIGHT_CURVATURE_PER_MM),0.0f,1.0f);
+        return fminf(speed,ordinary+straightness*(OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S-ordinary));
+    }
+    return fminf(speed,laterLapCurvatureSpeed(curvature));
 }
 
 void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
 {
     float curveLimits[OBSTACLE_MAX_PATH_WAYPOINTS];
+    bool clearStraight[OBSTACLE_MAX_PATH_WAYPOINTS]={};
     const float maximum = OBSTACLE_PATH_MAX_SPEED * OBSTACLE_LATER_LAP_SPEED_FACTOR;
     float maximumSegment = OBSTACLE_PATH_SAMPLE_MM;
     for (uint16_t i=0;i<pathLength;++i)
@@ -3070,16 +3164,34 @@ void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
         curveLimits[i]=physicalLimitsOnly ? laterLapCurvatureSpeed(k) :
             fminf(ceilf(route[i].speedMmS*OBSTACLE_LATER_LAP_SPEED_FACTOR),
                   laterLapCurvatureSpeed(k));
+        const float phase=baselinePath[i].distanceMm;
+        if(physicalLimitsOnly && phase>=OBSTACLE_LATER_LAP_HANDOFF_MM &&
+           phase<corners[3].pathStartMm &&
+           fabsf(k)<=OBSTACLE_LATER_LAP_STRAIGHT_CURVATURE_PER_MM &&
+           beforeDistance+afterDistance-c<=2.0f)
+        {
+            clearStraight[i]=true;
+            constexpr float radius=OBSTACLE_LATER_LAP_STRAIGHT_PILLAR_DISTANCE_MM;
+            for(const auto &seat:seats)
+            {
+                if(seat.confirmed && distanceSquared(route[i].x,route[i].y,seat.x,seat.y)<radius*radius)
+                { clearStraight[i]=false;break; }
+            }
+        }
     }
     // Include a full actual waypoint interval; displacement can stretch the
     // baseline's nominal 50 mm spacing. Never use baseline station distances.
     const float responseDistance = maximum * OBSTACLE_LATER_LAP_SPEED_TOLERANCE *
         OBSTACLE_LATER_LAP_RESPONSE_S + maximumSegment;
+    const float straightResponseDistance =
+        OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S*OBSTACLE_LATER_LAP_SPEED_TOLERANCE*
+        OBSTACLE_LATER_LAP_RESPONSE_S+maximumSegment;
     // Every upcoming turn constrains the entry speed. This includes braking
     // across the cyclic seam and accounts for the finite motor response.
     for(uint16_t i=0;i<pathLength;++i)
     {
         float distance=0,limit=curveLimits[i];
+        float straightLimit=clearStraight[i] ? OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S:0;
         for(uint16_t step=1;step<pathLength;++step)
         {
             const uint16_t p=(i+step-1)%pathLength,n=(i+step)%pathLength;
@@ -3087,11 +3199,21 @@ void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
             const float usable=fmaxf(0,distance-responseDistance);
             // All later distances are greater and all squared curve speeds
             // nonnegative. Beyond this point no future curve can lower limit.
-            if(2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*usable>=limit*limit)break;
-            limit=fminf(limit,sqrtf(curveLimits[n]*curveLimits[n]+
-                2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*usable));
+            const float braking=2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*usable;
+            if(braking<limit*limit)
+                limit=fminf(limit,sqrtf(curveLimits[n]*curveLimits[n]+braking));
+            if(straightLimit>maximum && !clearStraight[n])
+            {
+                const float straightBraking=2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*
+                    fmaxf(0,distance-straightResponseDistance);
+                straightLimit=fminf(straightLimit,sqrtf(
+                    curveLimits[n]*curveLimits[n]+straightBraking));
+            }
+            if(braking>=limit*limit &&
+               (straightLimit<=maximum || 2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*
+                (distance-straightResponseDistance)>=straightLimit*straightLimit))break;
         }
-        laterLapSpeedLimits[i]=limit;
+        laterLapSpeedLimits[i]=straightLimit>maximum ? straightLimit:limit;
     }
     // Two cyclic forward sweeps limit planned acceleration after a slow turn.
     for(uint8_t pass=0;pass<2;++pass)
@@ -3108,32 +3230,90 @@ void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
     Serial.print(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS,0);Serial.print('/');
     Serial.print(OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS,0);Serial.print('/');
     Serial.println(OBSTACLE_LATER_LAP_RESPONSE_S,2);
+    if(physicalLimitsOnly)
+    {
+        float plannedPeak=0;
+        for(uint16_t i=0;i<pathLength;++i)plannedPeak=fmaxf(plannedPeak,laterLapSpeedLimits[i]);
+        Serial.print("[LAPS] clear_straight_limit/peak_mm_s=");
+        Serial.print(OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S,0);Serial.print('/');
+        Serial.println(plannedPeak,0);
+    }
+}
+
+PathPoint laterLapLookaheadTarget(const PathPoint *route, const PositionEstimate &pose,
+                                 uint16_t index, float lookaheadMm)
+{
+    // Locate the axle on either segment incident to the nearest waypoint.
+    // Then interpolate along the route instead of jumping whole waypoints.
+    const uint16_t before=(index+pathLength-1)%pathLength;
+    uint16_t start=index;
+    float bestError=INFINITY, intoSegment=0.0f;
+    for(uint16_t from:{before,index})
+    {
+        const auto &a=route[from];
+        const auto &b=route[(from+1)%pathLength];
+        const float dx=b.x-a.x,dy=b.y-a.y;
+        const float lengthSquared=dx*dx+dy*dy;
+        if(lengthSquared<1.0f)continue;
+        const float t=clampFloat(((pose.x_mm-a.x)*dx+(pose.y_mm-a.y)*dy)/
+            lengthSquared,0.0f,1.0f);
+        const float ex=pose.x_mm-(a.x+t*dx),ey=pose.y_mm-(a.y+t*dy);
+        const float error=ex*ex+ey*ey;
+        if(error>=bestError)continue;
+        bestError=error;start=from;intoSegment=t*sqrtf(lengthSquared);
+    }
+    // Retain the previous average horizon, which rounded up to a sample.
+    float remaining=lookaheadMm+0.5f*OBSTACLE_PATH_SAMPLE_MM+intoSegment;
+    for(uint16_t visited=0;visited<pathLength;++visited)
+    {
+        const uint16_t next=(start+1)%pathLength;
+        const float dx=route[next].x-route[start].x,dy=route[next].y-route[start].y;
+        const float length=hypotf(dx,dy);
+        if(length>=1.0f && remaining<=length)
+        {
+            PathPoint target=route[next];
+            const float t=remaining/length;
+            target.x=route[start].x+t*dx;
+            target.y=route[start].y+t*dy;
+            return target;
+        }
+        remaining-=length;start=next;
+    }
+    return route[index];
 }
 
 // Run the same quantized pursuit controller around the candidate before using
 // an optional shortcut. Wall geometry is sampled once per pose; other pillars
 // use the identical capsule distance directly, avoiding repeated wall work.
-bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t budgetUs)
+bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t budgetUs,
+                              uint16_t first = 0, uint16_t end = 0)
 {
+    const bool sectionOnly = end != 0;
+    const PathPoint *entry = sectionOnly ? route : livePath;
+    const uint16_t maximumSteps = sectionOnly ? 360 : 6000;
     for(int perturbation=-1;perturbation<=1;++perturbation)
     {
-        float h=connectorRouteHeading(livePath,0)*PI/180.0f;
-        float x=livePath[0].x-perturbation*10.0f*sinf(h);
-        float y=livePath[0].y+perturbation*10.0f*cosf(h);
-        h+=perturbation*PI/180.0f;
-        uint16_t index=0;
+        float h=connectorRouteHeading(entry,first)*PI/180.0f;
+        const float offset=sectionOnly ? 20.0f : 10.0f;
+        float x=entry[first].x-perturbation*offset*sinf(h);
+        float y=entry[first].y+perturbation*offset*cosf(h);
+        h+=perturbation*(sectionOnly ? 3.0f : 1.0f)*PI/180.0f;
+        uint16_t index=first;
         float previousForward[OBSTACLE_SEAT_COUNT];
         for(float &value:previousForward)value=NAN;
         uint8_t wraps=0;
         bool completed=false;
-        float travel=0,speed=OBSTACLE_PATH_MAX_SPEED,acceleration=0,limit=0;
+        float travel=0,speed=sectionOnly ? laterLapSpeedLimits[first] : OBSTACLE_PATH_MAX_SPEED;
+        float acceleration=0,limit=0;
         constexpr float dt=0.020f;
-        for(uint16_t step=0;step<6000;++step)
+        for(uint16_t step=0;step<maximumSteps;++step)
         {
-            if(uint32_t(micros()-startedUs)>=budgetUs)return false;
+            if(budgetUs && uint32_t(micros()-startedUs)>=budgetUs)return false;
             const uint16_t previous=index;
             index=nearestPathIndex(route,x,y,index,OBSTACLE_PATH_PROGRESS_WINDOW);
-            if(previous>pathLength*3/4 && index<pathLength/4 &&
+            if(sectionOnly && index>=end && index<=end+OBSTACLE_PATH_PROGRESS_WINDOW)
+            {completed=true;break;}
+            if(!sectionOnly && previous>pathLength*3/4 && index<pathLength/4 &&
                 travel>loopLengthMm*0.5f && ++wraps>=2){completed=true;break;}
             ObstacleClearanceSample reference{};
             if(!calculateClearanceAtPose(seats[0],x,y,h*180.0f/PI,reference) ||
@@ -3149,8 +3329,11 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
                 if(!isfinite(gap) || gap<32.0f)return false;
                 // Witness correct passing once the complete steered footprint
                 // crosses the sign's transverse plane, not just the rear axle.
-                if(hypotf(x-seats[seat].x,y-seats[seat].y)>400.0f)continue;
+                if(distanceSquared(x,y,seats[seat].x,seats[seat].y)>400.0f*400.0f)continue;
                 const float sh=seats[seat].headingDeg*PI/180.0f;
+                const float shCos=cosf(sh), shSin=sinf(sh);
+                if (sectionOnly && fabsf((x-seats[seat].x)*shCos+
+                        (y-seats[seat].y)*shSin)>210.0f) continue;
                 float minForward=INFINITY;
                 float minSide=INFINITY,maxSide=-INFINITY;
                 for(int wheel:{-1,1})
@@ -3160,8 +3343,8 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
                     for(const auto &body:bodies)for(const auto &p:body.p)
                     {
                         const float dx=p.x-seats[seat].x,dy=p.y-seats[seat].y;
-                        const float forward=dx*cosf(sh)+dy*sinf(sh);
-                        const float side=-dx*sinf(sh)+dy*cosf(sh);
+                        const float forward=dx*shCos+dy*shSin;
+                        const float side=-dx*shSin+dy*shCos;
                         minForward=fminf(minForward,forward);
                         minSide=fminf(minSide,side);maxSide=fmaxf(maxSide,side);
                     }
@@ -3175,14 +3358,8 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
                  !parking_start_footprint::safe(x,y,h*180.0f/PI,1,false,20.0f)))return false;
             float lookahead=OBSTACLE_LATER_LAP_LOOKAHEAD_MM;
             if(nearCorner(baselinePath[index].distanceMm))lookahead*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
-            uint16_t target=index;float distance=0;
-            for(uint16_t k=0;k<pathLength && distance<lookahead;++k)
-            {
-                const uint16_t next=(target+1)%pathLength;
-                distance+=hypotf(route[next].x-route[target].x,route[next].y-route[target].y);
-                target=next;
-            }
-            const float dx=route[target].x-x,dy=route[target].y-y;
+            const auto target=laterLapLookaheadTarget(route,{x,y,0.0f},index,lookahead);
+            const float dx=target.x-x,dy=target.y-y;
             const float forward=dx*cosf(h)+dy*sinf(h);
             const float curvature=2.0f*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1.0f,dx*dx+dy*dy);
             const float requested=pursuitServoForCurvature(curvature);
@@ -3224,90 +3401,6 @@ float laterLapTargetTime(PathPoint *route)
     return seconds;
 }
 
-// Join the required passing plateaus directly instead of returning to the
-// discovery centreline between them. Cubic handles preserve the measured-map
-// route tangents. The lap seam and complete final corner/parking handoff stay
-// byte-for-byte unchanged. This small construction is independent of the
-// optional iterative inner search and its MCU time budget.
-void connectKnownLaterLapRoute(PathPoint *route, PathPoint *rollback)
-{
-    const uint32_t startedUs=micros();
-    memcpy(rollback,route,sizeof(PathPoint)*pathLength);
-    struct Anchor {float heading;bool fixed;};
-    static Anchor anchors[OBSTACLE_MAX_PATH_WAYPOINTS];
-    static PathPoint best[OBSTACLE_MAX_PATH_WAYPOINTS];
-    float oldLength,oldPeak,oldTurn;
-    const float oldBending=laterLapBending(route,oldLength,oldPeak,&oldTurn);
-    const float oldTime=laterLapTargetTime(route);
-    float bestTime=oldTime;
-    memcpy(best,route,sizeof(PathPoint)*pathLength);
-    for(uint16_t i=0;i<pathLength;++i)
-    {
-        Anchor &a=anchors[i];
-        a.heading=connectorRouteHeading(rollback,i)*PI/180.0f;
-        const float d=baselinePath[i].distanceMm;
-        a.fixed=d<=OBSTACLE_LATER_LAP_SEAM_KEEP_MM+OBSTACLE_LATER_LAP_SEAM_BLEND_MM ||
-            d>=corners[3].pathStartMm-OBSTACLE_LATER_LAP_LOOKAHEAD_MM;
-        for(uint8_t s=0;s<OBSTACLE_SEAT_COUNT;++s)
-        {
-            if(!seats[s].confirmed)continue;
-            const float forward=cyclicDistanceForward(seats[s].pathDistanceMm,d);
-            if(fminf(forward,loopLengthMm-forward)<=150.0f)a.fixed=true;
-        }
-    }
-    // Three analytic candidates, no iterative relaxation or full-lap online
-    // simulation. The actual pursuit/motor plant is covered by the offline
-    // matrix; full-footprint route gates and runtime guards remain mandatory.
-    for(float handle:{0.30f,0.22f,0.38f})
-    {
-        memcpy(route,rollback,sizeof(PathPoint)*pathLength);
-        for(uint16_t first=0;first+1<pathLength;)
-        {
-            if(!anchors[first].fixed || anchors[first+1].fixed){++first;continue;}
-            uint16_t last=first+1;
-            while(last<pathLength && !anchors[last].fixed)++last;
-            if(last>=pathLength)break;
-            const PathPoint a=rollback[first],b=rollback[last];
-            const float span=baselinePath[last].distanceMm-baselinePath[first].distanceMm;
-            const float arm=handle*hypotf(b.x-a.x,b.y-a.y);
-            const float ax=a.x+arm*cosf(anchors[first].heading);
-            const float ay=a.y+arm*sinf(anchors[first].heading);
-            const float bx=b.x-arm*cosf(anchors[last].heading);
-            const float by=b.y-arm*sinf(anchors[last].heading);
-            for(uint16_t i=first+1;i<last;++i)
-            {
-                const float t=(baselinePath[i].distanceMm-baselinePath[first].distanceMm)/span,u=1-t;
-                route[i].x=u*u*u*a.x+3*u*u*t*ax+3*u*t*t*bx+t*t*t*b.x;
-                route[i].y=u*u*u*a.y+3*u*u*t*ay+3*u*t*t*by+t*t*t*b.y;
-            }
-            first=last;
-        }
-        float length,peak,turn,wall,pillar;
-        const float bending=laterLapBending(route,length,peak,&turn);
-        if(length>=oldLength-5.0f || bending>oldBending*1.01f ||
-            peak>fmaxf(oldPeak,1.0f/250.0f)+1e-7f || turn>oldTurn+0.01f ||
-            !laterLapRouteSafe(route,&wall,&pillar) || wall<80.0f || pillar<50.0f)continue;
-        const float seconds=laterLapTargetTime(route);
-        if(seconds>=bestTime-0.01f)continue;
-        bestTime=seconds;memcpy(best,route,sizeof(PathPoint)*pathLength);
-    }
-    memcpy(route,best,sizeof(PathPoint)*pathLength);
-    if(bestTime<oldTime)
-    {
-        float length,peak;laterLapBending(route,length,peak);
-        Serial.print("[LAPS] Direct connectors length_before_after_mm=");
-        Serial.print(oldLength,1);Serial.print('/');Serial.print(length,1);
-        Serial.print(" target_s_before_after=");Serial.print(oldTime,3);
-        Serial.print('/');Serial.print(bestTime,3);
-        Serial.print(" planning_us=");Serial.println(uint32_t(micros()-startedUs));
-    }
-    else
-    {
-        Serial.print("[LAPS] Direct connectors retained checked shape planning_us=");
-        Serial.println(uint32_t(micros()-startedUs));
-    }
-}
-
 // A lateral elastic line on the recorded route: retain the complete passing
 // plateaus, then connect them through free space towards the inner corridor.
 // There is no colour-pair restriction and no forced return to the centre.
@@ -3327,16 +3420,12 @@ void shortenKnownInnerRoute(PathPoint *route,PathPoint *rollback)
     struct Node {float nx,ny,fade,minimum,q,next;};
     static Node nodes[OBSTACLE_MAX_PATH_WAYPOINTS];
     memcpy(best,route,sizeof(PathPoint)*pathLength);
+    // Restore the tighter turn budget used before the direct connectors.
+    constexpr float maximumExtraTurn=0.01f;
     bool innerPass[OBSTACLE_SEAT_COUNT]={};
     for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
         if(seats[seat].confirmed)innerPass[seat]=routeTurnSign*
             targetLateralForSeat(seats[seat],optimizedClearanceForSeat(seat))>0;
-    // A continuous inner corridor may need a small smooth connection from the
-    // protected start line. Mixed inside/outside bypasses keep the tighter
-    // turn budget; relaxing those also removed faster downstream connectors.
-    float maximumExtraTurn=0.20f; // radians over the complete route (~11.5deg)
-    for(uint8_t seat=6;seat<OBSTACLE_SEAT_COUNT;++seat)
-        if(seats[seat].confirmed && !innerPass[seat]){maximumExtraTurn=0.01f;break;}
     for(uint16_t i=0;i<pathLength;++i)
     {
         const float h=baselinePath[i].headingDeg*PI/180.0f;
@@ -3451,6 +3540,161 @@ void addLaterLapStartMiddleReserve(PathPoint *route,PathPoint *backup)
     else Serial.println("[LAPS] Smooth start-middle passing reserve applied");
 }
 
+int solitaryMiddleSeat(uint8_t section)
+{
+    const int first = 6*section;
+    int middle = -1;
+    for (int offset=0;offset<6;++offset)
+    {
+        if (!seats[first+offset].confirmed) continue;
+        if ((offset!=2 && offset!=3) || middle>=0) return -1;
+        middle = first+offset;
+    }
+    return middle;
+}
+
+void refineCcwSolitaryPillars(PathPoint *route, PathPoint *rollback)
+{
+    if (routeTurnSign <= 0) return;
+    int middle[4] = {-1,-1,-1,-1};
+    bool hasRed = false;
+    for (uint8_t section=1;section<4;++section)
+    {
+        middle[section] = solitaryMiddleSeat(section);
+        hasRed |= middle[section]>=0 && seats[middle[section]].red;
+    }
+    if (!hasRed) return;
+
+    const uint32_t started = micros();
+    const uint32_t budget = OBSTACLE_LATER_LAP_INNER_PLAN_BUDGET_US;
+    memcpy(rollback,route,sizeof(PathPoint)*pathLength);
+    float oldLength,oldPeak,oldTurn;
+    laterLapBending(route,oldLength,oldPeak,&oldTurn);
+    const float oldTime = laterLapTargetTime(route);
+    for (float handleScale:{0.56f,0.72f,0.0f})
+    {
+        if (uint32_t(micros()-started)>=budget) break;
+        memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+        for (uint8_t section=1;section<4;++section)
+        {
+            const int red = middle[section], green = middle[section-1];
+            if (red<0 || !seats[red].red) continue;
+            const float pass = seats[red].pathDistanceMm;
+            constexpr float taper = 425.0f, hold = 105.0f;
+            for (uint16_t i=0;i<pathLength;++i)
+            {
+                const float d = baselinePath[i].distanceMm;
+                if (fabsf(d-pass)>=taper) continue;
+                const float heading = baselinePath[i].headingDeg*PI/180.0f;
+                const float nx=-sinf(heading), ny=cosf(heading);
+                const float offset = 30.0f*smoothLaneBlend(d,pass-taper,pass-hold)*
+                    (1.0f-smoothLaneBlend(d,pass+hold,pass+taper));
+                route[i].x += nx*offset;
+                route[i].y += ny*offset;
+            }
+            if (handleScale==0.0f || green<0 || seats[green].red) continue;
+
+            // Keep the exit tangent of GREEN's left pass and the entry
+            // tangent of RED's right pass. One cubic connects those
+            // straights around the corner without two independent tapers.
+            uint16_t first=0,last=0;
+            const float greenExit = seats[green].pathDistanceMm+100.0f;
+            const float redEntry = pass-100.0f;
+            while (first+1<pathLength && baselinePath[first+1].distanceMm<=greenExit+0.1f) ++first;
+            while (last+1<pathLength && baselinePath[last].distanceMm<redEntry-0.1f) ++last;
+            if (last<=first) continue;
+            const PathPoint &a = route[first], &b = route[last];
+            const float h0 = baselinePath[first].headingDeg*PI/180.0f;
+            const float h1 = baselinePath[last].headingDeg*PI/180.0f;
+            const float fx=cosf(h0),fy=sinf(h0),tx=cosf(h1),ty=sinf(h1);
+            const float dx=b.x-a.x,dy=b.y-a.y;
+            const float lead = handleScale*(dx*fx+dy*fy);
+            const float tail = handleScale*(dx*tx+dy*ty);
+            const float span=baselinePath[last].distanceMm-baselinePath[first].distanceMm;
+            for (uint16_t i=first+1;i<last;++i)
+            {
+                const float t=(baselinePath[i].distanceMm-baselinePath[first].distanceMm)/span;
+                const float u=1.0f-t;
+                const float blend=t*t*(3.0f-2.0f*t);
+                route[i].x=a.x+blend*dx+3.0f*u*t*(u*lead*fx-t*tail*tx);
+                route[i].y=a.y+blend*dy+3.0f*u*t*(u*lead*fy-t*tail*ty);
+            }
+        }
+        float length,peak,turn,wall,pillar;
+        laterLapBending(route,length,peak,&turn);
+        if (length>oldLength || peak>oldPeak+1e-6f || turn>oldTurn+0.04f ||
+            !laterLapRouteSafe(route,&wall,&pillar,started,budget) ||
+            wall<50.0f || pillar<50.0f || laterLapTargetTime(route)>oldTime+0.05f ||
+            !laterLapTrackedRouteSafe(route,started,budget)) continue;
+        Serial.print("[LAPS] Solitary pillars single_corner=");
+        Serial.print(handleScale>0.0f ? 1:0);
+        Serial.print(" length_saved_mm=");
+        Serial.println(oldLength-length,1);
+        return;
+    }
+    memcpy(route,rollback,sizeof(PathPoint)*pathLength);
+    Serial.println("[LAPS] Solitary pillars kept prior checked route");
+}
+
+void refineCwSolitaryRed(PathPoint *route, PathPoint *rollback)
+{
+    if (routeTurnSign >= 0) return;
+    for (uint8_t section=1; section<4; ++section)
+    {
+        const int red = solitaryMiddleSeat(section);
+        // The inner-row RED already has its own pass next to the inner wall.
+        if (red < 0 || !seats[red].red || seats[red].lateralMm <= 0.0f) continue;
+        const float pass = seats[red].pathDistanceMm;
+        uint16_t first = 0, end = 0;
+        while (first+1 < pathLength && baselinePath[first+1].distanceMm < pass-1000.0f) ++first;
+        while (end+1 < pathLength && baselinePath[end].distanceMm < pass+1050.0f) ++end;
+        memcpy(rollback, route, sizeof(PathPoint)*pathLength);
+        bool accepted = false, sweptClear = false;
+        for (float clearance : {345.0f, 315.0f, 285.0f})
+        {
+            const float lane = targetLateralForSeat(seats[red], clearance);
+            for (uint16_t i=first; i<=end; ++i)
+            {
+                const float d = baselinePath[i].distanceMm - pass;
+                const float blend = smoothLaneBlend(d, -830.0f, -365.0f) *
+                    (1.0f-smoothLaneBlend(d, 365.0f, 830.0f));
+                if (blend <= 0.0f) continue;
+                const float heading = baselinePath[i].headingDeg*PI/180.0f;
+                const float nx = -sinf(heading), ny = cosf(heading);
+                const float previous = (rollback[i].x-baselinePath[i].x)*nx +
+                    (rollback[i].y-baselinePath[i].y)*ny;
+                const float shift = blend*(lane-previous);
+                route[i].x = rollback[i].x + nx*shift;
+                route[i].y = rollback[i].y + ny*shift;
+            }
+            float wall, pillar;
+            if (laterLapRouteSafe(route,&wall,&pillar,0,0,first,end+1) &&
+                wall >= 50.0f && pillar >= 50.0f)
+            {
+                sweptClear = true;
+                planLaterLapSpeeds(route,true);
+                // The local rollout has a fixed step bound. An open corridor
+                // can finish validation even when the rest of lap planning
+                // already used its optional time budgets.
+                if (laterLapTrackedRouteSafe(route,0,0,first,end))
+                {
+                    Serial.print("[LAPS] CW solitary RED inside seat/offset_mm=");
+                    Serial.print(red); Serial.print('/'); Serial.println(lane,0);
+                    accepted = true;
+                    break;
+                }
+            }
+            memcpy(route+first,rollback+first,sizeof(PathPoint)*(end-first+1));
+        }
+        if (!accepted)
+        {
+            Serial.print("[LAPS] CW solitary RED retained checked route seat/swept_clear=");
+            Serial.print(red); Serial.print('/');
+            Serial.println(sweptClear ? 1 : 0);
+        }
+    }
+}
+
 bool buildOptimizedPath()
 {
     memcpy(optimizedPath, baselinePath, sizeof(PathPoint) * pathLength);
@@ -3506,8 +3750,9 @@ bool buildOptimizedPath()
     {
         smoothKnownLaterLapRoute(optimizedPath,beforeLaneCarry,routeWall,routePillar);
         shortenKnownInnerRoute(optimizedPath,beforeLaneCarry);
-        connectKnownLaterLapRoute(optimizedPath,beforeLaneCarry);
         addLaterLapStartMiddleReserve(optimizedPath,beforeLaneCarry);
+        refineCcwSolitaryPillars(optimizedPath,beforeLaneCarry);
+        refineCwSolitaryRed(optimizedPath,beforeLaneCarry);
     }
     recomputeSpeedProfile(optimizedPath);
     planLaterLapSpeeds(optimizedPath,true);
@@ -3528,7 +3773,7 @@ bool buildOptimizedPath()
     }
     Serial.println(
         "[PATH] Optimized laps 2-3 path built "
-        "clearance_policy=validated-layout");
+        "clearance_policy=20261121_lap23_cw_inside_straight");
     return true;
 }
 
@@ -3685,7 +3930,7 @@ void applyDiscoveryTargetNudge(
     const PositionEstimate &pose)
 {
     float desiredNudgeDeg = 0.0f;
-    bool checkedGreenHint=false;
+    bool checkedAimHint=false;
     const float currentDistance = baselinePath[progressIndex].distanceMm;
     float bestForward = OBSTACLE_LOOK_START_MM + 1.0f;
     int bestStation = -1;
@@ -3736,6 +3981,9 @@ void applyDiscoveryTargetNudge(
         DiscoveryStation &coverage = discoveryStations[bestStation];
         const bool unresolved0 = !coverage.seatObservedClear[0];
         const bool unresolved1 = !coverage.seatObservedClear[1];
+        const bool centreThirdPair = bestStation == 11 && ccwDiscoveryTallRedExitSeat() >= 0 &&
+            bestForward >= 330.0f;
+        const bool firstCcwMiddle = routeTurnSign > 0 && bestStation == 4;
         float aimBearingDeg = 0.0f;
         const float comfortableBearingDeg = fmaxf(
             0.0f,
@@ -3757,7 +4005,9 @@ void applyDiscoveryTargetNudge(
                 bearing[0] + 0.5f * wrap180(bearing[1] - bearing[0]));
             allowedBearingDeg = fmaxf(
                 0.0f,
-                comfortableBearingDeg - 0.5f * separationDeg);
+                comfortableBearingDeg - 4.0f - 0.5f * separationDeg);
+            if (firstCcwMiddle)
+                allowedBearingDeg = fminf(allowedBearingDeg, 5.0f);
             discoveryScanSide = -2; // telemetry: both seats simultaneously
         }
         else if (unresolved0)
@@ -3840,7 +4090,7 @@ void applyDiscoveryTargetNudge(
                     greenHint=true;
                 }
             }
-            if (unresolved0 && unresolved1 && greenHint &&
+            if (unresolved0 && unresolved1 && !centreThirdPair && greenHint &&
                 hintRange >= OBSTACLE_DISCOVERY_VIEW_MIN_MM &&
                 hintRange <= OBSTACLE_DISCOVERY_VIEW_MAX_MM &&
                 fabsf(hintBearing) >= 20.0f &&
@@ -3853,7 +4103,57 @@ void applyDiscoveryTargetNudge(
                 if (safeNudge(candidate))
                 {
                     desiredNudgeDeg = candidate;
-                    checkedGreenHint=true;
+                    checkedAimHint=true;
+                }
+            }
+            // Once the bypass guard has released, favour a single recent,
+            // geometrically matched candidate over the midpoint of both rows.
+            // This hint steers the view only. The next frame still has to vote.
+            if (unresolved0 && unresolved1 && !checkedAimHint && !centreThirdPair)
+            {
+                const uint8_t first = bestStation * COURSE_SEATS_PER_STATION;
+                const uint32_t now = millis();
+                const auto hasRecentVote = [now](const CandidateSeat &seat) {
+                    return seat.lastVoteMs != 0 &&
+                        now - seat.lastVoteMs <= OBSTACLE_SEAT_VOTE_WINDOW_MS;
+                };
+                const bool leftPending = hasRecentVote(seats[first]);
+                const bool rightPending = hasRecentVote(seats[first+1]);
+                if (leftPending != rightPending)
+                {
+                    const float pendingBearing = bearing[rightPending ? 1 : 0];
+                    const float excess = fmaxf(0.0f,fabsf(pendingBearing)-8.0f);
+                    const float candidate = copysignf(fminf(15.0f,excess*taper),
+                        pendingBearing);
+                    if (fabsf(candidate) > fabsf(desiredNudgeDeg) && safeNudge(candidate))
+                    {
+                        desiredNudgeDeg = candidate;
+                        checkedAimHint = true;
+                    }
+                }
+            }
+            // After a corner the two rows spread across the image rapidly.
+            // Start centring while forward space is available. The normal
+            // aim takes over again at the hold distance where the pair can
+            // already be wider than the complete-pillar view.
+            if (unresolved0 && unresolved1 && bestStation>=3 && !checkedAimHint)
+            {
+                const float spread=fabsf(wrap180(bearing[1]-bearing[0]));
+                const bool afterTallSign=routeTurnSign>0 && bestStation%3==2 &&
+                    ((seats[bestStation*2-4].modifiedSign && seats[bestStation*2-4].heightMm==150) ||
+                     (seats[bestStation*2-3].modifiedSign && seats[bestStation*2-3].heightMm==150));
+                const float nearBlendStart=(routeTurnSign<0 && bestStation==9) || afterTallSign
+                    ? 275.0f : 330.0f;
+                const float weight=clampFloat((spread-20.0f)/15.0f,0.0f,1.0f)*
+                    clampFloat((bestForward-nearBlendStart)/120.0f,0.0f,1.0f);
+                const float centre=fmaxf(0.0f,fabsf(aimBearingDeg)-4.0f);
+                const float candidate=copysignf(fminf(30.0f,1.25f*centre*taper),
+                    aimBearingDeg);
+                if (weight>0.0f && fabsf(candidate)>fabsf(desiredNudgeDeg))
+                {
+                    const float aimed=desiredNudgeDeg+weight*(candidate-desiredNudgeDeg);
+                    if (safeNudge(aimed))
+                    { desiredNudgeDeg=aimed;checkedAimHint=true; }
                 }
             }
         }
@@ -3879,7 +4179,7 @@ void applyDiscoveryTargetNudge(
     const float nudge = lastDiscoveryTargetNudgeDeg * PI / 180.0f;
     const float dx = target.x - pose.x_mm;
     const float dy = target.y - pose.y_mm;
-    if (checkedGreenHint)
+    if (checkedAimHint)
     {
         // The slew-limited command can differ from the checked endpoint.
         // Validate the actual clamped/quantized steering as well.
@@ -3988,14 +4288,37 @@ bool observationAllowsClearAtGeometry(
         seatRangeMm + OBSTACLE_DISCOVERY_BEHIND_SEAT_MARGIN_MM;
 }
 
-// A broad, distant GREEN component may be room background. It cannot
-// obstruct an EMPTY near seat whose expected ground foot is well below it.
-// Upright/local unknown silhouettes still veto CLEAR in the caller.
+bool confirmedPillarOccludesSeat(uint8_t seatIndex, const PositionEstimate &pose,
+                                float bearingDeg, float rangeMm)
+{
+    const float ray = (pose.heading_deg+bearingDeg)*PI/180.0f;
+    const float ux = cosf(ray), uy = sinf(ray);
+    const CandidateSeat &target = seats[seatIndex];
+    const float radius = OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
+    for (uint8_t other = 0; other < OBSTACLE_SEAT_COUNT; ++other)
+    {
+        if (other == seatIndex || !seats[other].confirmed)
+            continue;
+        const float dx = seats[other].x-target.x, dy = seats[other].y-target.y;
+        const float ahead = dx*ux+dy*uy+rangeMm;
+        const float cross = dx*uy-dy*ux;
+        if (ahead > 0.0f && ahead < rangeMm && fabsf(cross) <= radius)
+            return true;
+    }
+    return false;
+}
+
+// A distant GREEN component can overlap a nearby slot in the image. Keep
+// the footprint and range tests even when shape alone cannot separate them.
 bool rejectedGreenBehindSeat(const Blob *raw, float bearing, float range)
 {
     if (raw==nullptr || !raw->found || raw->color!=ColorType::GREEN ||
-        raw->height()<=0 || raw->width()<2*raw->height() ||
+        raw->height()<=0 ||
         raw->maxY<=OBSTACLE_CAMERA_GROUND_HORIZON_Y) return false;
+    const bool broad=raw->width()>=2*raw->height();
+    const bool alignedNearSeat=fabsf(bearing)<=15.0f && range<=450.0f &&
+        raw->minX>2 && raw->maxX<317 && raw->minY>2;
+    if (!broad && !alignedNearSeat) return false;
     const float forward=range*cosf(bearing*PI/180.0f);
     if (!isfinite(forward) || forward<=0.0f) return false;
     const float expectedFoot=OBSTACLE_CAMERA_GROUND_HORIZON_Y+
@@ -4192,19 +4515,35 @@ void updateDiscoveryCoverage(
                 pose,
                 seatBearingDeg,
                 seatRangeMm);
-            const bool distantGreenBackground =
+            const bool distantRawGreen =
+                rejectedGreenBehindSeat(rawBlob, seatBearingDeg, seatRangeMm);
+            const bool distantGreenBackground = distantRawGreen &&
                 !observation.productionValid &&
                 (observation.status == OBSTACLE_OBSERVATION_NO_BLOB ||
                  (observation.status == OBSTACLE_OBSERVATION_REJECTED_BLOB &&
-                  observation.color == ColorType::GREEN)) &&
-                rejectedGreenBehindSeat(rawBlob, seatBearingDeg, seatRangeMm);
+                  observation.color == ColorType::GREEN));
             const uint32_t now = millis();
+            const CandidateSeat &seat = seats[seatIndex];
+            const bool recentSeatVote = seat.lastVoteMs != 0 &&
+                now-seat.lastVoteMs <= OBSTACLE_SEAT_VOTE_WINDOW_MS;
             const bool recentGreenSeatCandidate =
                 greenSeatCandidateLastSeenMs[seatIndex] != 0 &&
                 now - greenSeatCandidateLastSeenMs[seatIndex] <=
                     OBSTACLE_GREEN_SEAT_OCCUPANCY_HOLD_MS;
+            // CCW41: the edge view at 422 mm declared a real middle GREEN
+            // empty. Keep the station in the checked search until a nearer
+            // view, while accepting a correctly matched colour at full range.
+            const bool firstCcwMiddleClearReady = routeTurnSign <= 0 || station != 4 ||
+                seatRangeMm <= 350.0f || fabsf(seatBearingDeg) <= 17.0f;
             const bool clearEvidence =
-                !deferParkingTargetClear && comfortablyVisible &&
+                !deferParkingTargetClear && comfortablyVisible && !recentSeatVote &&
+                firstCcwMiddleClearReady &&
+                // Log20: clearing both views at 504–567 mm let discovery
+                // accelerate before getting a closer look at the middle slot.
+                // Keep distant colour votes, revisit distant EMPTY.
+                (parkingEntryActive || parkingEntryObserving || parkingEntryScouting ||
+                 seatRangeMm<=450.0f) &&
+                !confirmedPillarOccludesSeat(seatIndex,pose,seatBearingDeg,seatRangeMm) &&
                 //621 marked the first place after the corner CLEAR from
                 //the preceding straight (~600mm oblique view). Colour votes
                 //remain allowed at full range; absence needs a nearer, aligned view.
@@ -4212,12 +4551,15 @@ void updateDiscoveryCoverage(
                     (seatRangeMm<=450.0f &&
                      (parkingEntryActive || parkingEntryObserving || parkingEntryScouting ||
                       (cornerViewPhase!=CORNER_VIEW_IDLE && cornerViewStation==station) ||
-                      fabsf(wrap180(pose.heading_deg-seats[seatIndex].headingDeg))<=25.0f))) &&
+                      fabsf(wrap180(pose.heading_deg-seats[seatIndex].headingDeg))<=25.0f ||
+                      (seatRangeMm>=350.0f && fabsf(seatBearingDeg)<=12.0f &&
+                       fabsf(wrap180(pose.heading_deg-seats[seatIndex].headingDeg))<=38.0f)))) &&
                 !greenSeatCandidateThisFrame[seatIndex] &&
                 !recentGreenSeatCandidate &&
-                !unmappedForegroundBlocksClear(rawBlob, observation,
+                (distantRawGreen ||
+                 (!unmappedForegroundBlocksClear(rawBlob, observation,
                     seatBearingDeg, seatRangeMm) &&
-                (!rejectedBlobBlocksSeatClear(rawBlob, seatBearingDeg) || distantGreenBackground) &&
+                  !rejectedBlobBlocksSeatClear(rawBlob, seatBearingDeg))) &&
                 (observationAllowsClearAtGeometry(observation, seatBearingDeg, seatRangeMm) ||
                  distantGreenBackground);
             if (clearEvidence)
@@ -4436,6 +4778,129 @@ bool cornerViewSweepSafe(const PositionEstimate &start, float signedTravel)
     return true;
 }
 
+bool ccwDiscoveryRouteSectionSafe(const PathPoint *route, uint16_t first, uint16_t last)
+{
+    const float extraNose = fmaxf(0.0f,
+        OBSTACLE_FINAL_PARKING_STEERED_FRONT_MM - ROBOT_FRONT_FROM_REAR_AXLE_MM);
+    for (uint16_t i = first; i <= last; ++i)
+    {
+        const uint16_t before = (i + pathLength - 1) % pathLength;
+        const uint16_t after = (i + 1) % pathLength;
+        const float dx = route[after].x - route[i].x, dy = route[after].y - route[i].y;
+        const float beforeRad = atan2f(route[i].y - route[before].y,
+                                      route[i].x - route[before].x);
+        const float afterRad = atan2f(dy, dx);
+        const float segment = hypotf(dx, dy);
+        const float bend = wrap180((afterRad - beforeRad) * 180.0f / PI);
+        if (segment < 3.0f || fabsf(pursuitServoForCurvature(
+                bend * PI / (180.0f * segment))) > OBSTACLE_MAX_PURSUIT_STEERING_DEG)
+            return false;
+        for (float fraction : {0.0f, 0.5f})
+        {
+            PositionEstimate pose{};
+            pose.x_mm = route[i].x + fraction * dx;
+            pose.y_mm = route[i].y + fraction * dy;
+            pose.heading_deg = afterRad * 180.0f / PI - (0.5f - fraction) * bend;
+            if (!cornerViewSweepSafe(pose, extraNose) ||
+                !parking_start_footprint::safe(pose.x_mm, pose.y_mm, pose.heading_deg, -1, false) ||
+                !parking_start_footprint::safe(pose.x_mm, pose.y_mm, pose.heading_deg, 1, false))
+                return false;
+        }
+    }
+    return true;
+}
+
+void shapeCcwDiscoveryAfterTallSign(PathPoint *route)
+{
+    const int tall = ccwDiscoveryTallRedExitSeat();
+    if (tall < 0) return;
+    const float firstSign = seats[tall].pathDistanceMm;
+    const uint16_t tallIndex = nearestPathIndex(baselinePath, seats[tall].x,
+        seats[tall].y, 0, pathLength);
+    const uint16_t first = tallIndex;
+    const bool thirdKnown = seats[22].confirmed || seats[23].confirmed;
+    const uint16_t last = tallIndex + (thirdKnown ? 17 : 11);
+    if (last + 1 >= pathLength) return;
+
+    // Carry the actual passing offset 150 mm past the pillar before gently
+    // returning to the centre. A taper that starts at the pillar itself makes
+    // pursuit turn in while the rear wheels and camera are still in the pass.
+    memcpy(smoothingBuffer, route, sizeof(PathPoint) * pathLength);
+    const float passingOffset = route[tallIndex].x - baselinePath[tallIndex].x;
+    for (uint16_t i = first; i <= last; ++i)
+    {
+        const float d = baselinePath[i].distanceMm - firstSign;
+        const float leave = smoothLaneBlend(d, 150.0f, 500.0f);
+        const float rejoin = smoothLaneBlend(d, 550.0f, 850.0f);
+        const float offset = route[i].x - baselinePath[i].x;
+        route[i].x = baselinePath[i].x + passingOffset * (1.0f - leave) + offset * rejoin;
+    }
+    if (ccwDiscoveryRouteSectionSafe(route, first, last))
+        Serial.println("[PATH] CCW tall sign: centred third-position approach");
+    else
+        memcpy(route + first, smoothingBuffer + first, sizeof(PathPoint) * (last - first + 1));
+}
+
+void shapeCcwDiscoveryReturnCorner(PathPoint *route)
+{
+    // Both passes already have mapped sides and active bypasses. Preserve
+    // the initial departure and every other layout.
+    if (ccwDiscoveryTallRedExitSeat() < 0 ||
+        !seats[23].confirmed || !seats[23].injected || !seats[23].red ||
+        !seats[1].confirmed || !seats[1].injected || seats[1].red)
+        return;
+    const uint16_t red = nearestPathIndex(baselinePath, seats[23].x, seats[23].y, 0, pathLength);
+    const uint16_t green = nearestPathIndex(baselinePath, seats[1].x, seats[1].y, 0, pathLength);
+    const uint16_t turnEnd = red + 8;
+    if (red < 7 || green <= turnEnd || green + 9 >= pathLength) return;
+    const uint16_t first = red - 7;
+    const uint16_t last = green + 8;
+    const float approachStart = baselinePath[first].distanceMm;
+    const float turnStart = baselinePath[red].distanceMm;
+    const float turnSpan = baselinePath[turnEnd].distanceMm - turnStart;
+    const PathPoint greenPass = route[green];
+    const float endY = greenPass.y - 30.0f;
+    const float startX = route[red].x - 20.0f, startY = route[red].y;
+    const float dy = endY - startY, dx = -1.05f * dy;
+    const float endX = startX + dx;
+    if (dy >= -170.0f || greenPass.x <= endX + 100.0f) return;
+
+    memcpy(smoothingBuffer, route, sizeof(PathPoint) * pathLength);
+    // Make room for the nose at RED, then finish one tangential turn
+    // before reaching GREEN. The old overlapping tapers were still
+    // changing heading at GREEN and immediately demanded countersteer.
+    for (uint16_t i = first; i <= red; ++i)
+        route[i].x -= 20.0f * smoothLaneBlend(
+            baselinePath[i].distanceMm, approachStart, turnStart - 50.0f);
+    for (uint16_t i = red + 1; i < turnEnd; ++i)
+    {
+        const float t = (baselinePath[i].distanceMm - turnStart) / turnSpan;
+        const float u = 1.0f - t;
+        const float blend = t * t * (3.0f - 2.0f * t);
+        constexpr float handle = 0.55f; // tangents of a quarter-turn cubic
+        route[i].x = startX + (blend - 3.0f * u * t * t * handle) * dx;
+        route[i].y = startY + (blend + 3.0f * u * u * t * handle) * dy;
+    }
+    const float straightSpan = baselinePath[green].distanceMm - baselinePath[turnEnd].distanceMm;
+    for (uint16_t i = turnEnd; i <= green; ++i)
+    {
+        const float t = (baselinePath[i].distanceMm - baselinePath[turnEnd].distanceMm) / straightSpan;
+        route[i].x = endX + t * (greenPass.x - endX);
+        route[i].y = endY;
+    }
+    // Leave GREEN parallel, then blend back to the existing start straight
+    // without moving the seam.
+    for (uint16_t i = green + 1; i < last; ++i)
+    {
+        const float d = baselinePath[i].distanceMm - baselinePath[green].distanceMm;
+        route[i].y = endY + smoothLaneBlend(d, 50.0f, 400.0f) * (route[i].y - endY);
+    }
+    if (ccwDiscoveryRouteSectionSafe(route, first, last))
+        Serial.println("[PATH] CCW tall sign: tangent RED-GREEN return");
+    else
+        memcpy(route + first, smoothingBuffer + first, sizeof(PathPoint) * (last - first + 1));
+}
+
 bool discoveryAimCommandSafe(const PositionEstimate &start, int steering)
 {
     // Aiming never grants a new drive permission. Retain 40-mm clearance to
@@ -4544,8 +5009,9 @@ float cornerViewReverseDistance(const PositionEstimate &pose, uint8_t station,
     const bool needFirst=!discoveryStations[station].seatObservedClear[0];
     const bool needSecond=!discoveryStations[station].seatObservedClear[1];
     const float h=pose.heading_deg*PI/180.0f;
-    for (float distance=needFirst && needSecond ? 170.0f : 60.0f;
-         distance<=220.0f; distance+=10.0f)
+    const float preferred = needFirst && needSecond ? 180.0f : 120.0f;
+    float shorterView = 0.0f;
+    for (float distance=60.0f; distance<=220.0f; distance+=10.0f)
     {
         PositionEstimate view=pose;
         view.x_mm-=distance*cosf(h); view.y_mm-=distance*sinf(h);
@@ -4556,9 +5022,16 @@ float cornerViewReverseDistance(const PositionEstimate &pose, uint8_t station,
             (!needSecond || seatComfortablyVisible(first+1,view)) &&
             (!needFirst || range0 >= minimumViewRangeMm) &&
             (!needSecond || range1 >= minimumViewRangeMm) &&
-            cornerViewSweepSafe(pose,-distance-20.0f)) return distance;
+            cornerViewSweepSafe(pose,-distance-20.0f))
+        {
+            if (distance>=preferred &&
+                (!needFirst || (range0>=300.0f && fabsf(bearing0)<=22.0f)) &&
+                (!needSecond || (range1>=300.0f && fabsf(bearing1)<=22.0f)))
+                return distance;
+            shorterView=distance;
+        }
     }
-    return 0.0f;
+    return shorterView;
 }
 
 float cornerViewMinimumRange(const Blob *raw)
@@ -4748,7 +5221,6 @@ void reobserveCornerView(const char *reason,const PositionEstimate &pose,float e
     cornerViewOriginEncoder=encoder;
     cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
     cornerViewStoppedFrames=0;
-    cornerViewExtraTriedMask=0;
     discoveryStations[cornerViewStation].clearFrames[0]=0;
     discoveryStations[cornerViewStation].clearFrames[1]=0;
     cornerViewPhase=CORNER_VIEW_REBASE_BRAKE;
@@ -4847,195 +5319,111 @@ bool beginCornerViewExtra(const PositionEstimate &pose)
     for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
         if (!coverage.seatObservedClear[side])
             unresolvedMask |= static_cast<uint8_t>(1U << side);
-    if (unresolvedMask == 0) return false;
 
+    // Measure progress from the original stop, even after rebasing the
+    // controller on a newly measured pose. Never undo a useful retreat.
+    const float remaining = 420.0f - (cornerViewSearchStartEncoder-get_distance());
+    const uint32_t now=millis();
+    if (remaining<90.0f || now-cornerViewLastSearchMs<250U) return false;
+    cornerViewLastSearchMs=now;
     int selectedSteering = 0;
-    int selectedVisible = -1;
-    float selectedWorstBearing = INFINITY;
-    // Alternate both checked viewing arcs. When both have been used, start a
-    // new cycle instead of converting an unresolved camera result into a
-    // permanent motor lock. Every individual movement still passes the full
-    // wall/all-possible-pillar swept preflight.
-    for (uint8_t pass = 0; pass < 2 && selectedSteering == 0; ++pass)
-    {
-        if (pass == 1)
+    float selectedDistance = 0.0f;
+    float selectedCost = INFINITY;
+    const auto viewCost = [&](const PositionEstimate &view) {
+        float cost = 0.0f;
+        for (uint8_t side=0; side<COURSE_SEATS_PER_STATION; ++side)
         {
-            if (cornerViewExtraTriedMask == 0) break;
-            cornerViewExtraTriedMask = 0;
-            if (cornerViewSearchCycle < UINT16_MAX) ++cornerViewSearchCycle;
+            if (unresolvedMask && !(unresolvedMask & (1U << side))) continue;
+            const uint8_t seat=cornerViewStation*COURSE_SEATS_PER_STATION+side;
+            float bearing=0.0f, range=0.0f;
+            seatCameraGeometry(seat,view,bearing,range);
+            cost += (seatComfortablyVisible(seat,view) ? 0.0f : 40.0f) +
+                0.7f*fabsf(bearing) + 0.09f*fabsf(range-365.0f);
         }
-        for (int steering : {-20, 20})
+        return cost;
+    };
+    const float currentCost=viewCost(pose);
+    for (int steering : {0,-20,20})
+    {
+        const uint8_t bit = steering==0 ? 1U : (steering<0 ? 2U : 4U);
+        if (cornerViewExtraTriedMask & bit) continue;
+        for (float distance : {130.0f,110.0f,90.0f,70.0f})
         {
-            const uint8_t bit = steering < 0 ? 1U : 2U;
-            if (cornerViewExtraTriedMask & bit) continue;
-            const PositionEstimate view = cornerViewArcPose(pose, steering, -90);
-            if (!cornerViewArcSafe(pose, steering, -110)) continue;
-            int visible = 0;
-            float worstBearing = 0.0f;
-            for (uint8_t side = 0; side < COURSE_SEATS_PER_STATION; ++side)
-            {
-                if (!(unresolvedMask & (1U << side))) continue;
-                const uint8_t seat = cornerViewStation * COURSE_SEATS_PER_STATION + side;
-                if (!seatComfortablyVisible(seat, view)) continue;
-                float bearing = 0.0f, range = 0.0f;
-                seatCameraGeometry(seat, view, bearing, range);
-                ++visible;
-                worstBearing = fmaxf(worstBearing, fabsf(bearing));
-            }
-            if (visible == 0) continue;
-            if (visible > selectedVisible ||
-                (visible == selectedVisible && visible > 0 &&
-                 worstBearing < selectedWorstBearing))
-            {
-                selectedSteering = steering;
-                selectedVisible = visible;
-                selectedWorstBearing = worstBearing;
-            }
+            if (distance+20.0f>remaining) continue;
+            const PositionEstimate view=cornerViewArcPose(pose,steering,-distance);
+            const float cost=viewCost(view)+(130.0f-distance)*0.08f;
+            // Once direct evidence is known, a retreat can still provide
+            // joining room. During discovery require a meaningfully new view.
+            if (cost>=selectedCost ||
+                (!stationDirectlyResolved(cornerViewStation) && cost>currentCost+10.0f) ||
+                !cornerViewArcSafe(pose,steering,-distance-20.0f)) continue;
+            selectedCost=cost;
+            selectedDistance=distance;
+            selectedSteering=steering;
         }
     }
-    if (selectedSteering == 0 || selectedVisible <= 0) return false;
+    if (selectedDistance==0.0f) return false;
 
-    cornerViewExtraSteering = selectedSteering;
-    cornerViewExtraTriedMask |= cornerViewExtraSteering < 0 ? 1U : 2U;
-    cornerViewExtraUsed = true;
-    holdCornerViewSteering(cornerViewExtraSteering);
-    cornerViewPhase = CORNER_VIEW_EXTRA_SETTLE;
-    cornerViewPhaseMs = millis();
-    Serial.print("[CORNER VIEW] Active parallax cycle/steering/mm/unresolved=");
+    cornerViewExtraDistanceMm=selectedDistance;
+    cornerViewExtraSteering=selectedSteering;
+    cornerViewExtraTriedMask |= selectedSteering==0 ? 1U : (selectedSteering<0 ? 2U : 4U);
+    holdCornerViewSteering(selectedSteering);
+    cornerViewPhase=CORNER_VIEW_EXTRA_SETTLE;
+    cornerViewPhaseMs=millis();
+    Serial.print("[CORNER VIEW] New viewpoint cycle/steering/mm/unresolved=");
     Serial.print(cornerViewSearchCycle); Serial.print("/");
-    Serial.print(cornerViewExtraSteering); Serial.print("/90/");
+    Serial.print(selectedSteering); Serial.print("/");
+    Serial.print(selectedDistance,0); Serial.print("/");
     Serial.println(unresolvedMask);
     return true;
 }
 
-void updateCornerViewExtra(bool newFrame)
+void updateCornerViewExtra()
 {
-    const PositionEstimate pose = get_position_struct();
-    const float encoder = get_distance();
-    const uint32_t age = millis() - cornerViewPhaseMs;
+    const PositionEstimate pose=get_position_struct();
+    const float encoder=get_distance();
+    const uint32_t age=millis()-cornerViewPhaseMs;
     if (!isfinite(encoder) || !isfinite(pose.x_mm) || !isfinite(pose.y_mm) ||
         !isfinite(pose.heading_deg)) { lockCornerView("extra invalid pose"); return; }
-    if (cornerViewPhase != CORNER_VIEW_EXTRA_SETTLE)
+
+    if (cornerViewPhase==CORNER_VIEW_EXTRA_SETTLE)
     {
-        const bool returning = cornerViewPhase == CORNER_VIEW_EXTRA_FORWARD ||
-            cornerViewPhase == CORNER_VIEW_EXTRA_BRAKE;
-        const PositionEstimate expected = cornerViewArcPose(
-            returning ? cornerViewExtraReturnPose : cornerViewExtraOrigin,
-            cornerViewExtraSteering,
-            encoder - (returning ? cornerViewExtraReturnEncoder : cornerViewExtraStartEncoder));
-        const float positionError=hypotf(pose.x_mm-expected.x_mm, pose.y_mm-expected.y_mm);
-        const float headingError=fabsf(wrap180(pose.heading_deg-expected.heading_deg));
-        if (positionError > 15 || headingError > 5 ||
-            fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg)) > 35)
-        {
-            //611: modest curvature mismatch after the checked reverse arc
-            //must brake and obtain a new measured view, not permanently lock.
-            //Do not continue the old model or return blindly to its origin.
-            if(positionError<=25 && headingError<=12 &&
-               fabsf(wrap180(pose.heading_deg-cornerViewOrigin.heading_deg))<=35)
-            {
-                reobserveCornerView("arc tracking mismatch",pose,encoder);
-                return;
-            }
-            lockCornerView("extra arc tracking limit"); return;
-        }
-    }
-    switch (cornerViewPhase)
-    {
-    case CORNER_VIEW_EXTRA_SETTLE:
         holdCornerViewSteering(cornerViewExtraSteering);
-        if (age < 300) return;
-        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, -110))
+        if (age<300) return;
+        if (!cornerViewArcSafe(pose,cornerViewExtraSteering,-cornerViewExtraDistanceMm-20.0f))
         { reobserveCornerView("extra settled preflight",pose,encoder); return; }
-        cornerViewExtraOrigin = pose;
-        cornerViewExtraStartEncoder = encoder;
-        cornerViewPhase = CORNER_VIEW_EXTRA_REVERSE;
-        cornerViewPhaseMs = millis();
-        logCornerViewPose("extra_origin", pose, encoder);
+        cornerViewExtraOrigin=pose;
+        cornerViewExtraStartEncoder=encoder;
+        cornerViewPhase=CORNER_VIEW_EXTRA_REVERSE;
+        cornerViewPhaseMs=millis();
+        logCornerViewPose("extra_origin",pose,encoder);
         return;
-    case CORNER_VIEW_EXTRA_REVERSE:
-        if (encoder-cornerViewExtraStartEncoder > 5 ||
-            cornerViewExtraStartEncoder-encoder > 110 || age > 4500)
-        { lockCornerView("extra reverse travel/time/direction"); return; }
-        if (cornerViewExtraStartEncoder-encoder >= 90)
-        {
-            holdCornerViewSteering(cornerViewExtraSteering);
-            cornerViewPhase = CORNER_VIEW_EXTRA_OBSERVE;
-            cornerViewPhaseMs = millis();
-            cornerViewStoppedFrames = 0;
-            discoveryStations[cornerViewStation].clearFrames[0] = 0;
-            discoveryStations[cornerViewStation].clearFrames[1] = 0;
-            return;
-        }
-        if(!cornerViewArcSafe(pose,cornerViewExtraSteering,-15.0f))
-        {reobserveCornerView("extra reverse swept clearance",pose,encoder);return;}
-        set_steering(cornerViewExtraSteering);
-        servo_disabled = false;
-        set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S); return;
-    case CORNER_VIEW_EXTRA_OBSERVE:
-        holdCornerViewSteering(cornerViewExtraSteering);
-        cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
-        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110)
-        { lockCornerView("extra reverse braking travel"); return; }
-        if (age < 200) return;
-        collectCornerViewFrame(pose, newFrame);
-        if (age < 600 || (age < 1800 &&
-            (!stationDirectlyResolved(cornerViewStation) || cornerViewStoppedFrames < 2))) return;
-        if(stationDirectlyResolved(cornerViewStation) && resumeDiscoveryFromView(pose))return;
-        // A retreat may deliberately leave the old reserve-deficient pose.
-        // Do not return to it or lock simply because that return is unsafe.
-        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
-        {
-            cornerViewOrigin=pose;cornerViewOriginEncoder=encoder;
-            cornerViewDistanceMm=cornerViewMeasuredReverseMm=0;
-            cornerViewExtraTriedMask=0;cornerViewStoppedFrames=0;
-            cornerViewPhase=CORNER_VIEW_OBSERVE;cornerViewPhaseMs=millis();
-            Serial.println("[CORNER VIEW] Keep safer retreat pose; aim and observe again");
-            return;
-        }
-        cornerViewPhase = CORNER_VIEW_EXTRA_RETURN_SETTLE;
-        cornerViewPhaseMs = millis();
-        logCornerViewPose("extra_scan", pose, encoder);
-        return;
-    case CORNER_VIEW_EXTRA_RETURN_SETTLE:
-        holdCornerViewSteering(cornerViewExtraSteering);
-        if (age < 300) return;
-        cornerViewExtraMeasuredMm = cornerViewExtraStartEncoder-encoder;
-        if (cornerViewExtraMeasuredMm < 85 || cornerViewExtraMeasuredMm > 110)
-        { lockCornerView("extra settled return travel"); return; }
-        if (!cornerViewArcSafe(pose, cornerViewExtraSteering, cornerViewExtraMeasuredMm+20))
-        { reobserveCornerView("extra settled return preflight",pose,encoder); return; }
-        cornerViewExtraReturnPose = pose;
-        cornerViewExtraReturnEncoder = encoder;
-        cornerViewPhase = CORNER_VIEW_EXTRA_FORWARD;
-        cornerViewPhaseMs = millis(); return;
-    case CORNER_VIEW_EXTRA_FORWARD:
-        if (encoder-cornerViewExtraReturnEncoder < -5 ||
-            encoder-cornerViewExtraReturnEncoder > cornerViewExtraMeasuredMm+20 || age > 4500)
-        { lockCornerView("extra return travel/time/direction"); return; }
-        if (encoder-cornerViewExtraReturnEncoder >= cornerViewExtraMeasuredMm)
-        {
-            holdCornerViewCentered();
-            cornerViewPhase = CORNER_VIEW_EXTRA_BRAKE;
-            cornerViewPhaseMs = millis(); return;
-        }
-        servo_disabled = false;
-        set_steering(cornerViewExtraSteering); set_speed(60); return;
-    case CORNER_VIEW_EXTRA_BRAKE:
-        holdCornerViewCentered();
-        if (encoder-cornerViewExtraReturnEncoder > cornerViewExtraMeasuredMm+20)
-        { lockCornerView("extra return braking travel"); return; }
-        if (age < 200) return;
-        logCornerViewPose("extra_returned", pose, encoder);
-        if (hypotf(pose.x_mm-cornerViewExtraOrigin.x_mm, pose.y_mm-cornerViewExtraOrigin.y_mm) > 20 ||
-            fabsf(wrap180(pose.heading_deg-cornerViewExtraOrigin.heading_deg)) > 3)
-        { lockCornerView("extra return pose limit"); return; }
-        cornerViewPhase = CORNER_VIEW_OBSERVE;
-        cornerViewPhaseMs = millis()-200;
-        cornerViewStoppedFrames = 0;
-        return;
-    default: lockCornerView("invalid extra phase"); return;
     }
+
+    const float travelled=cornerViewExtraStartEncoder-encoder;
+    if (travelled < -5.0f || travelled>cornerViewExtraDistanceMm+20.0f || age>4500)
+    { lockCornerView("extra reverse travel/time/direction"); return; }
+    const PositionEstimate expected=cornerViewArcPose(
+        cornerViewExtraOrigin,cornerViewExtraSteering,-travelled);
+    const float positionError=hypotf(pose.x_mm-expected.x_mm,pose.y_mm-expected.y_mm);
+    const float headingError=fabsf(wrap180(pose.heading_deg-expected.heading_deg));
+    if (positionError>25.0f || headingError>12.0f)
+    { lockCornerView("extra arc tracking limit"); return; }
+    if (travelled>=cornerViewExtraDistanceMm)
+    {
+        // The next search starts here. A blocked or tracking-failed arc
+        // retains its tried bit; a completed movement opens new viewpoints.
+        cornerViewExtraTriedMask=0;
+        if (cornerViewSearchCycle<UINT16_MAX) ++cornerViewSearchCycle;
+        reobserveCornerView("new viewpoint reached",pose,encoder);
+        return;
+    }
+    if (positionError>15.0f || headingError>5.0f ||
+        !cornerViewArcSafe(pose,cornerViewExtraSteering,-15.0f))
+    { reobserveCornerView("extra tracking/swept clearance",pose,encoder); return; }
+    set_steering(cornerViewExtraSteering);
+    servo_disabled=false;
+    set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S);
 }
 
 void updateCornerView(bool newCameraFrame)
@@ -5063,9 +5451,9 @@ void updateCornerView(bool newCameraFrame)
         logCornerViewPose("reobserve_settled",pose,encoder);
         return;
     }
-    if (cornerViewPhase >= CORNER_VIEW_EXTRA_SETTLE && cornerViewPhase <= CORNER_VIEW_EXTRA_BRAKE)
+    if (cornerViewPhase >= CORNER_VIEW_EXTRA_SETTLE && cornerViewPhase <= CORNER_VIEW_EXTRA_REVERSE)
     {
-        updateCornerViewExtra(newCameraFrame);
+        updateCornerViewExtra();
         return;
     }
     set_steering(0);
@@ -5107,6 +5495,7 @@ void updateCornerView(bool newCameraFrame)
         if (age < 300) return;
         cornerViewOrigin = pose;
         cornerViewOriginEncoder = encoder;
+        cornerViewSearchStartEncoder = encoder;
         cornerViewDistanceMm = cornerViewReverseDistance(pose,cornerViewStation,
             cornerViewRequestedMinRange);
         if (cornerViewDistanceMm == 0)
@@ -5180,6 +5569,7 @@ void updateCornerView(bool newCameraFrame)
             const float deeper=cornerViewReverseDistance(cornerViewOrigin,
                 cornerViewStation,cornerViewRequestedMinRange);
             if (deeper>cornerViewDistanceMm &&
+                cornerViewSearchStartEncoder-cornerViewOriginEncoder+deeper+20.0f<=420.0f &&
                 cornerViewSweepSafe(pose,-(deeper-cornerViewMeasuredReverseMm+20.0f)))
             {
                 cornerViewDistanceMm=deeper;
@@ -5203,7 +5593,9 @@ void updateCornerView(bool newCameraFrame)
             // Obtain more approach distance within the already bounded and
             // swept straight reverse, rather than returning towards the sign.
             const float deeper = cornerViewDistanceMm + 40;
-            if (deeper <= 220 && cornerViewSweepSafe(pose,
+            if (deeper <= 220 &&
+                cornerViewSearchStartEncoder-cornerViewOriginEncoder+deeper+20.0f<=420.0f &&
+                cornerViewSweepSafe(pose,
                     -(deeper-cornerViewMeasuredReverseMm+20)))
             {
                 cornerViewDistanceMm = deeper;
@@ -5707,6 +6099,19 @@ void startParkingEntryScout(const PositionEstimate &pose)
     Serial.println(steering);
 }
 
+int parkingEntryScoutMotionSpeed(float arcMm, float travelledMm)
+{
+    const float terminal=OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S;
+    if(!parkingCwShortStart || routeTurnSign>=0 || arcMm<115.0f)
+        return static_cast<int>(terminal);
+    // Regain the proven scan/return approach speed before the stop. At
+    // 100 mm/s this leaves about 32 mm for tracking the slower endpoint.
+    constexpr float taperDecelMmSs=180.0f;
+    const float usable=fmaxf(0.0f,arcMm-travelledMm-32.0f);
+    const float speed=sqrtf(terminal*terminal+2.0f*taperDecelMmSs*usable);
+    return static_cast<int>(fminf(OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S,speed));
+}
+
 void updateParkingEntryScout(bool newCameraFrame)
 {
     const PositionEstimate pose = get_position_struct();
@@ -5752,7 +6157,7 @@ void updateParkingEntryScout(bool newCameraFrame)
     case PARKING_ENTRY_SCOUT_REVERSE:
         servo_disabled = false;
         set_steering(steering);
-        set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S));
+        set_speed(-parkingEntryScoutMotionSpeed(parkingEntryScoutTargetMm,phaseTravel));
         if (phaseTravel >= parkingEntryScoutTargetMm)
         {
             stop(true);
@@ -5833,7 +6238,7 @@ void updateParkingEntryScout(bool newCameraFrame)
     case PARKING_ENTRY_SCOUT_FORWARD_RETURN:
         servo_disabled = false;
         set_steering(steering);
-        set_speed(static_cast<int>(OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S));
+        set_speed(parkingEntryScoutMotionSpeed(parkingEntryScoutReturnTravelMm,phaseTravel));
         if (phaseTravel >= parkingEntryScoutReturnTravelMm)
         {
             stop(true);
@@ -6547,7 +6952,9 @@ float lapHandoffWeight()
 PathPoint lapHandoffTarget(const PathPoint *path, const PositionEstimate &pose,
                           float lookaheadMm, float weight)
 {
-    PathPoint target = findLookahead(path, pose, lookaheadMm);
+    PathPoint target = optimizedBuilt && completedLaps>0 && !lapFinishPending && !runtimeTestMode
+        ? laterLapLookaheadTarget(path,pose,progressIndex,lookaheadMm)
+        : findLookahead(path,pose,lookaheadMm);
     if (weight >= 1.0f) return target;
     // Blend pursuit targets, not a changing lookahead threshold: the latter
     // would still jump a whole 50 mm waypoint as each threshold is crossed.
@@ -6764,7 +7171,6 @@ void obstacle_path_reset()
     memset(cornerViewAttempted, 0, sizeof(cornerViewAttempted));
     cornerViewSensorPaused = false;
     cornerViewCanResume = false;
-    cornerViewExtraUsed = false;
     cornerViewExtraTriedMask = 0;
     cornerViewSearchCycle = 0;
     cornerViewLastNoSafeTraceMs = 0;
@@ -6931,7 +7337,7 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.print("[PATH] control_revision=20261120_lap23_efficiency discovery_mm_s=");
+    Serial.print("[PATH] control_revision=20261121_verified_start_red discovery_mm_s=");
     Serial.println(OBSTACLE_DISCOVERY_SPEED_MM_S,0);
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
@@ -7561,9 +7967,9 @@ void obstacle_path_update(bool new_camera_frame)
         cornerViewRequestedMinRange=cornerViewMinimumRange(getLargestObstacle());
         cornerViewObservationTraceCount=0;
         cornerViewAttempted[cornerViewStation] = true;
-        cornerViewExtraUsed = false;
         cornerViewExtraTriedMask = 0;
         cornerViewSearchCycle = 0;
+        cornerViewLastSearchMs = 0;
         cornerViewLastNoSafeTraceMs = 0;
         // Recovery is in progress; expose a terminal block only on failure.
         discoveryBlocked = false;
@@ -7841,7 +8247,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &result)
         deferredInjectionSeatIndex = result.seatId;
         // Rebuild without the deferred seat. This also applies the
         // established extreme-pair clearance to the first member.
-        rebuildLivePath();
+        rebuildDiscoveryPath();
         Serial.print("[PATH] Avoidance confirmed seat=");
         Serial.print(result.seatId);
         Serial.print(" injection=DEFERRED until_mm_past_seat_");
@@ -8273,6 +8679,14 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         if (result.rangeMm <= CAMERA_DRIVE_CAL_MAX_RANGE_MM &&
             fabsf(headingCos) <= 0.7072f && bearingError <= 6.0f)
             maximumRelevantForward += 0.5f*PI*OBSTACLE_CORNER_RADIUS_MM;
+        else if (observedStation%3==1 && fabsf(headingCos)<=0.88f &&
+            result.rangeMm <= CAMERA_DRIVE_CAL_MAX_RANGE_MM &&
+            bearingError<=4.0f && fabsf(hypotf(sx,sy)-result.rangeMm)<=110.0f)
+        {
+            // Log 9: the middle GREEN had a good projection from the end
+            // of the corner, where heading alone no longer granted leeway.
+            maximumRelevantForward += 150.0f;
+        }
         if (observedForward <= 1.0f ||
             observedForward > maximumRelevantForward)
         {
@@ -8321,19 +8735,21 @@ ObstacleObservationResult obstacle_path_observe(const Blob *blob)
         logRedSeatProjection(result,"official_middle_conflict");
         return result;
     }
-    prepareConsecutiveVote(result.seatId, blob->color);
     CandidateSeat &seat = seats[result.seatId];
     if (seat.confirmed)
     {
+        // A mapped foreground blob can alternate with the approaching sign.
+        // It supplies no new vote and lets pending votes age normally.
+        expirePendingVotes();
         result.status = OBSTACLE_OBSERVATION_ALREADY_CONFIRMED;
-    }
-    else if (recordObservedSeatVote(static_cast<uint8_t>(result.seatId), *blob))
-    {
-        finalizeConfirmedSeat(result);
     }
     else
     {
-        result.status = OBSTACLE_OBSERVATION_VOTE;
+        prepareConsecutiveVote(result.seatId, blob->color);
+        if (recordObservedSeatVote(static_cast<uint8_t>(result.seatId), *blob))
+            finalizeConfirmedSeat(result);
+        else
+            result.status = OBSTACLE_OBSERVATION_VOTE;
     }
 
     result.redVotes = seat.redVotes;

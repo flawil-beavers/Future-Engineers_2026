@@ -13,8 +13,9 @@ from check_cw_start_planner import ROOT, fixture_source
 from check_connector_servo_resume import block
 
 
-def later_lap_fixture():
-    source = (ROOT/'src/obstacle_path.cpp').read_text()
+def later_lap_fixture(source=None):
+    if source is None:
+        source = (ROOT/'src/obstacle_path.cpp').read_text()
     fixture = fixture_source().split('int main()')[0]
     fixture = fixture.replace(
         'bool targetsOuterExtreme(const CandidateSeat &seat) {return seat.red ? seat.lateralMm<0 : seat.lateralMm>0;}',
@@ -53,13 +54,20 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'bool isSecondExtremeAdjacentSeat(', 'bool upcomingAdjacentStationUnresolved(',
         'float validatedClearanceForSeat(', 'float optimizedClearanceForSeat(',
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
+        'int ccwDiscoveryTallRedExitSeat(',
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
         'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
         'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
-        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void connectKnownLaterLapRoute(', 'void shortenKnownInnerRoute(',
-        'void addLaterLapStartMiddleReserve(',
+        *(['PathPoint laterLapLookaheadTarget('] if 'PathPoint laterLapLookaheadTarget(' in source else []),
+        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(',
+        *(['void connectKnownLaterLapRoute('] if 'void connectKnownLaterLapRoute(' in source else []),
+        'void shortenKnownInnerRoute(',
+        *(['void addLaterLapStartMiddleReserve('] if 'void addLaterLapStartMiddleReserve(' in source else []),
+        *(['int solitaryMiddleSeat(', 'float smoothLaneBlend(', 'void refineCcwSolitaryPillars(']
+          if 'void refineCcwSolitaryPillars(' in source else []),
+        *(['void refineCwSolitaryRed('] if 'void refineCwSolitaryRed(' in source else []),
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
         'PathPoint findLookahead(', 'float lapHandoffWeight()',
         'PathPoint lapHandoffTarget(', 'float lapHandoffSpeed(')
@@ -86,7 +94,11 @@ float discoveryCornerMinimum(bool rounded){
  for(auto &seat:seats){seat.confirmed=false;seat.injected=false;}
  for(int i:{9,12,17,18}){seats[i].confirmed=seats[i].injected=true;
   seats[i].red=(i==9||i==12);}
- learned();if(rounded)roundKnownCornerPairs(livePath,true);
+ // Replay the old 260 mm discovery geometry from log 463. The current
+ // compact lap-1 geometry is exercised separately by the full map matrix.
+ memcpy(livePath,baselinePath,sizeof(PathPoint)*pathLength);
+ for(int i:{9,12,17,18})displaceForSeat(livePath,i,OBSTACLE_LAP1_CLEARANCE_MM,false);
+ if(rounded)roundKnownCornerPairs(livePath,true);
  // Last measured pose before seat18 confirmation in log463. Confirmation
  // itself was not pose-logged, so this is a nearby geometric replay only.
  float x=-519.4f,y=730.8f,h=194.49f*PI/180,minimum=1e9f;
@@ -193,7 +205,8 @@ bool stateChecks(){
  return true;
 }
 int failReason=0,failSeat=-1;float failX=0,failY=0,failH=0;
-bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
+bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar,
+                  float *cwRedPassMaximumY=nullptr){
  failReason=1;failSeat=-1;
  minimumWall=minimumPillar=1e9f;
  const auto start=livePath[0];float x=start.x,y=start.y;
@@ -210,6 +223,9 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   const PathPoint *route=optimizedBuilt?optimizedPath:livePath;
   PositionEstimate pose;pose.x_mm=x;pose.y_mm=y;pose.heading_deg=heading*180/PI;
   updateProgress(route,pose);
+  if(cwRedPassMaximumY && fabsf(x-seats[15].x)<420.0f &&
+     y>500.0f && completedLaps>=1 && completedLaps<=2)
+   cwRedPassMaximumY[completedLaps-1]=fmaxf(cwRedPassMaximumY[completedLaps-1],y);
   if(finished){
    for(int seat=0;seat<24;++seat)if(seats[seat].confirmed&&passCounts[seat]<2){failReason=6;failSeat=seat;return false;}
    return completedLaps==3;
@@ -287,6 +303,37 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
 int main(){
  if(!stateChecks()){std::cout<<"STATE FAIL\n";return 2;}
  std::cout<<"STATE PASS\n";
+ routeTurnSign=1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{1,5,9,14,19,22}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i!=1&&i!=9;
+ }
+ learned();
+ if(!buildOptimizedPath())return 4;
+ const auto green=nearestPathIndex(baselinePath,seats[9].x,seats[9].y,0,pathLength);
+ const auto red=nearestPathIndex(baselinePath,seats[14].x,seats[14].y,0,pathLength);
+ const auto corner=nearestPathIndex(baselinePath,848.35f,858.68f,0,pathLength);
+ if(optimizedPath[green].x>700.0f || optimizedPath[corner].x>600.0f ||
+    optimizedPath[red].y<1270.0f || optimizedPath[red].y>1290.0f)return 4;
+ std::cout<<"LOG28 curve and RED plateau PASS\n";
+ routeTurnSign=-1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{0,4,7,10,15,20}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i!=4&&i!=20;
+ }
+ learned();
+ if(!buildOptimizedPath())return 5;
+ const auto singleRed=nearestPathIndex(baselinePath,seats[15].x,seats[15].y,0,pathLength);
+ if(fabsf(optimizedPath[singleRed].y-755.0f)>1.0f)return 5;
+ for(int offset=-7;offset<=7;++offset)
+  if(fabsf(optimizedPath[singleRed+offset].y-optimizedPath[singleRed].y)>2.0f)return 5;
+ resetState();learned();float passWall,passPillar,trackY[2]={};
+ if(!driveTwoLaps(0,passWall,passPillar,trackY))return 5;
+ if(trackY[0]<700.0f || trackY[0]>805.0f || trackY[1]<700.0f || trackY[1]>805.0f)return 5;
+ std::cout<<"LOG29/37 straight inward RED pass, tracked peak y laps 2/3 "
+          <<trackY[0]<<"/"<<trackY[1]<<" mm PASS\n";
  int direction,id=0,colors[24];float cap;
  while(std::cin>>direction>>cap){
   for(int &c:colors)if(!(std::cin>>c))return 3;
@@ -370,10 +417,29 @@ def main():
         reverse_c[((4-section)%4)*6+(2-station)*2+(side^1)]=c
     for direction,layout in ((-1,physical_c),(1,reverse_c)):
         cases.append(dict(direction=direction,speed_cap=0,colors=layout))
+    # Log 7 stores visible 50 mm GREEN at seat 10 as effective RED.
+    # Both recorded laps must use that same passing direction.
+    log7_cw, log7_ccw = [0]*24, [0]*24
+    for seat, color in ((0,2),(4,1),(7,2),(10,2),(14,2),(21,1)):
+        log7_cw[seat] = color
+        section, station, side = seat//6, (seat%6)//2, seat%2
+        log7_ccw[((4-section)%4)*6+(2-station)*2+(side^1)] = color
+    for direction, layout in ((-1,log7_cw),(1,log7_ccw)):
+        cases.append(dict(direction=direction,speed_cap=0,colors=layout))
+    # Log 28: a single CCW GREEN followed by a single RED in the next section.
+    log28 = [0]*24
+    for seat, color in ((1,1),(5,2),(9,1),(14,2),(19,2),(22,2)):
+        log28[seat] = color
+    cases.append(dict(direction=1,speed_cap=0,colors=log28))
+    log29 = [0]*24
+    for seat, color in ((0,2),(4,1),(7,2),(10,2),(15,2),(20,1)):
+        log29[seat] = color
+    cases.append(dict(direction=-1,speed_cap=0,colors=log29))
     inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
     run=subprocess.run([str(exe)],input=inputs,text=True,capture_output=True,check=True)
     (destination/'output.txt').write_text(run.stdout)
     for line in run.stdout.splitlines():
+        if line.startswith(('DISCOVERY ','LOG28 ','LOG29/37 ')):print(line)
         if line.startswith('CASE '):
             _,number,passed,wall,pillar,reason,seat,x,y,h=line.split();cases[int(number)].update(
                 passed=bool(int(passed)),minimum_wall_mm=float(wall),minimum_pillar_mm=float(pillar),

@@ -32,6 +32,7 @@ def main():
         fixture = fixture.replace(old, tracking)
     else:
         fixture += tracking
+    fixture += block(source, source.index('float laterLapInwardTrackingSpeed('))
     fixture += r'''
 #include <cassert>
 enum {DC_DISABLED,DC_ENABLED};
@@ -61,6 +62,16 @@ void analyticChecks(){
  assert(laterLapTrackingSpeed(NAN,0,0)==0);
  // A straight request must still respect an actually tight servo command.
  assert(laterLapTrackingSpeed(520,0,42)<400);
+ const float straight=OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S;
+ assert(laterLapTrackingSpeed(straight,0,0)==straight);
+ assert(laterLapTrackingSpeed(straight,OBSTACLE_LATER_LAP_STRAIGHT_CURVATURE_PER_MM,0)==520);
+ assert(laterLapTrackingSpeed(straight,0,42)<400);
+ // Straight-line boost also needs actual heading and lateral alignment.
+ pathLength=3;
+ for(int i=0;i<3;++i)optimizedPath[i]={i*50.f,1000.f};
+ assert(laterLapInwardTrackingSpeed(straight,{50.f,1000.f,0.f},optimizedPath,1)==straight);
+ assert(laterLapInwardTrackingSpeed(straight,{50.f,1036.f,0.f},optimizedPath,1)<=520);
+ assert(laterLapInwardTrackingSpeed(straight,{50.f,1000.f,6.5f},optimizedPath,1)<=520);
  // Constant-radius circle: no artificial braking at the cyclic seam.
  pathLength=40;
  for(int i=0;i<pathLength;++i){float h=2*PI*i/pathLength;
@@ -85,7 +96,10 @@ float elapsed=0,peakLateral=0,peakSpeed=0,peakTrackingRatio=0;
       OBSTACLE_LATER_LAP_CORNER_SPEED) : laterLapSpeedLimits[progressIndex];
   if(speedCap>0)command=fminf(command,speedCap);
   command=lapHandoffSpeed(command,handoffWeight);
-  if(!lapFinishPending)command=laterLapTrackingSpeed(command,requestedCurvature,static_cast<int>(steering));
+  if(!lapFinishPending){
+   command=laterLapTrackingSpeed(command,requestedCurvature,static_cast<int>(steering));
+   command=laterLapInwardTrackingSpeed(command,pose,route,progressIndex);
+  }
   target_speed=static_cast<int>(command);drive_loop();
   elapsed+=last_loop_time;
   peakSpeed=fmaxf(peakSpeed,current_speed);
@@ -107,6 +121,16 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
   learned();joinSameColourStraightEnds(livePath,true);
   current_speed=simulatedLap1SpeedMmS;current_acceleration=0;elapsed=peakLateral=peakSpeed=peakTrackingRatio=0;
   float wall,pillar;bool ok=driveDynamicLaps(cap,wall,pillar);
+  for(int i=0;i<pathLength;++i){
+   const float speed=laterLapSpeedLimits[i];
+   if(speed<=520.0f)continue;
+   ok=ok&&baselinePath[i].distanceMm>=OBSTACLE_LATER_LAP_HANDOFF_MM&&
+    baselinePath[i].distanceMm<corners[3].pathStartMm&&
+    speed<=OBSTACLE_LATER_LAP_STRAIGHT_SPEED_MM_S;
+   for(const auto &seat:seats)if(seat.confirmed)ok=ok&&
+    hypotf(seat.x-optimizedPath[i].x,seat.y-optimizedPath[i].y)>=
+      OBSTACLE_LATER_LAP_STRAIGHT_PILLAR_DISTANCE_MM-0.01f;
+  }
   // Even with the modeled ramp lag, keep actual lateral acceleration below
   // the chosen .8m/s^2 budget, and preserve the 30mm rollout pillar floor.
   ok=ok&&peakLateral<=OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS&&pillar>=30;
@@ -121,7 +145,7 @@ int main(int argc,char **argv){if(argc>1)last_loop_time=std::atof(argv[1]);
     subprocess.run([shutil.which('g++'), '-std=c++17', '-O2', '-I', str(ROOT/'include'),
                     '-I', str(shared), str(cpp), '-o', str(exe)], check=True)
     cases = json.loads((shared/'report.json').read_text())['cases']
-    cases = [c for c in cases if c['speed_cap']==0] if args.full_matrix else cases[-7:]
+    cases = [c for c in cases if c['speed_cap']==0] if args.full_matrix else cases[-9:]
     inputs = '\n'.join(' '.join(map(str, [c['direction'], c['speed_cap'], *c['colors']]))
                        for c in cases)+'\n'
     failed = False

@@ -11,6 +11,9 @@ void final_parking_start_practice(int8_t turn_sign);
 /** Entry only: surveyed capture pose, nominal247.5mm bay, no exit/laps/scan. */
 void final_parking_start_entry_practice(int8_t turn_sign);
 
+/** CW corner approach and marker registration followed by the fixed test sequence. */
+void final_parking_start_cw_sequence_practice();
+
 /**
  * Own the drive after the three-lap path is complete.
  *

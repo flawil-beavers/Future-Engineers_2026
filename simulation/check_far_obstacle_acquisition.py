@@ -87,7 +87,7 @@ Blob pillar(ColorType color,int foot){
 }
 int main(){int checks=0;
  for(auto color:{ColorType::RED,ColorType::GREEN})for(int row:{0,1}){
-  // foot104 gives 646mm forward, beyond the 600mm clear/absence window.
+  // Keep the historical synthetic projections outside the absence window.
   for(int foot:{104,100}){
    Blob b=pillar(color,foot);float range=obstacle_estimate_camera_range_mm(&b);
    if(range<=OBSTACLE_DISCOVERY_VIEW_MAX_MM)return 1;
@@ -113,7 +113,24 @@ int main(){int checks=0;
   for(int i=0;i<3;++i){clockMs+=80;auto r=obstacle_path_observe(&b);++checks;
    if(r.confirmed||r.seatId!=-1||injectionCount)return 6;}
  }
- std::cout<<"FAR ACQUISITION "<<checks<<" PASS: both colours/rows,646/700mm,"
+ // A mapped foreground frame between two far frames must neither vote
+ // nor erase the candidate. Check two different poses and frame sequences.
+ for(auto color:{ColorType::RED,ColorType::GREEN})for(bool expired:{false,true}){
+  Blob b=pillar(color,126);b.frameSequence=1;
+  reset(obstacle_estimate_camera_range_mm(&b),0);
+  Blob foreground=pillar(ColorType::RED,143);foreground.frameSequence=2;
+  seats[12].x=hostPose.x_mm+OBSTACLE_CAMERA_LOCAL_X_MM+
+     obstacle_estimate_camera_range_mm(&foreground);
+  seats[12].y=0;seats[12].pathDistanceMm=600;seats[12].confirmed=true;
+  if(obstacle_path_observe(&b).status!=OBSTACLE_OBSERVATION_VOTE)return 8;
+  clockMs+=80;
+  if(obstacle_path_observe(&foreground).status!=OBSTACLE_OBSERVATION_ALREADY_CONFIRMED)return 9;
+  clockMs+=expired ? OBSTACLE_SEAT_VOTE_WINDOW_MS : 80;
+  hostPose.x_mm+=21;b.maxY=127;b.frameSequence=3;
+  auto result=obstacle_path_observe(&b);++checks;
+  if(result.seatId!=6 || result.confirmed==expired || injectionCount!=(expired?0:1))return 10;
+ }
+ std::cout<<"FAR ACQUISITION "<<checks<<" PASS: both colours/rows, interleaved mapped blob, "
    " votes,confirmation,injection dispatch,ambiguity,relevance,map freeze\n";
 }
 '''

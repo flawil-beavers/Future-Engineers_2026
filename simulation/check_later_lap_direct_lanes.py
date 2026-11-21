@@ -16,7 +16,11 @@ from check_later_laps import later_lap_fixture
 def main():
     dest = ROOT / 'local_workspace/later-lap-direct-lanes'
     dest.mkdir(parents=True, exist_ok=True)
-    fixture = later_lap_fixture().split('int main()')[0]
+    # Reproduce the retired connector experiment from its committed source.
+    source = subprocess.check_output(
+        ['git', 'show', 'c19b0b0:src/obstacle_path.cpp'], cwd=ROOT, text=True)
+    fixture = later_lap_fixture(source).split('int main()')[0]
+    fixture = fixture.replace('OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM', '190.0f')
     fixture = fixture.replace('uint32_t micros(){return 0;}',
         'uint32_t clockValue=0,clockTick=0;uint32_t micros(){clockValue+=clockTick;return clockValue;}')
     fixture += r'''

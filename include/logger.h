@@ -58,6 +58,7 @@ private:
 
     enum LoggerState {
         LOGGER_IDLE,
+        LOGGER_POWER_OFF_WAIT,
         LOGGER_POWER_SETTLE,
         LOGGER_CONNECT_QUICK,
         LOGGER_CONNECT_EXTENDED_WAIT,
@@ -66,6 +67,8 @@ private:
         LOGGER_SCAN_DIRECTORY,
         LOGGER_OPEN_FILE,
         LOGGER_WRITE,
+        LOGGER_VERIFY_OPEN,
+        LOGGER_VERIFY_READ,
         LOGGER_SUCCESS_FEEDBACK,
         LOGGER_ERROR_FEEDBACK
     };
@@ -83,10 +86,17 @@ private:
     uint8_t mount_attempts;
     uint8_t retry_cycles;
     const char *diagnostic_stage = nullptr;
+    unsigned long save_started_ms = 0;
+    bool save_timer_running = false;
+    volatile bool save_timed_out = false;
     // A save operates on a stable prefix of log_buffer. Bytes are retained in
     // RAM until the complete prefix has been flushed and the file closed.
     size_t flush_target_length;
     size_t flush_offset;
+    size_t verify_offset = 0;
+    size_t queued_flush_length = 0;
+    unsigned long usb_power_off_ms = 0;
+    bool usb_has_powered_off = false;
     FILE *active_file;
     long active_file_start_size;
     bool filesystem_mounted;
@@ -101,10 +111,15 @@ private:
     void buffer_terminal(const uint8_t *data, size_t size);
     void update_terminal();
     void begin_attempt();
+    void power_off();
     void retry_or_fail(const char *reason);
     void restart_full_flush(const char *reason);
     void finish_attempt(bool success);
     void log_save_stage(const char *stage);
+    void report_save_status(const char *message);
+    void refresh_save_deadline();
+    void expire_save();
+    void stop_save_deadline();
     void remove_written_prefix(size_t count);
 };
 

@@ -11,12 +11,61 @@
 #include <USB/PluggableUSBSerial.h>
 #include <string.h>
 #include <errno.h>
+#include "drivers/DigitalOut.h"
+#include "drivers/Timeout.h"
 #include "platform/mbed_stats.h"
 
 #define SERIAL_HW _UART_USB_
 
 static USBHostMSD msd;
 static mbed::FATFileSystem usb_fs("usb");
+static mbed::DigitalOut usb_vbus(PA_15, 0);
+static mbed::DigitalOut save_red(digitalPinToPinName(LEDR), 1);
+static mbed::DigitalOut save_green(digitalPinToPinName(LEDG), 1);
+static mbed::Timeout save_deadline;
+
+static void setUsbPower(bool on) { usb_vbus.write(on); }
+static void setSaveLights(bool red, bool green)
+{
+    save_red.write(!red);
+    save_green.write(!green);
+}
+
+void USBLogger::expire_save()
+{
+    // This callback can run while FAT or USBHost is blocked. Only touch the
+    // power switch, status pins and flag. The caller owns all open handles.
+    save_timed_out = true;
+    setUsbPower(false);
+    setSaveLights(true,true);
+}
+
+void USBLogger::refresh_save_deadline()
+{
+    constexpr unsigned long maxSaveMs = 60000;
+    constexpr unsigned long maxWithoutProgressMs = 8000;
+    mbed::CriticalSectionLock lock;
+    if (save_timed_out) return;
+    const unsigned long now = millis();
+    if (!save_timer_running) {
+        save_timer_running = true;
+        save_started_ms = now;
+    }
+    const unsigned long elapsed = now - save_started_ms;
+    if (elapsed >= maxSaveMs) {
+        expire_save();
+        return;
+    }
+    const unsigned long remaining = maxSaveMs - elapsed;
+    save_deadline.attach(mbed::callback(this, &USBLogger::expire_save),
+        std::chrono::milliseconds(remaining < maxWithoutProgressMs ? remaining : maxWithoutProgressMs));
+}
+
+void USBLogger::stop_save_deadline()
+{
+    save_deadline.detach();
+    save_timer_running = false;
+}
 
 // Terminal-only diagnostics while stopped: identify the last USB call reached
 // before a fatal error. No log-buffer allocation or new driving output.
@@ -24,15 +73,28 @@ void USBLogger::log_save_stage(const char *stage)
 {
     if(diagnostic_stage && strcmp(diagnostic_stage,stage)==0)return;
     diagnostic_stage=stage;
+    refresh_save_deadline();
     if(dc_state==DC_ENABLED || !_SerialUSB.connected())return;
     mbed_stats_heap_t heap={};
     mbed_stats_heap_get(&heap);
-    SERIAL_HW.print("[LOGGER USB] stage=");SERIAL_HW.print(stage);
-    SERIAL_HW.print(" heap_used/peak/reserved/fails=");
-    SERIAL_HW.print(heap.current_size);SERIAL_HW.print('/');
-    SERIAL_HW.print(heap.max_size);SERIAL_HW.print('/');
-    SERIAL_HW.print(heap.reserved_size);SERIAL_HW.print('/');
-    SERIAL_HW.println(heap.alloc_fail_cnt);
+    char line[144];
+    const int length = snprintf(line, sizeof(line),
+        "[LOGGER USB] stage=%s heap_used/peak/reserved/fails=%lu/%lu/%lu/%lu\r\n", stage,
+        static_cast<unsigned long>(heap.current_size), static_cast<unsigned long>(heap.max_size),
+        static_cast<unsigned long>(heap.reserved_size), static_cast<unsigned long>(heap.alloc_fail_cnt));
+    if (length > 0 && static_cast<size_t>(length) < sizeof(line)) {
+        buffer_terminal(reinterpret_cast<const uint8_t *>(line), static_cast<size_t>(length));
+        update_terminal();
+    }
+}
+
+void USBLogger::report_save_status(const char *message)
+{
+    if (!_SerialUSB.connected()) return;
+    char line[144];
+    const int length = snprintf(line, sizeof(line), "[LOGGER] %s\r\n", message);
+    if (length > 0 && static_cast<size_t>(length) < sizeof(line))
+        buffer_terminal(reinterpret_cast<const uint8_t *>(line), static_cast<size_t>(length));
 }
 
 USBLogger::USBLogger()
@@ -57,8 +119,6 @@ USBLogger::USBLogger()
 {
     log_buffer[0] = '\0';
     session_filepath[0] = '\0';
-    pinMode(PA_15, OUTPUT);
-    digitalWrite(PA_15, LOW);
 }
 
 void USBLogger::begin(unsigned long baud)
@@ -105,8 +165,7 @@ void USBLogger::buffer_terminal(const uint8_t *data, size_t size)
 
 void USBLogger::update_terminal()
 {
-    if (!terminal_disconnect_protection || terminal_tx_count == 0 ||
-        !_SerialUSB.connected())
+    if (terminal_tx_count == 0 || !_SerialUSB.connected())
         return;
 
     size_t chunk = TERMINAL_TX_BUFFER_SIZE - terminal_tx_tail;
@@ -160,8 +219,7 @@ void USBLogger::clear()
         return;
 
     logger_state = LOGGER_IDLE;
-    digitalWrite(LEDR, HIGH);
-    digitalWrite(LEDG, HIGH);
+    setSaveLights(false,false);
 
     buffer_head = 0;
     tail_reserve = 0;
@@ -170,7 +228,7 @@ void USBLogger::clear()
     session_file_num = -1;
     next_probe_number = 1;
     session_filepath[0] = '\0';
-    digitalWrite(PA_15, LOW);
+    setUsbPower(false);
 }
 
 bool USBLogger::is_busy() const
@@ -184,36 +242,45 @@ bool USBLogger::is_busy() const
 
 void USBLogger::write_to_usb()
 {
-    if (buffer_head == 0 || is_busy())
+    if (buffer_head == 0)
         return;
+    if (is_busy()) {
+        // The OFF switch can arrive while the automatic abort export is active.
+        // Honour that request if the export fails or leaves a new suffix.
+        queued_flush_length = buffer_head;
+        return;
+    }
 
     flush_target_length = buffer_head;
     flush_offset = 0;
     retry_cycles = 0;
+    save_timed_out = false;
     begin_attempt();
 }
 
 void USBLogger::begin_attempt()
 {
     diagnostic_stage=nullptr;
-    log_save_stage("power_settle");
-    logger_state = LOGGER_POWER_SETTLE;
     state_started_ms = millis();
-    next_attempt_ms = state_started_ms + 300;
+    // USBHostMSD keeps its connection until the host processes removal.
+    // A LOW/HIGH pulse within the same call can leave the old device mounted.
+    logger_state = LOGGER_POWER_OFF_WAIT;
+    next_attempt_ms = usb_has_powered_off ? usb_power_off_ms + 300 : state_started_ms;
     connect_attempts = 0;
     mount_attempts = 0;
     active_file = nullptr;
     filesystem_mounted = false;
 
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    digitalWrite(LEDR, LOW);
-    digitalWrite(LEDG, HIGH);
-    pinMode(PA_15, OUTPUT);
-    digitalWrite(PA_15, HIGH);
+    setSaveLights(true,false);
 
-    if (!terminal_disconnect_protection && SERIAL_HW)
-        SERIAL_HW.println("[LOGGER] Asynchronous USB save started.");
+    report_save_status("USB save started.");
+}
+
+void USBLogger::power_off()
+{
+    setUsbPower(false);
+    usb_power_off_ms = millis();
+    usb_has_powered_off = true;
 }
 
 void USBLogger::remove_written_prefix(size_t count)
@@ -232,22 +299,19 @@ void USBLogger::retry_or_fail(const char *reason)
         closedir(directory_scan);
         directory_scan = nullptr;
     }
-    if (!terminal_disconnect_protection && SERIAL_HW) {
-        SERIAL_HW.print("[LOGGER] ");
-        SERIAL_HW.println(reason);
-    }
+    report_save_status(reason);
 
     if (active_file != nullptr) {
         fclose(active_file);
         active_file = nullptr;
     }
     if (filesystem_mounted) {
+        log_save_stage("abort_unmount");
         usb_fs.unmount();
         filesystem_mounted = false;
     }
-    digitalWrite(PA_15, LOW);
-
-    if (++retry_cycles < 3 && flush_offset < flush_target_length) {
+    if (!save_timed_out && ++retry_cycles < 3 && flush_offset < flush_target_length) {
+        power_off();
         begin_attempt();
         return;
     }
@@ -274,33 +338,44 @@ void USBLogger::restart_full_flush(const char *reason)
 void USBLogger::finish_attempt(bool success)
 {
     if (active_file != nullptr) {
-        fflush(active_file);
+        if (success) fflush(active_file);
         fclose(active_file);
         active_file = nullptr;
     }
     if (filesystem_mounted) {
-        usb_fs.unmount();
+        log_save_stage(success ? "unmount" : "abort_unmount");
+        if (usb_fs.unmount() != 0) success = false;
         filesystem_mounted = false;
     }
-    digitalWrite(PA_15, LOW);
+    stop_save_deadline();
+    success = success && !save_timed_out;
+    power_off();
 
     state_started_ms = millis();
+    const size_t requested = queued_flush_length;
+    queued_flush_length = 0;
     if (success) {
+        const size_t saved = flush_target_length;
         remove_written_prefix(flush_target_length);
         flush_target_length = 0;
         flush_offset = 0;
         buffer_overflow = false;
-        digitalWrite(LEDR, HIGH);
-        digitalWrite(LEDG, LOW);
+        setSaveLights(false,true);
         logger_state = LOGGER_SUCCESS_FEEDBACK;
-        if (!terminal_disconnect_protection && SERIAL_HW)
-            SERIAL_HW.println("[LOGGER] Requested log data saved.");
+        report_save_status("Requested log data saved.");
+        if (requested > saved) {
+            flush_target_length = requested - saved;
+            retry_cycles = 0;
+            begin_attempt();
+        }
     } else {
-        digitalWrite(LEDR, LOW);
-        digitalWrite(LEDG, LOW);
+        // A file may contain an incomplete prefix. Retry to a new name.
+        session_file_num = -1;
+        session_filepath[0] = '\0';
+        setSaveLights(true,true);
         logger_state = LOGGER_ERROR_FEEDBACK;
-        if (!terminal_disconnect_protection && SERIAL_HW)
-            SERIAL_HW.println("[LOGGER] Save incomplete; unwritten bytes remain buffered.");
+        report_save_status("Save incomplete; log retained in RAM.");
+        if (requested != 0 && !save_timed_out) write_to_usb();
     }
 }
 
@@ -310,11 +385,27 @@ void USBLogger::update()
     // File I/O may block in the USB stack even though our state machine yields.
     // Defer it during any speed-controlled drive; a settled position hold can
     // still save the completed parking run. Never interrupt an existing drive.
-    if (dc_state == DC_ENABLED) return;
+    if (dc_state == DC_ENABLED && is_busy()) return;
+    if (save_timed_out && is_busy()) {
+        retry_or_fail("USB save timed out; snapshot retained.");
+        return;
+    }
     const unsigned long now = millis();
 
     switch (logger_state) {
     case LOGGER_IDLE:
+        return;
+
+    case LOGGER_POWER_OFF_WAIT:
+        if ((long)(now - next_attempt_ms) >= 0) {
+            log_save_stage("power_settle");
+            {
+                mbed::CriticalSectionLock lock;
+                if (!save_timed_out) setUsbPower(true);
+            }
+            logger_state = LOGGER_POWER_SETTLE;
+            next_attempt_ms = now + 300;
+        }
         return;
 
     case LOGGER_POWER_SETTLE:
@@ -413,6 +504,7 @@ void USBLogger::update()
                 number >= static_cast<unsigned long>(next_probe_number))
                 next_probe_number = static_cast<int>(number) + 1;
         }
+        refresh_save_deadline();
         return;
 
     case LOGGER_OPEN_FILE:
@@ -435,7 +527,7 @@ void USBLogger::update()
             if (session_file_num < 1) return;
         }
 
-        active_file = fopen(session_filepath, "a");
+        active_file = fopen(session_filepath, "ab");
         if (active_file == nullptr) {
             retry_or_fail("Could not open log file.");
             return;
@@ -450,7 +542,7 @@ void USBLogger::update()
 
     case LOGGER_WRITE: {
         if (flush_offset >= flush_target_length) {
-            log_save_stage("finalize_verify");
+            log_save_stage("finalize_close");
             bool finalized = true;
             if (buffer_overflow &&
                 fprintf(active_file,
@@ -466,31 +558,11 @@ void USBLogger::update()
             if (fclose(completed_file) != 0)
                 finalized = false;
 
-            // Reopen the file after close so a USB stack that acknowledged
-            // writes but committed only a prefix cannot report false success.
-            if (finalized) {
-                FILE *verification_file = fopen(session_filepath, "rb");
-                if (verification_file == nullptr ||
-                    fseek(verification_file, 0, SEEK_END) != 0) {
-                    finalized = false;
-                } else {
-                    const long saved_size = ftell(verification_file);
-                    const long expected_minimum =
-                        active_file_start_size +
-                        static_cast<long>(flush_target_length);
-                    if (saved_size < expected_minimum)
-                        finalized = false;
-                }
-                if (verification_file != nullptr &&
-                    fclose(verification_file) != 0)
-                    finalized = false;
-            }
-
             if (!finalized) {
-                restart_full_flush("USB final verification failed; retrying full log.");
+                restart_full_flush("Could not close USB log; retrying full log.");
                 return;
             }
-            finish_attempt(true);
+            logger_state = LOGGER_VERIFY_OPEN;
             return;
         }
 
@@ -510,6 +582,7 @@ void USBLogger::update()
             !ferror(active_file);
         if (durable_chunk) {
             flush_offset += requested;
+            refresh_save_deadline();
         } else {
             clearerr(active_file);
             // Do not remove any bytes from RAM. Start a new complete recovery
@@ -519,17 +592,53 @@ void USBLogger::update()
         return;
     }
 
+    case LOGGER_VERIFY_OPEN:
+        log_save_stage("verify_open");
+        active_file = fopen(session_filepath, "rb");
+        if (active_file == nullptr || fseek(active_file, active_file_start_size, SEEK_SET) != 0) {
+            restart_full_flush("Could not reopen saved USB log; retrying full log.");
+            return;
+        }
+        verify_offset = 0;
+        logger_state = LOGGER_VERIFY_READ;
+        return;
+
+    case LOGGER_VERIFY_READ: {
+        if (verify_offset == flush_target_length) {
+            log_save_stage("verify_close");
+            FILE *verified = active_file;
+            active_file = nullptr;
+            if (fclose(verified) != 0) {
+                restart_full_flush("Could not close verified USB log; retrying full log.");
+                return;
+            }
+            finish_attempt(true);
+            return;
+        }
+        log_save_stage("verify_read");
+        uint8_t check[2048];
+        const size_t remaining = flush_target_length - verify_offset;
+        const size_t count = remaining < sizeof(check) ? remaining : sizeof(check);
+        if (fread(check, 1, count, active_file) != count ||
+            memcmp(check, log_buffer + verify_offset, count) != 0) {
+            restart_full_flush("Saved USB bytes differ from RAM; retrying full log.");
+            return;
+        }
+        verify_offset += count;
+        refresh_save_deadline();
+        return;
+    }
+
     case LOGGER_SUCCESS_FEEDBACK:
         if (now - state_started_ms >= 1000) {
-            digitalWrite(LEDG, HIGH);
+            setSaveLights(false,false);
             logger_state = LOGGER_IDLE;
         }
         return;
 
     case LOGGER_ERROR_FEEDBACK:
         if (now - state_started_ms >= 2000) {
-            digitalWrite(LEDR, HIGH);
-            digitalWrite(LEDG, HIGH);
+            setSaveLights(false,false);
             logger_state = LOGGER_IDLE;
         }
         return;

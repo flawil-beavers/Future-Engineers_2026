@@ -12,7 +12,10 @@ out.mkdir(exist_ok=True)
 cases=json.loads((ROOT/'local_workspace/later-laps/report.json').read_text())['cases']
 cases += [dict(direction=d,speed_cap=0,colors=[0]*24) for d in (-1,1)]
 inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
-fixture=later_lap_fixture().split('int main()')[0]
+# Reproduce the optional inner-turn experiment, which is no longer active.
+source=subprocess.check_output(['git','show','7870340:src/obstacle_path.cpp'],cwd=ROOT,text=True)
+fixture=later_lap_fixture(source).split('int main()')[0]
+fixture=fixture.replace('OBSTACLE_OPTIMIZED_MIDDLE_CLEARANCE_MM','190.0f')
 metrics=METRICS.replace('@@SPEED@@','laterLapSpeedLimits[i]').replace('@@NEXT_SPEED@@','laterLapSpeedLimits[n]')
 results={}
 for mode in ('before','after'):

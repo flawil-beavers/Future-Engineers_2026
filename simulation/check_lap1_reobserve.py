@@ -60,6 +60,8 @@ void reset(){
  pose={};encoder=0;cornerViewOrigin={};cornerViewOriginEncoder=0;
  cornerViewStation=3;cornerViewPhase=CORNER_VIEW_REVERSE;cornerViewPhaseMs=now;
  cornerViewDistanceMm=90;cornerViewMeasuredReverseMm=0;
+ cornerViewExtraDistanceMm=110;cornerViewExtraStartEncoder=0;cornerViewExtraOrigin=pose;
+ cornerViewExtraTriedMask=0;
  cornerViewStoppedFrames=0;locked=resolved=resumeSafe=arcSafe=false;
  commandSafe=true;speed=0;collected=preflights=resumes=0;
 }
@@ -89,11 +91,15 @@ int main(){int cases=0;
  reset();cornerViewPhase=CORNER_VIEW_EXTRA_SETTLE;cornerViewExtraSteering=20;
  now+=301;updateCornerView(true);
  assert(!locked&&cornerViewPhase==CORNER_VIEW_REBASE_BRAKE&&speed==0);++cases;
- reset();cornerViewPhase=CORNER_VIEW_EXTRA_RETURN_SETTLE;cornerViewExtraStartEncoder=0;
- encoder=-90;cornerViewExtraOrigin=pose;now+=301;updateCornerView(true);
+ reset();cornerViewPhase=CORNER_VIEW_EXTRA_REVERSE;cornerViewExtraTriedMask=4;
+ encoder=-110;now+=301;updateCornerView(true);
  assert(!locked&&cornerViewPhase==CORNER_VIEW_REBASE_BRAKE&&speed==0);++cases;
- reset();cornerViewPhase=CORNER_VIEW_EXTRA_RETURN_SETTLE;cornerViewExtraStartEncoder=0;
- encoder=-115;cornerViewExtraOrigin=pose;now+=301;updateCornerView(true);
+ assert(cornerViewOriginEncoder==-110&&cornerViewExtraTriedMask==0);
+ reset();cornerViewPhase=CORNER_VIEW_EXTRA_REVERSE;cornerViewExtraTriedMask=4;
+ encoder=-45;pose.heading_deg=8;now+=301;updateCornerView(true);
+ assert(!locked&&cornerViewPhase==CORNER_VIEW_REBASE_BRAKE&&cornerViewExtraTriedMask==4);++cases;
+ reset();cornerViewPhase=CORNER_VIEW_EXTRA_REVERSE;
+ encoder=-131;now+=301;updateCornerView(true);
  assert(locked&&speed==0);++cases;
  std::cout<<"LAP1 REOBSERVE "<<cases<<" PASS: soft mismatch brakes/searches; unresolved frames continue; unsafe join/hard faults stay stopped\n";
 }

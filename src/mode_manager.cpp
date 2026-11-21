@@ -36,10 +36,12 @@ static int pending_manual_speed_mm_s = 0;
 static bool obstacle_ready_led_on = false;
 static bool resume_after_save = false;
 static int8_t parking_practice_turn_sign=OBSTACLE_FINAL_PARKING_PRACTICE_TURN_SIGN;
+static bool parking_practice_fixed_sequence=false;
 
-void mode_parking_practice_set_turn_sign(int8_t turn_sign)
+void mode_parking_practice_set_turn_sign(int8_t turn_sign, bool fixed_sequence)
 {
-    parking_practice_turn_sign=turn_sign<0 ? -1:1;
+    parking_practice_turn_sign=fixed_sequence || turn_sign<0 ? -1:1;
+    parking_practice_fixed_sequence=fixed_sequence;
 }
 
 RobotMode current_mode = MODE_NONE;
@@ -161,7 +163,10 @@ static bool start_mode(RobotMode mode)
         stop(false);
         obstacle_path_reset();
         run_telemetry_start();
-        final_parking_start_entry_practice(parking_practice_turn_sign);
+        if (parking_practice_fixed_sequence)
+            final_parking_start_cw_sequence_practice();
+        else
+            final_parking_start_entry_practice(parking_practice_turn_sign);
         break;
     case MODE_MANUAL:
         stop(false);
@@ -399,6 +404,8 @@ static ModeResult update_active_mode()
         if (!obstacle_parking_exit_active())
             printVisionDebug();
         drive_loop();
+        if (final_parking_aborted())
+            return MODE_RESULT_FAILED;
         return obstacle_challenge_complete()
             ? MODE_RESULT_COMPLETED
             : MODE_RESULT_RUNNING;
@@ -525,13 +532,17 @@ void mode_update()
         // Keep the verified parking target and motor hold. MODE_HOLD still
         // services drive_loop; an explicit pause/stop/mode change can release it.
         current_mode = MODE_HOLD;
-        pending_mode = MODE_NONE;
+        pending_mode = updated_mode == MODE_OBSTACLE_CHALLENGE ? MODE_OBSTACLE_CHALLENGE : MODE_NONE;
         return;
     }
     if(updated_mode==MODE_OBSTACLE_CHALLENGE)run_telemetry_finish(result==MODE_RESULT_COMPLETED?"completed":"failed","mode_result");
     stop_mode(updated_mode);
     current_mode = MODE_NONE;
-    pending_mode = wait_for_right_turn_cal ? MODE_TURN_RADIUS_CAL : MODE_NONE;
+    if (wait_for_right_turn_cal)
+        pending_mode = MODE_TURN_RADIUS_CAL;
+    else
+        pending_mode = updated_mode == MODE_OBSTACLE_CHALLENGE &&
+            result == MODE_RESULT_FAILED ? MODE_OBSTACLE_CHALLENGE : MODE_NONE;
 }
 
 void mode_pause()
@@ -543,14 +554,15 @@ void mode_pause()
         // A camera-distance calibration can only start while the pillar is
         // touching the configured robot-front plane. After any movement, a
         // generic resume would establish a false distance origin.
-        pending_mode = (paused_mode == MODE_CAMERA_DISTANCE_CAL || paused_mode == MODE_FINAL_PARKING_PRACTICE)
-            ? MODE_NONE
-            : paused_mode;
+        if (paused_mode != MODE_HOLD || pending_mode != MODE_OBSTACLE_CHALLENGE)
+            pending_mode = (paused_mode == MODE_CAMERA_DISTANCE_CAL || paused_mode == MODE_FINAL_PARKING_PRACTICE)
+                ? MODE_NONE
+                : paused_mode;
         stop_mode(current_mode);
         current_mode = MODE_NONE;
 
         if (paused_mode == MODE_FINAL_PARKING_PRACTICE)
-            Serial.println("Parking practice stopped; reposition at the marked axle pose and select park cw/ccw again.");
+            Serial.println("Parking practice stopped; return to the start pose and select the park command again.");
         else if (paused_mode == MODE_CAMERA_DISTANCE_CAL)
             Serial.println("Camera calibration cancelled; return to pillar contact and send camdrive again.");
         else {
@@ -577,6 +589,7 @@ void mode_resume()
     system_enable();
 
     if (pending_mode == MODE_NONE) {
+        stop(false);
         Serial.println("System enabled (no pending mode).");
         return;
     }
@@ -586,6 +599,7 @@ void mode_resume()
 
     if (!start_mode(mode_to_start)) {
         stop(false);
+        if (mode_to_start == MODE_OBSTACLE_CHALLENGE) pending_mode = mode_to_start;
         Serial.print("Could not resume mode: ");
         Serial.println(mode_name(mode_to_start));
         return;

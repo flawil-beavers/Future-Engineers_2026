@@ -323,6 +323,7 @@ static void print_serial_command_info()
   Serial.println("\n===== SERIAL COMMANDS =====");
   Serial.println("Mode selection is temporary until reset; reset uses config.h STARTUP_ROBOT_MODE.");
   Serial.println("park cw / park ccw : Entry-only parking practice; drive OFF, surveyed axle pose required");
+  Serial.println("park cw fixed : CW corner approach and fixed parking sequence; select with drive OFF");
   Serial.println("park stop  : Stop parking practice; reposition before a new start");
   Serial.println("i          : Show this command list");
   Serial.println("m          : Select MANUAL mode");
@@ -489,16 +490,17 @@ void parseMessage(char *msg)
         mode_stop_all();
       return;
     }
-    if (strcmp(msg,"park cw")!=0 && strcmp(msg,"park ccw")!=0) {
-      Serial.println("Usage: park cw / park ccw / park stop");
+    const bool fixed_sequence=strcmp(msg,"park cw fixed")==0;
+    if (!fixed_sequence && strcmp(msg,"park cw")!=0 && strcmp(msg,"park ccw")!=0) {
+      Serial.println("Usage: park cw / park ccw / park cw fixed / park stop");
       return;
     }
     if (system_enabled) {
-      Serial.println("Switch drive OFF and place the rear axle at the parking-practice marks first.");
+      Serial.println("Switch drive OFF and place the car at the practice start first.");
       return;
     }
     mode_stop_all();
-    mode_parking_practice_set_turn_sign(strcmp(msg,"park cw")==0 ? -1:1);
+    mode_parking_practice_set_turn_sign(strcmp(msg,"park ccw")==0 ? 1:-1, fixed_sequence);
     select_temporary_mode(MODE_FINAL_PARKING_PRACTICE);
     return;
   }

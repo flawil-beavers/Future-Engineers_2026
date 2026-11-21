@@ -25,7 +25,7 @@ template<class T>void println(T){} template<class T>void println(T,int){}} Seria
 bool runtimeTestMode=false,lapFinishPending=false,parkingEntryConnectorActive=false,
  parkingEntryFarGreenFollowup=false,parkingEntryJoining=false;
 int completedLaps=0;float curvature=0,steering=0,commandedSpeed=100;
-bool discoveryHolding=false,discoveryBlocked=false,cornerViewAttempted[12]={},cornerViewExtraUsed=false;
+bool discoveryHolding=false,discoveryBlocked=false,cornerViewAttempted[12]={};
 struct Seat{bool confirmed=false,red=false;}seats[24];
 struct Pose{float y_mm=0;}pose;
 float parkingFinishSpeed(float s,const Pose&){return s;}
@@ -33,7 +33,7 @@ int routeTurnSign=1;float runtimeSpeedCapMmS=0;
 int discoveryHoldStation=-1,discoveryBlockedStation=-1,cornerViewStation=-1,cornerViewPhase=0,cornerViewObservationTraceCount=0;
 uint32_t nowMs=1000,discoveryHoldStartMs=0,cornerViewPhaseMs=0;
 uint8_t cornerViewExtraTriedMask=0;uint16_t cornerViewSearchCycle=0;
-uint32_t cornerViewLastNoSafeTraceMs=0;
+uint32_t cornerViewLastNoSafeTraceMs=0,cornerViewLastSearchMs=0;
 float cornerViewRequestedMinRange=0;
 int selectedStation=-1;float selectedForward=335;int motorSpeed=-9;
 uint32_t millis(){return nowMs;}

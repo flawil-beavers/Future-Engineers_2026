@@ -34,6 +34,7 @@ struct Observation{bool productionValid=false;ColorType color=ColorType::NONE;
  int seatId=-1;float rangeMm=0,bearingDeg=0;}lastDiscoveryObservation;
 int discoveryScanStation=-1,discoveryScanSide=-1,lastConfirmedSeatIndex=-1;
 bool extremeAdjacentReleasePending=false;
+bool earlyMiddleViewActive[OBSTACLE_SEAT_COUNT]={};
 float lastDiscoveryTargetNudgeDeg=0;unsigned long clockMs=1000,lastDiscoveryNudgeUpdateMs=0;
 unsigned long millis(){return clockMs;}
 bool discoveryAimCommandSafe(const PositionEstimate&,int);
@@ -41,6 +42,10 @@ bool discoveryAimCommandSafe(const PositionEstimate&,int);
     for signature in ('bool completingExtremeAdjacentPair(', 'bool traversingInjectedAvoidance(',
                       'bool cornerViewSeatMayBeOccupied(', 'bool cornerViewRetreatSafe(',
                       'bool cornerViewSweepSafe(', 'bool discoveryAimCommandSafe(',
+                      'bool ccwDiscoveryRouteSectionSafe(',
+                      'void shapeCcwDiscoveryAfterTallSign(', 'void shapeCcwDiscoveryReturnCorner(',
+                      'bool earlyMiddleViewEligible(', 'bool earlyMiddleViewPathSafe(',
+                      'void rebuildLivePath()', 'void rebuildDiscoveryPath()',
                       'void seatCameraGeometry(', 'void applyDiscoveryTargetNudge(',
                       'bool earlyDiscoveryAimCommandSafe(',
                       'void applyLap1DiscoveryAim('):
@@ -56,6 +61,64 @@ void clean(int dir){routeTurnSign=dir;resetState();baseline();
  for(auto &d:discoveryStations){d.observedClear=true;d.seatObservedClear[0]=d.seatObservedClear[1]=true;}
  lastDiscoveryTargetNudgeDeg=0;lastDiscoveryNudgeUpdateMs=clockMs;
  raw={};lastDiscoveryObservation={};}
+struct ReturnCheck{float wall=1e9f,red=1e9f,green=1e9f,countersteer=0;bool finished=false;};
+ReturnCheck checkReturn(){
+ ReturnCheck result;
+ PositionEstimate p{-1031.9f,-175.0f,266.17f}; // measured stored-GREEN injection, log 38
+ progressIndex=nearestPathIndex(livePath,p.x_mm,p.y_mm,0,pathLength);
+ for(int step=0;step<1000;++step){
+  progressIndex=nearestPathIndex(livePath,p.x_mm,p.y_mm,progressIndex,OBSTACLE_PATH_PROGRESS_WINDOW);
+  ObstacleClearanceSample red{},green{};
+  if(!calculateClearanceAtPose(seats[23],p.x_mm,p.y_mm,p.heading_deg,red) ||
+     !calculateClearanceAtPose(seats[1],p.x_mm,p.y_mm,p.heading_deg,green))return result;
+  result.wall=fminf(result.wall,red.wallMm);
+  result.red=fminf(result.red,red.pillarMm);result.green=fminf(result.green,green.pillarMm);
+  if(p.x_mm>=-115){result.finished=true;return result;}
+  float look=firstLapLookahead(livePath[progressIndex].speedMmS);
+  if(nearCorner(baselinePath[progressIndex].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
+  const auto target=findLookahead(livePath,p,look);
+  const float dx=target.x-p.x_mm,dy=target.y-p.y_mm,h=p.heading_deg*PI/180;
+  const float k=2*(-dx*sinf(h)+dy*cosf(h))/fmaxf(1,dx*dx+dy*dy);
+  const int servo=static_cast<int>(clampFloat(pursuitServoForCurvature(k),
+    -OBSTACLE_MAX_PURSUIT_STEERING_DEG,OBSTACLE_MAX_PURSUIT_STEERING_DEG));
+  if(p.x_mm>=-800 && p.x_mm<=-390)result.countersteer=fmaxf(result.countersteer,servo);
+  const float applied=pursuitCurvatureForServo(servo),next=h+applied*2;
+  if(fabsf(applied)>1e-6f){
+   p.x_mm+=(sinf(next)-sinf(h))/applied;p.y_mm+=(cosf(h)-cosf(next))/applied;
+  }else{p.x_mm+=2*cosf(h);p.y_mm+=2*sinf(h);}
+  p.heading_deg=next*180/PI;
+ }
+ return result;
+}
+bool checkTallReturn(){
+ clean(1);
+ for(int i:{5,9,14,19}){
+  seats[i].confirmed=seats[i].injected=true;seats[i].red=i!=9;
+ }
+ seats[19].modifiedSign=true;seats[19].heightMm=150;
+ discoveryStations[11]={};
+ const auto tall=nearestPathIndex(baselinePath,seats[19].x,seats[19].y,0,pathLength);
+ rebuildLivePath();const auto oldExit=livePath[tall+3];
+ rebuildDiscoveryPath();
+ if(fabsf(livePath[tall+3].x-livePath[tall].x)>1 ||
+    fabsf(livePath[tall+3].x-oldExit.x)<20 ||
+    fabsf(livePath[tall+10].x-baselinePath[tall+10].x)>1)return false;
+ seats[23].confirmed=seats[23].injected=seats[23].red=true;
+ seats[1].confirmed=true;seats[1].red=false;
+ rebuildDiscoveryPath();
+ const auto green=nearestPathIndex(baselinePath,seats[1].x,seats[1].y,0,pathLength);
+ const auto storedOnly=livePath[green];
+ seats[1].injected=true;
+ rebuildLivePath();const auto old=checkReturn();
+ rebuildDiscoveryPath();const auto corrected=checkReturn();
+ if(fabsf(storedOnly.y-livePath[green].y)<80)return false;
+ std::cout<<"LOG38 modeled wall/red/green mm, countersteer deg old="
+  <<old.wall<<"/"<<old.red<<"/"<<old.green<<"/"<<old.countersteer
+  <<" corrected="<<corrected.wall<<"/"<<corrected.red<<"/"<<corrected.green
+  <<"/"<<corrected.countersteer<<"\n";
+ return old.finished && corrected.finished && corrected.wall>=120 &&
+  corrected.red>=55 && corrected.green>=74 && corrected.countersteer<=old.countersteer-5;
+}
 int main(){int tests=0;
  for(int dir:{-1,1})for(float distance:{850.f,800.f,700.f,650.f,600.f})
  for(float lateral:{-160.f,0.f,160.f})for(float angle:{-10.f,0.f,10.f})for(int mode:{0,1,2}){
@@ -80,6 +143,30 @@ int main(){int tests=0;
   ++tests;
  }
  std::cout<<"POLICY "<<tests<<" early distances/directions/row states PASS\n";
+ for(int dir:{-1,1})for(int side:{0,1}){
+  clean(dir);discoveryStations[5]={};
+  const auto center=interpolateBaseline(seats[10].pathDistanceMm);
+  const float h=center.headingDeg*PI/180;
+  for(float distance:{780.f,880.f}){
+   const float lateral=side==0?120.0f:-120.0f;
+   PositionEstimate p{center.x-distance*cosf(h)-lateral*sinf(h),
+                      center.y-distance*sinf(h)+lateral*cosf(h),center.headingDeg};
+   progressIndex=nearestPathIndex(baselinePath,p.x_mm,p.y_mm,0,pathLength);
+   seats[10+side].lastVoteMs=clockMs;lastDiscoveryTargetNudgeDeg=0;
+   // At the nearer progress after the first sign, the bypass still owns steering.
+   const int previous=6+side;
+   seats[previous].confirmed=seats[previous].injected=true;
+   float bearing,range;seatCameraGeometry(10+side,p,bearing,range);
+   PathPoint target{p.x_mm+230*cosf(h),p.y_mm+230*sinf(h)};
+   for(int frame=0;frame<5;++frame){clockMs+=40;auto t=target;applyLap1DiscoveryAim(t,p);}
+   if(distance==880.f && (!traversingInjectedAvoidance(baselinePath[progressIndex].distanceMm) ||
+      lastDiscoveryTargetNudgeDeg!=0))return 3;
+   if(distance==780.f && (lastDiscoveryTargetNudgeDeg*bearing<=0 ||
+      fabsf(lastDiscoveryTargetNudgeDeg)>15.01f))return 4;
+  }
+ }
+ std::cout<<"PENDING CANDIDATE AIM PASS: both rows/directions, protected bypass retained\n";
+ if(!checkTallReturn())return 5;
  int id,dir,station,mask[24],clear[24];float x,y,h,expected0,expected1;
  while(std::cin>>id>>dir>>station>>x>>y>>h>>expected0>>expected1){
   clean(dir);for(int &v:mask)std::cin>>v;for(int &v:clear)std::cin>>v;
@@ -101,6 +188,15 @@ int main(){int tests=0;
     index = (EVIDENCE / 'README.md').read_text(encoding='utf-8')
     paths = sorted((p for p in EVIDENCE.glob('*.txt') if re.search(r'log_(\d+)', p.name)),
                    key=lambda p: int(re.search(r'log_(\d+)', p.name)[1]))[-20:]
+    # The log counter restarted. Include the new physical batch, whose
+    # lower numbers otherwise fall outside the historical numeric selection.
+    paths.extend(p for p in (
+        EVIDENCE/'20261120_log_8_cw.txt',
+        EVIDENCE/'20261120_log_9_cw.txt',
+        EVIDENCE/'20261120_log_10_ccw.txt',
+        EVIDENCE/'20261120_log_38_ccw.txt',
+        *(p for p in EVIDENCE.glob('20261120_log_1[1-8]_*.txt')),
+    ) if p.is_file() and p not in paths)
     samples, inputs = [], []
     for path in paths:
         report = analyze(path, index)

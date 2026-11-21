@@ -176,6 +176,37 @@ int main(int argc,char **argv){visionTest.begin();int rendered=0,policy=0;
   assert(seats[6].confirmed&&seats[6].modifiedSign==(mm!=100));++policy;
  }
  // Expiry, changing height and changing colour must restart the consensus.
+ resetSeats();routeTurnSign=1;seats[0].confirmed=true;
+ for(int n=0;n<4;++n){
+  b=image(ColorType::GREEN,50,400,54);
+  assert(b.found&&obstacle_sign_height::classify(b)==obstacle_sign_height::SHORT);
+  assert(!vote(9,b));
+ }
+ assert(!seats[9].confirmed&&surpriseSeatIndex<0);
+ for(int n=0;n<2;++n){b=image(ColorType::GREEN,100,400);assert(vote(9,b)==(n==1));}
+ assert(!seats[9].red&&surpriseSeatIndex<0);
+ for(int n=0;n<3;++n){b=image(ColorType::GREEN,150,500);assert(vote(19,b)==(n==2));}
+ assert(seats[19].modifiedSign&&seats[19].red&&surpriseSeatIndex==19);++policy;
+
+ resetSeats();routeTurnSign=1;seats[0].confirmed=true;
+ for(int n=0;n<3;++n){b=image(ColorType::GREEN,50,400);assert(vote(9,b)==(n==2));}
+ assert(seats[9].modifiedSign&&surpriseSeatIndex==9);++policy;
+
+ // A short/partial RED on the stationary CW middle view must not
+ // occupy that station or consume the surprise identity as in log 46.
+ resetSeats();routeTurnSign=-1;parkingEntryObserving=true;
+ discoveryStations[0].observedClear=true;
+ assert(surpriseOrderForSeat(2)==SURPRISE_FIRST);
+ for(int n=0;n<4;++n){
+  b=image(ColorType::RED,50,300);
+  assert(obstacle_sign_height::classify(b)==obstacle_sign_height::SHORT);
+  assert(!vote(2,b));
+ }
+ assert(!seats[2].confirmed&&surpriseSeatIndex<0);
+ for(int n=0;n<3;++n){b=image(ColorType::RED,100,300);assert(vote(2,b)==(n==2));}
+ assert(seats[2].red&&!seats[2].modifiedSign&&surpriseSeatIndex<0);
+ parkingEntryObserving=false;++policy;
+
  resetSeats();seats[0].confirmed=true;
  b=image(ColorType::GREEN,50,400);vote(6,b);
  clockMs+=OBSTACLE_SEAT_VOTE_WINDOW_MS+1;
