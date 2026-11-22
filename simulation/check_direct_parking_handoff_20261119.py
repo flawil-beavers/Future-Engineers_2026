@@ -78,6 +78,25 @@ int main(){int total=0,prepared=0,rolling=0,bad=0;
   }
   std::cout<<"DIRECT HANDOFF dir/layout/incoming/prepared="<<dir<<"/"<<layout<<"/"<<incoming<<"/"<<ready<<"\n";
  }
+ // CW with an isolated GREEN before the last corner and RED on the start
+ // straight. Its new forward connector must not replace the parking guide
+ // that the robot tracks in reverse from the handoff.
+ ::routeTurnSign=-1;resetState();baseline();
+ for(auto &s:seats)s.confirmed=s.injected=false;
+ for(int i:{0,4,7,10,15,20}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i!=4 && i!=20;
+ }
+ learned();joinSameColourStraightEnds(livePath,true);
+ PositionEstimate cwArrival;
+ if(!buildOptimizedPath() || !obstacle_path_parking_handoff_pose(cwArrival,nullptr))return 2;
+ final_parking_reset();hostPose=truePose=cwArrival;hostTime=1000;
+ encoder=0;hostGyroHealthy=true;
+ stop(false);servo_disabled=false;set_speed(150);set_steering(0);
+ for(int tick=0;tick<10000&&!approachPreparation.ready&&!approachPreparation.failed;++tick)
+  final_parking_prepare_approach(-1,cwArrival);
+ if(!approachPreparation.ready)return 3;
+ std::cout<<"DIRECT HANDOFF isolated CW GREEN reverse guide PASS\n";
  std::cout<<"DIRECT HANDOFF total/prepared/rolling/failed="<<total<<"/"<<prepared<<"/"<<rolling<<"/"<<bad<<"\n";
  return bad || prepared<16 || rolling<8 ? 1:0;
 }

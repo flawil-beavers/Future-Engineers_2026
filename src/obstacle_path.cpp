@@ -112,6 +112,7 @@ enum ParkingEntryScoutPhase : uint8_t
 PathPoint baselinePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint livePath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
+PathPoint parkingApproachPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint smoothingBuffer[OBSTACLE_MAX_PATH_WAYPOINTS];
 PathPoint parkingEntryPath[OBSTACLE_PARKING_ENTRY_MAX_WAYPOINTS];
 PathPoint parkingEntryConnector[
@@ -2953,12 +2954,14 @@ void carryKnownInnerLaneToMiddle(PathPoint *route, bool mixedColours = false)
 }
 
 float laterLapBending(const PathPoint *route, float &length, float &peak,
-                     float *absoluteTurn = nullptr)
+                     float *absoluteTurn = nullptr,
+                     uint16_t first = 0, uint16_t end = 0)
 {
     length=peak=0.0f;
     if(absoluteTurn)*absoluteTurn=0;
     float bending=0.0f;
-    for(uint16_t i=0;i<pathLength;++i)
+    if (end == 0) end = pathLength;
+    for(uint16_t i=first;i<end;++i)
     {
         const uint16_t p=(i+pathLength-1)%pathLength,n=(i+1)%pathLength;
         const float a=hypotf(route[i].x-route[p].x,route[i].y-route[p].y);
@@ -3122,7 +3125,8 @@ float laterLapTrackingSpeed(float speed, float requestedCurvature, int steering)
     return fminf(speed,laterLapCurvatureSpeed(curvature));
 }
 
-void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
+void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false,
+                       bool report=true)
 {
     float curveLimits[OBSTACLE_MAX_PATH_WAYPOINTS];
     bool clearStraight[OBSTACLE_MAX_PATH_WAYPOINTS]={};
@@ -3225,6 +3229,7 @@ void planLaterLapSpeeds(const PathPoint *route, bool physicalLimitsOnly=false)
                 laterLapSpeedLimits[i]*laterLapSpeedLimits[i]+
                 2*OBSTACLE_LATER_LAP_PLAN_ACCEL_MMSS*ds));
         }
+    if (!report) return;
     Serial.print("[LAPS] Dynamics max/lateral/decel/response=");
     Serial.print(maximum,0);Serial.print('/');
     Serial.print(OBSTACLE_LATER_LAP_LATERAL_ACCEL_MMSS,0);Serial.print('/');
@@ -3286,11 +3291,16 @@ PathPoint laterLapLookaheadTarget(const PathPoint *route, const PositionEstimate
 // an optional shortcut. Wall geometry is sampled once per pose; other pillars
 // use the identical capsule distance directly, avoiding repeated wall work.
 bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t budgetUs,
-                              uint16_t first = 0, uint16_t end = 0)
+                              uint16_t first = 0, uint16_t end = 0,
+                              uint16_t sectionSteps = 360, float minimumClearance = 0.0f,
+                              float minimumWall = 0.0f)
 {
     const bool sectionOnly = end != 0;
+    const bool sectionWrap = sectionOnly && end < first;
     const PathPoint *entry = sectionOnly ? route : livePath;
-    const uint16_t maximumSteps = sectionOnly ? 360 : 6000;
+    const uint16_t maximumSteps = sectionOnly ? sectionSteps : 6000;
+    const float wallFloor = fmaxf(40.0f, fmaxf(minimumClearance, minimumWall));
+    const float pillarFloor = fmaxf(32.0f, minimumClearance);
     for(int perturbation=-1;perturbation<=1;++perturbation)
     {
         float h=connectorRouteHeading(entry,first)*PI/180.0f;
@@ -3311,13 +3321,16 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
             if(budgetUs && uint32_t(micros()-startedUs)>=budgetUs)return false;
             const uint16_t previous=index;
             index=nearestPathIndex(route,x,y,index,OBSTACLE_PATH_PROGRESS_WINDOW);
-            if(sectionOnly && index>=end && index<=end+OBSTACLE_PATH_PROGRESS_WINDOW)
+            if (sectionWrap && previous > pathLength * 3 / 4 && index < pathLength / 4)
+                ++wraps;
+            if(sectionOnly && (!sectionWrap || wraps) &&
+                index>=end && index<=end+OBSTACLE_PATH_PROGRESS_WINDOW)
             {completed=true;break;}
             if(!sectionOnly && previous>pathLength*3/4 && index<pathLength/4 &&
                 travel>loopLengthMm*0.5f && ++wraps>=2){completed=true;break;}
             ObstacleClearanceSample reference{};
             if(!calculateClearanceAtPose(seats[0],x,y,h*180.0f/PI,reference) ||
-                !reference.valid || reference.wallMm<40.0f)return false;
+                !reference.valid || reference.wallMm<wallFloor)return false;
             const float endX=x+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*cosf(h);
             const float endY=y+OBSTACLE_ROBOT_ENVELOPE_AXIS_FRONT_MM*sinf(h);
             for(uint8_t seat=0;seat<OBSTACLE_SEAT_COUNT;++seat)
@@ -3326,7 +3339,7 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
                 const float gap=pointSegmentDistance(seats[seat].x,seats[seat].y,
                     x,y,endX,endY)-OBSTACLE_MAX_WHEEL_HALF_WIDTH_MM-
                     OBSTACLE_PILLAR_MOVEMENT_RADIUS_MM;
-                if(!isfinite(gap) || gap<32.0f)return false;
+                if(!isfinite(gap) || gap<pillarFloor)return false;
                 // Witness correct passing once the complete steered footprint
                 // crosses the sign's transverse plane, not just the rear axle.
                 if(distanceSquared(x,y,seats[seat].x,seats[seat].y)>400.0f*400.0f)continue;
@@ -3387,10 +3400,10 @@ bool laterLapTrackedRouteSafe(const PathPoint *route,uint32_t startedUs,uint32_t
     return true;
 }
 
-float laterLapTargetTime(PathPoint *route)
+float laterLapTargetTime(PathPoint *route, bool physicalLimitsOnly = false)
 {
-    recomputeSpeedProfile(route);
-    planLaterLapSpeeds(route);
+    if (!physicalLimitsOnly) recomputeSpeedProfile(route);
+    planLaterLapSpeeds(route, physicalLimitsOnly, !physicalLimitsOnly);
     float seconds=0;
     for(uint16_t i=0;i<pathLength;++i)
     {
@@ -3553,6 +3566,12 @@ int solitaryMiddleSeat(uint8_t section)
     return middle;
 }
 
+bool isCwSolitaryOuterRed(int seat)
+{
+    return routeTurnSign < 0 && seat >= 6 && seats[seat].red &&
+        seats[seat].lateralMm > 0.0f && solitaryMiddleSeat(seat / 6) == seat;
+}
+
 void refineCcwSolitaryPillars(PathPoint *route, PathPoint *rollback)
 {
     if (routeTurnSign <= 0) return;
@@ -3643,7 +3662,7 @@ void refineCwSolitaryRed(PathPoint *route, PathPoint *rollback)
     {
         const int red = solitaryMiddleSeat(section);
         // The inner-row RED already has its own pass next to the inner wall.
-        if (red < 0 || !seats[red].red || seats[red].lateralMm <= 0.0f) continue;
+        if (!isCwSolitaryOuterRed(red)) continue;
         const float pass = seats[red].pathDistanceMm;
         uint16_t first = 0, end = 0;
         while (first+1 < pathLength && baselinePath[first+1].distanceMm < pass-1000.0f) ++first;
@@ -3691,6 +3710,769 @@ void refineCwSolitaryRed(PathPoint *route, PathPoint *rollback)
             Serial.print("[LAPS] CW solitary RED retained checked route seat/swept_clear=");
             Serial.print(red); Serial.print('/');
             Serial.println(sweptClear ? 1 : 0);
+        }
+    }
+}
+
+// Connect consecutive passes using their actual entry and exit tangents.
+// Collinear controls give a straight. In a corner the first and last three
+// controls are collinear, so the new bend starts and ends with zero curvature.
+bool connectLaterLapPasses(PathPoint *route, const PathPoint *original,
+                           uint16_t first, uint16_t last, float handleScale = 0.38f)
+{
+    const PathPoint &a = original[first], &b = original[last];
+    const float dx = b.x - a.x, dy = b.y - a.y;
+    const float distance = hypotf(dx, dy);
+    const float entry = connectorRouteHeading(original, first - 1) * PI / 180.0f;
+    const float exit = connectorRouteHeading(original, last) * PI / 180.0f;
+    const float fx = cosf(entry), fy = sinf(entry), tx = cosf(exit), ty = sinf(exit);
+    const float alongEntry = dx * fx + dy * fy;
+    const float alongExit = dx * tx + dy * ty;
+    if (distance < 250.0f || alongEntry < 0.2f * distance || alongExit < 0.2f * distance)
+        return false;
+
+    const float handleA = handleScale * alongEntry;
+    const float handleB = handleScale * alongExit;
+    const auto pointAt = [&](float t, float &x, float &y)
+    {
+        const float u = 1.0f - t;
+        const float fromA = 5.0f * t * u * u * u * (u + 4.0f * t) * handleA;
+        const float fromB = 5.0f * u * t * t * t * (t + 4.0f * u) * handleB;
+        const float blend = t * t * t * (10.0f + t * (-15.0f + 6.0f * t));
+        x = a.x + blend * dx + fromA * fx - fromB * tx;
+        y = a.y + blend * dy + fromA * fy - fromB * ty;
+    };
+    float previousT = 0.0f, previousX = a.x, previousY = a.y;
+    for (uint16_t i = first + 1; i < last; ++i)
+    {
+        // Keep each sample in its original cross-section. Lap progress,
+        // pillar passage and corner lookahead all use the baseline indices.
+        const auto &station = baselinePath[i];
+        const float heading = station.headingDeg * PI / 180.0f;
+        const float hx = cosf(heading), hy = sinf(heading);
+        const auto forward = [&](float x, float y)
+        {
+            return (x - station.x) * hx + (y - station.y) * hy;
+        };
+        if (forward(previousX, previousY) >= 0.0f || forward(b.x, b.y) <= 0.0f)
+            return false;
+        float low = previousT, high = 1.0f;
+        for (uint8_t step = 0; step < 13; ++step)
+        {
+            const float t = 0.5f * (low + high);
+            float x, y;
+            pointAt(t, x, y);
+            if (forward(x, y) < 0.0f) low = t;
+            else high = t;
+        }
+        previousT = 0.5f * (low + high);
+        pointAt(previousT, previousX, previousY);
+        const float error = forward(previousX, previousY);
+        route[i].x = previousX - error * hx;
+        route[i].y = previousY - error * hy;
+    }
+    return true;
+}
+
+bool tryLaterLapPassConnection(PathPoint *route, PathPoint *original,
+                               uint16_t first, uint16_t last, float handleScale,
+                               uint32_t started, uint32_t budget, uint16_t trackingSteps,
+                               float &checkedTime, float &savedTurn,
+                               uint8_t trackingTailPoints = 5, bool allowWiderBend = false)
+{
+    const float wallReserve = allowWiderBend ? 55.0f : 50.0f;
+    if (connectLaterLapPasses(route, original, first, last, handleScale))
+    {
+        float oldLength, oldPeak, oldTurn, length, peak, turn, wall, pillar;
+        const float oldBending = laterLapBending(original, oldLength, oldPeak, &oldTurn,
+            first, last + 1);
+        const float bending = laterLapBending(route, length, peak, &turn, first, last + 1);
+        const bool reducedTurn = turn < oldTurn - 0.025f;
+        const bool widerBend = allowWiderBend && turn <= oldTurn + 0.025f &&
+            peak <= 0.95f * oldPeak;
+        if (bending < (allowWiderBend ? 0.97f : 0.9f) * oldBending &&
+            (reducedTurn || widerBend) &&
+            length <= 1.1f * oldLength && peak <= oldPeak + 1e-6f &&
+            laterLapRouteSafe(route, &wall, &pillar, started, budget, first - 1, last + 2) &&
+            wall >= wallReserve && pillar >= 50.0f)
+        {
+            if (checkedTime < 0.0f) checkedTime = laterLapTargetTime(original, true);
+            const float candidateTime = laterLapTargetTime(route, true);
+            const uint16_t trackingStart = first > 4 ? first - 4 : 0;
+            const uint16_t tail = last + trackingTailPoints;
+            uint16_t trackingEnd = tail < pathLength - 1 ? tail : pathLength - 2;
+            const float tailToSeam = loopLengthMm - baselinePath[last].distanceMm;
+            if (allowWiderBend && ((tailToSeam < 500.0f &&
+                (seats[2].confirmed || seats[3].confirmed)) ||
+                tailToSeam < OBSTACLE_LATER_LAP_SEAM_KEEP_MM - 1.0f))
+            {
+                // A changed entry tangent can affect the vehicle beyond the
+                // seam even when the last overwritten sample is clear.
+                trackingEnd = 1;
+                while (baselinePath[trackingEnd].distanceMm < 250.0f) ++trackingEnd;
+            }
+            // Require an actual time gain for a slightly longer curve.
+            const float timeMargin = length > oldLength + 1.0f ? -0.01f : 0.0f;
+            if (candidateTime <= checkedTime + timeMargin &&
+                laterLapTrackedRouteSafe(route, started, budget, trackingStart,
+                    trackingEnd, trackingSteps, 50.0f, wallReserve))
+            {
+                checkedTime = candidateTime;
+                savedTurn = oldTurn - turn;
+                return true;
+            }
+        }
+    }
+    memcpy(route + first, original + first, sizeof(PathPoint) * (last - first + 1));
+    return false;
+}
+
+void refineLaterLapPassConnections(PathPoint *route, PathPoint *rollback)
+{
+    // Seat order follows travel in both directions. Leave the final corner
+    // used by parking and the shared start/finish geometry outside this pass.
+    const uint32_t started = micros();
+    const uint32_t budget = OBSTACLE_LATER_LAP_INNER_PLAN_BUDGET_US;
+    const float protectedStart = OBSTACLE_LATER_LAP_SEAM_KEEP_MM +
+        OBSTACLE_LATER_LAP_SEAM_BLEND_MM;
+    int previous = -1;
+    float checkedTime = -1.0f;
+    for (uint8_t next = 0; next < OBSTACLE_SEAT_COUNT; ++next)
+    {
+        if (!seats[next].confirmed) continue;
+        const int from = previous;
+        previous = next;
+        if (from < 0 || next / 6 - from / 6 > 1) continue;
+        const bool changesSection = next / 6 != from / 6;
+        const float start = seats[from].pathDistanceMm;
+        const float finish = seats[next].pathDistanceMm;
+        if (finish <= start || finish - start > 2200.0f) continue;
+        const bool keepEntryStraight = isCwSolitaryOuterRed(from);
+        const bool keepExitStraight = isCwSolitaryOuterRed(next);
+
+        memcpy(rollback, route, sizeof(PathPoint) * pathLength);
+        // For a sign at the end of a straight, also try joining from its
+        // passing lane before the old taper starts to steer into the corner.
+        constexpr float trims[][2] = {
+            {-150.0f, 0.0f}, {-100.0f, 100.0f}, {0.0f, -100.0f},
+            {150.0f, 150.0f}, {100.0f, 100.0f}, {200.0f, 200.0f},
+        };
+        for (const auto &trim : trims)
+        {
+            if (uint32_t(micros() - started) >= budget) return;
+            if (!changesSection && (trim[0] <= 0.0f || trim[1] <= 0.0f)) continue;
+            // Keep the established straight through an isolated outer CW RED.
+            const float startTrim = keepEntryStraight ? 365.0f : trim[0];
+            const float finishTrim = keepExitStraight ? 365.0f : trim[1];
+            uint16_t first = 1, last = 1;
+            while (first + 1 < pathLength && baselinePath[first].distanceMm < start + startTrim)
+                ++first;
+            while (last + 2 < pathLength && baselinePath[last + 1].distanceMm <= finish - finishTrim)
+                ++last;
+            if (last <= first + 3 || baselinePath[first - 1].distanceMm < protectedStart ||
+                baselinePath[last + 1].distanceMm >= corners[3].pathStartMm)
+                continue;
+            float savedTurn;
+            if (tryLaterLapPassConnection(route, rollback, first, last, 0.38f,
+                    started, budget, 480, checkedTime, savedTurn))
+            {
+                Serial.print("[LAPS] Smooth pass connection from/to/turn_saved_deg=");
+                Serial.print(from); Serial.print('/'); Serial.print(next); Serial.print('/');
+                Serial.println(savedTurn * 180.0f / PI, 1);
+                break;
+            }
+        }
+    }
+}
+
+void refineCcwParallelStart(PathPoint *route, PathPoint *rollback,
+                            int previousSign, int green, int nextSign)
+{
+    const uint32_t started = micros();
+    // This local rollout spans both corners and the start crossing.
+    constexpr uint32_t budget = 45000UL;
+    const auto waypoint = [](float distance)
+    {
+        uint16_t index = 0;
+        while (index + 1 < pathLength && baselinePath[index + 1].distanceMm <= distance + 0.1f)
+            ++index;
+        return index;
+    };
+    const float greenPass = seats[green].pathDistanceMm;
+    const float exitLane = targetLateralForSeat(seats[nextSign], optimizedClearanceForSeat(nextSign));
+    const bool innerExit = exitLane > 0.0f;
+    const uint16_t first = waypoint(seats[previousSign].pathDistanceMm + (innerExit ? 0.0f : 50.0f));
+    const uint16_t straightIn = waypoint(loopLengthMm + greenPass - (innerExit ? 200.0f : 250.0f));
+    const uint16_t straightOut = waypoint(greenPass + (innerExit ? 250.0f : 200.0f));
+    const uint16_t last = waypoint(seats[nextSign].pathDistanceMm + (innerExit ? 100.0f : 150.0f));
+    if (first < 5 || straightIn <= first + 4 || last <= straightOut + 4 ||
+        last + 5 >= first || straightOut < 2)
+        return;
+
+    float length, peak, turn;
+    const float oldBending = laterLapBending(route, length, peak, &turn);
+    const float oldTime = laterLapTargetTime(route, true);
+    const float heading = baselinePath[0].headingDeg * PI / 180.0f;
+    const float nx = -sinf(heading), ny = cosf(heading);
+    memcpy(rollback, route, sizeof(PathPoint) * pathLength);
+    // Use one lateral offset on both sides of the duplicated lap waypoint.
+    // The two tangent-matched connections leave a straight across the green.
+    for (float clearance : {205.0f, 215.0f})
+    {
+        if (uint32_t(micros() - started) >= budget) break;
+        const float offset = seats[green].lateralMm + clearance;
+        if (hypotf(baselinePath[0].x + nx * offset - rollback[0].x,
+                  baselinePath[0].y + ny * offset - rollback[0].y) > 55.0f)
+            continue;
+        for (uint16_t i = 0; i < pathLength; ++i)
+        {
+            if (i > straightOut && i < straightIn) continue;
+            route[i].x = baselinePath[i].x + nx * offset;
+            route[i].y = baselinePath[i].y + ny * offset;
+        }
+        if (connectLaterLapPasses(route, route, first, straightIn, innerExit ? 0.23f : 0.26f) &&
+            connectLaterLapPasses(route, route, straightOut, last, innerExit ? 0.29f : 0.50f))
+        {
+            float newLength, newPeak, newTurn, wallIn, pillarIn, wallOut, pillarOut;
+            if (laterLapBending(route, newLength, newPeak, &newTurn) < oldBending * 0.98f &&
+                newTurn < turn - 0.025f && newPeak <= peak + 1e-5f &&
+                laterLapRouteSafe(route, &wallIn, &pillarIn, started, budget, first - 1, pathLength) &&
+                laterLapRouteSafe(route, &wallOut, &pillarOut, started, budget, 0, last + 2) &&
+                fminf(wallIn, wallOut) >= 50.0f && fminf(pillarIn, pillarOut) >= 50.0f &&
+                laterLapTargetTime(route, true) <= oldTime &&
+                laterLapTrackedRouteSafe(route, started, budget, first - 4, last + 5, 800, 50.0f))
+            {
+                Serial.print("[LAPS] Parallel CCW start GREEN seat/turn_saved_deg=");
+                Serial.print(green); Serial.print('/');
+                Serial.println((turn - newTurn) * 180.0f / PI, 1);
+                return;
+            }
+        }
+        memcpy(route, rollback, sizeof(PathPoint) * pathLength);
+    }
+}
+
+void refineLaterLapLongCorners(PathPoint *route, PathPoint *rollback)
+{
+    // The two first start-section seats can have a phase near the *end* of
+    // the lap. Traverse placed signs in phase order across that boundary.
+    uint8_t order[OBSTACLE_SEAT_COUNT], count = 0;
+    for (uint8_t seat = 0; seat < OBSTACLE_SEAT_COUNT; ++seat)
+    {
+        if (!seats[seat].confirmed) continue;
+        uint8_t i = count++;
+        while (i > 0 && seats[order[i - 1]].pathDistanceMm > seats[seat].pathDistanceMm)
+        {
+            order[i] = order[i - 1];
+            --i;
+        }
+        order[i] = seat;
+    }
+    if (count == 0) return;
+
+    uint32_t started = micros();
+    const uint32_t budget = OBSTACLE_LATER_LAP_INNER_PLAN_BUDGET_US;
+    const float keepStart = OBSTACLE_LATER_LAP_HANDOFF_MM;
+    const float keepEnd = loopLengthMm - OBSTACLE_LATER_LAP_SEAM_KEEP_MM;
+    float checkedTime = -1.0f;
+    const auto tryWindow = [&](int from, int to, float begin, float end, float scale,
+                               uint8_t trackingTail = 5)
+    {
+        if (uint32_t(micros() - started) >= budget || begin < keepStart - 0.1f ||
+            end > keepEnd + 0.1f || end - begin > 2650.0f)
+            return false;
+        uint16_t first = 1, last = 1;
+        while (first + 1 < pathLength && baselinePath[first].distanceMm < begin - 0.1f) ++first;
+        while (last + 2 < pathLength && baselinePath[last + 1].distanceMm <= end + 0.1f) ++last;
+        if (last <= first + 5) return false;
+
+        memcpy(rollback, route, sizeof(PathPoint) * pathLength);
+        float savedTurn;
+        if (!tryLaterLapPassConnection(route, rollback, first, last, scale,
+                started, budget, 650, checkedTime, savedTurn, trackingTail))
+            return false;
+        Serial.print("[LAPS] Long corner from/to/turn_saved_deg=");
+        Serial.print(from); Serial.print('/'); Serial.print(to); Serial.print('/');
+        Serial.println(savedTurn * 180.0f / PI, 1);
+        return true;
+    };
+
+    for (uint8_t i = 1; i < count; ++i)
+    {
+        if (uint32_t(micros() - started) >= budget) break;
+        const int from = order[i - 1], to = order[i];
+        if ((from / 6 + 1) % 4 != to / 6) continue;
+        const float begin = seats[from].pathDistanceMm, end = seats[to].pathDistanceMm;
+        const bool finalCorner = begin < corners[3].pathStartMm &&
+            end >= corners[3].pathEndMm - 100.0f && !seats[from].red && seats[to].red;
+        const bool longGap = end - begin >= 2000.0f;
+        const bool middleReds = solitaryMiddleSeat(from / 6) == from &&
+            solitaryMiddleSeat(to / 6) == to && seats[from].red && seats[to].red;
+        if (!finalCorner && !longGap && !middleReds) continue;
+
+        // Preserve the flat CW line at a lone outer RED if it bounds a gap.
+        const bool keepEntry = isCwSolitaryOuterRed(from), keepExit = isCwSolitaryOuterRed(to);
+        struct Trial { float entryOffset, exitOffset, handleScale; };
+        constexpr Trial trials[] = {
+            {50.0f, 100.0f, 0.38f}, {0.0f, 100.0f, 0.26f},
+            {-100.0f, 100.0f, 0.26f}, {0.0f, 200.0f, 0.32f},
+            {150.0f, 50.0f, 0.32f}, {0.0f, -150.0f, 0.26f}
+        };
+        if ((finalCorner || (longGap && seats[to].red)) && !keepEntry && !keepExit &&
+            tryWindow(from, to, begin - 100.0f, end + 100.0f, 0.26f))
+            continue;
+        if (middleReds && !keepEntry && !keepExit &&
+            tryWindow(from, to, begin, end + 100.0f, 0.26f))
+            continue;
+        for (const auto &trial : trials)
+        {
+            if (uint32_t(micros() - started) >= budget) break;
+            const float start = begin + (keepEntry ? 365.0f : trial.entryOffset);
+            const float finish = end + (keepExit ? -365.0f : trial.exitOffset);
+            if (tryWindow(from, to, start, finish, trial.handleScale)) break;
+        }
+    }
+
+    const int firstSign = order[0], lastSign = order[count - 1];
+    const float firstPass = seats[firstSign].pathDistanceMm;
+    const float lastPass = seats[lastSign].pathDistanceMm;
+    // Join the first unobstructed corner to the next known passing line.
+    if (firstPass >= 850.0f && firstPass <= corners[0].pathEndMm + 525.0f &&
+        !tryWindow(-1, firstSign, keepStart, firstPass, 0.26f))
+        tryWindow(-1, firstSign, keepStart + 100.0f, firstPass + 100.0f, 0.32f);
+    // Return from a sign at the last corner to the unchanged 200 mm seam.
+    if (seats[lastSign].red && fabsf(lastPass - corners[3].pathEndMm) <= 100.0f &&
+        !tryWindow(lastSign, -1, lastPass - 50.0f, keepEnd, 0.26f))
+        tryWindow(lastSign, -1, lastPass - 100.0f, keepEnd, 0.26f);
+
+    // Give the lane transitions not covered by the normal sign-to-sign
+    // windows a separate bounded check. Preserve the start/finish anchors.
+    started = micros();
+    const bool ccw = routeTurnSign > 0;
+    const bool startMiddleGreen = ccw && solitaryMiddleSeat(0) == firstSign &&
+        !seats[firstSign].red && firstPass < keepStart;
+    const bool clearStart = firstSign >= 6 && lastSign >= 6;
+    if (startMiddleGreen)
+    {
+        // Complete the RED-to-start transition early enough to settle on the
+        // checked start bypass before it passes GREEN.
+        if (seats[lastSign].red && lastSign / 6 == 3 && lastPass < corners[3].pathStartMm)
+            tryWindow(lastSign, firstSign, lastPass + 50.0f, keepEnd - 150.0f, 0.50f, 1);
+        if (count > 1 && order[1] / 6 == 1 && seats[order[1]].red)
+        {
+            const float nextPass = seats[order[1]].pathDistanceMm;
+            if (!tryWindow(firstSign, order[1], keepStart, nextPass + 200.0f, 0.38f))
+                tryWindow(firstSign, order[1], keepStart, nextPass + 150.0f, 0.44f);
+        }
+    }
+    else if (ccw && clearStart && solitaryMiddleSeat(3) == lastSign && !seats[lastSign].red)
+    {
+        // Continue from GREEN's passing lane through the open return up to
+        // the start-section anchor.
+        tryWindow(lastSign, -1, lastPass, keepEnd, 0.26f, 1);
+    }
+
+    for (uint8_t i = 1; i < count; ++i)
+    {
+        if (uint32_t(micros() - started) >= budget) break;
+        const int from = order[i - 1], to = order[i];
+        if ((from / 6 + 1) % 4 != to / 6) continue;
+        const float fromPass = seats[from].pathDistanceMm, toPass = seats[to].pathDistanceMm;
+        const bool destinationGreen = !seats[to].red;
+        if (ccw && !seats[from].red && !destinationGreen && to % 6 < 2 &&
+            solitaryMiddleSeat(from / 6) == from && solitaryMiddleSeat(0) != from)
+        {
+            // Keep the gentler middle-GREEN exit all the way to the early
+            // RED in the following section.
+            tryWindow(from, to, fromPass, toPass - 75.0f, 0.26f);
+        }
+        if (!seats[from].red) continue;
+        if (ccw && destinationGreen && from % 6 >= 4 && solitaryMiddleSeat(to / 6) == to)
+        {
+            const uint8_t section = (from / 6) * 6;
+            const bool redPair = (seats[section].confirmed && seats[section].red) ||
+                (seats[section + 1].confirmed && seats[section + 1].red);
+            if (redPair && tryWindow(from, to, fromPass - 150.0f, toPass - 300.0f, 0.44f))
+                continue;
+            if (!tryWindow(from, to, fromPass - 250.0f, toPass - 50.0f, 0.50f))
+                tryWindow(from, to, fromPass + 50.0f, toPass, 0.26f);
+        }
+        else if (!ccw && destinationGreen && to % 6 >= 4 &&
+                 solitaryMiddleSeat(from / 6) == from && seats[from].lateralMm < 0.0f)
+        {
+            // A late GREEN leaves room to carry one right bend through the
+            // corner and onto its lane, without an intermediate recenter.
+            if (!tryWindow(from, to, fromPass + 100.0f, toPass + 50.0f, 0.38f))
+                tryWindow(from, to, fromPass, toPass, 0.38f);
+        }
+        else if (!ccw && !destinationGreen && from / 6 == 3 && to < 6 &&
+                 isCwSolitaryOuterRed(from) && fabsf(toPass - corners[3].pathEndMm) <= 100.0f)
+        {
+            // Continue the straight inside RED's lane into one last corner.
+            // Stop the connector before the existing parking handoff.
+            tryWindow(from, to, fromPass + 400.0f, toPass + 50.0f, 0.32f, 1);
+        }
+    }
+    if (startMiddleGreen && firstPass <= 100.0f && count > 1 &&
+        order[1] / 6 == 1 &&
+        lastSign / 6 == 3 && lastPass < corners[3].pathStartMm)
+        refineCcwParallelStart(route, rollback, lastSign, firstSign, order[1]);
+}
+
+void refineLaterLapCornerGeometry(PathPoint *route, PathPoint *rollback)
+{
+    struct Trial { float entryOffset, exitOffset, scale; bool useCornerEntry; };
+    // Sample around the actual passing lanes and the corner tangent.
+    // Neither the candidate windows nor their ranking use the sign colours.
+    constexpr Trial trials[] = {
+        {100, -100, 0.23f, false}, {0, -125, 0.23f, false},
+        {-50, -150, 0.30f, false}, {-100, -150, 0.36f, false},
+        {150, 100, 0.23f, false}, {-200, -400, 0.54f, false},
+        {150, 300, 0.36f, false}, {50, 100, 0.36f, false},
+        {-150, -50, 0.23f, false}, {-400, 0, 0.48f, false},
+        {-400, -100, 0.42f, false}, {100, 50, 0.30f, false},
+        {-50, 150, 0.42f, false}, {-150, -300, 0.44f, false},
+        {200, 250, 0.36f, true}, {350, 250, 0.48f, true},
+        {200, 200, 0.48f, true}, {50, 200, 0.36f, true},
+        {-150, 100, 0.32f, true}, {100, -50, 0.38f, true},
+    };
+    struct Choice { uint16_t first, last; float scale, score; };
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 65000UL;
+    const float keepStart = OBSTACLE_LATER_LAP_HANDOFF_MM;
+    const float keepEnd = loopLengthMm - OBSTACLE_LATER_LAP_SEAM_KEEP_MM;
+    struct Span { float begin, end; };
+    // Keep the already checked CCW link between two solitary middle signs.
+    // Its entry line and RED passing plateau form one connected corridor.
+    Span verified[COURSE_SECTION_COUNT]{};
+    uint8_t verifiedCount = 0;
+    if (routeTurnSign > 0)
+    {
+        for (uint8_t section = 1; section + 1 < COURSE_SECTION_COUNT; ++section)
+        {
+            const int green = solitaryMiddleSeat(section), red = solitaryMiddleSeat(section + 1);
+            if (green >= 0 && red >= 0 && !seats[green].red && seats[red].red)
+                verified[verifiedCount++] = {seats[green].pathDistanceMm - 100.0f,
+                                             seats[red].pathDistanceMm + 100.0f};
+        }
+    }
+    float checkedTime = -1.0f;
+    for (uint8_t corner = 0; corner < COURSE_SECTION_COUNT; ++corner)
+    {
+        const float entry = corners[corner].pathStartMm;
+        const float exit = corners[corner].pathEndMm;
+        int previous = -1, next = -1;
+        for (uint8_t id = 0; id < OBSTACLE_SEAT_COUNT; ++id)
+        {
+            if (!seats[id].confirmed) continue;
+            const float pass = seats[id].pathDistanceMm;
+            if (pass <= entry + 0.1f && pass >= entry - 1050.0f &&
+                (previous < 0 || pass > seats[previous].pathDistanceMm))
+                previous = id;
+            if (pass >= exit - 0.1f && pass <= exit + 1050.0f &&
+                (next < 0 || pass < seats[next].pathDistanceMm))
+                next = id;
+        }
+        if (previous < 0 && next < 0) continue;
+
+        const float entryReference = previous < 0 ? entry - 150.0f : seats[previous].pathDistanceMm;
+        const float exitReference = next < 0 ? fminf(exit + 300.0f, keepEnd) : seats[next].pathDistanceMm;
+        const float entryLimit = isCwSolitaryOuterRed(previous)
+            ? fmaxf(keepStart, entryReference + 365.0f) : keepStart;
+        const float exitLimit = isCwSolitaryOuterRed(next)
+            ? fminf(keepEnd, exitReference - 365.0f) : keepEnd;
+        memcpy(rollback, route, sizeof(PathPoint) * pathLength);
+        Choice shortlist[5]{};
+        for (const auto &trial : trials)
+        {
+            if (uint32_t(micros() - started) >= budget) return;
+            const float begin = fmaxf(entryLimit,
+                (trial.useCornerEntry ? entry : entryReference) + trial.entryOffset);
+            const float end = fminf(exitLimit, exitReference + trial.exitOffset);
+            if (begin > entry + 400.0f || end < exit - 160.0f ||
+                end - begin < 550.0f || end - begin > 2450.0f)
+                continue;
+            bool overlapsVerified = false;
+            for (uint8_t i = 0; i < verifiedCount; ++i)
+                overlapsVerified |= begin < verified[i].end && end > verified[i].begin;
+            if (overlapsVerified) continue;
+            uint16_t first = 1, last = 1;
+            while (first + 1 < pathLength && baselinePath[first].distanceMm < begin - 0.1f) ++first;
+            while (last + 2 < pathLength && baselinePath[last + 1].distanceMm <= end + 0.1f) ++last;
+            if (last <= first + 5) continue;
+            float score = 0.0f;
+            if (connectLaterLapPasses(route, rollback, first, last, trial.scale))
+            {
+                float oldLength, oldPeak, oldTurn, length, peak, turn;
+                const float oldBending = laterLapBending(rollback, oldLength, oldPeak, &oldTurn,
+                    first, last + 1);
+                const float bending = laterLapBending(route, length, peak, &turn, first, last + 1);
+                if (bending < 0.97f * oldBending && peak <= oldPeak + 1e-6f &&
+                    (turn < oldTurn - 0.025f || (turn <= oldTurn + 0.025f && peak <= 0.95f * oldPeak)) &&
+                    length <= 1.1f * oldLength)
+                    score = (oldTurn - turn) + 200.0f * (oldPeak - peak) +
+                        60.0f * (oldBending - bending) + 0.0005f * (oldLength - length);
+            }
+            memcpy(route + first, rollback + first, sizeof(PathPoint) * (last - first + 1));
+            if (score <= 0.0f) continue;
+            bool duplicate = false;
+            for (const auto &choice : shortlist)
+                duplicate |= choice.first == first && choice.last == last && choice.scale == trial.scale;
+            if (duplicate) continue;
+            for (auto &choice : shortlist)
+            {
+                if (score > choice.score)
+                {
+                    Choice candidate{first, last, trial.scale, score};
+                    for (auto *slot = &choice; slot != shortlist + 5; ++slot)
+                    {
+                        const Choice displaced = *slot;
+                        *slot = candidate;
+                        candidate = displaced;
+                    }
+                    break;
+                }
+            }
+        }
+        for (const auto &choice : shortlist)
+        {
+            if (choice.score <= 0.0f || uint32_t(micros() - started) >= budget) break;
+            float savedTurn;
+            if (!tryLaterLapPassConnection(route, rollback, choice.first, choice.last,
+                    choice.scale, started, budget, 650, checkedTime, savedTurn,
+                    corner == 3 ? 1 : 5, true))
+                continue;
+            Serial.print("[LAPS] Corner geometry corner/turn_saved_deg=");
+            Serial.print(corner); Serial.print('/');
+            Serial.println(savedTurn * 180.0f / PI, 1);
+            break;
+        }
+    }
+}
+
+uint16_t laterLapWaypointAt(float phase)
+{
+    uint16_t index = 0;
+    while (index + 1 < pathLength && baselinePath[index + 1].distanceMm <= phase + 0.1f)
+        ++index;
+    return index;
+}
+
+bool tryLaterLapStraightPass(PathPoint *route, PathPoint *backup, int seat,
+                             uint16_t first, uint16_t lineStart, uint16_t lineEnd,
+                             uint16_t last, float clearance, float scale,
+                             uint32_t started, uint32_t budget)
+{
+    const bool crossesStart = lineStart > lineEnd;
+    const uint16_t entryLimit = crossesStart ? pathLength - 1 : lineEnd;
+    if (first < 5 || lineStart <= first + 4 || last <= lineEnd + 4 ||
+        (crossesStart && last + 5 >= first))
+        return false;
+    if (uint32_t(micros() - started) >= budget) return false;
+
+    const float h = seats[seat].headingDeg * PI / 180.0f;
+    const float offset = targetLateralForSeat(seats[seat], clearance);
+    const float dx = -sinf(h) * offset, dy = cosf(h) * offset;
+    if (crossesStart && hypotf(baselinePath[0].x + dx - backup[0].x,
+                              baselinePath[0].y + dy - backup[0].y) > 55.0f)
+        return false;
+    float oldLength, oldPeak;
+    const float oldBending = laterLapBending(backup, oldLength, oldPeak);
+    const float oldTime = laterLapTargetTime(backup, true);
+    for (uint16_t i = lineStart; i <= entryLimit; ++i)
+    {
+        route[i].x = baselinePath[i].x + dx;
+        route[i].y = baselinePath[i].y + dy;
+    }
+    if (crossesStart)
+    {
+        for (uint16_t i = 0; i <= lineEnd; ++i)
+        {
+            route[i].x = baselinePath[i].x + dx;
+            route[i].y = baselinePath[i].y + dy;
+        }
+    }
+    const auto safeSpan = [&](uint16_t start, uint16_t end)
+    {
+        float wall, pillar;
+        return laterLapRouteSafe(route, &wall, &pillar, started, budget, start, end) &&
+            wall >= 50.0f && pillar >= 50.0f;
+    };
+    if (connectLaterLapPasses(route, route, first, lineStart, scale) &&
+        connectLaterLapPasses(route, route, lineEnd, last, scale))
+    {
+        float length, peak;
+        if (laterLapBending(route, length, peak) < oldBending * 0.99f &&
+            laterLapTargetTime(route, true) < oldTime - 0.01f &&
+            safeSpan(first - 1, crossesStart ? pathLength : last + 2) &&
+            (!crossesStart || safeSpan(0, last + 2)) &&
+            laterLapTrackedRouteSafe(route, started, budget, first - 4, last + 3, 1000, 50.0f))
+        {
+            Serial.print("[LAPS] Straight passing line seat=");
+            Serial.println(seat);
+            return true;
+        }
+    }
+    memcpy(route, backup, sizeof(PathPoint) * pathLength);
+    return false;
+}
+
+void refineLaterLapStartStraight(PathPoint *route, PathPoint *backup)
+{
+    const int middle = solitaryMiddleSeat(0);
+    if (middle < 0 || seats[middle].red != (routeTurnSign < 0)) return;
+    float low = INFINITY, high = -INFINITY;
+    for (uint16_t i = 0; i < pathLength; ++i)
+    {
+        const float phase = baselinePath[i].distanceMm;
+        if (phase > 150.0f && phase < loopLengthMm - 150.0f) continue;
+        low = fminf(low, route[i].y);
+        high = fmaxf(high, route[i].y);
+    }
+    if (high - low < 15.0f) return;
+
+    int previous = -1, next = -1;
+    for (uint8_t i = 6; i < OBSTACLE_SEAT_COUNT; ++i)
+    {
+        if (!seats[i].confirmed) continue;
+        if (i / 6 == 1 && next < 0) next = i;
+        if (i / 6 == 3) previous = i;
+    }
+    if (previous < 0 || next < 0) return;
+
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 45000UL;
+    const float from = seats[previous].pathDistanceMm, to = seats[next].pathDistanceMm;
+    const bool nextIsMiddle = solitaryMiddleSeat(1) == next;
+    const uint16_t first = laterLapWaypointAt(from - (nextIsMiddle ? 100.0f : 0.0f));
+    const uint16_t lineStart = laterLapWaypointAt(loopLengthMm - (nextIsMiddle ? 300.0f : 200.0f));
+    const uint16_t lineEnd = laterLapWaypointAt(200.0f);
+    const uint16_t last = laterLapWaypointAt(to + (nextIsMiddle ? 150.0f : -50.0f));
+    memcpy(backup, route, sizeof(PathPoint) * pathLength);
+    for (float clearance : {205.0f, 215.0f, 225.0f})
+    {
+        if (tryLaterLapStraightPass(route, backup, middle, first, lineStart, lineEnd,
+                                    last, clearance, 0.23f, started, budget))
+            return;
+    }
+    // A late sign on an outside pass needs its exit before the start turn.
+    const float previousLane = targetLateralForSeat(seats[previous], optimizedClearanceForSeat(previous));
+    if (routeTurnSign * previousLane < 0.0f && !nextIsMiddle)
+        tryLaterLapStraightPass(route, backup, middle, laterLapWaypointAt(from + 200.0f),
+            lineStart, lineEnd, laterLapWaypointAt(to - 200.0f), 205.0f, 0.18f, started, budget);
+}
+
+void refineLaterLapOpenStart(PathPoint *route, PathPoint *backup)
+{
+    // When the entry half of the start straight is clear, the return can
+    // join it without keeping the old corner bulge. With the whole start
+    // clear, also carry an isolated inside pass on a straight after it.
+    for (uint8_t i = 0; i < 4; ++i)
+        if (seats[i].confirmed) return;
+
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 40000UL;
+    const bool lateStartSign = seats[4].confirmed || seats[5].confirmed;
+    if (!lateStartSign)
+    {
+        const int firstSign = solitaryMiddleSeat(1);
+        if (firstSign < 0 || seats[firstSign].red != (routeTurnSign < 0)) return;
+        const float pass = seats[firstSign].pathDistanceMm;
+        memcpy(backup, route, sizeof(PathPoint) * pathLength);
+        tryLaterLapStraightPass(route, backup, firstSign,
+                               laterLapWaypointAt(pass - 650.0f), laterLapWaypointAt(pass - 150.0f),
+                               laterLapWaypointAt(pass + 400.0f), laterLapWaypointAt(pass + 900.0f),
+                               175.0f, 0.21f, started, budget);
+    }
+
+    const int side = routeTurnSign > 0 ? 1 : 0;
+    const int finalSign = 22 + side;
+    if (!seats[finalSign].confirmed || seats[finalSign].red == (routeTurnSign > 0)) return;
+    const uint16_t first = laterLapWaypointAt(seats[finalSign].pathDistanceMm - 100.0f);
+    const float keep = lateStartSign ? 100.0f : OBSTACLE_LATER_LAP_SEAM_KEEP_MM;
+    const uint16_t last = laterLapWaypointAt(loopLengthMm - keep);
+    memcpy(backup, route, sizeof(PathPoint) * pathLength);
+    float time = -1.0f, savedTurn;
+    if (tryLaterLapPassConnection(route, backup, first, last, 0.23f,
+                                  started, budget, 650, time, savedTurn, 5, true))
+        Serial.println("[LAPS] Direct corner to clear start entry");
+}
+
+void refineLaterLapEarlyStartExit(PathPoint *route, PathPoint *backup)
+{
+    const int sign = seats[0].confirmed ? 0 : seats[1].confirmed ? 1 : -1;
+    const int next = seats[6].confirmed ? 6 : seats[7].confirmed ? 7 : -1;
+    if (sign < 0 || next < 0 || seats[sign].red == seats[next].red ||
+        seats[next].red != (routeTurnSign < 0)) return;
+    for (uint8_t i = 2; i < 6; ++i)
+        if (seats[i].confirmed) return;
+
+    // Let the passing lane of the first start sign lead into the corner
+    // without tapering back to the wide centre line at the lap seam.
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 35000UL;
+    memcpy(backup, route, sizeof(PathPoint) * pathLength);
+    tryLaterLapStraightPass(route, backup, sign,
+                           laterLapWaypointAt(seats[sign].pathDistanceMm + 15.0f),
+                           laterLapWaypointAt(loopLengthMm - 100.0f), laterLapWaypointAt(100.0f),
+                           laterLapWaypointAt(seats[next].pathDistanceMm + 50.0f),
+                           120.0f, 0.23f, started, budget);
+}
+
+void refineLaterLapInnerMiddleCorners(PathPoint *route, PathPoint *backup)
+{
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 35000UL;
+    for (uint8_t section = 1; section + 1 < COURSE_SECTION_COUNT; ++section)
+    {
+        const int from = solitaryMiddleSeat(section);
+        const int to = solitaryMiddleSeat(section + 1);
+        if (from < 0 || to < 0 || seats[from].red != (routeTurnSign < 0) ||
+            seats[to].red != seats[from].red ||
+            isCwSolitaryOuterRed(from) || isCwSolitaryOuterRed(to)) continue;
+
+        // Both signs can be passed on the same side next to the island.
+        const uint16_t first = laterLapWaypointAt(seats[from].pathDistanceMm + 150.0f);
+        const uint16_t last = laterLapWaypointAt(seats[to].pathDistanceMm - 150.0f);
+        memcpy(backup, route, sizeof(PathPoint) * pathLength);
+        float time = -1.0f, savedTurn;
+        if (tryLaterLapPassConnection(route, backup, first, last, 0.50f,
+                                     started, budget, 850, time, savedTurn, 5, true))
+            Serial.println("[LAPS] Inner corner between solitary middle signs");
+    }
+}
+
+void refineLaterLapStartExit(PathPoint *route, PathPoint *backup)
+{
+    const int start = seats[4].confirmed ? 4 : seats[5].confirmed ? 5 : -1;
+    const int late = seats[10].confirmed ? 10 : seats[11].confirmed ? 11 : -1;
+    const int early = seats[12].confirmed ? 12 : seats[13].confirmed ? 13 : -1;
+    if (start < 0 || late < 0 || early < 0) return;
+    for (uint8_t i = 6; i < 10; ++i)
+        if (seats[i].confirmed) return;
+    const auto inside = [](int i)
+    {
+        return routeTurnSign *
+            targetLateralForSeat(seats[i], optimizedClearanceForSeat(i)) > 0.0f;
+    };
+    if (inside(start) || !inside(late) || !inside(early)) return;
+
+    // With the next two passes on the inside there is room to steer in
+    // once, instead of running out to the middle of the free straight.
+    const uint32_t started = micros();
+    constexpr uint32_t budget = 30000UL;
+    const uint16_t last = laterLapWaypointAt(seats[early].pathDistanceMm + 120.0f);
+    memcpy(backup, route, sizeof(PathPoint) * pathLength);
+    float time = -1.0f, savedTurn;
+    for (float scale : {0.36f, 0.43f, 0.26f})
+    {
+        const uint16_t first = laterLapWaypointAt(seats[start].pathDistanceMm +
+                                                  (scale < 0.3f ? 400.0f : 200.0f));
+        if (tryLaterLapPassConnection(route, backup, first, last, scale,
+                                      started, budget, 650, time, savedTurn, 5, true))
+        {
+            Serial.println("[LAPS] Direct link from last start sign to inside passes");
+            return;
         }
     }
 }
@@ -3753,6 +4535,20 @@ bool buildOptimizedPath()
         addLaterLapStartMiddleReserve(optimizedPath,beforeLaneCarry);
         refineCcwSolitaryPillars(optimizedPath,beforeLaneCarry);
         refineCwSolitaryRed(optimizedPath,beforeLaneCarry);
+        refineLaterLapPassConnections(optimizedPath,beforeLaneCarry);
+    }
+    // Parking can drive back along the start section in CW. Its checked
+    // bypass stays independent of the faster forward racing connections.
+    memcpy(parkingApproachPath, optimizedPath, sizeof(PathPoint) * pathLength);
+    if (sectionLayoutMode == OBSTACLE_SECTION_LAYOUT_OFFICIAL)
+    {
+        refineLaterLapLongCorners(optimizedPath, beforeLaneCarry);
+        refineLaterLapCornerGeometry(optimizedPath, beforeLaneCarry);
+        refineLaterLapStartStraight(optimizedPath, beforeLaneCarry);
+        refineLaterLapOpenStart(optimizedPath, beforeLaneCarry);
+        refineLaterLapEarlyStartExit(optimizedPath, beforeLaneCarry);
+        refineLaterLapInnerMiddleCorners(optimizedPath, beforeLaneCarry);
+        refineLaterLapStartExit(optimizedPath, beforeLaneCarry);
     }
     recomputeSpeedProfile(optimizedPath);
     planLaterLapSpeeds(optimizedPath,true);
@@ -3773,7 +4569,7 @@ bool buildOptimizedPath()
     }
     Serial.println(
         "[PATH] Optimized laps 2-3 path built "
-        "clearance_policy=20261121_lap23_cw_inside_straight");
+        "clearance_policy=20261122_lap23_start_corner_links");
     return true;
 }
 
@@ -8031,7 +8827,7 @@ bool obstacle_path_parking_approach_target(
 {
     if (!optimizedBuilt || pathLength < 2 || !isfinite(x_mm) || !isfinite(y_mm))
         return false;
-    const PathPoint *route = optimizedPath;
+    const PathPoint *route = parkingApproachPath;
     uint16_t nearest = 0;
     float best = INFINITY;
     for (uint16_t i = 0; i < pathLength; ++i)

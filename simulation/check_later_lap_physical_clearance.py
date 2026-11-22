@@ -4,7 +4,7 @@ Pose/map/servo/traction errors remain unmeasured. Generates only local_workspace
 """
 import json, shutil, subprocess, sys
 from pathlib import Path
-from check_later_laps import later_lap_fixture
+from check_later_laps import CORNER_LAYOUTS, later_lap_fixture
 ROOT=Path(__file__).resolve().parents[1]
 out=ROOT/'local_workspace/later-lap-clearance-50'
 out.mkdir(exist_ok=True)
@@ -15,6 +15,14 @@ if negative:
     cases=sorted([c for c in cases if c['colors'][2] or c['colors'][3]],
                  key=lambda c:c['minimum_pillar_mm'])[:24]
     s=s.replace('        addLaterLapStartMiddleReserve(optimizedPath,beforeLaneCarry);','')
+else:
+    for direction, greens, reds, *_ in CORNER_LAYOUTS:
+        colors = [0] * 24
+        for seat in greens:
+            colors[seat] = 1
+        for seat in reds:
+            colors[seat] = 2
+        cases.append(dict(direction=direction, speed_cap=0, colors=colors))
 name='physical_without_reserve' if negative else 'physical_current'
 helper=r'''
 float physicalPillar=1e9f,physicalInner=1e9f;
