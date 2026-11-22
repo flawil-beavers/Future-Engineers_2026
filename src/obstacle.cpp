@@ -15,6 +15,7 @@
 #include "parking_start_footprint.h"
 #include "obstacle_blob_validation.h"
 #include "ackermann_kinematics.h"
+#include "drive_profile.h"
 
 #define Serial robot_logger
 
@@ -84,6 +85,15 @@ struct ParkingExitSegment
     int8_t steeringRelativeToAway;
     float distanceMm;
 };
+
+static int parkingExitSegmentSpeed(uint8_t index, float remaining)
+{
+    const bool longArc = index >= 3;
+    return DriveProfile::approachSpeed(remaining,
+        longArc ? OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED : OBSTACLE_PARKING_EXIT_SPEED,
+        longArc ? OBSTACLE_PARKING_EXIT_LONG_END_SPEED : OBSTACLE_PARKING_EXIT_SHORT_END_SPEED,
+        longArc ? 16.0f : 10.0f, 180.0f);
+}
 
 static bool parkingExitMotionSafe(PositionEstimate pose, int steering,
                                    int direction, float travelMm)
@@ -1976,12 +1986,6 @@ static bool updateParkingExit()
         Serial.println("[PARK EXIT] Swept footprint unsafe - held before next movement");
         return true;
     }
-    set_speed(
-        segment.direction *
-        (oc_parking_exit_segment>=3 ? OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED
-                                    : OBSTACLE_PARKING_EXIT_SPEED));
-    set_steering(segmentSteering);
-
     const float stateDistance =
         distanceSince(oc_parking_exit_state_distance);
     const bool finalSegment =
@@ -2031,6 +2035,13 @@ static bool updateParkingExit()
         return true;
     }
 
+    // The gyro can complete the final arc as soon as the minimum travel
+    // is reached. Be back at the established speed by that first stop gate.
+    const float speedEnd = finalSegment ? OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM
+                                        : segment.distanceMm;
+    set_speed(segment.direction * parkingExitSegmentSpeed(
+        oc_parking_exit_segment, speedEnd - stateDistance));
+    set_steering(segmentSteering);
     return true;
 }
 

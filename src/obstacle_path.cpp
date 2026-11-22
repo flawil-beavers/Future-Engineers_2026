@@ -4992,9 +4992,10 @@ void applyDiscoveryTargetNudge(
     target.y = pose.y_mm + dx * sinf(nudge) + dy * cosf(nudge);
 }
 
-int nearestUpcomingUnresolvedStation(float &forwardMm)
+int nearestUpcomingUnresolvedStation(float &forwardMm, uint16_t routeIndex,
+                                     float minimumForwardMm = 50.0f)
 {
-    const float currentDistance = baselinePath[progressIndex].distanceMm;
+    const float currentDistance = baselinePath[routeIndex].distanceMm;
     int bestStation = -1;
     forwardMm = loopLengthMm;
     for (uint8_t station = 0;
@@ -5008,12 +5009,17 @@ int nearestUpcomingUnresolvedStation(float &forwardMm)
             seats[station * 2].pathDistanceMm);
         // A station exactly underneath the startup pose is behind the camera;
         // it becomes observable normally when approached at the end of lap 1.
-        if (forward <= 50.0f || forward >= forwardMm)
+        if (forward <= minimumForwardMm || forward >= forwardMm)
             continue;
         forwardMm = forward;
         bestStation = station;
     }
     return bestStation;
+}
+
+int nearestUpcomingUnresolvedStation(float &forwardMm)
+{
+    return nearestUpcomingUnresolvedStation(forwardMm, progressIndex);
 }
 
 void seatCameraGeometry(
@@ -6219,7 +6225,14 @@ void updateCornerViewExtra()
     { reobserveCornerView("extra tracking/swept clearance",pose,encoder); return; }
     set_steering(cornerViewExtraSteering);
     servo_disabled=false;
-    set_speed(-OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S);
+    const float cruise = cornerViewExtraDistanceMm >= 110.0f
+        ? OBSTACLE_CORNER_VIEW_ARC_CRUISE_MM_S : OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S;
+    int speed = DriveProfile::approachSpeed(cornerViewExtraDistanceMm - travelled, cruise,
+        OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S, 22.0f, 75.0f);
+    if (speed > OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S &&
+        !cornerViewArcSafe(pose, cornerViewExtraSteering, -25.0f))
+        speed = OBSTACLE_CORNER_VIEW_REVERSE_SPEED_MM_S;
+    set_speed(-speed);
 }
 
 void updateCornerView(bool newCameraFrame)
@@ -6900,12 +6913,17 @@ int parkingEntryScoutMotionSpeed(float arcMm, float travelledMm)
     const float terminal=OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S;
     if(!parkingCwShortStart || routeTurnSign>=0 || arcMm<115.0f)
         return static_cast<int>(terminal);
-    // Regain the proven scan/return approach speed before the stop. At
-    // 100 mm/s this leaves about 32 mm for tracking the slower endpoint.
-    constexpr float taperDecelMmSs=180.0f;
-    const float usable=fmaxf(0.0f,arcMm-travelledMm-32.0f);
-    const float speed=sqrtf(terminal*terminal+2.0f*taperDecelMmSs*usable);
-    return static_cast<int>(fminf(OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S,speed));
+    return DriveProfile::approachSpeed(arcMm - travelledMm,
+        OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S, terminal, 18.0f, 70.0f);
+}
+
+int parkingEntryScanMotionSpeed(float remaining)
+{
+    const float terminal = OBSTACLE_PARKING_ENTRY_SPEED_MM_S;
+    if (!parkingShortStart()) return static_cast<int>(terminal);
+    // A short-start arc can end 3 mm before its nominal encoder target.
+    return DriveProfile::approachSpeed(remaining - 3.0f,
+        OBSTACLE_PARKING_START_ARC_CRUISE_MM_S, terminal, 22.0f, 90.0f);
 }
 
 void updateParkingEntryScout(bool newCameraFrame)
@@ -7371,7 +7389,7 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
             return;
 
         parkingEntryDrivePhase = PARKING_ENTRY_REVERSE_ARC;
-        set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
+        set_speed(-parkingEntryScanMotionSpeed(plannedTravel - entryTravel));
         if (!parkingEntryControlLogged)
         {
             parkingEntryControlLogged = true;
@@ -7504,7 +7522,9 @@ void updateParkingEntryDiscovery(bool newCameraFrame)
         }
     }
     set_steering(steering);
-    set_speed(-static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S));
+    set_speed(-(parkingEntryDrivePhase == PARKING_ENTRY_REVERSE_ARC
+        ? parkingEntryScanMotionSpeed(plannedTravel - entryTravel)
+        : static_cast<int>(OBSTACLE_PARKING_ENTRY_SPEED_MM_S)));
 }
 
 // Later laps use actual rectangular wall intersections. A rounded baseline
@@ -8133,8 +8153,10 @@ void obstacle_path_start(
     recomputeSpeedProfile(livePath);
     running = pathLength > 2;
 
-    Serial.print("[PATH] control_revision=20261121_verified_start_red discovery_mm_s=");
-    Serial.println(OBSTACLE_DISCOVERY_SPEED_MM_S,0);
+    Serial.print("[PATH] control_revision=20261122_start_motion_pace discovery_mm_s=");
+    Serial.print(OBSTACLE_DISCOVERY_SPEED_MM_S,0);
+    Serial.print(" confirmed_pass_mm_s=");
+    Serial.println(OBSTACLE_LAP1_CONFIRMED_PASS_SPEED_MM_S,0);
     Serial.print("[PATH] Known geometry ready points=");
     Serial.print(pathLength);
     Serial.print(" length_mm=");
@@ -8173,6 +8195,54 @@ float parkingFinishSpeed(float speed,const PositionEstimate &)
     remaining=fmaxf(0,remaining-80.0f);
     return fminf(speed,sqrtf(OBSTACLE_FINAL_PARKING_APPROACH_SPEED*
         OBSTACLE_FINAL_PARKING_APPROACH_SPEED+2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*remaining));
+}
+
+float lap1ClearRouteSpeed(float speed, const PositionEstimate &pose,
+                             const PathPoint *path, float unknownForward,
+                             float requestedCurvature, int steering, bool clearStartDeparture)
+{
+    // Leave a waypoint of reserve and up to 200 mm to shed the extra
+    // 60 mm/s before the existing discovery aiming window opens.
+    constexpr float brakeLeadMm = 200.0f;
+    const float beforeAim = unknownForward - OBSTACLE_LOOK_START_MM - OBSTACLE_PATH_SAMPLE_MM;
+    if (beforeAim <= 0.0f || discoveryScanStation >= 0 || discoveryHolding || discoveryBlocked ||
+        (!clearStartDeparture && !traversingInjectedAvoidance(baselinePath[progressIndex].distanceMm)))
+        return speed;
+
+    const float tangent = connectorRouteHeading(path, progressIndex);
+    if (!isfinite(pose.heading_deg) || !isfinite(tangent)) return speed;
+    const float h = tangent * PI / 180.0f;
+    const float lateral = -(pose.x_mm - path[progressIndex].x) * sinf(h) +
+                           (pose.y_mm - path[progressIndex].y) * cosf(h);
+    const float headingError = fabsf(wrap180(pose.heading_deg - tangent));
+    if (!isfinite(lateral) || !isfinite(headingError)) return speed;
+    const float aligned = fminf(clampFloat((40.0f - fabsf(lateral)) / 25.0f, 0.0f, 1.0f),
+                                clampFloat((18.0f - headingError) / 12.0f, 0.0f, 1.0f));
+    const float blend = aligned * clampFloat(beforeAim / brakeLeadMm, 0.0f, 1.0f);
+    const float bonus = OBSTACLE_LAP1_CONFIRMED_PASS_SPEED_MM_S - OBSTACLE_PATH_MAX_SPEED;
+    const float target = cappedPathSpeed(speed + bonus * blend);
+    return fmaxf(speed, laterLapTrackingSpeed(target, requestedCurvature, steering));
+}
+
+float parkingConnectorDepartureSpeed(float baseSpeed, float pathSpeed,
+                                     const PositionEstimate &pose, int steering)
+{
+    // Below this lateral line a wheel can still run beside the pink ends.
+    if (runtimeTestMode || !parkingShortStart() || parkingEntryFarGreenFollowup ||
+        parkingEntryTargetStation < 0 || !stationResolved(parkingEntryTargetStation) ||
+        pose.y_mm <= -1175.0f || abs(steering) > 20)
+        return baseSpeed;
+
+    // progressIndex is the merge point while the connector owns steering.
+    // Use the current position to avoid skipping a station before the merge.
+    const uint16_t index = nearestPathIndex(baselinePath, pose.x_mm, pose.y_mm, 0, pathLength);
+    float unknownForward;
+    const bool unknownAhead = nearestUpcomingUnresolvedStation(unknownForward, index, -1.0f) >= 0;
+    const float cruise = fminf(pathSpeed, OBSTACLE_PARKING_START_CONNECTOR_CRUISE_MM_S);
+    if (cruise <= baseSpeed) return baseSpeed;
+    if (!unknownAhead) return cruise;
+    return DriveProfile::approachSpeed(unknownForward - OBSTACLE_LOOK_START_MM,
+        cruise, baseSpeed, OBSTACLE_PATH_SAMPLE_MM, 75.0f);
 }
 
 void obstacle_path_update(bool new_camera_frame)
@@ -8652,6 +8722,8 @@ void obstacle_path_update(bool new_camera_frame)
             safeSpeed = runtimeSpeedCapMmS > 0.0f
                 ? fminf(runtimeSpeedCapMmS,OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S)
                 : OBSTACLE_PARKING_ENTRY_GREEN_JOIN_SPEED_MM_S;
+        safeSpeed = parkingConnectorDepartureSpeed(safeSpeed, commandedSpeed,
+            pose, static_cast<int>(steering));
     }
     if (parkingEntryFarGreenFollowup && !parkingEntryConnectorActive)
         safeSpeed = fminf(
@@ -8663,6 +8735,23 @@ void obstacle_path_update(bool new_camera_frame)
         float unresolvedForward = 0.0f;
         const int unresolvedStation =
             nearestUpcomingUnresolvedStation(unresolvedForward);
+        if (!parkingEntryFarGreenFollowup)
+        {
+            const float phase = baselinePath[progressIndex].distanceMm;
+            const bool clearStartDeparture = parkingShortStart() &&
+                parkingEntryConnectorLength >= 2 && !lapCountingArmed &&
+                pose.y_mm > -1175.0f && (phase <= corners[0].pathStartMm ||
+                                       phase >= loopLengthMm - 500.0f);
+            float bonusForward = unresolvedStation < 0 ? INFINITY : unresolvedForward;
+            if (clearStartDeparture)
+            {
+                float departureForward;
+                if (nearestUpcomingUnresolvedStation(departureForward, progressIndex, -1.0f) >= 0)
+                    bonusForward = departureForward;
+            }
+            safeSpeed = lap1ClearRouteSpeed(safeSpeed, pose, path,
+                bonusForward, curvature, static_cast<int>(steering), clearStartDeparture);
+        }
         if (unresolvedStation >= 0)
         {
             if (unresolvedForward <= OBSTACLE_DISCOVERY_HOLD_DISTANCE_MM)

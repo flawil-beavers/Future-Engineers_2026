@@ -422,9 +422,10 @@ constexpr auto OBSTACLE_PARKING_EXIT_STEERING = 50;
 // both directions. This remains an offset from SERVO_CENTER, so recalibrating
 // the servo zero preserves the mirrored +/- geometry.
 constexpr auto OBSTACLE_PARKING_EXIT_FINAL_STEERING = 45;
-constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 80;
-// Keep the confined first three strokes; accelerate the two longer arcs.
-constexpr auto OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED = 100;
+constexpr auto OBSTACLE_PARKING_EXIT_SPEED = 88;
+constexpr auto OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED = 115;
+constexpr auto OBSTACLE_PARKING_EXIT_SHORT_END_SPEED = 80;
+constexpr auto OBSTACLE_PARKING_EXIT_LONG_END_SPEED = 100;
 constexpr auto OBSTACLE_PARKING_EXIT_STEER_SETTLE_MS = 200;
 constexpr auto OBSTACLE_PARKING_EXIT_HOLD_BRAKE_MS = 150;
 constexpr auto OBSTACLE_PARKING_EXIT_SEGMENT_COUNT = 5;
@@ -702,7 +703,10 @@ constexpr unsigned long OBSTACLE_PARKING_ENTRY_OBSERVE_MS = 1600UL;
 // and legal-pillar clearance; CW log poses also remain inside the window.
 constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_ARC_MM = 85.0f;
 constexpr auto OBSTACLE_PARKING_ENTRY_SCOUT_SPEED_MM_S = 60.0f;
-constexpr float OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S = 100.0f;
+constexpr float OBSTACLE_PARKING_START_ARC_CRUISE_MM_S = 115.0f;
+constexpr float OBSTACLE_PARKING_CW_SCOUT_CRUISE_MM_S = 145.0f;
+constexpr float OBSTACLE_CORNER_VIEW_ARC_CRUISE_MM_S = 145.0f;
+constexpr float OBSTACLE_PARKING_START_CONNECTOR_CRUISE_MM_S = 140.0f;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_MIN_OBSERVE_MS = 400UL;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_OBSERVE_MS = 1600UL;
 constexpr unsigned long OBSTACLE_PARKING_ENTRY_SCOUT_BRAKE_MS = 150UL;
@@ -1334,6 +1338,7 @@ constexpr unsigned long OBSTACLE_DISCOVERY_HOLD_GRACE_MS = 800UL;
 // above the drivetrain's observed sub-90 mm/s oscillation region.
 // Moderate lap1 increase: preserve all observation/hold gates and recovery speeds.
 constexpr auto OBSTACLE_DISCOVERY_SPEED_MM_S = 120.0f;
+constexpr float OBSTACLE_LAP1_CONFIRMED_PASS_SPEED_MM_S = 320.0f;
 // Corner-view scan reverse only: 70 mm/s is a modest step above the
 // previously driven 60 mm/s. Keep the 60 mm/s return and all travel/pose
 // limits unchanged until the faster reverse is measured on the field.

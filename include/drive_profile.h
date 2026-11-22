@@ -11,6 +11,14 @@ inline float clamp(float value, float low, float high) {
     // settings with a maximum below the configured minimum acceleration.
     return value<low ? low : (value>high ? high : value);
 }
+
+inline int approachSpeed(float remaining, float cruise, float terminal,
+                         float reserve, float taperDecel) {
+    const float usable = fmaxf(0.0f, remaining - reserve);
+    return static_cast<int>(fminf(cruise,
+        sqrtf(terminal * terminal + 2.0f * taperDecel * usable)));
+}
+
 inline float advance(float &speed, float &acceleration, float &limit,
                      int target, float dt, float maximumAcceleration) {
     if (!(dt>0.0f) || !isfinite(dt)) return 0.0f;
