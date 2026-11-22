@@ -1,33 +1,21 @@
 # Nur das Rückwärts-Einparken üben
 
-Die aktuelle Version startet nach Reset wieder im vollständigen
-`OBSTACLE_CHALLENGE`. Für das separate Training bei ausgeschalteter Fahrfreigabe
-`park cw` oder `park ccw` auswählen. Im Parktraining: keine Ausparkbewegung, keine Runden und keine Anfahrt
-in die entfernte Ecke. Sie beginnt am Übergabepunkt direkt vor dem
-Rückwärts-Einparkmanöver und benutzt danach denselben Einparkplaner wie der
-normale Hindernislauf, einschliesslich Endkorrektur und Halten nach Abschluss.
-Die Kamera wird für diesen isolierten Modus nicht initialisiert.
+Normales `O`, `park cw`, `park ccw` und der CW-Eckentest benutzen dieselbe feste Zugfolge. CCW spiegelt die Lenkrichtung. Der Sollabstand zu den rosa Spitzen beträgt 3 cm. An der Einparkposition ist die Hinterkante auf Höhe der Innenfläche der einfahrseitigen Schranke. Bei höchstens 10° Abweichung von der Parallelrichtung startet dort der erste Rückwärtszug nach dem Bremsen.
 
-Stand 2026-11-05, nach Logs651-656: Gesamtbreite inklusive Raeder123mm,
-physischer Achsabstand98mm, Heckueberhang35mm. Die Front reicht ab Hinterachse
-123mm gerade und135mm bei Volleinschlag vor. Diese Lenkkontur wird auch in
-engen Rettungswegen geprueft; zusaetzlich bevorzugt die Planung4mm Frontreserve.
-Der kalibrierte kinematische Radstand127mm bleibt davon getrennt.
+## CW-Eckentest mit fester Zugfolge
 
-Der Einfahrpunkt bleibt laengs10mm Richtung Heck verschoben, lokalX260,26mm.
-Er liegt jetzt naeher an den rosa Spitzen: Hinterachse271,5mm ab Aussenwand,
-also10mm zwischen geradem Rad und Spitzenlinie. Bevorzugte Endachslage128,5mm
-ab Wand: nominal10mm zwischen Fahrzeugkante und offener Parkkante.
-Sicher tiefere Fortsetzungen bleiben fuer bereits schraege Zwischenlagen moeglich.
+Dieser Versuch startet in der Ecke auf derselben Geraden wie die Parklücke. Die Front zeigt zur Parklücke, die Aussenbande neben der Parklücke liegt links. Das Heck steht **ca. 2 cm vor der quer hinter ihm liegenden Wand**. Die Mitte der Hinterachse steht **ca. 29,2 cm von der seitlichen Aussenbande** entfernt. So beträgt der Sollabstand der wandseitigen Radkante zur Linie durch die rosa Spitzen bei der Anfahrt **3 cm**. Räder gerade, Fahrzeug parallel zur Seitenbande. Halte die Strecke zwischen Ecke und Parklücke für diesen Versuch frei.
 
-Die Endposition wird nicht auf ein laengs festes Zentrum gezwungen. Sobald er
-parallel, vollstaendig enthalten und sicher stillsteht, beendet er das Parken.
-Er faehrt danach nicht zur Mitte zurueck. Der hintere ToF wird waehrend normaler
-Bremsintervalle verwendet, wenn Winkel und Messqualitaet die Referenz zulassen.
-Normale kurze Folgen haben Vorrang. Erst wenn diese vollstaendig geprueft nicht
-passen, sucht er begrenzt zusaetzliche Rangierzuege mit verfuegbarem Platz an beiden
-Enden. Jede uebernommene Folge erhaelt eine vollstaendige Kollisionspruefung.
-Das sind Modellreserven; die neue Version muss auf dem Fahrzeug bestaetigt werden.
+1. `giga_r1_m7` hochladen. Bei ausgeschalteter Fahrfreigabe `park cw fixed` im seriellen Monitor senden.
+2. USB-Kabel zum Fahren abziehen und mit der normalen Fahrfreigabe starten. Auf der freien Anfahrt fährt der Roboter bis **145 mm/s**. Für die Schrankenmessung fährt er **66 mm/s** und bei dicht aufeinanderfolgenden ToF-Messungen bis **84 mm/s**. Vor der Einparkposition bremst er ab. Bei bis zu **10° Abweichung von der Parallelrichtung** beginnt dort nach dem Stillstand der erste Rückwärtszug.
+3. Die vier Züge laufen in fester Reihenfolge. Rückwärts mit Volleinschlag bis zum Gyro-Ziel von 47°, gerade 12,5 cm zurück, rückwärts mit Gegenlenkung bis 22,5° Restwinkel, dann mit Gegenlenkung kurz vorwärts bis 0°.
+4. Nach dem vierten Zug hält der Roboter an, prüft die Endlage und speichert Winkel und Encoderstrecken. Die Meldung `final_parking_stop` bestätigt die anhand der geschätzten Pose geprüfte Endlage. Die tatsächliche Freigängigkeit ist auf der Matte zu prüfen. Für einen neuen Versuch wieder in die Ecke stellen und den Befehl neu senden.
+
+Die feste Zugfolge benutzt Gyro und Encoder. Eine frische hintere ToF-Messung von 20 mm oder weniger stoppt den Rückwärtszug. Die Brems-, Fortschritts-, Weg- und Zeitgrenzen bleiben aktiv. Nach der Endprüfung folgt keine weitere Fahrbewegung.
+
+## Feste Zugfolge ab Parklücke
+
+Bei ausgeschalteter Fahrfreigabe `park cw` oder `park ccw` auswählen. Der Roboter startet an der unten beschriebenen Einparkposition direkt mit denselben vier Zügen wie im normalen Lauf. In diesem Modus werden Aufstellung und freie Lückenlänge als Nennwerte übernommen. Die Kamera wird nicht initialisiert.
 
 ## Aufstellung
 
@@ -39,9 +27,9 @@ Dieser isolierte Test besitzt keine eingelernte Hinderniskarte.
 | --- | ---: |
 | Freie Länge zwischen den beiden rosa Innenflächen | **24,75 cm** |
 | Länge der rosa Begrenzungen von der Aussenwand ins Feld | **20,00 cm** |
-| Hinterachsmitte bis zur Aussenwand, senkrecht gemessen | **27,15 cm** |
-| Alternativ: Hinterachsmitte bis zur gedachten Linie zwischen den rosa Spitzen | **7,15 cm** auf der normalen Fahrbahnseite |
-| Hinterachse längs der Wand relativ zur nahen rosa **Innenfläche** | **1,28 cm ausserhalb der Parklücke**, in Richtung Fahrzeugfront |
+| Hinterachsmitte bis zur Aussenwand, senkrecht gemessen | **29,15 cm** |
+| Alternativ: Hinterachsmitte bis zur gedachten Linie zwischen den rosa Spitzen | **9,15 cm** auf der normalen Fahrbahnseite |
+| Hinterachse längs der Wand relativ zur nahen rosa **Innenfläche** | **3,50 cm ausserhalb der Parklücke**, in Richtung Fahrzeugfront |
 | Fahrzeugausrichtung | Parallel zur Aussenwand, Vorderräder gerade |
 
 Hinterachsmitte bedeutet die Mitte der Achse zwischen den beiden Hinterrädern,
@@ -51,25 +39,7 @@ und sorgfältig parallel ausrichten; die Firmware ermittelt diesen Startpunkt
 in diesem Modus **nicht selbst**. Diese Aufstellgenauigkeit ist eine
 Vorbereitungsvorgabe, keine nachgewiesene Fehlertoleranz.
 
-Die nahe rosa Begrenzung ist diejenige, an deren Ende der Roboter steht.
-Ihre Innenfläche zeigt zur freien Parklücke. Die Hinterachse liegt1,28cm
-weiter ausserhalb der Lücke. Da die rosa Begrenzung selbst2cm dick ist,
-liegt die Hinterachse damit nur etwa2,8mm jenseits ihrer äusseren Seitenfläche.
-Das zur Wand gerichtete Hinterrad hat bei gerader Aufstellung 10mm
-Abstand zur gedachten Linie durch die rosa Spitzen.
-
-```text
-Blick von oben; Aussenwand unten, Fahrbahn oben
-
-CW:   <--- FRONT -- HINTERACHSE     | freie Parklücke |
-                          1,28 cm --> nahe Innenfläche
-
-CCW:              | freie Parklücke |     HINTERACHSE -- FRONT --->
-                              nahe Innenfläche <-- 1,28 cm
-
-Beide Richtungen: Hinterachse27,15cm vor der Aussenwand;
-die beiden rosa Begrenzungen reichen20cm von der Wand ins Feld.
-```
+Die nahe rosa Begrenzung ist diejenige, an deren Spitze der Roboter ansetzt. Von ihrer zur Parklücke gerichteten Innenfläche aus misst du **3,50 cm in Richtung Fahrzeugfront** bis zur Hinterachsmitte. Das entspricht dem Hecküberhang. Bei geraden Rädern liegt die wandseitige Radkante 3,00 cm von der Linie durch die rosa Spitzen entfernt.
 
 ## Start und Wiederholung
 
@@ -105,26 +75,4 @@ Runden. Modellprüfungen ersetzen die jetzt vorgesehenen realen Parkversuche
 nicht.
 
 
-## Stand 2026-11-01: kuerzere Einparkfolgen
-
-Revision `20261101_efficient_entry` prueft zuerst eine sichere Folge mit zwei
-Rueckwaertsbogen. Wenn diese nicht passt, bleiben die geprueften Rangierfolgen.
-Freier Weg wird aus Pose und Fahrzeugumriss berechnet; kein fester6cm-Zug.
-Verbleibende Zuege werden nach Messabweichungen frisch geprueft und angepasst.
-Details und Validierung: [Effiziente Einfahrt](EFFICIENT_PARKING_ENTRY_20261101.md).
-
-
-## Abschluss ohne Zentrieren (2026-11-05)
-
-Die um10mm verschobene Einfahrt wird gegen die echten, unveraenderten rosa
-Begrenzungen geprueft. Der Planer darf deshalb bei engem Platz eine andere
-sichere Bogenfolge waehlen; eine starre Verschiebung jeder Bewegung waere
-nicht fuer jede gemessene Luecke kollisionsfrei.
-
-Parallel bedeutet innerhalb der bestehenden2Grad-Toleranz. Der gesamte
-Roboter muss im Parkfeld liegen; beim fruehen Stoppen aus laufender Bewegung
-bleiben zusaetzlich3mm Modellreserve fuer Registrierung/Rundung. Nach dem
-Bremsen gelten die vorhandene5mm-Endlagenpruefung und eine sichere Stellung
-der geraden Vorderraeder. Die frueher bevorzugten30mm Platz vorne erzwingen
-keine anschliessende Zentrierfahrt mehr. Ein unsicherer oder noch schraeger
-Stand wird weiterhin korrigiert.
+Frühere Planungsstände sind im [Archiv](../docs/history/README.md) dokumentiert.

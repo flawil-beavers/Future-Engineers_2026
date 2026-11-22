@@ -48,9 +48,9 @@ void set_steering(int angle){steeringCommand=set_degree=angle;}
 struct HostServo {void write(int angle){steeringCommand=angle-SERVO_CENTER;}} servo;
 @@STEER@@
 void resetHostServo(){servo_last_command=1000;servo_last_command_ms=0;}
-struct ObstacleSeatInfo {bool confirmed=false;float xMm=0,yMm=0;};
+struct ObstacleSeatInfo {bool confirmed=false,red=false;float xMm=0,yMm=0;};
 uint8_t obstacle_path_seat_count(){return 24;}
-bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
+bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.red=seats[i].red;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
 void update_gyro(){}
 bool obstacle_path_sample_pose_clearance(uint8_t i,float x,float y,float h,ObstacleClearanceSample &s){return calculateClearanceAtPose(seats[i],x,y,h,s);}
 enum TofSensor {TOF_LEFT,TOF_RIGHT,TOF_REAR};
@@ -81,9 +81,19 @@ BeamFootprint beamFootprint(TofSensor sensor,float rangeMm,const PositionEstimat
 #undef Serial
 '''
     fixture+=r'''
+float hostWallRangeOverride=NAN;
+float hostRearRange=NAN;
 bool get_tof_diagnostic_snapshot(TofSensor sensor,TofDiagnosticSnapshot &s){
- if(sensor==TOF_REAR)return false; // No invented rear measurement in ordinary host cases.
  s.sequence=hostTime/framePeriod;s.sampled_ms=s.sequence*framePeriod;
+ if(sensor==TOF_REAR){
+  if(!isfinite(hostRearRange))return false;
+  s.selected_raw_distance_mm=hostRearRange;
+  return true;
+ }
+ if(isfinite(hostWallRangeOverride)){
+  s.selected_raw_distance_mm=hostWallRangeOverride;s.stored_object_count=1;
+  s.objects[0].distance_mm=static_cast<int16_t>(hostWallRangeOverride);return true;
+ }
  const float markerRange=parking_module::expectedOuterWallRange(sensor,truePose)-200;
  auto footprint=parking_module::beamFootprint(sensor,markerRange,truePose);
  bool fixed=footprint.maximumX>=480&&footprint.minimumX<=500;
@@ -100,7 +110,281 @@ bool get_tof_diagnostic_snapshot(TofSensor sensor,TofDiagnosticSnapshot &s){
 def main():
     fixture=fixture_source()
     fixture+=r'''
-int main(){int total=0,bad=0,parked=0,safeRejected=0;
+bool checkLoggedCapture(int dir){
+ namespace park=parking_module;
+ routeTurnSign=dir;resetState();baseline();park::final_parking_reset();park::routeTurnSign=dir;
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ const int cw[]={0,4,7,10,14,21},ccw[]={1,5,8,15,19,22};
+ for(int i=0;i<6;++i)seats[dir<0?cw[i]:ccw[i]].confirmed=true;
+ hostPose=dir<0?PositionEstimate{244.4f,-1179.9f,180.1f}:PositionEstimate{145.8f,-1231.6f,2.1f};
+ park::measuredGapMm=dir<0?233.8f:259.4f;
+ park::scanPhase=5;
+ park::captureTargetX=dir<0?219.74f:480.86f;
+ park::captureFieldMotionSign=dir;
+ if(!park::chooseRegisteredCapture(hostPose) || park::captureAlignPending!=(dir<0))
+  return false;
+ bool align=park::captureAlignPending;
+ int sign=align?1:park::captureFieldMotionSign;
+ for(int mm=0;mm<=650;++mm){
+  if(align && hostPose.x_mm>=park::captureTargetX+80.0f &&
+      park::linePoseReady(hostPose,park::captureLineY)){align=false;sign=-1;}
+  if(!align && fabsf(hostPose.x_mm-park::captureTargetX)<=1.5f){
+   std::cout<<"LOGGED CAPTURE dir/travel/line_y "<<dir<<"/"<<mm<<"/"<<park::captureLineY<<"\n";
+   return park::fixedEntryCaptureReady(hostPose);
+  }
+  int steering=0;
+  if(!park::captureSteering(hostPose,sign,steering))return false;
+  park::advanceParkingPose(hostPose,steering,park::motorDirectionForFieldMotion(sign));
+ }
+ return false;
+}
+
+bool checkMixedStoppedWallLog23(){
+ namespace park=parking_module;
+ routeTurnSign=-1;resetState();baseline();park::final_parking_reset();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ park::routeTurnSign=-1;park::outerSensor=TOF_LEFT;
+ park::measuredFixedInsideX=496.0f;park::state=park::FP_SCAN_DRIVE;park::scanPhase=3;
+ framePeriod=30;hostTime=89405;hostPose={393.5f,-1208.8f,178.0f};
+ hostWallRangeOverride=252.0f;
+ if(!park::updateOuterWallReference(false))return false;
+ park::measuredMovingInsideX=255.3f;park::state=park::FP_SCAN_BRAKE;park::scanPhase=5;
+ hostPose={258.1f,-1206.8f,180.5f};
+ hostWallRangeOverride=241.5f;hostTime=92040;
+ const bool mixedFan=!park::registeredRailFanClear(hostPose,true);
+ const bool refreshed=park::refreshStoppedScanWallReference();
+ hostWallRangeOverride=NAN;
+ if(!mixedFan||!refreshed||park::latestWallRange!=252.0f||!park::applyScanLocalization()||
+    !park::chooseRegisteredCapture(hostPose)||park::captureAlignPending)return false;
+ std::cout<<"LOG23 CLEAR GAP WALL PASS; direct capture without alignment return\n";
+ return true;
+}
+
+bool checkCcwRailApproachLog28(){
+ namespace park=parking_module;
+ routeTurnSign=1;resetState();baseline();park::final_parking_reset();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{1,5,9,14,19,22}){seats[i].confirmed=seats[i].injected=true;seats[i].red=i!=1&&i!=9;}
+ learned();
+ park::routeTurnSign=1;park::outerSensor=TOF_RIGHT;
+ PositionEstimate arrival{-172.1f,-881.8f,317.7f};
+ if(!park::chooseParkingApproach(arrival)||!park::approachSmoothCcw)
+  return false;
+ bool outer=false;int maximum=0;PositionEstimate sample=arrival;int result=0;
+ for(int n=0;n<1200&&result==0;++n){
+  if(outer){
+   int steering=0;
+   if(!park::parkingApproachSteering(sample,true,steering))return false;
+   maximum=std::max(maximum,abs(steering));
+  }
+  result=park::advanceApproachPreflight(sample,outer);
+ }
+ if(result!=1||maximum>22)return false;
+
+ hostTime=1000;framePeriod=30;encoder=0;stop(true);
+ hostPose={685.9f,-1209.8f,359.2f};
+ truePose=hostPose;
+ truePose.y_mm+=175.0f-park::expectedOuterWallRange(TOF_RIGHT,hostPose);
+ park::state=park::FP_APPROACH_BRAKE;park::stateStartMs=hostTime;
+ robot_logger.writes=0;robot_logger.lines.str("");robot_logger.lines.clear();
+ bool continued=false;
+ float clearX=0.0f;
+ for(int n=0;n<4000&&park::state!=park::FP_FIXED_SETTLE&&!park::final_parking_aborted();++n){
+  // Keep the short return ambiguous until the whole fan clears the rails.
+  hostWallRangeOverride=park::scanWallRegistered?NAN:175.0f;
+  park::final_parking_update(1);steer(set_degree);
+  const bool clearing=park::state==park::FP_APPROACH_WALL_CLEAR;
+  continued|=clearing;
+  if(clearX==0 && park::scanWallRegistered)clearX=hostPose.x_mm;
+  if(dc_state==DC_ENABLED){
+   if(clearing && (command<=0||abs(set_degree)>10))return false;
+   if(!park::parkingEntryPoseSafe(truePose,steeringCommand))return false;
+   const float ds=command*.02f;encoder+=ds;
+   park::advanceParkingPose(hostPose,steeringCommand,ds);
+   park::advanceParkingPose(truePose,steeringCommand,ds);
+  }
+  hostTime+=20;
+ }
+ hostWallRangeOverride=NAN;
+ hostPose=truePose;
+ const bool ok=continued&&clearX>685.9f&&park::state==park::FP_FIXED_SETTLE&&
+  park::fixedEntryCaptureReady(hostPose)&&robot_logger.writes==0;
+ std::cout<<"LOG28 progressive approach max_servo="<<maximum<<" "
+  <<(ok?"PASS":"FAIL")<<" clear_x="<<clearX<<" state="<<int(park::state)<<"\n";
+ if(!ok)std::cout<<robot_logger.lines.str();
+ return ok;
+}
+
+bool checkRollingWallLog40(){
+ namespace park=parking_module;
+ routeTurnSign=1;resetState();baseline();park::final_parking_reset();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ park::routeTurnSign=1;park::outerSensor=TOF_RIGHT;park::approachSmoothCcw=true;
+ park::approachOuterShiftX=350;park::state=park::FP_APPROACH_OUTER;
+ hostTime=1000;park::stateStartMs=hostTime;framePeriod=30;encoder=0;stop(true);
+ hostPose={817.4f,-1212.3f,358.9f};truePose=hostPose;truePose.y_mm-=66;
+ hostWallRangeOverride=185.0f;
+ park::final_parking_update(1);
+ const bool waiting=park::state==park::FP_APPROACH_OUTER && !park::scanWallRegistered;
+ hostTime+=60;
+ park::final_parking_update(1);
+ hostWallRangeOverride=NAN;
+ const bool corrected=park::scanWallRegistered && hostPose.y_mm<-1270.0f &&
+   park::state==park::FP_APPROACH_OUTER && dc_state==DC_ENABLED;
+ if(waiting&&corrected)std::cout<<"LOG40 CLEAR FAN WALL REGISTERED WHILE MOVING PASS\n";
+ return waiting&&corrected;
+}
+
+
+void startCapture(int dir,float gap,float headingError,float lineOffset=0){
+ namespace park=parking_module;
+ routeTurnSign=dir;resetState();baseline();park::final_parking_reset();park::routeTurnSign=dir;
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ hostTime=1000;encoder=0;stop(true);
+ robot_logger.lines.str("");robot_logger.lines.clear();robot_logger.writes=0;
+ park::scanPhase=5;park::outerSensor=dir<0?TOF_LEFT:TOF_RIGHT;
+ park::measuredGapMm=gap;
+ park::captureLineY=park::parkingScanLineY();
+ park::captureTargetX=dir>0?park::movingInsideFaceX()+park::captureRearAxleLocalX()
+  :OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM-park::captureRearAxleLocalX();
+ truePose=hostPose={park::captureTargetX,park::captureLineY+lineOffset,
+  park::baseHeadingDeg()+headingError};
+ park::state=park::FP_CAPTURE_BRAKE;park::stateStartMs=hostTime;
+}
+
+bool checkCaptureTolerance(int dir,float headingError){
+ namespace park=parking_module;
+ startCapture(dir,247.5f,headingError);
+ if(headingError==0){
+  const float rearX=hostPose.x_mm-dir*OBSTACLE_FINAL_PARKING_REAR_OVERHANG_MM;
+  const float entryFace=dir>0?OBSTACLE_PARKING_FIXED_INNER_FACE_X_MM:park::movingInsideFaceX();
+  if(fabsf(rearX-entryFace)>.01f)return false;
+ }
+ hostTime+=OBSTACLE_FINAL_PARKING_HOLD_BRAKE_MS;
+ park::final_parking_update(dir);
+ const bool accepted=fabsf(headingError)<=10.0f;
+ if(!accepted)return park::final_parking_aborted()&&dc_state==DC_DISABLED;
+ if(park::state!=park::FP_FIXED_SETTLE||park::segmentIndex!=0)return false;
+ for(int tick=0;tick<100;++tick){
+  park::final_parking_update(dir);steer(set_degree);
+  if(dc_state==DC_ENABLED)return command<0&&steeringCommand==50*dir;
+  hostTime+=20;
+ }
+ return false;
+}
+
+bool checkRearGuard(int dir){
+ namespace park=parking_module;
+ startCapture(dir,247.5f,0);
+ hostRearRange=20.0f;
+ for(int tick=0;tick<100&&!park::final_parking_aborted();++tick){
+  park::final_parking_update(dir);steer(set_degree);
+  if(dc_state==DC_ENABLED)return false;
+  hostTime+=20;
+ }
+ hostRearRange=NAN;
+ return park::final_parking_aborted()&&robot_logger.writes==1;
+}
+
+void advanceMeasuredEntry(PositionEstimate &pose,int steering,float distance,float radiusScale){
+ if(steering==0){parking_module::advanceParkingPose(pose,0,distance);return;}
+ const float curvature=-1.0f/(Ackermann::getTurnRadius(steering)*radiusScale);
+ const float heading=pose.heading_deg*PI/180.0f;
+ const float next=heading+curvature*distance;
+ pose.x_mm+=(sinf(next)-sinf(heading))/curvature;
+ pose.y_mm+=(cosf(heading)-cosf(next))/curvature;
+ pose.heading_deg=parking_module::wrap180(next*180.0f/PI);
+}
+
+bool checkFourStrokes(int dir,bool practice){
+ namespace park=parking_module;
+ startCapture(dir,261.0f,0,-9.0f);
+ if(practice){
+  const auto measuredCapture=hostPose;
+  park::final_parking_start_entry_practice(dir);
+  if(!park::fixedEntryCaptureReady(hostPose)||
+     fabsf(park::entryLocalPose(hostPose).x_mm-park::captureRearAxleLocalX())>0.01f)return false;
+  // Place the model at the same measured normal capture, while entering
+  // through the separate entry-only command.
+  hostPose=measuredCapture;
+  park::measuredGapMm=261.0f;
+  park::captureTargetX=measuredCapture.x_mm;
+ }
+ truePose=hostPose;
+ const int directions[]={-1,-1,-1,1};
+ const int steers[]={50,0,-50,50};
+ const float targets[]={47.0f,47.0f,22.5f,0.0f};
+ int finished=0;
+ for(int tick=0;tick<3000&&!park::final_parking_complete()&&!park::final_parking_aborted();++tick){
+  const auto previous=park::state;
+  const int step=park::segmentIndex;
+  // Real DC_HOLDING retains the final drive profile while the encoder stops.
+  if(previous==park::FP_VERIFY)current_speed=35.0f;
+  park::final_parking_update(dir);steer(set_degree);
+  if(previous==park::FP_FIXED_DRIVE&&park::state==park::FP_FIXED_BRAKE){
+   if(step!=finished++||fabsf(park::entryLocalPose(hostPose).heading_deg-targets[step])>0.7f)return false;
+   if(step==1&&fabsf(park::distanceSince(park::stateStartDistance)-125.0f)>1.0f)return false;
+  }
+  if(dc_state==DC_ENABLED){
+   if(step>=4||command*directions[step]<=0||steeringCommand!=steers[step]*dir||
+      !park::parkingEntryPoseSafe(hostPose,steeringCommand,0))return false;
+   const float ds=command*.02f;encoder+=ds;
+   advanceMeasuredEntry(hostPose,steeringCommand,ds,1.22f);
+  }
+  hostTime+=20;
+ }
+ const bool ok=park::final_parking_complete()&&park::finalFootprintContained()&&finished==4&&
+  robot_logger.writes==1&&dc_state==DC_HOLDING&&set_degree==0;
+ std::cout<<"FIXED FOUR STROKES dir="<<dir<<" practice="<<practice<<" "<<(ok?"PASS":"FAIL")<<"\n";
+ if(!ok)std::cout<<robot_logger.lines.str();
+ if(!ok)return false;
+ for(int tick=0;tick<100;++tick){
+  park::final_parking_update(dir);
+  if(dc_state!=DC_HOLDING||robot_logger.writes!=1)return false;
+ }
+ return true;
+}
+
+bool checkFixedTurnSlip(int dir,int fault){
+ namespace park=parking_module;
+ startCapture(dir,242.0f,0);
+ // Log 47 reached this pose with 81 mm of encoder travel after five seconds.
+ const float localX=198.0f;
+ park::localToField(localX,269.9f,36.1f,hostPose.x_mm,hostPose.y_mm,hostPose.heading_deg);
+ park::state=park::FP_FIXED_DRIVE;
+ park::fixedStepStartHeading=-2.4f;
+ park::fixedProgress=38.0f;
+ park::fixedProgressMs=5900;
+ park::stateStartDistance=0;
+ hostTime=6020;
+ encoder=fault==1 ? -155.0f : -81.0f;
+ if(fault==2)park::fixedProgressMs=5300;  // no fresh yaw
+ if(fault==3)encoder=-186.0f;             // hard encoder limit
+ if(fault==4)hostRearRange=20.0f;          // rear protection during reserve
+ if(fault==5)hostTime=9520;               // hard time limit, fresh yaw
+ if(fault==5)park::fixedProgressMs=9500;
+ if(fault==6)park::segmentIndex=1;        // straight step retains normal limit
+ if(fault==7){                            // unsafe swept pose during reserve
+  hostPose.y_mm=-1430.0f;
+ }
+ park::final_parking_update(dir);
+ hostRearRange=NAN;
+ if(fault>=2)return park::final_parking_aborted()&&dc_state==DC_DISABLED;
+ if(!park::fixedSlipReserveLogged||dc_state!=DC_ENABLED)return false;
+ for(int tick=0;tick<17&&park::state==park::FP_FIXED_DRIVE;++tick){
+  hostTime+=200;encoder-=1.2f;
+  advanceMeasuredEntry(hostPose,50*dir,-1.2f,1.0f);
+  hostPose.heading_deg=park::wrap180(park::baseHeadingDeg()+dir*(36.1f+0.65f*(tick+1)));
+  park::final_parking_update(dir);
+ }
+ return park::state==park::FP_FIXED_BRAKE&&!park::final_parking_aborted();
+}
+
+int main(){int total=0,bad=0,captured=0,safeRejected=0;
+ for(int dir:{-1,1})for(int fault=0;fault<8;++fault)if(!checkFixedTurnSlip(dir,fault)){
+  ++bad;std::cout<<"FIXED TURN SLIP FAIL "<<dir<<"/"<<fault<<"\n"<<robot_logger.lines.str();
+ }
+ std::cout<<"FIXED TURN SLIP 16 checks, failed "<<bad<<"\n";
  // Registration must not accept a single piece, wrong gap, or excessive
  // correction simply because the longitudinal allowance is now larger.
  for(int fault=0;fault<5;++fault){
@@ -115,6 +399,15 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
   if(ok!=(fault==0)||(fault==0&&fabsf(hostPose.x_mm-480.f)>.01f))return 1;
  }
  std::cout<<"REGISTRATION 5 FAILED 0\n";
+ if(!checkMixedStoppedWallLog23())return 1;
+ if(!checkCcwRailApproachLog28()||!checkRollingWallLog40())return 1;
+ if(!checkLoggedCapture(-1)||!checkLoggedCapture(1))return 1;
+
+ for(int dir:{-1,1}){
+  for(float yaw:{-11.0f,-10.0f,0.0f,10.0f,11.0f})
+   if(!checkCaptureTolerance(dir,yaw))return 1;
+  if(!checkRearGuard(dir)||!checkFourStrokes(dir,false)||!checkFourStrokes(dir,true))return 1;
+ }
  const int configs[11][3]={{0,0,0},{1,0,0},{2,0,0},{0,1,0},{0,2,0},{0,0,1},{0,0,2},{1,0,1},{1,0,2},{2,0,1},{2,0,2}};
  for(unsigned long period:{30UL,100UL})for(int dir:{-1,1})for(int layout=0;layout<11;++layout)for(float poseBias:{-40.f,0.f,40.f})for(float xBias:{-180.f,0.f,180.f}){
   framePeriod=period;
@@ -125,22 +418,16 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
   hostPose.x_mm=optimizedPath[index].x;hostPose.y_mm=optimizedPath[index].y;hostPose.heading_deg=connectorRouteHeading(optimizedPath,index);
   truePose=hostPose;hostPose.y_mm+=poseBias;
   parking_module::final_parking_reset();hostTime=0;encoder=0;stop(true);robot_logger.lines.str("");robot_logger.lines.clear();robot_logger.writes=0;
-  bool frozenServo=false,physicalCollision=false,xBiasInjected=false,gyroPauseInjected=false;
-  for(int step=0;step<20000&&!parking_module::final_parking_complete()&&!parking_module::final_parking_aborted();++step){
+  bool frozenServo=false,physicalCollision=false,xBiasInjected=false;
+  for(int step=0;step<20000&&parking_module::state!=parking_module::FP_FIXED_SETTLE&&
+      !parking_module::final_parking_aborted();++step){
    if(!xBiasInjected&&parking_module::state==parking_module::FP_SCAN_SETTLE){hostPose.x_mm+=xBias;xBiasInjected=true;}
-   if(!gyroPauseInjected&&parking_module::state==parking_module::FP_SEGMENT_DRIVE){
-    auto savedState=parking_module::state;auto savedStart=parking_module::stateStartMs;
-    hostGyroHealthy=false;parking_module::final_parking_update(dir);
-    if(parking_module::final_parking_aborted()||parking_module::state!=savedState||dc_state!=DC_DISABLED)return 1;
-    hostTime+=1500;hostGyroHealthy=true;parking_module::final_parking_sensor_resume();
-    if(parking_module::stateStartMs!=savedStart+1500)return 1;
-    gyroPauseInjected=true;
-   }
    parking_module::final_parking_update(dir);
+   steer(set_degree); // Service the servo write as drive_loop does.
    if(dc_state==DC_ENABLED){
     if(servo_disabled&&steeringCommand!=0)frozenServo=true;
     if(!parking_module::parkingEntryPoseSafe(truePose,servo_disabled?0:steeringCommand)){
-     if(!physicalCollision)std::cout<<"COLLISION state/segment/true/estimated/margin="<<int(parking_module::state)<<"/"<<int(parking_module::segmentIndex)<<"/"<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<"/"<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<parking_module::entrySafetyMargin<<"\n";
+     if(!physicalCollision)std::cout<<"COLLISION state/segment/true/estimated/margin="<<int(parking_module::state)<<"/"<<int(parking_module::segmentIndex)<<"/"<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<"/"<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<3.0f<<"\n";
      physicalCollision=true;}
     float ds=command*.02f;encoder+=ds;
     parking_module::advanceParkingPose(hostPose,servo_disabled?0:steeringCommand,ds);
@@ -148,15 +435,14 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
    }
    hostTime+=20;
   }
-  const PositionEstimate saved=hostPose;hostPose=truePose;
-  bool realContained=parking_module::finalFootprintContained();hostPose=saved;
-  bool completedSafely=parking_module::final_parking_complete()&&!frozenServo&&!physicalCollision&&realContained&&robot_logger.writes==1;
+  bool completedSafely=parking_module::state==parking_module::FP_FIXED_SETTLE&&
+   parking_module::fixedEntryCaptureReady(hostPose)&&!frozenServo&&!physicalCollision&&robot_logger.writes==0;
   bool rejectedSafely=xBias!=0&&parking_module::final_parking_aborted()&&!frozenServo&&!physicalCollision&&dc_state!=DC_ENABLED;
-  parked+=completedSafely;safeRejected+=rejectedSafely;
+  captured+=completedSafely;safeRejected+=rejectedSafely;
   bool ok=completedSafely||rejectedSafely;
-  ++total;if(!ok){++bad;std::cout<<"SEQUENCE FAIL "<<dir<<" "<<layout<<" period "<<period<<" bias "<<poseBias<<" xbias "<<xBias<<" collision "<<physicalCollision<<" contained "<<realContained<<" frozen "<<frozenServo<<" true_xyh="<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<" estimated="<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<hostPose.heading_deg<<"\n"<<robot_logger.lines.str();}
+  ++total;if(!ok){++bad;std::cout<<"SEQUENCE FAIL "<<dir<<" "<<layout<<" period "<<period<<" bias "<<poseBias<<" xbias "<<xBias<<" collision "<<physicalCollision<<" capture_ready "<<parking_module::fixedEntryCaptureReady(hostPose)<<" frozen "<<frozenServo<<" true_xyh="<<truePose.x_mm<<"/"<<truePose.y_mm<<"/"<<truePose.heading_deg<<" estimated="<<hostPose.x_mm<<"/"<<hostPose.y_mm<<"/"<<hostPose.heading_deg<<"\n"<<robot_logger.lines.str();}
  }
- std::cout<<"FINAL SEQUENCE "<<total<<" PARKED "<<parked<<" SAFE_REJECTED "<<safeRejected<<" FAILED "<<bad<<"\n";return bad?1:0;
+ std::cout<<"FINAL SEQUENCE "<<total<<" CAPTURED "<<captured<<" SAFE_REJECTED "<<safeRejected<<" FAILED "<<bad<<"\n";return bad?1:0;
 }
 '''
     if '--quick' in sys.argv:
@@ -169,7 +455,7 @@ int main(){int total=0,bad=0,parked=0,safeRejected=0;
     cpp=destination/'check.cpp';exe=destination/'check.exe';cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'local_workspace/later-laps'),str(cpp),'-o',str(exe)],check=True)
     r=subprocess.run([str(exe)],capture_output=True,text=True);(destination/'output.txt').write_text(r.stdout)
-    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','COLLISION','SEQUENCE FAIL','FINAL SEQUENCE'))))
+    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','LOG23','LOG28','LOG40','LOGGED CAPTURE','FIXED FOUR STROKES','FIXED TURN SLIP','COLLISION','SEQUENCE FAIL','FINAL SEQUENCE'))))
     raise SystemExit(r.returncode)
 
 if __name__=='__main__':main()

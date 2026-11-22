@@ -11,6 +11,9 @@ void final_parking_start_practice(int8_t turn_sign);
 /** Entry only: surveyed capture pose, nominal247.5mm bay, no exit/laps/scan. */
 void final_parking_start_entry_practice(int8_t turn_sign);
 
+/** CW corner approach and marker registration followed by the fixed test sequence. */
+void final_parking_start_cw_sequence_practice();
+
 /**
  * Own the drive after the three-lap path is complete.
  *
@@ -34,3 +37,5 @@ struct PositionEstimate;
 void final_parking_prepare_approach(int8_t turn_sign,const PositionEstimate &arrival);
 bool final_parking_rolling_ready(const PositionEstimate &pose);
 bool final_parking_start_rolling(int8_t turn_sign);
+bool final_parking_try_corner_approach(int8_t turn_sign,bool wallArc);
+void final_parking_notify_lap_finish(bool complete);

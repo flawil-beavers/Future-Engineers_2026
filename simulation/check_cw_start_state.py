@@ -59,12 +59,14 @@ int main(){
   if(!storeCcwStartSeat(1)||parkingCcwStoredSeatMask!=10)return 10;
   // Initial phase zero is not a normal-route CCW pose: the scan/connector
   // has its own progress and blocks activation until the forward handoff.
-  for(float phase : {100.f,500.f,4000.f,loopLengthMm-1400})
+  for(float phase : {100.f,500.f,4000.f,loopLengthMm-1700})
    activateCcwStoredSeats(phase);
   if(injections||parkingCcwStoredSeatMask!=10)return 11;
-  parkingEntryConnectorActive=true;activateCcwStoredSeats(loopLengthMm-1300);
+  parkingEntryConnectorActive=true;activateCcwStoredSeats(loopLengthMm-1200);
   if(injections)return 12;
-  parkingEntryConnectorActive=false;activateCcwStoredSeats(loopLengthMm-1300);
+  parkingEntryConnectorActive=false;activateCcwStoredSeats(loopLengthMm-1500);
+  if(injections!=(backRed?0:1))return 12;
+  activateCcwStoredSeats(loopLengthMm-1300);
   if(injections!=1||parkingCcwStoredSeatMask!=8||!seats[1].injected)return 13;
   activateCcwStoredSeats(loopLengthMm-800);
   if(injections!=2||parkingCcwStoredSeatMask||!seats[3].injected)return 14;

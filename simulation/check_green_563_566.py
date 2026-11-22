@@ -168,6 +168,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &r){
                 'bool recordSeatVote(', 'void prepareConsecutiveVote(', 'void expirePendingVotes(',
                 'bool distantSeatSideAmbiguous(', 'int resolveSeatRowByBearing(',
                 'bool officialMiddleConflictsWithEnd(', 'int resolveCcwReturnRedByBearing(',
+                'bool ccwReturnGreenSeatPlausible(',
                 'ObstacleObservationResult obstacle_path_observe('):
         first+=block(path,path.index(sig))+'\n'
     first+=r'''

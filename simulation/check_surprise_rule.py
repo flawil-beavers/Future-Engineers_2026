@@ -176,6 +176,37 @@ int main(int argc,char **argv){visionTest.begin();int rendered=0,policy=0;
   assert(seats[6].confirmed&&seats[6].modifiedSign==(mm!=100));++policy;
  }
  // Expiry, changing height and changing colour must restart the consensus.
+ resetSeats();routeTurnSign=1;seats[0].confirmed=true;
+ for(int n=0;n<4;++n){
+  b=image(ColorType::GREEN,50,400,54);
+  assert(b.found&&obstacle_sign_height::classify(b)==obstacle_sign_height::SHORT);
+  assert(!vote(9,b));
+ }
+ assert(!seats[9].confirmed&&surpriseSeatIndex<0);
+ for(int n=0;n<2;++n){b=image(ColorType::GREEN,100,400);assert(vote(9,b)==(n==1));}
+ assert(!seats[9].red&&surpriseSeatIndex<0);
+ for(int n=0;n<3;++n){b=image(ColorType::GREEN,150,500);assert(vote(19,b)==(n==2));}
+ assert(seats[19].modifiedSign&&seats[19].red&&surpriseSeatIndex==19);++policy;
+
+ resetSeats();routeTurnSign=1;seats[0].confirmed=true;
+ for(int n=0;n<3;++n){b=image(ColorType::GREEN,50,400);assert(vote(9,b)==(n==2));}
+ assert(seats[9].modifiedSign&&surpriseSeatIndex==9);++policy;
+
+ // A short/partial RED on the stationary CW middle view must not
+ // occupy that station or consume the surprise identity as in log 46.
+ resetSeats();routeTurnSign=-1;parkingEntryObserving=true;
+ discoveryStations[0].observedClear=true;
+ assert(surpriseOrderForSeat(2)==SURPRISE_FIRST);
+ for(int n=0;n<4;++n){
+  b=image(ColorType::RED,50,300);
+  assert(obstacle_sign_height::classify(b)==obstacle_sign_height::SHORT);
+  assert(!vote(2,b));
+ }
+ assert(!seats[2].confirmed&&surpriseSeatIndex<0);
+ for(int n=0;n<3;++n){b=image(ColorType::RED,100,300);assert(vote(2,b)==(n==2));}
+ assert(seats[2].red&&!seats[2].modifiedSign&&surpriseSeatIndex<0);
+ parkingEntryObserving=false;++policy;
+
  resetSeats();seats[0].confirmed=true;
  b=image(ColorType::GREEN,50,400);vote(6,b);
  clockMs+=OBSTACLE_SEAT_VOTE_WINDOW_MS+1;
@@ -215,6 +246,46 @@ int main(int argc,char **argv){visionTest.begin();int rendered=0,policy=0;
   auto clipped=b;clipped.maxY=239;assert(obstacle_sign_height::classify(clipped)==obstacle_sign_height::UNKNOWN);
   clipped=b;clipped.minX=0;assert(obstacle_sign_height::classify(clipped)==obstacle_sign_height::UNKNOWN);++policy;
  }
+ // Log 48: a repeated short-looking GREEN at the image edge cannot lock
+ // the surprise seat. A central conventional view confirms its colour.
+ resetSeats();routeTurnSign=1;seats[0].confirmed=true;
+ for(int i=0;i<4;++i){b=image(ColorType::GREEN,50,390,42);assert(!vote(7,b));}
+ for(int i=0;i<2;++i){b=image(ColorType::GREEN,100,370);assert(vote(7,b)==(i==1));}
+ assert(surpriseSeatIndex<0&&seats[7].confirmed&&!seats[7].red);++policy;
+ // CW49: component height and reconstructed top disagree. Defer while
+ // off-axis, then take three centred views of the real short RED component.
+ resetSeats();routeTurnSign=-1;seats[0].confirmed=true;
+ for(int i=0;i<2;++i){
+  b=image(ColorType::RED,50,505,267);b.heightTopY=int(vertical(505,100));
+  assert(obstacle_sign_height::classify(b)==obstacle_sign_height::NORMAL);
+  assert(!vote(8,b));
+ }
+ for(int i=0;i<3;++i){
+  b=image(ColorType::RED,50,424,208);b.heightTopY=int(vertical(424,100));
+  assert(obstacle_sign_height::classify(b,true)==obstacle_sign_height::SHORT);
+  assert(vote(8,b)==(i==2));
+ }
+ assert(surpriseSeatIndex==8&&seats[8].modifiedSign&&!seats[8].red);++policy;
+ // Short red beyond 480 mm while passing from GREEN, then central at 540 mm.
+ resetSeats();routeTurnSign=1;seats[13].confirmed=true;
+ for(int i=0;i<3;++i){
+  b=image(ColorType::RED,50,610,60);b.heightTopY=int(vertical(610,100));
+  assert(!vote(16,b));
+ }
+ for(int i=0;i<3;++i){
+  b=image(ColorType::RED,50,540,165);b.heightTopY=int(vertical(540,100));
+  assert(vote(16,b)==(i==2));
+ }
+ assert(surpriseSeatIndex==16&&!seats[16].red);++policy;
+ resetSeats();routeTurnSign=-1;
+ for(int i=0;i<3;++i){
+  b=image(ColorType::RED,50,535);b.heightTopY=int(vertical(535,100));
+  assert(!vote(8,b)); // Encounter order is still unknown.
+ }
+ assert(surpriseSeatIndex<0&&!seats[8].confirmed);++policy;
+ parkingCcwShortStart=true;lapCountingArmed=true;
+ assert(!ccwReturnGreenSeatPlausible(1,86.0f)&&ccwReturnGreenSeatPlausible(1,40.0f));
+ assert(ccwReturnGreenSeatPlausible(7,86.0f));++policy;
  std::cout<<"SURPRISE RENDERED "<<rendered<<" ASSOCIATED "<<associated<<" POLICY "<<policy<<" PASS\n";
 }
 '''

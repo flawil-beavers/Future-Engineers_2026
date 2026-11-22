@@ -34,7 +34,7 @@ void logParkingStartClearImage(uint8_t,const PositionEstimate &){}
 void course_map_record_clear_station(int,int,float,float,float,float){++clearDispatch;}
 '''
  for sig in ('float wrap180(', 'void seatCameraGeometry(', 'float cameraBearingForImageX(',
-             'bool observationAllowsClearAtGeometry(', 'bool rejectedGreenBehindSeat(',
+             'bool observationAllowsClearAtGeometry(', 'bool confirmedPillarOccludesSeat(', 'bool rejectedGreenBehindSeat(',
              'bool unmappedForegroundBlocksClear(', 'bool rejectedBlobBlocksSeatClear(',
              'bool seatComfortablyVisible(', 'void updateDiscoveryCoverage('):
   code+=block(path,path.rindex(sig))+'\n'

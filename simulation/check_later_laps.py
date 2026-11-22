@@ -13,8 +13,30 @@ from check_cw_start_planner import ROOT, fixture_source
 from check_connector_servo_resume import block
 
 
-def later_lap_fixture():
-    source = (ROOT/'src/obstacle_path.cpp').read_text()
+# Direction, green seats, red seats, time ceiling, capsule floor, start straight.
+CORNER_LAYOUTS = (
+    (1, (3, 15), (6, 10, 19), 14.85, 42, True),  # 5
+    (1, (3, 15), (6, 10, 18), 15.65, 42, True),  # A
+    (1, (3, 7, 14), (10, 20), 14.15, 50, True),  # B
+    (1, (3, 15), (7, 10, 19), 14.15, 42, True),  # C
+    (1, (1, 9, 17, 21), (5, 12), 15.40, 50, False),  # D
+    (-1, (4, 7, 23), (10, 14), 14.70, 50, False),  # E
+    (-1, (4,), (0, 9, 15, 21), 13.40, 50, False),  # F
+    (-1, (6, 19), (11, 14, 22), 14.90, 50, False),  # G
+    (-1, (9, 12), (2, 16, 19, 23), 13.95, 50, True),  # J
+    (-1, (4, 17, 19, 22), (0, 11, 12), 15.90, 50, False),  # K
+    (1, (3, 13, 17), (6, 11, 20), 14.65, 50, True),  # M
+    (1, (8, 16, 23), (12, 19), 14.70, 50, False),  # N
+    (-1, (7, 11, 14, 22), (2, 18), 15.60, 50, False),  # 3
+    (-1, (0, 15, 22), (6, 11, 19), 14.05, 50, False),  # 7
+    (1, (9, 15, 18, 23), (), 12.60, 50, False),  # 12
+    (1, (7, 10, 14, 23), (5, 18), 14.70, 50, False),  # 13
+)
+
+
+def later_lap_fixture(source=None):
+    if source is None:
+        source = (ROOT/'src/obstacle_path.cpp').read_text()
     fixture = fixture_source().split('int main()')[0]
     fixture = fixture.replace(
         'bool targetsOuterExtreme(const CandidateSeat &seat) {return seat.red ? seat.lateralMm<0 : seat.lateralMm>0;}',
@@ -35,6 +57,7 @@ float simulatedLap1SpeedMmS=260;
 float get_distance(){return simulatedEncoderMm;}
 uint8_t completedLaps=0,runtimeLapTarget=3;bool finished=false;
 PathPoint optimizedPath[OBSTACLE_MAX_PATH_WAYPOINTS];
+PathPoint parkingApproachPath[OBSTACLE_MAX_PATH_WAYPOINTS];
 float laterLapSpeedLimits[OBSTACLE_MAX_PATH_WAYPOINTS]={};
 void joinSameColourStraightEnds(PathPoint *,bool,bool mixedColours=false);
 void roundKnownCornerPairs(PathPoint *, bool injectedOnly = false,bool mixedColours=false);
@@ -53,14 +76,37 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
         'bool isSecondExtremeAdjacentSeat(', 'bool upcomingAdjacentStationUnresolved(',
         'float validatedClearanceForSeat(', 'float optimizedClearanceForSeat(',
         'bool optimizedUsesOuterPlateau(', 'bool laterLapMapValid()',
+        'int ccwDiscoveryTallRedExitSeat(',
         'void preserveLaterLapSeam(', 'bool laterLapRouteSafe(',
         'void joinSameColourStraightEnds(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void roundKnownCornerPairs(PathPoint *route, bool injectedOnly, bool mixedColours)\n{',
         'void carryKnownInnerLaneToMiddle(', 'float laterLapBending(', 'void smoothKnownLaterLapRoute(',
         'float laterLapCurvatureSpeed(', 'float laterLapTrackingSpeed(', 'void planLaterLapSpeeds(',
-        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(', 'void connectKnownLaterLapRoute(', 'void shortenKnownInnerRoute(',
-        'void addLaterLapStartMiddleReserve(',
-        'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(', 'void updateProgress(',
+        *(['PathPoint laterLapLookaheadTarget('] if 'PathPoint laterLapLookaheadTarget(' in source else []),
+        'bool laterLapTrackedRouteSafe(', 'float laterLapTargetTime(',
+        *(['void connectKnownLaterLapRoute('] if 'void connectKnownLaterLapRoute(' in source else []),
+        'void shortenKnownInnerRoute(',
+        *(['void addLaterLapStartMiddleReserve('] if 'void addLaterLapStartMiddleReserve(' in source else []),
+        *(['int solitaryMiddleSeat(',
+           *(['bool isCwSolitaryOuterRed('] if 'bool isCwSolitaryOuterRed(' in source else []),
+           'float smoothLaneBlend(', 'void refineCcwSolitaryPillars(']
+          if 'void refineCcwSolitaryPillars(' in source else []),
+        *(['void refineCwSolitaryRed('] if 'void refineCwSolitaryRed(' in source else []),
+        *(['bool connectLaterLapPasses(',
+           *(['bool tryLaterLapPassConnection('] if 'bool tryLaterLapPassConnection(' in source else []),
+           'void refineLaterLapPassConnections(']
+          if 'void refineLaterLapPassConnections(' in source else []),
+        *(['void refineCcwParallelStart('] if 'void refineCcwParallelStart(' in source else []),
+        *(['void refineLaterLapLongCorners('] if 'void refineLaterLapLongCorners(' in source else []),
+        *(['void refineLaterLapCornerGeometry('] if 'void refineLaterLapCornerGeometry(' in source else []),
+        *(['uint16_t laterLapWaypointAt(', 'bool tryLaterLapStraightPass(',
+           'void refineLaterLapStartStraight(', 'void refineLaterLapOpenStart(',
+           *(['void refineLaterLapEarlyStartExit(', 'void refineLaterLapInnerMiddleCorners(']
+             if 'void refineLaterLapEarlyStartExit(' in source else []),
+           'void refineLaterLapStartExit(', 'void refineCcwFirstSeatCorner(', 'void refineCcwGreenRedStraight(']
+          if 'void refineLaterLapStartStraight(' in source else []),
+        'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(',
+        'bool recordParkingFinish(', 'void updateProgress(',
         'PathPoint findLookahead(', 'float lapHandoffWeight()',
         'PathPoint lapHandoffTarget(', 'float lapHandoffSpeed(')
     fixture += '\n'.join(block(source,source.index(s)) for s in signatures)
@@ -86,7 +132,11 @@ float discoveryCornerMinimum(bool rounded){
  for(auto &seat:seats){seat.confirmed=false;seat.injected=false;}
  for(int i:{9,12,17,18}){seats[i].confirmed=seats[i].injected=true;
   seats[i].red=(i==9||i==12);}
- learned();if(rounded)roundKnownCornerPairs(livePath,true);
+ // Replay the old 260 mm discovery geometry from log 463. The current
+ // compact lap-1 geometry is exercised separately by the full map matrix.
+ memcpy(livePath,baselinePath,sizeof(PathPoint)*pathLength);
+ for(int i:{9,12,17,18})displaceForSeat(livePath,i,OBSTACLE_LAP1_CLEARANCE_MM,false);
+ if(rounded)roundKnownCornerPairs(livePath,true);
  // Last measured pose before seat18 confirmation in log463. Confirmation
  // itself was not pose-logged, so this is a nearby geometric replay only.
  float x=-519.4f,y=730.8f,h=194.49f*PI/180,minimum=1e9f;
@@ -193,7 +243,8 @@ bool stateChecks(){
  return true;
 }
 int failReason=0,failSeat=-1;float failX=0,failY=0,failH=0;
-bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
+bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar,
+                  float *cwRedPassMaximumY=nullptr){
  failReason=1;failSeat=-1;
  minimumWall=minimumPillar=1e9f;
  const auto start=livePath[0];float x=start.x,y=start.y;
@@ -210,6 +261,9 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
   const PathPoint *route=optimizedBuilt?optimizedPath:livePath;
   PositionEstimate pose;pose.x_mm=x;pose.y_mm=y;pose.heading_deg=heading*180/PI;
   updateProgress(route,pose);
+  if(cwRedPassMaximumY && fabsf(x-seats[15].x)<420.0f &&
+     y>500.0f && completedLaps>=1 && completedLaps<=2)
+   cwRedPassMaximumY[completedLaps-1]=fmaxf(cwRedPassMaximumY[completedLaps-1],y);
   if(finished){
    for(int seat=0;seat<24;++seat)if(seats[seat].confirmed&&passCounts[seat]<2){failReason=6;failSeat=seat;return false;}
    return completedLaps==3;
@@ -287,6 +341,37 @@ bool driveTwoLaps(float speedCap,float &minimumWall,float &minimumPillar){
 int main(){
  if(!stateChecks()){std::cout<<"STATE FAIL\n";return 2;}
  std::cout<<"STATE PASS\n";
+ routeTurnSign=1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{1,5,9,14,19,22}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i!=1&&i!=9;
+ }
+ learned();
+ if(!buildOptimizedPath())return 4;
+ const auto green=nearestPathIndex(baselinePath,seats[9].x,seats[9].y,0,pathLength);
+ const auto red=nearestPathIndex(baselinePath,seats[14].x,seats[14].y,0,pathLength);
+ const auto corner=nearestPathIndex(baselinePath,848.35f,858.68f,0,pathLength);
+ if(optimizedPath[green].x>700.0f || optimizedPath[corner].x>600.0f ||
+    optimizedPath[red].y<1270.0f || optimizedPath[red].y>1290.0f)return 4;
+ std::cout<<"LOG28 curve and RED plateau PASS\n";
+ routeTurnSign=-1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{0,4,7,10,15,20}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i!=4&&i!=20;
+ }
+ learned();
+ if(!buildOptimizedPath())return 5;
+ const auto singleRed=nearestPathIndex(baselinePath,seats[15].x,seats[15].y,0,pathLength);
+ if(fabsf(optimizedPath[singleRed].y-755.0f)>1.0f)return 5;
+ for(int offset=-7;offset<=7;++offset)
+  if(fabsf(optimizedPath[singleRed+offset].y-optimizedPath[singleRed].y)>2.0f)return 5;
+ resetState();learned();float passWall,passPillar,trackY[2]={};
+ if(!driveTwoLaps(0,passWall,passPillar,trackY))return 5;
+ if(trackY[0]<700.0f || trackY[0]>805.0f || trackY[1]<700.0f || trackY[1]>805.0f)return 5;
+ std::cout<<"LOG29/37 straight inward RED pass, tracked peak y laps 2/3 "
+          <<trackY[0]<<"/"<<trackY[1]<<" mm PASS\n";
  int direction,id=0,colors[24];float cap;
  while(std::cin>>direction>>cap){
   for(int &c:colors)if(!(std::cin>>c))return 3;
@@ -300,6 +385,95 @@ int main(){
  }
 }
 '''
+    if 'void refineLaterLapPassConnections(' in source:
+        fixture = fixture.replace(' int direction,id=0,colors[24];float cap;', r'''
+ // Two outer GREEN end signs, followed by an outer-row middle RED in CCW.
+ // The third section supplies the next pass beyond that long connection.
+ routeTurnSign=1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int i:{6,10,14,22}){
+  seats[i].confirmed=seats[i].injected=true;
+  seats[i].red=i>=14;
+ }
+ learned();joinSameColourStraightEnds(livePath,true);
+ float length,curvature,totalTurn;
+ if(!buildOptimizedPath())return 6;
+ laterLapBending(optimizedPath,length,curvature,&totalTurn);
+ const float pace=laterLapTargetTime(optimizedPath,true);
+ if(totalTurn*180/PI>510.0f || pace>15.7f)return 6;
+ resetState();learned();joinSameColourStraightEnds(livePath,true);
+ if(!driveTwoLaps(0,passWall,passPillar) || passWall<50.0f || passPillar<40.0f)return 6;
+ std::cout<<"CCW GREEN pair to RED turn/time/wall/pillar "
+          <<totalTurn*180/PI<<"/"<<pace<<"/"<<passWall<<"/"<<passPillar<<" PASS\n";
+ int direction,id=0,colors[24];float cap;
+''')
+    if 'void refineLaterLapLongCorners(' in source:
+        fixture = fixture.replace(' int direction,id=0,colors[24];float cap;', r'''
+ // The layouts from the annotated route comparisons. Each ceiling is
+ // below the preceding planner's time on that layout.
+ const struct {
+  int direction;
+  std::initializer_list<int> greens, reds;
+  float maximumTime;
+  float minimumPillar=50.0f;
+  bool parallelStart=false;
+ } longCorners[] = {
+  {-1,{4,20},{0,7,10,15},13.70f},
+  { 1,{6,10},{14,22},14.75f},
+  {-1,{7,23},{0,10,14},16.10f},
+  { 1,{1,9},{5,14,20},15.55f}
+ };
+ for(const auto &layout:longCorners){
+  routeTurnSign=layout.direction;resetState();baseline();
+  for(auto &seat:seats)seat.confirmed=seat.injected=false;
+  for(int i:layout.greens){seats[i].confirmed=seats[i].injected=true;seats[i].red=false;}
+  for(int i:layout.reds){seats[i].confirmed=seats[i].injected=true;seats[i].red=true;}
+  learned();joinSameColourStraightEnds(livePath,true);
+  if(!buildOptimizedPath())return 7;
+  const float seconds=laterLapTargetTime(optimizedPath,true);
+  if(seconds>layout.maximumTime)return 7;
+  if(layout.parallelStart){
+   const float lane=optimizedPath[0].y;
+   for(uint16_t i=0;i<pathLength;++i){
+    const float phase=baselinePath[i].distanceMm;
+    if((phase<=150.0f || phase>=loopLengthMm-150.0f) &&
+       fabsf(optimizedPath[i].y-lane)>0.5f)return 7;
+   }
+  }
+  resetState();learned();joinSameColourStraightEnds(livePath,true);
+  if(!driveTwoLaps(0,passWall,passPillar) || passWall<50.0f ||
+     passPillar<layout.minimumPillar)return 7;
+  std::cout<<"LONG CORNER layout/time/wall/pillar "<<layout.direction<<"/"
+           <<seconds<<"/"<<passWall<<"/"<<passPillar<<" PASS\n";
+ }
+ int direction,id=0,colors[24];float cap;
+''')
+    if '20261121_lap23_lane_continuity' in source or 'void refineCcwParallelStart(' in source:
+        fixture = fixture.replace(
+            '{ 1,{1,9},{5,14,20},15.55f}',
+            '''{ 1,{1,9},{5,14,20},15.55f},
+  {-1,{2,7,11,22},{14},15.40f},
+  {-1,{},{0,4,9,15,21},12.80f},
+  { 1,{3,15},{6,10,19},18.05f,40.0f},
+  { 1,{12,20},{11,17},14.00f}''')
+    if 'void refineCcwParallelStart(' in source:
+        fixture = fixture.replace('{ 1,{3,15},{6,10,19},18.05f,40.0f}',
+                                  '{ 1,{3,15},{6,10,19},15.30f,45.0f,true}')
+    if 'void refineLaterLapCornerGeometry(' in source:
+        # The long front capsule overstates clearance needs on these bends.
+        # The measured wheel/body audit checks the same layouts at 50 mm.
+        layouts = []
+        corner_layouts = CORNER_LAYOUTS
+        if 'void refineLaterLapEarlyStartExit(' not in source:
+            corner_layouts = CORNER_LAYOUTS[:12] if 'void refineLaterLapStartStraight(' in source else CORNER_LAYOUTS[:8]
+        for direction, greens, reds, time, gap, parallel in corner_layouts:
+            green_seats = ','.join(map(str, greens))
+            red_seats = ','.join(map(str, reds))
+            layouts.append(f'{{{direction},{{{green_seats}}},{{{red_seats}}},'
+                           f'{time:.2f}f,{gap}.0f,{str(parallel).lower()}}}')
+        fixture = fixture.replace(
+            '{ 1,{3,15},{6,10,19},15.30f,45.0f,true}',
+            ',\n  '.join(layouts))
     # baseline() must select the supplied travel direction at runtime.
     fixture = fixture.replace('anchor.heading_deg=180;', 'anchor.heading_deg=routeTurnSign>0?0:180;')
     return fixture
@@ -370,10 +544,29 @@ def main():
         reverse_c[((4-section)%4)*6+(2-station)*2+(side^1)]=c
     for direction,layout in ((-1,physical_c),(1,reverse_c)):
         cases.append(dict(direction=direction,speed_cap=0,colors=layout))
+    # Log 7 stores visible 50 mm GREEN at seat 10 as effective RED.
+    # Both recorded laps must use that same passing direction.
+    log7_cw, log7_ccw = [0]*24, [0]*24
+    for seat, color in ((0,2),(4,1),(7,2),(10,2),(14,2),(21,1)):
+        log7_cw[seat] = color
+        section, station, side = seat//6, (seat%6)//2, seat%2
+        log7_ccw[((4-section)%4)*6+(2-station)*2+(side^1)] = color
+    for direction, layout in ((-1,log7_cw),(1,log7_ccw)):
+        cases.append(dict(direction=direction,speed_cap=0,colors=layout))
+    # Log 28: a single CCW GREEN followed by a single RED in the next section.
+    log28 = [0]*24
+    for seat, color in ((1,1),(5,2),(9,1),(14,2),(19,2),(22,2)):
+        log28[seat] = color
+    cases.append(dict(direction=1,speed_cap=0,colors=log28))
+    log29 = [0]*24
+    for seat, color in ((0,2),(4,1),(7,2),(10,2),(15,2),(20,1)):
+        log29[seat] = color
+    cases.append(dict(direction=-1,speed_cap=0,colors=log29))
     inputs='\n'.join(' '.join(map(str,[c['direction'],c['speed_cap'],*c['colors']])) for c in cases)+'\n'
     run=subprocess.run([str(exe)],input=inputs,text=True,capture_output=True,check=True)
     (destination/'output.txt').write_text(run.stdout)
     for line in run.stdout.splitlines():
+        if line.startswith(('DISCOVERY ','LOG28 ','LOG29/37 ','CCW GREEN pair ','LONG CORNER ')):print(line)
         if line.startswith('CASE '):
             _,number,passed,wall,pillar,reason,seat,x,y,h=line.split();cases[int(number)].update(
                 passed=bool(int(passed)),minimum_wall_mm=float(wall),minimum_pillar_mm=float(pillar),

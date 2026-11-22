@@ -34,7 +34,7 @@ int main(){
   auto outgoing=findLookahead(livePath,pose,lap1LookaheadMm);
   lapBoundaryPending=true;assert(completePendingLap());assert(lapHandoffActive);
   float look=280;if(nearCorner(baselinePath[0].distanceMm))look*=OBSTACLE_LOOKAHEAD_CORNER_SCALE;
-  auto normal=findLookahead(optimizedPath,pose,look);
+  auto normal=laterLapLookaheadTarget(optimizedPath,pose,progressIndex,look);
   float w=lapHandoffWeight();assert(w==0);
   auto first=lapHandoffTarget(optimizedPath,pose,look,w);
   assert(hypotf(first.x-outgoing.x,first.y-outgoing.y)<.001f);

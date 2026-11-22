@@ -15,6 +15,7 @@
 #include "parking_start_footprint.h"
 #include "obstacle_blob_validation.h"
 #include "ackermann_kinematics.h"
+#include "drive_profile.h"
 
 #define Serial robot_logger
 
@@ -85,10 +86,20 @@ struct ParkingExitSegment
     float distanceMm;
 };
 
+static int parkingExitSegmentSpeed(uint8_t index, float remaining)
+{
+    const bool longArc = index >= 3;
+    return DriveProfile::approachSpeed(remaining,
+        longArc ? OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED : OBSTACLE_PARKING_EXIT_SPEED,
+        longArc ? OBSTACLE_PARKING_EXIT_LONG_END_SPEED : OBSTACLE_PARKING_EXIT_SHORT_END_SPEED,
+        longArc ? 16.0f : 10.0f, 180.0f);
+}
+
 static bool parkingExitMotionSafe(PositionEstimate pose, int steering,
                                    int direction, float travelMm)
 {
-    if (!isfinite(travelMm) || travelMm < 0.0f) return false;
+    if (!isfinite(travelMm) || travelMm < 0.0f ||
+        !isfinite(pose.x_mm) || !isfinite(pose.y_mm) || !isfinite(pose.heading_deg)) return false;
     const float k = -1.0f / Ackermann::getTurnRadius(steering);
     for (float travel=0.0f;travel<=travelMm;travel+=1.0f)
     {
@@ -102,6 +113,32 @@ static bool parkingExitMotionSafe(PositionEstimate pose, int steering,
         pose.heading_deg=next*180.0f/PI;
     }
     return true;
+}
+
+struct ParkingExitYawProgress
+{
+    float initialErrorDeg = 0.0f;
+    float bestErrorDeg = 0.0f;
+    uint32_t lastProgressMs = 0;
+    uint32_t reserveStartMs = 0;
+    bool reserveActive = false;
+};
+
+static ParkingExitYawProgress parkingExitYawProgress;
+static constexpr float PARKING_EXIT_SLIP_RESERVE_MM = 45.0f;
+static constexpr uint32_t PARKING_EXIT_SLIP_RESERVE_MS = 1600U;
+static constexpr float PARKING_EXIT_SLIP_MAX_ERROR_DEG = 15.0f;
+
+static bool parkingExitSlipReserveAvailable(const ParkingExitYawProgress &progress,
+    uint32_t now, float travel, float headingError)
+{
+    return isfinite(travel) &&
+        travel < OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM+PARKING_EXIT_SLIP_RESERVE_MM &&
+        (!progress.reserveActive || now-progress.reserveStartMs < PARKING_EXIT_SLIP_RESERVE_MS) &&
+        isfinite(headingError) && headingError <= PARKING_EXIT_SLIP_MAX_ERROR_DEG &&
+        progress.initialErrorDeg-progress.bestErrorDeg >= 3.0f &&
+        headingError <= progress.bestErrorDeg+1.0f &&
+        now-progress.lastProgressMs <= 650U;
 }
 
 // Steering is expressed relative to the direction away from the outer wall,
@@ -1954,6 +1991,13 @@ static bool updateParkingExit()
         }
 
         oc_parking_exit_state_distance = get_distance();
+        if (oc_parking_exit_segment+1==OBSTACLE_PARKING_EXIT_SEGMENT_COUNT)
+        {
+            const float error=fabsf(get_angle()-oc_parking_exit_start_heading);
+            parkingExitYawProgress=ParkingExitYawProgress{};
+            parkingExitYawProgress.initialErrorDeg=parkingExitYawProgress.bestErrorDeg=error;
+            parkingExitYawProgress.lastProgressMs=millis();
+        }
         oc_parking_exit_state = PARKING_EXIT_SEGMENT_DRIVE;
         Serial.print("[PARK EXIT] Segment ");
         Serial.print(oc_parking_exit_segment + 1);
@@ -1976,12 +2020,6 @@ static bool updateParkingExit()
         Serial.println("[PARK EXIT] Swept footprint unsafe - held before next movement");
         return true;
     }
-    set_speed(
-        segment.direction *
-        (oc_parking_exit_segment>=3 ? OBSTACLE_PARKING_EXIT_LONG_ARC_SPEED
-                                    : OBSTACLE_PARKING_EXIT_SPEED));
-    set_steering(segmentSteering);
-
     const float stateDistance =
         distanceSince(oc_parking_exit_state_distance);
     const bool finalSegment =
@@ -1994,9 +2032,31 @@ static bool updateParkingExit()
         stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM &&
         headingError <=
             OBSTACLE_PARKING_EXIT_FINAL_HEADING_TOLERANCE_DEG;
-    const bool finalLimitReached =
-        finalSegment &&
-        stateDistance >= OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM;
+    bool finalLimitReached = false;
+    if (finalSegment && !finalAligned)
+    {
+        auto &progress=parkingExitYawProgress;
+        const uint32_t now=millis();
+        if (headingError<=progress.bestErrorDeg-0.75f)
+        {
+            progress.bestErrorDeg=headingError;
+            progress.lastProgressMs=now;
+        }
+        if (progress.reserveActive || stateDistance>=OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MAX_MM)
+        {
+            const bool reserve=parkingExitSlipReserveAvailable(progress,now,stateDistance,headingError) &&
+                gyro_is_healthy() &&
+                parkingExitMotionSafe(get_position_struct(),segmentSteering,segment.direction,18.0f);
+            if (reserve && !progress.reserveActive)
+            {
+                progress.reserveActive=true;
+                progress.reserveStartMs=now;
+                Serial.print("[PARK EXIT SLIP] Continuing final arc with yaw error_deg=");
+                Serial.println(headingError,1);
+            }
+            finalLimitReached=!reserve;
+        }
+    }
     const bool regularTargetReached =
         !finalSegment &&
         stateDistance >= segment.distanceMm;
@@ -2031,6 +2091,19 @@ static bool updateParkingExit()
         return true;
     }
 
+    // The gyro can complete the final arc as soon as the minimum travel
+    // is reached. Be back at the established speed by that first stop gate.
+    const float speedEnd = finalSegment ? OBSTACLE_PARKING_EXIT_FINAL_ALIGN_MIN_MM
+                                        : segment.distanceMm;
+    if (finalSegment && parkingExitYawProgress.reserveActive)
+    {
+        set_speed(segment.direction*60);
+        set_steering(segmentSteering);
+        return true;
+    }
+    set_speed(segment.direction * parkingExitSegmentSpeed(
+        oc_parking_exit_segment, speedEnd - stateDistance));
+    set_steering(segmentSteering);
     return true;
 }
 
@@ -3312,6 +3385,18 @@ void obstacle_challenge_update(
     if(OBSTACLE_FINAL_PARKING_ENABLED && !OBSTACLE_FIRST_LAP_TEST_ENABLED &&
        !OBSTACLE_THREE_LAP_TEST_ENABLED && obstacle_path_lap()>=1)
     {
+        const PositionEstimate pose=get_position_struct();
+        bool wallArc=false;
+        if (!obstacle_path_complete() &&
+            (final_parking_active() ||
+             (obstacle_path_parking_corner_window(pose,wallArc) &&
+              final_parking_try_corner_approach(parkingTurnSign,wallArc))))
+        {
+            final_parking_notify_lap_finish(obstacle_path_record_parking_finish(pose));
+            final_parking_update(parkingTurnSign);
+            oc_complete=final_parking_complete();
+            return;
+        }
         PositionEstimate arrival;
         if(obstacle_path_parking_handoff_pose(arrival))
             final_parking_prepare_approach(parkingTurnSign,arrival);

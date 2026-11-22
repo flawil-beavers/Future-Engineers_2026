@@ -98,6 +98,10 @@ void update_gyro()
   static float last_yaw_deg = 0;
   static bool gyro_initialized = false;
   static bool reset_recovery_pending = false;
+  static uint32_t recovery_streak_start_ms = 0;
+  static bool recovery_streak_started = false;
+  constexpr uint32_t recovery_sample_gap_ms = 50;
+  constexpr uint32_t recovery_stable_ms = 200;
   const uint32_t now = millis();
   const uint32_t poll_gap_ms = polled ? uint32_t(now - last_poll_ms) : 0;
   if (!polled) observation_start_ms = now;
@@ -127,6 +131,7 @@ void update_gyro()
       Serial.println(restarted ? "[GYRO] SPI/SH2 stream restarted."
                                : "[GYRO] SPI/SH2 restart failed.");
       reset_recovery_pending = true;
+      recovery_streak_started = false;
       observation_start_ms = millis();
       return;
     }
@@ -144,14 +149,27 @@ void update_gyro()
         else if (delta < -180) delta += 360;
         current_degree += delta;
         last_yaw_deg = yaw_deg;
-        gyro_last_valid_report_ms = millis();
+        const uint32_t report_ms = millis();
+        if (reset_recovery_pending) {
+          if (!recovery_streak_started ||
+              report_ms - gyro_last_valid_report_ms > recovery_sample_gap_ms) {
+            recovery_streak_start_ms = report_ms;
+            recovery_streak_started = true;
+          }
+          // One report after an SPI restart is insufficient to resume motion.
+          if (report_ms - recovery_streak_start_ms >= recovery_stable_ms) {
+            reset_recovery_pending = false;
+            Serial.println("[GYRO] Stable reports after restart; drive can resume.");
+          }
+        }
+        gyro_last_valid_report_ms = report_ms;
         observation_start_ms = gyro_last_valid_report_ms;
-        reset_recovery_pending = false;
-        gyro_stream_healthy = true;
+        gyro_stream_healthy = !reset_recovery_pending;
         return;
       }
       // Never publish NaN/zero quaternions or mark them as healthy.
       gyro_stream_healthy = false;
+      recovery_streak_started = false;
     }
   }
 
@@ -168,6 +186,7 @@ void update_gyro()
                              : "[GYRO] SPI/SH2 restart failed.");
     gyro_initialized = false;
     reset_recovery_pending = true;
+    recovery_streak_started = false;
     observation_start_ms = millis();
   }
 }

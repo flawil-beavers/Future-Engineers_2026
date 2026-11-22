@@ -1219,3 +1219,189 @@ for readback. [Batch observations and checks](../../CW_LOGS_3_6_REVIEW_20261119.
 | [20261119_log_4_cw.txt](20261119_log_4_cw.txt) | 62327 | 0379446f767a296bc02aa8de55c0f92498e71a37a48b9156dde2fc44bd76a0d5 |
 | [20261119_log_5_cw.txt](20261119_log_5_cw.txt) | 140019 | 89c36184a46474dcecfb90201e122476902960fa5ad05c5c564420351470e795 |
 | [20261119_log_6_cw.txt](20261119_log_6_cw.txt) | 145310 | ecb427fb7f67a77efe49eb314f32195f4050aff38e1a11ae283544ecc4d55a0b |
+
+## 2026-11-20 CW log 7
+
+Original secured before analysis and verified against the source by SHA-256. The user reported a good first lap and multiple pillar contacts in the second. Complete export with `truncated=0`. The run ended by manual pause in lap 2 and contains no parking attempt. Firmware log reports `20261120_lap1_visibility`.
+
+| Original | Bytes | SHA256 |
+| --- | ---: | --- |
+| [20261120_log_7_cw.txt](20261120_log_7_cw.txt) | 92663 | 87ee5ae283a27d90e53e19cb04244c5b89b0c5dc685e6b8a24a0ed51b03aa177 |
+
+## 2026-11-20 logs 8–10
+
+Complete originals copied before analysis, checked against the source before and after copying, and released to the user. All three logs report `20261120_lap1_visibility`. The completed lap pairs report later-lap policy `20261120_lap23_passing_reserve` and parking revision `20261120_approach_flow`. Log 8 ends in lap 1, log 9 during CW capture alignment, and log 10 on the CCW capture alignment preflight. [Batch review](../../RUNS_8_10_REVIEW_20261120.md)
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| [20261120_log_8_cw.txt](20261120_log_8_cw.txt) | 84595 | 27023f71e09f6146fb0ed071a2fefda074c144b681bfc3bc2efd8633aba77e43 |
+| [20261120_log_9_cw.txt](20261120_log_9_cw.txt) | 151354 | 2011d582cb51d554d1be695c2005f467407d7a79bb1a3561bdab55bf1f3bea69 |
+| [20261120_log_10_ccw.txt](20261120_log_10_ccw.txt) | 160793 | b2f005a2720c347c0ed8ff628db1d131f966e6178745a4be5165f5a3c31c3d9f |
+
+## 2026-11-20 logs 11–18
+
+Complete originals copied and verified against the source by SHA-256 before analysis. The user released the stick. The logs report lap 1 revision `20261120_lap1_pair_view` where the lap starts. Logs 12, 14 and 16 report `20261120_lap23_smooth_pursuit` and parking `20261120_capture_clearance`. Log 13 stopped in rear positioning, with CW selected in the diagnostic configuration. The user reports one field layout for all tests. [Intake manifest](../log_intake/20261120_discovery_parking_batch/manifest.json) · [Batch review](../../RUNS_11_18_REVIEW_20261120.md)
+
+| Original | Bytes | SHA-256 | Recorded outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_11_cw.txt](20261120_log_11_cw.txt) | 90447 | fce454442f4e52d79d74e4370a7a822f1390cd93c693395f7e70e8a0818deee2 | Paused in lap 1 at 96.404 s |
+| [20261120_log_12_cw.txt](20261120_log_12_cw.txt) | 163806 | df927261878b24028dc9d3ca865ca0b0a3402d021f0c00a273e6972187ad6242 | Three laps, entry planner abort after registration |
+| [20261120_log_13_cw.txt](20261120_log_13_cw.txt) | 3228 | 21f9b215c0e9c4bedc19159deeb9f72856f74eb18f7e09c6266657a0cb1ec4f1 | Paused after 0.757 s, before initializing the field pose |
+| [20261120_log_14_cw.txt](20261120_log_14_cw.txt) | 169478 | 17abd14f264240786a6edf5bb11cc612111b207e65009b68418937d4d03a9a25 | Three laps, entry planner abort after registration |
+| [20261120_log_15_ccw.txt](20261120_log_15_ccw.txt) | 97776 | 133f4e80970545fb63e3c3b8b4e71363d8e4dd177260f2212d3a879e6066060b | Paused during the lap 1 station 3 search |
+| [20261120_log_16_ccw.txt](20261120_log_16_ccw.txt) | 125106 | 0713f4b1c2ad8d40557fdf618db868fba8b2e1c9595562d221a03e2761253de6 | Three laps, paused during parking approach |
+| [20261120_log_17_ccw.txt](20261120_log_17_ccw.txt) | 73306 | ce518755198abbb2fc1251c2790c21e6bce2aa040c18bbb32a97f0be809c70f2 | Paused after the 60 mm station 3 retreat |
+| [20261120_log_18_ccw.txt](20261120_log_18_ccw.txt) | 138797 | a8b848dc3c0366bc7190182ff804872d98b21d87e927addde8af5a8828452882 | Paused during repeated searches at station 3 |
+
+## 2026-11-20 logs 19–20
+
+Both complete originals copied unchanged and hash-verified against USB before analysis. Both report `20261120_discovery_reposition`, `20261120_lap23_smooth_pursuit` and `20261120_parallel_four_move`. These are normal obstacle runs before the fixed CW practice command. Both finished three laps in telemetry before a mode pause during parking. [Intake manifest](../log_intake/20261120_followup_after_reposition/manifest.json)
+
+| Original | Bytes | SHA-256 | Recorded outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_19_cw.txt](20261120_log_19_cw.txt) | 157555 | 02a553dfe40d2784b40145ebca6c70fc3bd0be341ca67a12f8bd0ba8bd8eca78 | Recovery at station 9. Entry first arc turned about 70°, paused after replan. |
+| [20261120_log_20_ccw.txt](20261120_log_20_ccw.txt) | 140900 | 845b82f19aa2429870f42a3a4292920d28027d3d8f7097fdb08555878e69cacb | Early EMPTY at middle slots, recovery at station 6, paused before entry. |
+
+## 2026-11-20 logs 21–26
+
+Original files copied and SHA-256 verified before review. Some USB exports contain multiple runs. The user reported one successful park and another run with a poor approach followed by a stop. Log 23 directly records that failure pattern in fixed CW practice. Log 26 is the only new normal run with a field pose. It reports `20261120_near_empty` and pauses in lap 1 before final parking. The reported run order cannot be mapped to an exact file beyond the matching failure. [Intake manifest](../log_intake/20261120_normal_parking_followup/manifest.json)
+
+| Original | Bytes | SHA-256 | Export contents |
+| --- | ---: | --- | --- |
+| [20261120_log_21_cw.txt](20261120_log_21_cw.txt) | 37699 | 828396483bf2d69838f8022c02b5705cb13be6c3440c3194a2f0fa974b9a6e28 | Early mode pause and completed fixed practice. |
+| [20261120_log_22_cw.txt](20261120_log_22_cw.txt) | 47522 | edd906b1e9570f98b3b4c6158d0d75727af985a644b85f95db178a745aa735b9 | Early mode pause and completed fixed practice. |
+| [20261120_log_23_cw.txt](20261120_log_23_cw.txt) | 21464 | d056524612f0d8075b924dfd4ff537d60d2a11c69959179483637ec60f7814fd | Fixed practice aborted with `capture_alignment_clearance`. |
+| [20261120_log_24_cw.txt](20261120_log_24_cw.txt) | 5500 | 413c1f38a986b401624cb0e262301e15189361c5dfaba5f0d8e816c0f91eab10 | Original ends with outer-wall start reference rejection. There is no run summary in the source file. |
+| [20261120_log_25_cw.txt](20261120_log_25_cw.txt) | 62068 | 2099dd29584c04863ce5a4d52015953a27c25f4eff682062f917c66a01d5f45e | Two completed fixed practices, 26.416 s and 26.568 s. |
+| [20261120_log_26_cw.txt](20261120_log_26_cw.txt) | 97014 | 248a7dbebbcac5326bd6c373830b14ff6c35363af52a9f0e0b02d1669024163d | Normal `20261120_near_empty` paused in lap 1, after an 180 mm view recovery and rejoin. |
+
+In log 23 the stopped left ToF accepted 241.5 mm against a predicted 257.9 mm. Registration shifted Y by −16.4 mm, from −1206.8 mm to −1223.2 mm, while the heading was only 0.5° from parallel. The controller then backed about 24 mm into the second rail's vicinity and the swept clearance gate stopped it before entry. The parked-side ToF fan at that stop intersects the measured rail interval even when one ray can see the wall. This explains how a mixed return could bias lateral registration. The log confirms the accepted shift and the missed capture, and cannot independently establish a physical contact. The production replay uses the unobstructed 252 mm wall return in the gap and selects direct capture to the same edge target.
+
+## 2026-11-20 logs 27–28
+
+Both complete source files were copied unchanged and SHA-256 checked before USB release. [Intake manifest](../log_intake/20261120_ccw_after_abort/manifest.json)
+
+| Original | Bytes | SHA-256 | Recorded outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_27_unknown.txt](20261120_log_27_unknown.txt) | 1092 | bf05c3833e2f055024a1c1e618c5a0225e8fe32243fb9b03f146f025e9042815 | Mode pause after 1.004 s at the start wall-reference gate. No direction or lap build identifier was emitted. |
+| [20261120_log_28_ccw.txt](20261120_log_28_ccw.txt) | 129607 | 5285e3d43fd16cf0d07035d1d07ec11d74123b50c86343c146a542b7f550c153 | Three laps with `20261120_near_empty` / `20261120_lap23_smooth_pursuit`. Parking `20261120_normal_fixed_entry` aborted at `initial_outer_wall_reference`. Footer is present with `truncated=0`. |
+
+Log 28 confirms sole GREEN at S1 seat 9 and sole RED at S2 seat 14. Parking traces show +42 then −37 steering commands during the outward shift and a stop at about x=686 mm, y=−1210 mm, heading 359°. The nearest side ToF return remained about 173–179 mm against approximately 255 mm predicted. The data show a rejected measurement and establish no independent physical wall distance. Log 26 shows map reset and a separately started lap 1 before two corner-view holds, a 180 mm retreat at station 9 and manual pause. The reported failed USB write is not observable in the intact log files.
+
+## 2026-11-20 logs 29–31
+
+The device reported FAT32 with read/write access. Old files had newer filesystem timestamps. Originals 29–31 were identified by file number and verified byte for byte before analysis. [Intake manifest](../log_intake/20261120_fixed_followup/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_29_cw.txt](20261120_log_29_cw.txt) | 156092 | 26b27eff80e4caf2217cb375af1b9563026d69f88ff674df08716aeac8d8e9de | Three laps, fixed entry ran two strokes, old planner aborted with `entry_no_collision_free_plan`. |
+| [20261120_log_30_cw.txt](20261120_log_30_cw.txt) | 149458 | 0af3c8aed8d1514266e978492870e1673b88c46bfac33a1cb214d92679a0eafb | Three laps, five effective GREEN seats, manual stop after the old replan at the start of stroke 3. |
+| [20261120_log_31_unknown.txt](20261120_log_31_unknown.txt) | 1093 | aabc26340c29019d5d52f06d16bae518f2d484aceb4342bcab4fd93b32dca275 | Manual stop before direction lock and exit, 1.057 s. |
+
+Logs 29 and 30 use `20261120_ccw_rail_approach` with `20261120_compact_lap1` and `20261120_lap23_ccw_single_corner`. Both reset the run map and report complete USB footers with `truncated=0`. Initial Y corrections after the approach were −21.5 mm and −29.5 mm, and measured gaps were 238.5 and 240.6 mm. After the nominal 120 mm reverse they recorded diagonal headings 49.8° and 49.7°. The old third-stroke gate rejected both. Both reversed 180 mm at unresolved station 9. Log 30 classified an oblique RED in seat 7 as 50 mm at about 560 mm, stored its effective colour as GREEN and used that map in rounds 2–3. The logs cannot independently establish its physical height, actual contact points or the specific cause of the reported LED indication.
+
+## 2026-11-20 logs 32–33
+
+Both complete USB files were copied and SHA-256 verified before release. The good first run and its parking are user observations. Neither file contains that completed run or its parking angles. [Intake manifest](../log_intake/20261120_cw_fixed_125/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_32_unknown.txt](20261120_log_32_unknown.txt) | 3597 | 294e2714a05d2562ec61d8cbed945a5317fb8d82d8a49366ac5afa2f1beb68d9 | Stopped after 0.994 s during rear positioning, before direction lock. |
+| [20261120_log_33_ccw.txt](20261120_log_33_ccw.txt) | 91987 | 74286250f577d468e9f74ad38250050b7393d955c856d9cb811412cb92b92032 | CCW, lap-1 marker `20261120_compact_lap1`. Tall GREEN seat 19 saved as effective RED, repeated gyro restarts before seat 23 confirmed, then drive stall and run stop. |
+
+The third position in S3 is seat 23 (RED, confirmation t=112672 ms). The short motions before it coincide with repeated SPI/SH2 recovery and about 1592–1602 ms without a gyro poll. The next GREEN at S0 seat 1 was already confirmed and stored at t=92050 ms, but the startup bypass deferral kept it out of the active line until the return corner at (−1146.7, −476.5 mm). The physical wall contact is user-reported, and the logs cannot identify the electrical or transport cause of the gyro faults.
+
+## 2026-11-20 logs 34–35
+
+Both source files were copied and SHA-256 checked before USB release. The stick mounted read/write as FAT32. The user reported a perfect first run, steady red during the save, and a manual reset. The perfect run is absent from this batch. [Intake manifest](../log_intake/20261120_usb_timeout/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_34_unknown.txt](20261120_log_34_unknown.txt) | 4384 | 0e6b3001df0b8375ca4aed9970bbe5e7f7f3108c59590a14a3581156e0c3d918 | Moved during parking start, manually stopped after 1.082 s before direction lock. |
+| [20261120_log_35_ccw.txt](20261120_log_35_ccw.txt) | 156978 | e7a9c070c1f7f57fe9a7009160c807cdc59136570bca14668bb4432396e53d9a | New map, three laps, parking `capture_alignment_preflight` abort, footer present with `truncated=0`. |
+
+Log 35 reports lap-1 marker `20261120_compact_lap1`, three-lap route marker `20261120_lap23_ccw_single_corner` and parking marker `20261120_fixed_entry_only`. The gyro polling gaps include 758 ms in lap 1 and 230 ms alongside the recorded 230543 µs lap handoff computation. The firmware records a fresh map reset and freshly stored signs, with no evidence of reuse across the save or reset. This successful large export does not identify the blocking call or physical USB condition during the missing run.
+
+## 2026-11-20 logs 37–38
+
+Both complete exports were copied unchanged and verified by SHA-256 before USB release. They report `20261120_compact_lap1`. [Intake manifest](../log_intake/20261120_ccw_position3/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261120_log_37_cw.txt](20261120_log_37_cw.txt) | 162216 | e5b6a2e3cd64884ff24449e203dbbe44ff32663d738d8a8ff131bfa18b86ea6d | Three laps, fixed parking aborted on `fixed_no_measured_progress`. Footer complete. |
+| [20261120_log_38_ccw.txt](20261120_log_38_ccw.txt) | 91876 | 71dcddc3c49f342f915e15a85e2caf09f817ff2ea1b21fdbe6c7a39550d55f17 | Tall GREEN mapped as RED in slot 19. Eleven gyro timeouts/restarts. Next GREEN stored in slot 1 and activated on return. Stalled before completing lap 1, then manually disabled. Footer complete. |
+
+The tester reported a diagonal view of the third positions, short motions and an outward departure towards the wall after RED in the second run. Log 38 confirms the slot-1 GREEN at `t=64797` and the slot-23 RED at `t=85214`. The slip flags and estimated poses cannot establish the physical wall clearance or contact.
+
+## 2026-11-21 logs 39–42
+
+Complete exports copied unchanged and verified by SHA-256 before USB release. They report `20261120_ccw_tall_return` and, when reached, parking `20261120_fixed_entry_only`. [Intake manifest](../log_intake/20261121_green_parking/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261121_log_39_cw.txt](20261121_log_39_cw.txt) | 157291 | 642d78ca746de88bb8f5f47b008b6f8486bd7eb692285ba8148b57faeec99cb4 | Tall GREEN correctly mapped as RED, three laps and four parking strokes, `fixed_final_pose` abort. |
+| [20261121_log_40_ccw.txt](20261121_log_40_ccw.txt) | 176836 | 8f2bc5d045df998ae66cc5f198909facbc8eb5b6f14c2792cdca1709c81b6571 | Middle GREEN and later tall GREEN mapped, three laps, stopped wall correction −66.1 mm required realignment, `fixed_final_pose` abort. |
+| [20261121_log_41_ccw.txt](20261121_log_41_ccw.txt) | 66909 | 5835ba76a69d76d7b8cd0cc13951b6e888e895dc98ff29eec31f2785285f4b53 | Middle GREEN position 9 marked CLEAR from 422.4 mm at 21.7°, stall followed by manual pause in lap 1. |
+| [20261121_log_42_ccw.txt](20261121_log_42_ccw.txt) | 173516 | 66c5f5ef705ada90f0e4c3caa4662092cf363f2d33fc437ca75672a6790a3f20 | Ordinary middle GREEN incorrectly locked as the 50 mm surprise sign. Tester confirmed the actual modified sign was later in the course. Three laps and four parking strokes, `fixed_final_pose` abort. |
+
+The three completed obstacle runs reported 238.8 / 238.8 / 241.9 mm registered gaps and estimates of final lateral containment outside the 5 mm margin. These are odometry estimates, not independent physical clearance measurements.
+
+## 2026-11-21 logs 43–47
+
+Complete originals copied unchanged and verified by SHA-256 before USB release. The batch reports lap-1 `20261121_ccw_middle_view`, later laps `20261121_lap23_cw_inner_red`, and parking `20261121_flush_capture` when reached. The user confirmed that runs 46/47 used the same layout and that the robot did not contact the pink rails. [Intake manifest](../log_intake/20261121_followup_43_47/manifest.json)
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261121_log_43_cw.txt](20261121_log_43_cw.txt) | 162424 | 63930d9585bf2e2ca3910943c34ca7b6515462478613f88a74f0cab19bba3f37 | Seat 15 inner refinement timed out. Three laps and four parking strokes, `fixed_final_pose`. |
+| [20261121_log_44_ccw.txt](20261121_log_44_ccw.txt) | 175744 | 2d683c030fff339d5c2fad1dee1df4dd0115ff976cc6cd3175dbedf634b81686 | S1 normal GREEN and later 150 mm surprise locked independently. Three laps and four parking strokes, `fixed_final_pose`. |
+| [20261121_log_45_ccw.txt](20261121_log_45_ccw.txt) | 175182 | 4f8474dbad7a233fc97213f0212551dbd31625f8a710554428252ba7d2878dc2 | Alternate layout with 50 mm surprise, three laps and four parking strokes, `fixed_final_pose`. |
+| [20261121_log_46_cw.txt](20261121_log_46_cw.txt) | 99475 | c5f9308ae86e4721c7a49081761e9dbb1d4c9627a9e840ebb0bc455cce6ff7a6 | CW start middle plus end contradiction. Lap boundary held, followed by manual pause. |
+| [20261121_log_47_cw.txt](20261121_log_47_cw.txt) | 170127 | 2f04cd6316fe810610d070a9e89bbfcf81d5ec74f65403bfd9a81eb907e30c54 | Same layout, S0 middle directly clear, 50 mm surprise confirmed at seat 12. Three laps, first parking arc timed out while yaw and encoder still progressed. |
+
+Log 43 recorded 92–93 mm on the parked outer fan with about 99.7 mm predicted. Logs 44/45 report parallel and stationary but the parked ToF samples are absent because the trace budget ended earlier. Log 47 ended at about 36° local yaw with 81 mm of reverse movement at the five-second first-stroke deadline.
+
+## 2026-11-22 log 48
+
+The complete original was copied and SHA-256 verified before releasing the stick. The stick timestamps do not establish run chronology.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_48_ccw.txt](20261122_log_48_ccw.txt) | 149495 | 162b0f3175a5179fff19d6d7e0b1a4e62526654005e26a307d0342fc8068bdd3 | CCW, rear-ToF start, three laps and four fixed parking strokes. Complete and contained according to the firmware, with `truncated=0`. |
+
+`20261122_two_sided_wall_line` confirms the parking approach revision. The final exit arc aligned at 201.5 mm with 1.8° error, and the first parking arc finished after 109.8 mm in about two seconds. Neither reached the old limits. The reserve patch shares the same approach revision and prints reserve events only on activation, so this log cannot distinguish the two builds.
+
+## 2026-11-22 follow-up logs 49–51
+
+Complete originals copied byte for byte and SHA-256 verified before USB release. The tester confirmed the layout stayed the same and that the two reported wall runs were the CCW runs.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_49_cw.txt](20261122_log_49_cw.txt) | 157374 | 2caa400958a16dfbea4adfe71e31deb53b5b1f7985d2c1e469b5d6a116546b9 | CW. Red seat 8 confirmed as ordinary before it reached the image centre. Three laps. Left-side rail scan and four fixed strokes. Estimated final footprint rejected. |
+| [20261122_log_50_ccw.txt](20261122_log_50_ccw.txt) | 91705 | 67b27b86462019db199b81b30dd4a7cbe565b5ba12d439969071ceeb12ba3cc5 | Short visible RED at seat 21 stored as effective GREEN. Start station 0 cleared, then a stall before lap 1 finished and manual disable. |
+| [20261122_log_51_ccw.txt](20261122_log_51_ccw.txt) | 92426 | cda4b84208cd9eb611f5d4aec7b2b17337eb0bd2bc3ddc4757247a5ed3ab5f47 | Short visible RED at seat 21 stored as effective GREEN. Additional GREEN at seat 1 accepted with 86 mm snap error and activated at the start return, then a stall and manual disable. |
+
+Log 49 and 48 report the two-sided wall approach revision when parking is entered. All three logs advertise the same cached parking diagnostic object build as 48; that stamp does not identify the complete binary after an incremental build. On 50 and 51, confirming the first GREEN in S2 took the 180 mm straight recovery plus a short extra move. The tester reported wall contact on the returns. Last side readings were LEFT 87 mm in 50 and RIGHT 62 mm in 51. The encoder stalls and late side ranges do not independently locate the contact.
+
+## 2026-11-22 log 52
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_52_cw.txt](20261122_log_52_cw.txt) | 69515 | c8fab298c9069ee5c64fd4ba9c76ab29dc010e65858fda9fe2a125a6169f33f8 | CW. Complete original. Normal exit, then first-lap S1 station 0 stop. The 230 mm retreat cleared seat 6. Seat 7 stayed unresolved. No further viewpoint started before manual pause at 53.988 s. |
+
+## 2026-11-22 logs 53 and 54
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_53_cw.txt](20261122_log_53_cw.txt) | 82648 | 0622ace83776ab075e639d4593f7be0a1c6ca45434480d50a6d21782db094c5c | CW. Full export. Same corner module timestamp as log 52. A 230 mm retreat cleared seat 6 and seat 7 remained unresolved before manual pause. |
+| [20261122_log_54_ccw.txt](20261122_log_54_ccw.txt) | 154491 | ef010af79d88f910112de37eb8ba91eae1bc4c737a5f1c9c902774e0a11ee6ad | CCW. Full export. One 230 mm discovery retreat at S2. Three laps. Direct corner handoff hit the 16 ms budget; the fallback entered the bay. The tester reported it parked, firmware recorded `fixed_final_pose`. |
+
+## 2026-11-22 logs 55 to 58
+
+Complete originals verified by SHA-256. The tester confirmed the same physical layout throughout.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_55_cw.txt](20261122_log_55_cw.txt) | 138742 | 060e28cf3dc91af140fd500929a02886fa7fc2158d704f643bc904cc0511673f | CW. 180 mm observation retreat. Seat 8 was confirmed as ordinary RED from a distant edge view. Three laps. |
+| [20261122_log_56_ccw.txt](20261122_log_56_ccw.txt) | 82584 | 224ba6b92a158136cd4b9d63f8e375291f857b267a14bec43561a32e5b2dc287 | CCW. Seat 16 confirmed ordinary RED. Gyro restarted later in S3; manually paused. |
+| [20261122_log_57_ccw.txt](20261122_log_57_ccw.txt) | 3887 | 5594a2762727a05b34b9ee96a7058abe696bc4924b6d732d3bce6f9df4857a26 | CCW. Complete but stopped during exit after 1.537 seconds. |
+| [20261122_log_58_ccw.txt](20261122_log_58_ccw.txt) | 82676 | 8b9864c0e7d4a215677fc0e02c955c90a898e33edc3e79195e4a02ff0c0ca553 | CCW. Seat 16 correctly stored as 50 mm visible RED, effective GREEN. The S3 observation retreat repeatedly paused for gyro recovery and locked at 179.1 of 180 mm. |

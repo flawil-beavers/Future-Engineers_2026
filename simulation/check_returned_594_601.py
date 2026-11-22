@@ -108,8 +108,20 @@ void restoreParkingEntryPrimaryScanTarget(){}
 void armParkingEntryConnectorFromPose(const PositionEstimate &){}
 void startParkingEntryPrimaryRetry(){}
 void startParkingEntryScout(const PositionEstimate &){++newScoutViews;}
-'''+block(path,path.index('void updateParkingEntryScout('))+'\n'
+'''+block(path,path.index('int parkingEntryScoutMotionSpeed('))+'\n'+block(path,path.index('void updateParkingEntryScout('))+'\n'
     code+=r'''
+#include "drive_profile.h"
+float scoutMotionSeconds(float dt,bool faster,int dir,float &endSpeed){
+ float speed=0,acceleration=0,limit=0,distance=0,elapsed=0;
+ while(distance<130.0f&&elapsed<5.0f){
+  const int target=faster?parkingEntryScoutMotionSpeed(130.0f,distance):60;
+  distance+=fabsf(DriveProfile::advance(speed,acceleration,limit,dir*target,dt,DEFAULT_ACCELERATION));
+  elapsed+=dt;
+ }
+ endSpeed=fabsf(speed);
+ return elapsed;
+}
+
 int main(){int checks=0;
  routeTurnSign=1;parkingCwShortStart=false;parkingCcwShortStart=true;parkingEntryTargetStation=2;baseline();
  //598: green confirmed while the low-speed correction is still travelling.
@@ -129,6 +141,18 @@ int main(){int checks=0;
  }
  //595: -16deg was formerly considered good enough although GREEN was unknown.
  routeTurnSign=-1;parkingCwShortStart=true;parkingCcwShortStart=false;
+ if(parkingEntryScoutMotionSpeed(130,0)!=100 ||
+    parkingEntryScoutMotionSpeed(130,100)!=60 ||
+    parkingEntryScoutMotionSpeed(130,130)!=60 ||
+    parkingEntryScoutMotionSpeed(130,120)!=60)return 8;
+ for(float dt:{0.01f,0.02f,0.05f})for(int dir:{-1,1}){
+  float beforeSpeed,afterSpeed;
+  const float before=scoutMotionSeconds(dt,false,dir,beforeSpeed);
+  const float after=scoutMotionSeconds(dt,true,dir,afterSpeed);
+  if(after>before-.18f || afterSpeed>61.0f)return 9;
+  std::cout<<"SCOUT PROFILE period/direction/before/after/end="<<dt<<"/"<<dir<<"/"
+   <<before<<"/"<<after<<"/"<<afterSpeed<<"\n";
+ }
  // Rebuild the actual mirrored start geometry rather than reflecting bearings.
  for(int st=0;st<3;++st)for(int side=0;side<2;++side){
   seats[2*st+side].x=500-500*st;seats[2*st+side].y=side==0?-900:-1100;

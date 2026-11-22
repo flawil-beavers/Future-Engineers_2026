@@ -25,6 +25,13 @@ int main(){
  servo_last_command_ms=UINT32_MAX-199;hostTime=200;
  assert(steering_command_settled(50,400)); // unsigned timer wrap
  for(int dir:{-1,1}){
+  setup(dir);state=FP_CAPTURE_SETTLE;stateStartMs=hostTime;
+  servo_disabled=false;steer(0);
+  hostTime=1399;final_parking_update(dir);
+  assert(state==FP_CAPTURE_SETTLE&&dc_state==DC_DISABLED);
+  // Entering the capture state must not restart a completed neutral settle.
+  hostTime=1400;stateStartMs=hostTime;final_parking_update(dir);
+  assert(state==FP_CAPTURE_DRIVE&&dc_state==DC_DISABLED);
   setup(dir);localToField(270.26f,294.6f,0,hostPose.x_mm,hostPose.y_mm,hostPose.heading_deg);truePose=hostPose;
   adaptiveEntryCount=1;adaptiveEntry[0]={-1,0,10};segmentIndex=0;
   state=FP_SEGMENT_SETTLE;stateStartMs=0; // old state age must NOT bypass new servo write

@@ -55,10 +55,10 @@ Result scan(int dir,float actualGap,float heading,float y,float bias,float mixed
   parking_module::processScanFrame(s);
   if(phase==2&&parking_module::scanPhase==3)
    legacyFixed=parking_module::beamFootprint(parking_module::outerSensor,
-    parking_module::lastFixedMarkerRange,parking_module::lastFixedMarkerPose).maximumX;
+    parking_module::lastLeadingMarkerRange,parking_module::lastLeadingMarkerPose).maximumX;
   if(phase==3&&parking_module::scanPhase==4)
    legacyMoving=parking_module::beamFootprint(parking_module::outerSensor,
-    parking_module::firstMovingMarkerRange,parking_module::firstMovingMarkerPose).minimumX;
+    parking_module::firstTrailingMarkerRange,parking_module::firstTrailingMarkerPose).minimumX;
   if(parking_module::scanPhase==5)break;
  }
  float before=hostPose.x_mm;

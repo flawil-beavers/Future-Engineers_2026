@@ -242,4 +242,6 @@ void obstacle_path_sensor_resume();
 
 struct PositionEstimate;
 bool obstacle_path_parking_handoff_pose(PositionEstimate &pose,float *distanceMm=nullptr);
+bool obstacle_path_parking_corner_window(const PositionEstimate &pose,bool &wallArc);
+bool obstacle_path_record_parking_finish(const PositionEstimate &pose);
 void obstacle_path_allow_rolling_finish(bool allowed);
