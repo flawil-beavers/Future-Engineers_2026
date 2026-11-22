@@ -1,13 +1,15 @@
 # Rear ToF on the GIGA M4 core
 
-The rear Adafruit VL53L4CX uses a software I2C bus owned exclusively by the
-GIGA's M4 core. The M4 filters measurements and sends fixed-size status frames
-to the M7 over OpenAMP/RPC. The M7 exposes the result through the normal sensor
-API as `get_tof_distance(TOF_REAR)`.
+We use the rear Adafruit VL53L4CX to measure the gap behind the car. The GIGA's
+M4 core reads it over a dedicated software I²C bus, filters the measurements
+and sends fixed-size status frames to the M7 over OpenAMP/RPC. The M7 reads the
+result through `get_tof_distance(TOF_REAR)`.
 
 ## Wiring
 
-Connect a Qwiic-to-pin cable as follows:
+Use one half of a cut four-pin STEMMA QT/Qwiic cable. Plug the connector into
+the rear ToF sensor and use jumper wires from the cut end directly to the GIGA.
+Connect the signal wires by pin name. [Sensor wiring rationale](README.md#wiring-and-signal-interfaces)
 
 | VL53L4CX | GIGA R1 |
 | --- | --- |
@@ -21,8 +23,8 @@ than relying only on cable colours.
 
 ## Build and upload
 
-Use the IDE-managed PlatformIO executable described in `AGENTS.md`. Build or
-upload the M4 image first, followed by the M7 image:
+Use the IDE-managed PlatformIO Core. For a complete installation, upload **M4
+first, then M7**. [Build and upload instructions](README.md#build-and-run-the-firmware)
 
 ```powershell
 $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
@@ -34,7 +36,7 @@ Both images must be present. The M7 starts the M4 when RPC initializes.
 
 ## Behaviour
 
-- Software I2C runs at 100 kHz on A3/A4.
+- The software I²C bus runs at 100 kHz on A3 and A4.
 - The rear sensor starts in medium-distance mode with a 30 ms timing budget.
 - This rear module is the previously damaged sensor. Its measured black-wall
   reliability limit is approximately 370 mm, so longer filtered distances are
@@ -54,43 +56,48 @@ rear range as a lateral wall measurement.
 
 ## Parking-position configuration
 
-The Obstacle Challenge uses the rear sensor to measure and correct the robot's
-longitudinal position before the five-segment parking exit. Relevant values are
-kept in `include/config.h` rather than embedded in the controller:
+Before the five-segment parking exit, we use the rear range to check and
+correct the car's position along the bay. The settings are in
+[`include/config.h`](include/config.h#L456-L500).
 
-- `OBSTACLE_REAR_TOF_BEHIND_AXLE_MM`: rearward distance from the rear-axle
-  midpoint to the sensor origin; currently `25 mm`.
-- `OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM`: desired clearance from the
-  rearmost body point to the rear magenta parking limit; currently `50 mm`.
-- `OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY`: stops and saves the log
-  after positioning, before any exit segment, during initial validation.
-- `OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY`: after positioning is accepted,
-  permits the five exit segments but stops before post-exit localization and
-  discovery during the first combined validation.
+| Setting | Meaning |
+| --- | --- |
+| `OBSTACLE_REAR_TOF_BEHIND_AXLE_MM` | The sensor origin is 25 mm behind the rear-axle midpoint. |
+| `OBSTACLE_PARKING_REAR_TOF_TARGET_CLEARANCE_MM` | The target clearance from the exit model's rear extent to the rear magenta marker is 50 mm. |
+| `OBSTACLE_PARKING_REAR_TOF_POSITIONING_TEST_ONLY` | Stops and saves the log after positioning, before the exit. Off for normal runs. |
+| `OBSTACLE_PARKING_REAR_TOF_EXIT_TEST_ONLY` | Runs the exit, then stops before post-exit localisation and discovery. Off for normal runs. |
 
-The current rearmost body point is 40 mm behind the axle, so the sensor is
-15 mm ahead of that point. A 50 mm body clearance therefore corresponds to a
-65 mm sensor range. Firmware logs both the directly measured range and the
-derived body clearance. If the sensor is moved, change the sensor-position
-constant; the target range is recalculated at compile time.
+The exit model places its rear extent 40 mm behind the axle, 15 mm behind
+the sensor origin. A 50 mm clearance in that model therefore corresponds to
+a **65 mm sensor reading**. The log records the measured range and the
+derived clearance. If the sensor moves, update its position in the
+configuration so the firmware recalculates the target range.
+[Measured contour used for final parking](simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
 
-The supported initial condition is a robot wholly inside the proportional
-parking gap, approximately parallel to its limits, and within about +/-20 mm
-of the longitudinal middle. Firmware centres steering and averages three fresh
-stationary rear frames whose total span is at most 4 mm. It calculates one
-signed correction to the 65 mm target and executes that distance once at
-50 mm/s using cumulative encoder travel. It never reverses automatically in
-the same attempt. After braking it waits 1000 ms, discards the first three
-fresh post-motion frames, and averages another three stationary frames. The
-final range must be within 5 mm of target and its change must agree with
-encoder motion within 8 mm. Missing, unstable, geometrically impossible, or
-over-55 mm corrections lock the motor. Angled-start localization is not
-implemented; the swept model currently tolerates about +/-1 degree physical
-placement error.
+Start with the car fully inside the bay, approximately parallel to its limits
+and within about ±20 mm of its longitudinal midpoint. The swept model includes
+about ±1° of placement error. The positioning routine corrects the longitudinal
+gap only.
 
-## First physical validation
+1. With the steering centred and the car stationary, the controller averages
+   three fresh rear readings that span at most **4 mm**.
+2. If the gap needs correction, the controller moves at **60 mm/s** and uses
+   cumulative encoder travel to track the move. The initial correction is
+   limited to **55 mm**.
+3. After braking, it waits **500 ms**, discards the first two fresh frames and
+   averages three stationary readings. The final range must be within **5 mm**
+   of target, and the measured range change must agree with encoder travel
+   within **8 mm**.
+4. If verification fails and the remaining range error is at most **15 mm**,
+   the controller can make one small correction in the direction of the target
+   and verify again. If the retry fails, the car holds in place.
 
-Keep the motor enable switch disabled. After uploading both images, require:
+[Positioning settings](include/config.h#L456-L500) · [Verification and retry](src/obstacle.cpp#L1478-L1544)
+
+## Stationary setup check
+
+When commissioning or troubleshooting the rear sensor, keep the motor enable
+switch off and check the serial output.
 
 1. Startup prints `M4 rear ToF RPC connected.`
 2. Serial command `v` reports plausible `REAR` distances at several known
@@ -99,5 +106,5 @@ Keep the motor enable switch disabled. After uploading both images, require:
 3. Disconnecting the rear sensor changes `REAR` to `-1.0` without affecting
    the M7 loop, gyro, camera, or side sensors.
 
-Only after this stationary validation, perform the positioning-only powered
-tests described in `OBSTACLE_CHALLENGE_TEST_PLAN.md`.
+For normal driving validation, follow the
+[current Obstacle Challenge checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md#active-validation-sequence).

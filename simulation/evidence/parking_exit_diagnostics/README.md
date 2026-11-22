@@ -1,12 +1,19 @@
-# Parking-exit diagnostic evidence
+# Robot run evidence
 
-This directory stores the immutable robot logs used to measure parking-exit
-pose error, braking, direction-change error and servo neutral. Generated reports
-belong in ignored `local_workspace/parking-exit-analysis/`, not here.
+We keep the original USB logs here so that each result can be traced back to
+the recorded run. Find a test by date and original log number. CW means
+clockwise and CCW means anticlockwise. Each batch gives the available build
+identity, observations and SHA-256 hashes. A file marked as an excerpt
+contains only the available portion.
+
+Open an original log in the inspector to review the estimated route and its
+events. Use the batch notes and physical observations to check what happened
+on the field. [Open a run in the inspector](../../../tools/robot-run-inspector/README.md) · [Regenerate parking plots](../../README.md#parking-exit-model)
 
 ## Batch ingestion
 
-For every returned test batch:
+For every returned test batch, follow the USB copy and verification order in
+[the workspace instructions](../../../AGENTS.md).
 
 1. Copy each complete source log here without editing its telemetry.
 2. Name it `YYYYMMDD_log_NNN_cw.txt` or `YYYYMMDD_log_NNN_ccw.txt` using the test
@@ -1197,9 +1204,14 @@ User: aligning too close to wall, slow approach/abrupt parking handover; light c
 | --- | ---: | --- |
 | [20261119_log_2_ccw.txt](20261119_log_2_ccw.txt) | 138372 | ca40714175cfadcdad327c866291551c2e70f34470409c31170d484be7499a05 |
 
-## 2026-11-19 CW batch, logs3--6
+## 2026-11-19 CW batch, logs 3–6
 
-Complete source originals secured before analysis, source-before/after/copy SHA256 verified; user released stick immediately. User reports earlier missed/wrong-way pillars and parking stops; latest run correctly recognizes50mm RED but parking stops. All4 report measured_height20261119 and recovery_handoff20261111; exact installed binary not read back. First2 user-paused, last2 autonomous parking aborts; complete file does not mean completed mission.
+We verified all four original copies against the source before analysis.
+All four report camera revision `20261119_measured_height`. Both runs that
+reached parking report `20261111_recovery_handoff`. The first two were
+paused by the tester and the last two stopped during final parking. The
+latest run recognised the 50 mm red sign. The exact binary was unavailable
+for readback. [Batch observations and checks](../../CW_LOGS_3_6_REVIEW_20261119.md)
 
 | Original | Bytes | SHA256 |
 | --- | ---: | --- |

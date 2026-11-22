@@ -156,6 +156,27 @@ Lap 1 passes all 1,736 frozen-map CAD runs, with a minimum conservative capsule 
 
 Final IDE-managed M7 build succeeded. RAM 446808/523624 B, flash 599904/786432 B, firmware.bin 603456 B, SHA-256 `b4482b5a31803e1cb0bb98cd025f6f50d8e35ee16e4480742258d8574ee98255`. Physical clearance, scout speeds and parking still need normal runs.
 
+## 2026-11-21: Supporting documentation proofreading
+
+Reviewed the files linked from the World Final README. The [Ackermann
+report](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md#turning-radius-comparison)
+checks the original circle log against the current CAD-based radius function.
+The 98 mm physical wheelbase and 127 mm model parameter serve different
+calculations. The 16.15 mm right-turn RMSE belongs to the historical
+servo-command fit. The historical CAD table gives 2.56% mean absolute
+relative error over its eight entries from 15° to 40°.
+
+The [rear ToF guide](REAR_TOF_M4_SETUP.md#parking-position-configuration)
+records the current correction and retry settings and distinguishes the
+40 mm exit-model rear extent from the 35 mm measured final-parking contour.
+Translated the camera validation report and run inspector guide into English
+at the team's request and updated the camera report anchors. Verified local
+README references, the 28 linked images, CAD archive integrity and the four
+CW evidence hashes. The inspector's artwork, parser and app tests passed.
+Next, the team proofreads the supporting documents using the
+[proofreading checklist](PROOFREADING_CHECKLIST.md). Signed-out video
+playback was unavailable for independent verification in this pass.
+
 ## 2026-11-18: README source review
 
 Updated README operation for the current full Obstacle run, rear-ToF ownership
@@ -172,7 +193,7 @@ at the user's explicit request.
 ## 2026-11-20: CAD and print documentation
 
 Linked supplied `CAD/Car_v74.f3z` and moved its unchanged binary G-code into
-`CAD/printing/`. Original slicer screenshots are in `Photos/build-instructions/`
+`CAD/printing/`. Original slicer screenshots are in `img/assembly/`
 as `Car_v74_prusaslicer_models.jpg` and `Car_v74_prusaslicer_gcode.jpg`.
 At the user's direction, earlier CAD versions are retained through Git history.
 Updated README assembly downloads, screenshots and print settings,
@@ -189,3 +210,39 @@ printing entry point. Archive integrity and saved configuration were checked:
 17 part meshes, plate arrangement, MK4IS, PLA, 0.4 mm nozzle, 0.2 mm layers,
 15% infill, support enforcers only and no brim. Instructions explain opening
 it as a PrusaSlicer project and selecting the intended printer/material profile.
+
+## 2026-11-20: World Final journal rewrite
+
+Audited the official rubric, General Rules and Q&A. The team confirms v74
+includes the current rear mount, identifies the Arducam GC2145 and replacement
+power components, and confirms the public GitHub URL was submitted. Keep
+firmware on current `main`; record the actual competition commit and settings
+when known. The README now links tracked evidence and identifies historical
+test conditions. Local logs 76/111, 122, 204–209 and 227 corroborate the
+camera, exit, crawl-speed and rear-reference examples. No new runs or firmware
+changes. Next verify signed-out videos, replace robot photos,
+record physical measurements, then complete the PDF/hardcopy checks in
+[DOCUMENTATION_TODO.md](DOCUMENTATION_TODO.md).
+
+The supplied [revision 1 wiring PNG](img/diagrams/Wiring_Diagram_FE2026_v1.png)
+replaces the June drawing. The updated export shows motor controls and outputs
+on M2, the corrected voltmeter polarity and the current component labels.
+Rear I²C remains SDA on A3 and SCL on A4, matching M4 source. The team confirmed
+the power wiring on the robot, including the Mini-360 output and loads, ground
+return, module terminals, voltmeter tap and motor supply.
+
+The team confirmed that each ToF uses a half STEMMA QT/Qwiic lead with
+jumpers directly to the GIGA. Separate ToF buses avoid startup address
+conflicts and soldered XSHUT leads. The shared IMU/ToF I²C trial gave
+unreliable heading readings, so the BNO085 uses SPI over separate jumpers.
+The [README wiring section](README.md#wiring-and-signal-interfaces) records
+the rationale, and the [rear setup guide](REAR_TOF_M4_SETUP.md#wiring) records
+the connection method. No new firmware or physical test.
+
+The team confirmed 680 g mass, 115 mm height and a 237.5 mm target parking
+gap. The firmware's initial gap estimate remains 247.5 mm. Regenerated the
+22-page journal with all six current robot photos. The print build now renders
+the Mermaid flowcharts and generates QR images with OpenCV. All three codes
+decoded from the rendered PDF, and the team confirmed on November 21 that all
+three scan correctly. Next merge the documentation into `main`, verify the
+public links and print the journal.

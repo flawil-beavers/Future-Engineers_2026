@@ -41,6 +41,12 @@
   normally; do not request a dedicated ToF test/sweep, extra movements or pauses.
   Preserve the existing route, braking, reversal and pose-correction diagnostics.
 
+## Documentation links
+
+- When firmware edits move or replace code linked from `README.md`, update the
+  repository-relative GitHub line anchors in the same change. Verify that each
+  affected anchor still lands on the definition or implementation it describes.
+
 ## Temporary files
 
 - Store repository-task temporary and generated working files under

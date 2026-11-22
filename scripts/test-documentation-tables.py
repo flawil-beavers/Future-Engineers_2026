@@ -37,6 +37,18 @@ class TableTests(unittest.TestCase):
             "| Component | Quantity | Purpose |\n|---|---|---|\n"
             "| Motor | 1 | Drive |\n", [0.48, 0.14, 0.38])
 
+    def test_current_bom_fits_all_four_columns(self):
+        self.assertWidths(
+            "| Component | Quantity | Function | Estimated CHF |\n"
+            "|---|---|---|---|\n| Motor | 1 | Drive | 13.90 |\n",
+            [0.31, 0.12, 0.43, 0.14])
+
+    def test_current_integration_table_keeps_both_prose_columns_wide(self):
+        self.assertWidths(
+            "| Subsystems | What drove the change | What we chose and what we learned |\n"
+            "|---|---|---|\n| Camera | Missed signs | Slower approach |\n",
+            [0.18, 0.35, 0.47])
+
 
 if __name__ == "__main__":
     unittest.main()

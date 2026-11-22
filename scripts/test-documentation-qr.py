@@ -1,4 +1,4 @@
-"""Run with python scripts/test-documentation-qr.py; requires Pandoc only."""
+"""Run with python scripts/test-documentation-qr.py; requires Pandoc and OpenCV."""
 from pathlib import Path
 import subprocess
 import unittest
@@ -28,6 +28,7 @@ class QrTests(unittest.TestCase):
         self.assertIn("Obstacle Challenge video", result.stdout)
         self.assertIn("{https://youtu.be/obstacle456}", result.stdout)
         self.assertIn("{" + REPOSITORY + "}", result.stdout)
+        self.assertIn("\\DocumentationQr{local_workspace/pdf-build/qr/", result.stdout)
 
     def test_no_placeholder_for_missing_video(self):
         result = convert("# Video\n\n## Obstacle Challenge\n\n<!-- TODO: add video -->\n")

@@ -1,12 +1,20 @@
-# Direct final-lap parking handoff, 2026-11-19
+# Direct final-lap parking handoff, 19 November 2026
 
-Scope: shorten unnecessary parking handoff/settling, using the learned inner or outer arrival line. No changes to first-lap perception, Surprise Rule storage, M4, parked target, capture pose or entry speed in this revision. Parking identity: `20261119_direct_handoff`.
+We use the learned inner or outer arrival route to prepare for parking before
+the final corner. This revision reduces time spent handing over to the parking
+controller and waiting for the steering to settle. The firmware reports the
+parking identity as `20261119_direct_handoff`.
 
 ## Evidence and route
 
 The connected source still contained the same six originals, with no new runs. They were copied/reverified before analysis; source-before/source-after/copy hashes agree in [verification manifest](evidence/log_intake/20261119_batch_3_6/direct_approach_source_verified.json). The stick was immediately released. Full canonical originals and hashes remain in the [parking evidence index](evidence/parking_exit_diagnostics/README.md). This is source/model validation, not a new physical acceptance run.
 
-The nominal handoff is derived from the learned optimized route: the first point after the final corner where the complete vehicle clears that corner. It is not a fixed assumed inner/outer position. During laps2/3, parking preflight advances at most12 samples per controller call, with a1200us elapsed-time budget checked before each sample. Actual target CPU cost remains unmeasured; this is not a hard execution-time guarantee. It issues no motor or servo commands.
+We derive the handoff point from the selected route. It is the first point
+after the final corner where the whole car clears it. During laps 2 and 3, the
+controller checks up to 12 samples per update and checks a 1,200 µs time budget
+before each sample. That budget governs when the next sample can start. We
+have yet to measure the time on the GIGA. The checks run in the background
+while the lap controller continues to drive.
 
 Each accepted candidate checks27 starting poses across X/Y +/-40mm and heading +/-5deg, using the existing complete approach collision checks, including both wheel-angle extremes, the longer steering nose, walls, pink rails and learned pillars. Existing direct-lane +/-40mm lateral checks remain. Earlier outward-shift candidates(-100,100,200mm) precede the previous350--650mm candidates; the learned bypass retains its500mm minimum. Only a fully checked candidate is retained. This improves route choice; it is not a proof of the globally shortest path.
 

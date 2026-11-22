@@ -61,8 +61,11 @@ $candidatePdf = Join-Path $workingDirectory 'README.candidate.pdf'
 $publishedPdf = Join-Path $repositoryRoot 'README.pdf'
 $defaultsFile = Join-Path $repositoryRoot 'docs\pdf\pandoc.yaml'
 $readmeFile = Join-Path $repositoryRoot 'README.md'
+$printSource = Join-Path $workingDirectory 'diagrams.md'
+$resourcePath = '.' + [IO.Path]::PathSeparator + $workingDirectory
 
 $pandoc = Resolve-RequiredTool -Names @('pandoc') -InstallHint 'Install Pandoc from https://pandoc.org/installing.html.'
+$mermaid = Resolve-RequiredTool -Names @('mmdc.cmd', 'mmdc') -InstallHint 'Install the Mermaid CLI with npm install -g @mermaid-js/mermaid-cli.'
 $xelatex = Resolve-RequiredTool -Names @('xelatex') -InstallHint 'Install XeLaTeX through MiKTeX or TeX Live.'
 $ghostscript = Resolve-RequiredTool -Names @('gswin64c', 'gswin32c', 'mgs', 'gs') -InstallHint 'Install Ghostscript, or use a MiKTeX installation that provides mgs.'
 $pdfinfo = Resolve-RequiredTool -Names @('pdfinfo') -InstallHint 'Install Poppler, or use the pdfinfo supplied by MiKTeX.'
@@ -90,9 +93,18 @@ New-Item -ItemType Directory -Path $renderDirectory -Force | Out-Null
 
 Push-Location $repositoryRoot
 try {
+    Invoke-Checked -Executable $mermaid -Arguments @(
+        '--input', $readmeFile,
+        '--output', $printSource,
+        '--outputFormat', 'pdf',
+        '--pdfFit',
+        '--theme', 'neutral'
+    )
+
     Invoke-Checked -Executable $pandoc -Arguments @(
-        $readmeFile,
+        $printSource,
         '--defaults', $defaultsFile,
+        '--resource-path', $resourcePath,
         '--output', $rawPdf
     )
 
