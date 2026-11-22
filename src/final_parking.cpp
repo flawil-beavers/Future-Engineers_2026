@@ -106,6 +106,7 @@ constexpr char PARKING_APPROACH_REVISION[] = "[FINAL PARK] revision=20261122_two
 uint32_t fixedProgressMs = 0;
 float fixedProgress = 0.0f;
 float fixedStepStartHeading = 0.0f;
+bool fixedSlipReserveLogged = false;
 bool initialBrakeStarted = false;
 float approachOuterShiftX = OBSTACLE_FINAL_PARKING_OUTER_SHIFT_X_MM;
 bool approachDirectLane = false;
@@ -1718,6 +1719,9 @@ constexpr FixedParkingMove FIXED_ENTRY_MOVES[] = {
     { 1,  50,  0.0f,  0.0f,  95.0f},
 };
 constexpr uint8_t FIXED_ENTRY_MOVE_COUNT=sizeof(FIXED_ENTRY_MOVES)/sizeof(FIXED_ENTRY_MOVES[0]);
+constexpr float FIXED_TURN_SLIP_RESERVE_MM = 35.0f;
+constexpr uint32_t FIXED_MOVE_LIMIT_MS = 5000U;
+constexpr uint32_t FIXED_TURN_SLIP_LIMIT_MS = 8500U;
 
 void beginFixedEntry(const PositionEstimate &pose)
 {
@@ -1744,6 +1748,7 @@ void updateFixedEntry(const PositionEstimate &pose)
         stateStartMs=fixedProgressMs=millis();
         fixedProgress=0.0f;
         fixedStepStartHeading=heading;
+        fixedSlipReserveLogged=false;
         state=FP_FIXED_DRIVE;
         Serial.print("[FINAL PARK FIXED] start step="); Serial.print(segmentIndex+1);
         Serial.print(" steering="); Serial.print(steering);
@@ -1774,14 +1779,17 @@ void updateFixedEntry(const PositionEstimate &pose)
         return;
     }
 
-    const bool increasing=segmentIndex==0;
-    const float progress=move.steering!=0
-        ? (heading-fixedStepStartHeading)*(increasing ? 1.0f:-1.0f) : travel;
-    if (travel < -6.0f || travel>move.maxTravelMm ||
-        millis()-stateStartMs>5000U)
+    const bool turning=move.steering!=0;
+    const uint32_t now=millis();
+    const uint32_t elapsed=now-stateStartMs;
+    const bool normalLimit=travel>move.maxTravelMm || elapsed>FIXED_MOVE_LIMIT_MS;
+    if (travel < -6.0f || (!turning && normalLimit) ||
+        (turning && (travel>move.maxTravelMm+FIXED_TURN_SLIP_RESERVE_MM ||
+                     elapsed>FIXED_TURN_SLIP_LIMIT_MS)))
     { abortParking("fixed_travel_or_time_limit"); return; }
-    const float headingRemaining=(move.headingDeg-heading)*(increasing ? 1.0f:-1.0f);
-    const bool reached=move.steering==0 ? travel>=move.distanceMm : headingRemaining<=0.5f;
+    const float turnSign=segmentIndex==0 ? 1.0f : -1.0f;
+    const float headingRemaining=(move.headingDeg-heading)*turnSign;
+    const bool reached=turning ? headingRemaining<=0.5f : travel>=move.distanceMm;
     if (reached)
     {
         stop(true);
@@ -1789,9 +1797,10 @@ void updateFixedEntry(const PositionEstimate &pose)
         state=FP_FIXED_BRAKE;
         return;
     }
-    if (progress>fixedProgress+(move.steering!=0 ? 1.0f:2.0f))
-    { fixedProgress=progress;fixedProgressMs=millis(); }
-    else if (millis()-fixedProgressMs>1300U)
+    const float progress=turning ? (heading-fixedStepStartHeading)*turnSign : travel;
+    if (progress>fixedProgress+(turning ? 1.0f:2.0f))
+    { fixedProgress=progress;fixedProgressMs=now; }
+    else if (now-fixedProgressMs>1300U)
     { abortParking("fixed_no_measured_progress"); return; }
     if (move.direction<0)
     {
@@ -1804,9 +1813,25 @@ void updateFixedEntry(const PositionEstimate &pose)
             return;
         }
     }
+    if (normalLimit)
+    {
+        const float requiredTurn=fabsf(move.headingDeg-fixedStepStartHeading);
+        if (headingRemaining>18.0f || progress<fminf(12.0f,0.5f*requiredTurn) ||
+            progress<fixedProgress-1.0f || now-fixedProgressMs>650U ||
+            !scanCommandSafe(pose,move.direction,steering,12))
+        { abortParking("fixed_travel_or_time_limit"); return; }
+        if (!fixedSlipReserveLogged)
+        {
+            fixedSlipReserveLogged=true;
+            Serial.print("[FINAL PARK SLIP] step/yaw_remaining/encoder_mm=");
+            Serial.print(segmentIndex+1);Serial.print("/");
+            Serial.print(headingRemaining,1);Serial.print("/");
+            Serial.println(travel,1);
+        }
+    }
     servo_disabled=false;
     set_steering(steering);
-    const int speed=move.steering!=0 && headingRemaining<6.0f ? 35 : 45;
+    const int speed=turning && headingRemaining<6.0f ? 35 : 45;
     set_speed(move.direction*speed);
 }
 }

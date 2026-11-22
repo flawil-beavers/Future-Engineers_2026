@@ -345,7 +345,46 @@ bool checkFourStrokes(int dir,bool practice){
  return true;
 }
 
+bool checkFixedTurnSlip(int dir,int fault){
+ namespace park=parking_module;
+ startCapture(dir,242.0f,0);
+ // Log 47 reached this pose with 81 mm of encoder travel after five seconds.
+ const float localX=198.0f;
+ park::localToField(localX,269.9f,36.1f,hostPose.x_mm,hostPose.y_mm,hostPose.heading_deg);
+ park::state=park::FP_FIXED_DRIVE;
+ park::fixedStepStartHeading=-2.4f;
+ park::fixedProgress=38.0f;
+ park::fixedProgressMs=5900;
+ park::stateStartDistance=0;
+ hostTime=6020;
+ encoder=fault==1 ? -155.0f : -81.0f;
+ if(fault==2)park::fixedProgressMs=5300;  // no fresh yaw
+ if(fault==3)encoder=-186.0f;             // hard encoder limit
+ if(fault==4)hostRearRange=20.0f;          // rear protection during reserve
+ if(fault==5)hostTime=9520;               // hard time limit, fresh yaw
+ if(fault==5)park::fixedProgressMs=9500;
+ if(fault==6)park::segmentIndex=1;        // straight step retains normal limit
+ if(fault==7){                            // unsafe swept pose during reserve
+  hostPose.y_mm=-1430.0f;
+ }
+ park::final_parking_update(dir);
+ hostRearRange=NAN;
+ if(fault>=2)return park::final_parking_aborted()&&dc_state==DC_DISABLED;
+ if(!park::fixedSlipReserveLogged||dc_state!=DC_ENABLED)return false;
+ for(int tick=0;tick<17&&park::state==park::FP_FIXED_DRIVE;++tick){
+  hostTime+=200;encoder-=1.2f;
+  advanceMeasuredEntry(hostPose,50*dir,-1.2f,1.0f);
+  hostPose.heading_deg=park::wrap180(park::baseHeadingDeg()+dir*(36.1f+0.65f*(tick+1)));
+  park::final_parking_update(dir);
+ }
+ return park::state==park::FP_FIXED_BRAKE&&!park::final_parking_aborted();
+}
+
 int main(){int total=0,bad=0,captured=0,safeRejected=0;
+ for(int dir:{-1,1})for(int fault=0;fault<8;++fault)if(!checkFixedTurnSlip(dir,fault)){
+  ++bad;std::cout<<"FIXED TURN SLIP FAIL "<<dir<<"/"<<fault<<"\n"<<robot_logger.lines.str();
+ }
+ std::cout<<"FIXED TURN SLIP 16 checks, failed "<<bad<<"\n";
  // Registration must not accept a single piece, wrong gap, or excessive
  // correction simply because the longitudinal allowance is now larger.
  for(int fault=0;fault<5;++fault){
@@ -416,7 +455,7 @@ int main(){int total=0,bad=0,captured=0,safeRejected=0;
     cpp=destination/'check.cpp';exe=destination/'check.exe';cpp.write_text(fixture)
     subprocess.run([shutil.which('g++'),'-std=c++17','-O2','-I',str(ROOT/'include'),'-I',str(ROOT/'local_workspace/later-laps'),str(cpp),'-o',str(exe)],check=True)
     r=subprocess.run([str(exe)],capture_output=True,text=True);(destination/'output.txt').write_text(r.stdout)
-    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','LOG23','LOG28','LOG40','LOGGED CAPTURE','FIXED FOUR STROKES','COLLISION','SEQUENCE FAIL','FINAL SEQUENCE'))))
+    print('\n'.join(line for line in r.stdout.splitlines() if line.startswith(('REGISTRATION','LOG23','LOG28','LOG40','LOGGED CAPTURE','FIXED FOUR STROKES','FIXED TURN SLIP','COLLISION','SEQUENCE FAIL','FINAL SEQUENCE'))))
     raise SystemExit(r.returncode)
 
 if __name__=='__main__':main()
