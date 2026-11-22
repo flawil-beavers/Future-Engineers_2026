@@ -1,78 +1,78 @@
-# Nur das Rückwärts-Einparken üben
+# Isolated reverse-parking practice
 
-Normales `O`, `park cw`, `park ccw` und der CW-Eckentest benutzen dieselbe feste Zugfolge. CCW spiegelt die Lenkrichtung. Der Sollabstand zu den rosa Spitzen beträgt 3 cm. An der Einparkposition ist die Hinterkante auf Höhe der Innenfläche der einfahrseitigen Schranke. Bei höchstens 10° Abweichung von der Parallelrichtung startet dort der erste Rückwärtszug nach dem Bremsen.
+Use this test to isolate the parking entry from the rest of the Obstacle
+Challenge. Normal Obstacle mode and the practice commands use the same
+four moves. Counter-clockwise (CCW) mirrors the steering directions.
 
-## CW-Eckentest mit fester Zugfolge
+<a id="cw-eckentest-mit-fester-zugfolge"></a>
 
-Dieser Versuch startet in der Ecke auf derselben Geraden wie die Parklücke. Die Front zeigt zur Parklücke, die Aussenbande neben der Parklücke liegt links. Das Heck steht **ca. 2 cm vor der quer hinter ihm liegenden Wand**. Die Mitte der Hinterachse steht **ca. 29,2 cm von der seitlichen Aussenbande** entfernt. So beträgt der Sollabstand der wandseitigen Radkante zur Linie durch die rosa Spitzen bei der Anfahrt **3 cm**. Räder gerade, Fahrzeug parallel zur Seitenbande. Halte die Strecke zwischen Ecke und Parklücke für diesen Versuch frei.
+## Clockwise corner approach and fixed entry
 
-1. `giga_r1_m7` hochladen. Bei ausgeschalteter Fahrfreigabe `park cw fixed` im seriellen Monitor senden.
-2. USB-Kabel zum Fahren abziehen und mit der normalen Fahrfreigabe starten. Auf der freien Anfahrt fährt der Roboter bis **145 mm/s**. Für die Schrankenmessung fährt er **66 mm/s** und bei dicht aufeinanderfolgenden ToF-Messungen bis **84 mm/s**. Vor der Einparkposition bremst er ab. Bei bis zu **10° Abweichung von der Parallelrichtung** beginnt dort nach dem Stillstand der erste Rückwärtszug.
-3. Die vier Züge laufen in fester Reihenfolge. Rückwärts mit Volleinschlag bis zum Gyro-Ziel von 47°, gerade 12,5 cm zurück, rückwärts mit Gegenlenkung bis 22,5° Restwinkel, dann mit Gegenlenkung kurz vorwärts bis 0°.
-4. Nach dem vierten Zug hält der Roboter an, prüft die Endlage und speichert Winkel und Encoderstrecken. Die Meldung `final_parking_stop` bestätigt die anhand der geschätzten Pose geprüfte Endlage. Die tatsächliche Freigängigkeit ist auf der Matte zu prüfen. Für einen neuen Versuch wieder in die Ecke stellen und den Befehl neu senden.
+Start at the corner on the parking straight, facing the bay with the adjacent
+outer wall on the left. With the wheels straight and the car parallel to that
+wall, set the rear edge about **20 mm** ahead of the transverse wall. Put the
+centre of the rear axle **291.5 mm** from the side wall, measured perpendicular
+to it. This gives a nominal **30 mm** gap from the wall-side wheel edge to the
+line between the marker tips. Keep the route from the corner to the bay clear.
 
-Die feste Zugfolge benutzt Gyro und Encoder. Eine frische hintere ToF-Messung von 20 mm oder weniger stoppt den Rückwärtszug. Die Brems-, Fortschritts-, Weg- und Zeitgrenzen bleiben aktiv. Nach der Endprüfung folgt keine weitere Fahrbewegung.
+1. Upload `giga_r1_m7`. With the start toggle LOW, send `park cw fixed` in
+   the serial monitor.
+2. Unplug the upload cable and set the start toggle HIGH. The car approaches
+   the bay, measures the markers and brakes at the entry position. It starts
+   the reverse entry after stopping when within **10°** of parallel.
+3. The car reverses on full lock to **47°**, reverses straight for **125 mm**,
+   reverses on opposite lock to **22.5°**, then changes lock and drives
+   forward until parallel.
+4. The car centres the steering, checks the estimated parked outline and
+   saves the log. `final_parking_stop` records a park accepted by the firmware.
+   Check actual clearance and containment on the mat. Reposition the car
+   and select the command again to repeat the test.
 
-## Feste Zugfolge ab Parklücke
+The four moves use IMU heading and encoder travel. A fresh, valid rear ToF
+reading of **20 mm or less** aborts a reversing move. Braking, progress,
+travel and time checks remain active. The car holds after the final check.
 
-Bei ausgeschalteter Fahrfreigabe `park cw` oder `park ccw` auswählen. Der Roboter startet an der unten beschriebenen Einparkposition direkt mit denselben vier Zügen wie im normalen Lauf. In diesem Modus werden Aufstellung und freie Lückenlänge als Nennwerte übernommen. Die Kamera wird nicht initialisiert.
+## Entry-only setup
 
-## Aufstellung
+Select `park cw` or `park ccw` with the start toggle LOW. The car assumes
+the surveyed starting pose and nominal gap in this mode. It omits the
+approach scan and camera setup.
 
-Die beiden rosa Begrenzungen und die Aussenwand bleiben in der normalen
-Parkfeldaufstellung. Entferne Hindernisse aus dem unmittelbaren Manövrierraum:
-Dieser isolierte Test besitzt keine eingelernte Hinderniskarte.
-
-| Was messen? | Sollmass |
+| Measurement | Nominal setup |
 | --- | ---: |
-| Freie Länge zwischen den beiden rosa Innenflächen | **24,75 cm** |
-| Länge der rosa Begrenzungen von der Aussenwand ins Feld | **20,00 cm** |
-| Hinterachsmitte bis zur Aussenwand, senkrecht gemessen | **29,15 cm** |
-| Alternativ: Hinterachsmitte bis zur gedachten Linie zwischen den rosa Spitzen | **9,15 cm** auf der normalen Fahrbahnseite |
-| Hinterachse längs der Wand relativ zur nahen rosa **Innenfläche** | **3,50 cm ausserhalb der Parklücke**, in Richtung Fahrzeugfront |
-| Fahrzeugausrichtung | Parallel zur Aussenwand, Vorderräder gerade |
+| Gap between the inside faces of the markers | **247.5 mm** |
+| Marker length from outer wall into the field | **200 mm** |
+| Rear-axle centre to outer wall, measured perpendicular to it | **291.5 mm** |
+| Rear-axle centre to the line joining the marker tips, on the driving side | **91.5 mm** |
+| Rear-axle centre along the wall from the inside face of the entry marker | **35 mm** towards the front of the car, outside the bay |
+| Car orientation | Parallel to the outer wall with the front wheels straight |
 
-Hinterachsmitte bedeutet die Mitte der Achse zwischen den beiden Hinterrädern,
-nicht die Vorderkante oder Hinterkante des Gummireifens. Nutze zum Aufstellen
-zwei Markierungen für die Hinterradmitten. Möglichst auf etwa2mm genau messen
-und sorgfältig parallel ausrichten; die Firmware ermittelt diesen Startpunkt
-in diesem Modus **nicht selbst**. Diese Aufstellgenauigkeit ist eine
-Vorbereitungsvorgabe, keine nachgewiesene Fehlertoleranz.
+Use two marks for the rear wheel centres to set the axle reference. The
+35 mm offset from the entry marker corresponds to the rear overhang. Leave
+the immediate manoeuvring area clear because this test has no learned sign
+map. Aim to place the car within about 2 mm of the marks and carefully
+align it. This is a setup target. The entry-only test uses the nominal
+247.5 mm gap above, while the team's full-run practice target is 237.5 mm
+and the normal approach measures the gap.
 
-Die nahe rosa Begrenzung ist diejenige, an deren Spitze der Roboter ansetzt. Von ihrer zur Parklücke gerichteten Innenfläche aus misst du **3,50 cm in Richtung Fahrzeugfront** bis zur Hinterachsmitte. Das entspricht dem Hecküberhang. Bei geraden Rädern liegt die wandseitige Radkante 3,00 cm von der Linie durch die rosa Spitzen entfernt.
+## Start, repeat and return to normal driving
 
-## Start und Wiederholung
+1. Upload M7, keep the start toggle LOW and place the car at the surveyed
+   entry pose. Select `park cw` or `park ccw` over serial.
+2. Once the mode shows blue, unplug the upload cable and set the start
+   toggle HIGH. The car waits for braking and steering to settle, then
+   begins the four moves.
+3. Use `park stop` to leave practice. Reposition the car and select the
+   mode again for every new attempt. Record the log number, direction and
+   any contact or manual stop.
 
-1. M7 hochladen, Fahrfreigabe ausschalten und den Roboter wie oben aufstellen.
-2. Bei ausgeschalteter Fahrfreigabe im seriellen Terminal `park cw` oder
-   `park ccw` senden. Reset allein wählt den vollständigen Hindernislauf.
-3. Blau bedeutet ausgewählter Modus bereit. USB-Kabel zum Fahren abziehen und
-   mit der normalen Fahrfreigabe starten. Er beginnt nach der Brems- und
-   Lenkwartezeit direkt mit der Einparkbewegung.
-4. Nach Erfolg hält er geparkt und speichert automatisch. Bei Abbruch normal
-   speichern. Vor dem nächsten Versuch Fahrfreigabe aus und wieder genau an
-   die Startmarkierungen stellen.
-5. Für jeden neuen Parkversuch erneut `park cw` oder `park ccw` auswählen.
-   Ein unterbrochener Versuch setzt sich durch blosses Wiedereinschalten
-   nicht aus einer beliebigen Zwischenposition fort.
+A reset with the default Obstacle configuration, or the serial command
+`O` with the start toggle LOW, restores the full course. Keep
+`OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED` off for normal runs. That flag
+selects a separate practice path.
 
-`park stop` beendet diesen Modus. Normales Speichern und USB-Logformat bleiben
-erhalten. Beim Melden bitte Lognummer, CW/CCW und die Phase eines eventuellen
-Kontakts oder manuellen Stopps nennen.
-
-## Zurück zum vollständigen Parcours
-
-Nach dem Hochladen gilt wieder `STARTUP_ROBOT_MODE=MODE_OBSTACLE_CHALLENGE`:
-Reset wählt den vollständigen Hindernislauf mit Ausparken, drei Runden und
-Einparken. Alternativ bei ausgeschalteter Fahrfreigabe `O` senden. Ein neuer
-Build nur zum Wechseln zwischen normalem Lauf und Parktraining ist nicht nötig.
-Die bestehende ältere Option `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED=false`
-betrifft einen anderen Test mit vollständiger Anfahrt; sie bleibt aus.
-
-Der isolierte Versuch prüft das Einparken ab definierter Position. Er bestätigt
-nicht die vorherige automatische Anfahrt und Parkfeldlokalisierung über drei
-Runden. Modellprüfungen ersetzen die jetzt vorgesehenen realen Parkversuche
-nicht.
-
-
-Frühere Planungsstände sind im [Archiv](../docs/history/README.md) dokumentiert.
+Entry-only practice checks the manoeuvre from a surveyed position. Use a
+full course run to validate the automatic approach and bay measurement.
+[Park commands](../src/serial_handler.cpp#L488-L509) ·
+[Four-move sequence](../src/final_parking.cpp#L1796-L1805) ·
+[Earlier engineering work](../docs/history/README.md)

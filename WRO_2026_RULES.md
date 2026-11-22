@@ -4,6 +4,7 @@
 
 - [Official season page](https://wro-association.org/competition/2026-season/).
 - [General and Game Rules](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Self-Driving-Cars-General-Rules.pdf), January 15, 2026, 55 pages.
+- [Documentation Rubric](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Documentation-Rubric.pdf).
 - [Modified Traffic Sign Surprise Rule](https://wro-association.org/wp-content/uploads/WRO-2026-Future-Engineers-Extra-Task.pdf), November 9, 2026.
 - [Official game mat](https://wro-association.org/wp-content/uploads/WRO-2026_FutureEngineers_Playfield.pdf).
 - [Official Questions and Answers](https://wro-association.org/competition/questions-answers/), part of the international rules and able to clarify or override the PDF.
@@ -16,6 +17,7 @@ rules and recheck official Q&A before competition.
 
 | Verification date | Result |
 | --- | --- |
+| 2026-11-22 | Checked the official season page, Documentation Rubric and Future Engineers Q&A for documentation requirements and clarifications. |
 | 2026-11-19 | Season page/November9 Surprise PDF/Q&A rechecked; first encountered sign excluded, original passing colour on all3laps, no newer Surprise clarification found. |
 | 2026-11-17 | Season page still links the November 9 Surprise Rule. Its full text and score sheet were read; Q&A has no additional Surprise Rule clarification. |
 | 2026-11-11 | General Rules remain the January 15 edition. First-encountered-sign exclusion confirmed for the Surprise Rule. |
@@ -23,8 +25,7 @@ rules and recheck official Q&A before competition.
 | 2026-10-18 and 2026-10-27 | General Rules and Q&A checked for parking-row restrictions and passing-side preservation. |
 
 Earlier checks, page inspections and engineering context remain in the
-[preserved reference history](docs/history/WRO_2026_RULES.md). This consolidation
-adds no new source verification beyond the dates above.
+[preserved reference history](docs/history/WRO_2026_RULES.md).
 
 ## Modified Traffic Sign Surprise Rule
 

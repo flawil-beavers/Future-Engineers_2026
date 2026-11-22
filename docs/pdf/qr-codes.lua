@@ -38,6 +38,7 @@ function Pandoc(doc)
   local blocks = pandoc.List({})
   local in_video = false
   local video_level = nil
+  local video_subsection_started = false
   local label = 'Watch the video'
   local seen = {}
   for _, block in ipairs(doc.blocks) do
@@ -46,9 +47,18 @@ function Pandoc(doc)
       if title == 'Video' then
         in_video = true
         video_level = block.level
+        video_subsection_started = false
+        -- Keep room for the heading, preview and QR block before starting the section.
+        blocks:insert(pandoc.RawBlock('latex', '\\par\\ifdim\\dimexpr\\pagegoal-\\pagetotal\\relax<165mm\\clearpage\\fi'))
       elseif in_video and block.level <= video_level then
         in_video = false
       elseif in_video then
+        if block.level == video_level + 1 then
+          if video_subsection_started then
+            blocks:insert(pandoc.RawBlock('latex', '\\clearpage'))
+          end
+          video_subsection_started = true
+        end
         if title:lower():match('open challenge') then
           label = 'Open Challenge video'
         elseif title:lower():match('obstacle challenge') then

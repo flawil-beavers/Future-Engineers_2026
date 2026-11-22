@@ -40,6 +40,7 @@ change the printed destination.
 
 In the Video section, each distinct HTTPS YouTube link automatically receives
 a 33 mm QR image below its preview, within the same challenge subsection.
+The build starts a new page when needed to keep a preview and its code together.
 Both `youtu.be` and `www.youtube.com/watch?v=...` links are supported, as are
 YouTube Shorts links. Tracking parameters are omitted from the QR destination.
 Replacing a video link updates its QR on the next build. Adding the final

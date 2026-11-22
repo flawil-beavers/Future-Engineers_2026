@@ -22,7 +22,7 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 | Component | Quantity | Function | Estimated CHF |
 | --- | ---: | --- | ---: |
 | Arduino GIGA R1 WiFi | 1 | M7 motion and vision, M4 rear distance sensor | 60.90 |
-| Adafruit BNO085 | 1 | IMU for absolute heading measurement | 24.95 |
+| Adafruit BNO085 | 1 | IMU for heading relative to the starting orientation | 24.95 |
 | Adafruit VL53L4CX | 3 | Left, right and rear time-of-flight ranging | 59.70 |
 | Qwiic/STEMMA QT cables | 2 | Cut into pigtails for direct ToF-to-GIGA wiring | 23.10 |
 | Arducam B0462 camera (GC2145) | 1 | On-board traffic-sign vision | ~30.00 |
@@ -143,7 +143,7 @@ k &= \frac{\pi d_{\mathrm{wheel}}}{N_{\mathrm{wheel}}}
 \end{aligned}
 $$
 
-[Encoder ticks to millimetres](include/config.h#L142)
+[Encoder ticks to millimetres](include/config.h#L137)
 
 **Low-speed control.** Our original minimum-PWM cutoff switched the motor off at small commands and back on as the robot slowed. The resulting surges shook the chassis. For speed targets up to 120 mm/s and PWM requests below the powered-slot setting, we now use pulse-density modulation. The encoder-based PI loop adjusts the request, and steering feed-forward adds effort to account for tyre scrub in turns.
 
@@ -231,7 +231,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 | Physical start/enable toggle (SW1) | A2, active HIGH |
 | Rear measurement transfer | On-chip OpenAMP/RPC, fixed-size frames with sequence and status |
 
-[Main pin assignments](include/config.h#L104-L133) · [Rear ToF pins](src/m4/rear_tof_m4.cpp#L10-L17)
+[Main pin assignments](include/config.h#L99-L128) · [Rear ToF pins](src/m4/rear_tof_m4.cpp#L10-L17)
 
 ### Sensor wiring choices
 
@@ -274,7 +274,7 @@ With snapshot capture, we had to restart the camera interface after each frame. 
 
 In a stationary test, the software detected both coloured targets in all **2,025 evaluated frames**, with no capture errors. Frames arrived **79.62–79.63 ms** apart, and main-loop work dropped to roughly **6.5–7.6 ms** per result.
 
-The current source selects a **24 MHz external clock with input divide-by-two**. The clock divider preserves the intended internal timing. A faster internal PLL profile produced lighting bands and incomplete detections, so we retained the proven clocking. Separately, removing 50 idle vertical blanking lines reduced the recorded interval to about **76.5 ms**. [Clock and blanking settings](include/config.h#L1522-L1532)
+The current source selects a **24 MHz external clock with input divide-by-two**. The clock divider preserves the intended internal timing. A faster internal PLL profile produced lighting bands and incomplete detections, so we retained the proven clocking. Separately, removing 50 idle vertical blanking lines reduced the recorded interval to about **76.5 ms**. [Clock and blanking settings](include/config.h#L1520-L1530)
 
 # Software Architecture and Challenge Strategy
 
@@ -310,10 +310,10 @@ The side ToFs and the camera's configuration connection already use the GIGA's t
 
 | Firmware area | Entry points |
 | --- | --- |
-| M7 control | [Main loop](src/main.cpp#L54-L83) · [Mode update](src/mode_manager.cpp#L501-L535) · [Motor and steering outputs](src/motor_control.cpp#L311-L341) |
-| M7 perception and pose | [Distance sensors](src/sensors.cpp#L346-L388) · [Vision update](src/vision.cpp#L783-L796) · [Pose update](src/position_estimator.cpp#L107-L134) |
+| M7 control | [Main loop](src/main.cpp#L54-L83) · [Mode update](src/mode_manager.cpp#L508-L546) · [Motor and steering outputs](src/motor_control.cpp#L311-L341) |
+| M7 perception and pose | [Distance sensors](src/sensors.cpp#L365-L407) · [Vision update](src/vision.cpp#L783-L796) · [Pose update](src/position_estimator.cpp#L107-L134) |
 | Rear sensor and RPC | [M4 sensor loop](src/m4/rear_tof_m4.cpp#L169-L184) · [M7 frame and freshness check](src/rear_tof_rpc.cpp#L40-L52) |
-| Run records | [Telemetry phases and samples](src/run_telemetry.cpp#L71-L96) · [USB logger update](src/logger.cpp#L307-L327) |
+| Run records | [Telemetry phases and samples](src/run_telemetry.cpp#L71-L96) · [USB logger update](src/logger.cpp#L382-L418) |
 
 ## Open Challenge strategy
 
@@ -335,7 +335,7 @@ flowchart TD
 
 ## Obstacle Challenge strategy
 
-We estimate the car's position on the field from how far the wheels have travelled and which way the car is facing. Readings from walls and parking markers help correct that estimate. The route is a series of points. Our steering method, Pure Pursuit, chooses a point ahead and calculates how sharply to steer towards it. When joining a new path, we blend the steering target into it to avoid a sudden change. [Lookahead and steering calculation](src/obstacle_path.cpp#L7226-L7259)
+We estimate the car's position on the field from how far the wheels have travelled and which way the car is facing. Readings from walls and parking markers help correct that estimate. The route is a series of points. Our steering method, Pure Pursuit, chooses a point ahead and calculates how sharply to steer towards it. When joining a new path, we blend the steering target into it to avoid a sudden change. [Lookahead and steering calculation](src/obstacle_path.cpp#L8786-L8819)
 
 ```mermaid
 flowchart TD
@@ -348,34 +348,43 @@ flowchart TD
     lap1 -->|"Required sign position unresolved"| view["Slow or stop for fresh frames<br/>If needed, reverse along a checked path to scan again"]
     view -->|"Fresh evidence"| lap1
     lap1 -->|"Lap complete"| later["Laps 2 and 3<br/>Follow smoother routes from the confirmed map"]
-    later -->|"Whole car clears the final corner"| park["Measure both bay faces and follow a checked entry path"]
+    later -->|"Whole car clears the final corner"| park["Measure the bay and park in four moves"]
     park -->|"Stationary, parallel and fully inside"| done(["Parked"])
 ```
 
-**Leaving the bay.** We use the rear ToF to measure the gap to the marker behind the car and adjust the starting position if needed. After leaving the bay, the car scans the starting straight. If it needs a better view of a possible sign location, it can make a short move after checking that the path is clear. It then joins the lap route through a checked connecting path. [Rear ToF parking setup](REAR_TOF_M4_SETUP.md#parking-position-configuration) · [Handoff from exit to lap route](src/obstacle.cpp#L3272-L3302)
+**Leaving the bay.** We use the rear ToF to measure the gap to the marker behind the car and adjust the starting position if needed. After leaving the bay, the car scans the starting straight. If it needs a better view of a possible sign location, it can make a short move after checking that the path is clear. It then joins the lap route through a checked connecting path. [Rear ToF parking setup](REAR_TOF_M4_SETUP.md#parking-position-configuration) · [Handoff from exit to lap route](src/obstacle.cpp#L3345-L3375)
 
 **Mapping signs.** On lap 1, we match what the camera sees to one of the allowed sign positions on the field.
 
-- **Occupied.** Two accepted frames must agree on the sign's colour and position. The fallback detector for hard-to-separate green signs requires **three** frames. The [modified sign](#modified-traffic-sign) has a separate height check. [Standard threshold](include/config.h#L1290-L1292) · [Green fallback threshold](include/config.h#L999)
-- **Clear.** We normally require **two consecutive frames** with a clear view of the empty position. The target position checked just after leaving the parking bay requires **five**. An obstructed or ambiguous view cannot count as clear. When a station has two possible sign positions, both must be resolved as clear to mark the station empty. We can also use the official layout to rule out positions where signs cannot be placed. [Clear thresholds](include/config.h#L1317-L1326)
+- **Occupied.** Two accepted frames must agree on the sign's colour and position. The fallback detector for hard-to-separate green signs requires **three** frames. The [modified sign](#modified-traffic-sign) has a separate height check. [Standard threshold](include/config.h#L1286-L1288) · [Green fallback threshold](include/config.h#L993)
+- **Clear.** We normally require **two consecutive frames** with a clear view of the empty position. The target position checked just after leaving the parking bay requires **five**. An obstructed or ambiguous view cannot count as clear. When a station has two possible sign positions, both must be resolved as clear to mark the station empty. We can also use the official layout to rule out positions where signs cannot be placed. [Clear thresholds](include/config.h#L1314-L1323)
 
 If a position remains unresolved, we [slow down and give the camera another look](#systems-integration-and-validation) before continuing past it.
 
 On laps 2 and 3, we reuse the map to plan smoother routes. If two signs are close together, we check the path around both as one manoeuvre. We keep the already checked route whenever a proposed shortcut exceeds the planner's limits.
 
-**Motion checks and parking.** Throughout the run, we check that the readings are recent, the car can make the planned turn, and it is making progress without straying too far from the route. The planner checks the space taken up by the body and wheels as the car moves and steers. If the car turns or stops differently than planned during parking, the controller can recheck the rest of the entry. It verifies that the car is stopped, parallel and fully inside the bay with its wheels straight. [Final parking verification](src/final_parking.cpp#L2863-L2906)
+**Final parking.** We scan both parking markers to find where to start the manoeuvre. As we line up, we check that the body and wheels have room to move.
 
-Our target parking gap is **237.5 mm (23.75 cm)** between the inner faces of the two markers. The firmware starts with a **247.5 mm** estimate based on its configured robot length of **165 mm**. Once the parking scan produces a valid gap measurement, the controller uses it to locate the movable wall. [Robot length](include/config.h#L410-L411) · [Nominal bay length](include/config.h#L864-L865) · [Bay wall calculation](src/final_parking.cpp#L205-L210)
+1. **Turn into the bay.** Reverse with the wheels turned fully until the car is **47°** from parallel to the bay.
+2. **Move deeper into the bay.** Straighten the wheels and reverse **125 mm**.
+3. **Bring the front in.** Turn the wheels fully the other way and reverse until the angle drops to **22.5°**.
+4. **Straighten the car.** Switch the steering back and drive forward until the car is parallel to the bay.
+
+![Four views of the simulated counter-clockwise entry. Dashed outlines show where each move starts, solid outlines show where it ends, and arrows trace the rear axle into the bay.](img/diagrams/final-parking-sequence.png)
+
+We mirror the steering for the opposite driving direction. We track distance with the encoder and heading with the IMU. While reversing, we stop if the rear ToF detects that we are too close to an obstacle. Once the car is still, we centre the steering and check that the estimated outline fits entirely inside the bay and the heading is within **2°** of parallel. [Four-move sequence](src/final_parking.cpp#L1796-L1805) · [Final pose check](src/final_parking.cpp#L2557-L2589)
+
+Our target parking gap is **237.5 mm** between the inner faces of the two markers. The firmware starts at **247.5 mm**, or 1.5 times its configured robot length of **165 mm**, and accepts a measured gap within **±15 mm** of that estimate if it also passes the scan and pose checks. We use the accepted measurement to locate the movable marker. [Initial estimate](include/config.h#L405-L406) · [Bay wall calculation](src/final_parking.cpp#L216-L221)
 
 ### Modified traffic sign
 
-We use the camera calibration to estimate a sign's height from its top and base in the image. The software checks that the base has a plausible width, then classifies the sign as short, normal or tall. We confirm a modified sign only after three fresh frames agree on its colour and height class at the same mapped position and the map shows another sign comes first. [Height estimate and classification](include/obstacle_sign_height.h#L12-L50)
+We use the camera calibration to estimate a sign's height from its top and base in the image. We check that the base has a plausible width and compare the height estimate with the detected red region when a short red sign could be mistaken for a normal one. We wait for a better view when those checks disagree. We confirm a modified sign only after **three fresh frames** agree on its colour and height class at the same mapped position and the map shows another sign comes first. [Height estimate and classification](include/obstacle_sign_height.h#L12-L50) · [Frame checks and votes](src/obstacle_path.cpp#L721-L795)
 
-Once confirmed, we lock that position in the map. We keep the colour seen by the camera for diagnostics and store the opposite colour as the sign's original colour. The route planner uses that stored colour to choose the passing side on all three laps. [Confirmation and map update](src/obstacle_path.cpp#L703-L754)
+Once confirmed, we lock that position in the map. We keep the colour seen by the camera for diagnostics and store the opposite colour as the sign's original colour. The route planner uses that stored colour to choose the passing side on all three laps. [Confirmation and map update](src/obstacle_path.cpp#L707-L719)
 
 # Systems Integration and Validation
 
-**How the parking exit brings the subsystems together.** We use the rear ToF to measure the gap behind the car and the wheel encoder to limit how far the motor moves during a correction. Once the car stops, we compare the change in rear distance with the encoder travel and check that the gap is within tolerance. If either check fails, we allow one small retry when the remaining gap error is within the correction limit. If verification still fails, we hold the car in place. During the exit itself, we use the IMU heading to decide when the final steering arc has brought the car back parallel to its starting direction. The encoder caps how far that arc can continue. [Rear distance verification](src/obstacle.cpp#L1478-L1544) · [Final arc and braking](src/obstacle.cpp#L1985-L2030)
+**How the parking exit brings the subsystems together.** We use the rear ToF to measure the gap behind the car and the wheel encoder to limit how far the motor moves during a correction. Once the car stops, we compare the change in rear distance with the encoder travel and check that the gap is within tolerance. If either check fails, we allow one small retry when the remaining gap error is within the correction limit. If verification still fails, we hold the car in place. During the exit itself, we use the IMU heading to decide when the final steering arc has brought the car back parallel to its starting direction. The encoder caps how far that arc can continue. [Rear distance verification](src/obstacle.cpp#L1515-L1581) · [Final arc and braking](src/obstacle.cpp#L2023-L2090)
 
 We used prototype observations, bench measurements and simulations to guide changes across the car. Each row shows what limited the earlier design, what we changed, and the resulting trade-off or test finding. In physical testing, contact or manual intervention counts as a failed attempt even if the controller reports completion.
 
@@ -386,15 +395,15 @@ We used prototype observations, bench measurements and simulations to guide chan
 | Gearbox and motor control | In driving tests, the 50:1 gearbox was less consistent under load than the 100:1. We initially chose the 100:1, then needed more speed for the World Final. | We switched to 30:1 for speed, accepting less torque multiplication. We use encoder feedback and short power pulses to help the motor start and keep moving at crawl speeds, where tyre scrub in tight turns adds load. [Gearbox comparison and low-speed control](#drive-selection-and-low-speed-control) |
 | Range sensors, IMU and wiring | A soldering fault damaged an early ToF module. Daisy-chained replacements shared the same startup address, and frequent ToF transactions made IMU readings unreliable on the shared bus. | We chose plug-in VL53L4CX modules for easier replacement and longer rated range. We gave each ToF its own bus and moved the IMU to SPI so heading updates can run independently of range transactions. [Sensor and wiring choices](#wiring-and-signal-interfaces) |
 | Camera geometry and sign recognition | The earlier calibration classified the correct height in **11 of 45** reference images. The planner needs this classification to interpret a modified sign. | We recalibrated using known distances and sign heights. The revised method classified both colour and height in **45 of 45** reference images of centred stationary targets. [Camera validation](simulation/SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#results-and-changes) |
-| Camera and first-lap speed | At full driving speed, we sometimes passed a sign before the camera had enough usable frames to confirm it. | We cap the approach to an unresolved position at **120 mm/s** and, if needed, stop for up to **800 ms** to collect more evidence. If the view is still inconclusive, we can reverse along a checked path and scan again from a better viewpoint. In a physical test, this confirmed a green sign missed on approach and let the car resume its route. [Slowdown and hold](src/obstacle_path.cpp#L7458-L7508) · [Reverse and rescan](src/obstacle_path.cpp#L5135-L5228) |
-| Sign map, route planning and vehicle footprint | In focused simulations, the previous later-lap route left as little as **43.1 mm** of clearance at a sign. | We added a local path adjustment and keep the previous route if the adjustment fails clearance checks. Across **2,807** model cases, the planner preserved the required passing sides and the minimum sampled sign clearance was **54.0 mm**. Physical clearance still depends on pose accuracy, tyre slip and steering response. [Later-lap clearance study](simulation/LAP23_CLEARANCE_REVIEW_20261120.md#validation) |
-| Parking pose, steering and clearance | In physical testing, the controller could report completion even when the car finished poorly or incompletely. Tight entries were sensitive to turning radius and the extra space taken up by the steered wheels. | We use markers to refine the pose, check the measured steering envelope and verify that the car is fully inside the bay. We allow one checked rescan if the gap measurement is invalid. In a parking stress simulation, **114 of 120** cases completed and six narrow-gap cases triggered a safe stop. [Physical observations](simulation/RETURNED_651_656_PARKING_20261105.md#what-the-returned-runs-establish) · [Parking stress test](simulation/CW_LOGS_3_6_REVIEW_20261119.md#verification) |
+| Camera and first-lap speed | At full driving speed, we sometimes passed a sign before the camera had enough usable frames to confirm it. | We cap the approach at **120 mm/s**, pause for up to **800 ms**, and reverse along a checked path to scan from farther away. This recovered a missed green sign in physical testing. We added a short, checked forward move for cases where the retreat leaves the position too far away to classify. [Slowdown and hold](src/obstacle_path.cpp#L9080-L9124) · [Viewpoint selection](src/obstacle_path.cpp#L6300-L6376) |
+| Sign map, route planning and vehicle footprint | Some routes around close signs left little room for real driving errors. | We adjust the route around nearby signs as a group and check the new path before using it. The current planner passed **2,811** known-map cases. In a separate footprint check, **7 of 2,827** cases fell below our **50 mm** modelling target, with a minimum sign clearance of **43.8 mm**. [Clearance checks and model limits](simulation/README.md#route-clearance-check) |
+| Parking pose, steering and clearance | Some early entries finished poorly even when the controller reported completion. Tight entries depended on the turning radius and the space taken up by the steered wheels. | We use both markers to refine the entry position, run the same four moves from that position and check final containment. All **396** modelled approaches reached the entry position. Physical logs show both a firmware-confirmed park and a separate entry that looked successful to the tester but failed the firmware's final pose check. [Model](simulation/README.md#parking-entry-models) · [Confirmed containment](simulation/evidence/parking_exit_diagnostics/README.md#2026-11-22-log-48) · [Final pose discrepancy](simulation/evidence/parking_exit_diagnostics/README.md#2026-11-22-logs-53-and-54) |
 
 # Build, Upload and Reproduction
 
 ## Build and run the firmware
 
-Clone the public repository, open the root in VS Code with the PlatformIO extension, and use the IDE-managed PlatformIO Core. [PlatformIO configuration](platformio.ini#L14-L47) defines the Arduino GIGA M4 and M7 environments and their dependencies. From the repository root in PowerShell:
+Clone the public repository, open the root in VS Code with the PlatformIO extension, and use the IDE-managed PlatformIO Core. [PlatformIO configuration](platformio.ini#L14-L50) defines the Arduino GIGA M4 and M7 environments and their dependencies. From the repository root in PowerShell:
 
 ```powershell
 $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
@@ -412,19 +421,20 @@ For a complete installation, upload **M4 first, then M7** over USB. Later firmwa
 Configure the firmware before the attempt in `include/config.h`.
 
 - **Challenge mode.** Set [`STARTUP_ROBOT_MODE`](include/config.h#L25) to `MODE_OPEN_CHALLENGE` for Open or `MODE_OBSTACLE_CHALLENGE` for Obstacle. The default Obstacle mode exits the parking bay, drives three laps and attempts final parking.
-- **Obstacle Challenge participation.** Edit the value in [`#define OBSTACLE_SURPRISE_RULE_ENABLED 1`](include/config.h#L959) to match your declaration. Keep `1` (the default) if you are participating in the Modified Traffic Sign Surprise Rule. Change it to `0` if you are opting out and want the firmware to use ordinary sign handling.
+- **Obstacle Challenge participation.** Edit the value in [`#define OBSTACLE_SURPRISE_RULE_ENABLED 1`](include/config.h#L953) to match your declaration. Keep `1` (the default) if you are participating in the Modified Traffic Sign Surprise Rule. Change it to `0` if you are opting out and want the firmware to use ordinary sign handling.
 
 After changing either setting, rebuild and upload the `giga_r1_m7` environment using the commands above. These settings are compiled into the uploaded firmware. With the start toggle (SW1) LOW, turn on the main power rocker (SW2) and wait for the controller to reach its waiting state. On the judge's signal, set SW1 HIGH. The robot then drives autonomously using its onboard sensors and controller.
 
 ## Reproduce the evidence
 
-Use the latest [main branch](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main) for the actively maintained firmware. Record the Git commit used to build the firmware (run `git rev-parse HEAD` before building), along with the challenge mode and any local settings, so results can be compared as `main` evolves. Capture diagnostics and run telemetry can be read during bench work at **115200 baud**. Each physical run record should pair logged state with the observed contact, intervention and finish result.
+We maintain our firmware on `main`. During bench work, read diagnostics and telemetry at **115200 baud**.
 
-**Automatic USB logging.** Before a test, plug a FAT32-formatted USB flash drive into the GIGA’s USB host port. We buffer diagnostics and telemetry in RAM while the car drives. The firmware automatically saves them as a numbered `log_*.txt` file when the car stops at the end of either challenge or when we end a test by setting the start toggle (SW1) LOW. The GIGA’s RGB LED shows red while saving and green when the save succeeds. Wait for the green light to go out before removing the drive.
+**Automatic USB logging.** Before a test, plug a FAT32-formatted USB flash drive into the GIGA’s USB host port. We buffer telemetry in RAM while driving and save it to a numbered `log_*.txt` file when the challenge ends or we set the start toggle (SW1) LOW. The GIGA shows red while writing and green after reading the file back and verifying it. Red and green together indicate a save error. Wait for the green light to go out before removing the drive. [Save and verification status](src/logger.cpp#L338-L378)
 
 - **Steering calibration.** Follow the [CAD calibration workflow](CAD/README.md#workflow) to compare predicted turning radii with measurements from the robot.
 - **Does the camera recognise the sign?** We test the detection software on images of signs whose colour and height we already know. Separate test cases check that the planner chooses the correct passing side for a modified sign. [How to rerun the sign check](simulation/README.md#sign-recognition-check)
 - **Does the planned route leave enough room?** We simulate laps 2 and 3 with different sign layouts and measure how close the chassis and wheels come to the signs and walls in the model. [How to rerun the clearance check](simulation/README.md#route-clearance-check)
+- **Can the car line up for parking?** We simulate the approach to the measured entry position and check the four moves in both driving directions. [How to rerun the parking check](simulation/README.md#parking-entry-models)
 - **Physical test logs.** Find the original files and their firmware details, where available, in the [run evidence index](simulation/evidence/parking_exit_diagnostics/README.md). Use the [run inspector](tools/robot-run-inspector/README.md) to view a recorded run, or follow the [parking analysis instructions](simulation/README.md#parking-exit-model) to regenerate plots from the archived logs.
 
 # Video
@@ -436,6 +446,8 @@ Use the latest [main branch](https://github.com/flawil-beavers/Future-Engineers_
 ## Obstacle Challenge
 
 [![Watch the Obstacle Challenge video](https://img.youtube.com/vi/5dCMkFn-6TI/maxresdefault.jpg)](https://www.youtube.com/watch?v=5dCMkFn-6TI)
+
+We filmed this run with an earlier version of our parking software. See the [current four-move parking sequence](#obstacle-challenge-strategy).
 
 # Robot Photos
 

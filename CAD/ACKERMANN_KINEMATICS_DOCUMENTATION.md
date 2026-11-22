@@ -73,7 +73,7 @@ The August report also records a **+0.6°** servo-neutral offset and a trial
 change of the centre command from **81° to 82°**. The linked log contains the
 initial +10° measurement. The report attributes a reduction from **5.50% to
 0.06%** at +10° to the adjustment. The current firmware sets the servo centre
-to **80°**. [Current servo configuration](../include/config.h#L168)
+to **80°**. [Current servo configuration](../include/config.h#L163)
 
 ## How the firmware uses the model
 

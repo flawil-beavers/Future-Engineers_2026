@@ -46,8 +46,9 @@ Both images must be present. The M7 starts the M4 when RPC initializes.
   sensors are otherwise applied on M4.
 - M4 publishes measurements asynchronously; the M7 control loop never waits
   for individual sensor transactions.
-- Missing RPC data, an initialization/bus error, or no fresh measurement for
-  250 ms makes all rear getters return `-1.0f`.
+- The rear distance, raw distance, signal and sigma getters return `-1.0f`
+  when RPC data is missing, the sensor reports an initialization or bus error,
+  or the measurement is older than 250 ms.
 - The serial `v` command and general telemetry print left, right and rear ToF.
 
 The existing side-only navigation and diagnostic loops intentionally remain
@@ -58,7 +59,7 @@ rear range as a lateral wall measurement.
 
 Before the five-segment parking exit, we use the rear range to check and
 correct the car's position along the bay. The settings are in
-[`include/config.h`](include/config.h#L456-L500).
+[`include/config.h`](include/config.h#L451-L501).
 
 | Setting | Meaning |
 | --- | --- |
@@ -92,7 +93,7 @@ gap only.
    the controller can make one small correction in the direction of the target
    and verify again. If the retry fails, the car holds in place.
 
-[Positioning settings](include/config.h#L456-L500) · [Verification and retry](src/obstacle.cpp#L1478-L1544)
+[Positioning settings](include/config.h#L451-L501) · [Verification and retry](src/obstacle.cpp#L1515-L1581)
 
 ## Stationary setup check
 
