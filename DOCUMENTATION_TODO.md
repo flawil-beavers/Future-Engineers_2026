@@ -40,15 +40,17 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Use the latest `main` for firmware. Record the evaluated and actual competition commit IDs and any local M7/M4 configuration, CAD and calibration changes in a version note when known.
 - [x] Submit the public GitHub URL (team confirmation, November 20).
 - [x] Confirm the organizer's November 24 evaluation cutoff (team confirmation, November 20).
-- [ ] Verify the commit history against the General Rules §7 milestones, including the one-fifth-code requirement for the first commit.
-- [ ] Review the latest official Future Engineers rules, Documentation Rubric, Questions & Answers and any announced surprise rule. Apply any newer clarification before submission.
+- [ ] Review the General Rules §7 code-volume requirement with the organizers if needed. Git history begins March 15 (`25eeb32`) with camera and main-loop code. The second and third commits are dated May 18 and 21. The first commit's one-fifth share of the final code remains unverified.
+- [x] Review the General Rules, Documentation Rubric and Future Engineers Q&A for the November 22 documentation audit. Recheck the official sources before the evaluation cutoff.
 - [ ] Push the updated documentation to `main`. Confirm the submitted URL shows the revised README, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
-- [ ] After the documentation pull request is merged into `main`, review the [README’s software architecture and challenge logic](README.md#software-architecture-and-challenge-strategy) against the merged firmware. Check the challenge flows, decision conditions and configuration defaults against any changes that landed on `main` while the documentation branch was open.
+- [x] Review the [README’s software architecture and challenge logic](README.md#software-architecture-and-challenge-strategy) against November 22 firmware (`4033ef0`), including the fixed parking entry, modified-sign voting, recovery viewpoints and USB save verification. Check later firmware changes again before publication.
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
-- [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 22 rendered pages and decode the three QR codes from the PDF (November 20).
+- [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 23 rendered pages and decode the three QR codes. Each challenge preview and its QR code share a page (November 22).
 - [ ] Print the required hardcopy for the World Final.
 - [x] Verify that the repository and both challenge-video QR codes scan correctly (team confirmation, November 21).
 
 November 18 README update: the team confirms the rear-ToF addition, unchanged dimensions and unchanged print settings (0.2 mm, no supports). The README reflects current full-run flags, measured parking geometry, modified-sign implementation and recorded validation limits.
 
 November 20 documentation update: the team confirmed v74 includes the rear-ToF mount. The linked `.3mf` contains 17 meshes with the saved plate and print settings. The README links the current CAD, team photo, six current robot views, challenge videos, revision 1 wiring diagram and engineering evidence. The regenerated journal includes the confirmed mass, height and target bay gap.
+
+November 22 documentation update: the current known-map and fixed-parking host checks passed. Seven of 2,827 cases in the later-lap footprint check fell below the 50 mm modelling target. The README and simulation guide report the 43.8 mm minimum sign clearance. Repeat the affected layouts physically and record observed clearance and contact before claiming a higher margin.

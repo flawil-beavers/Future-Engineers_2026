@@ -45,7 +45,9 @@ python simulation/check_surprise_rule.py
 ```
 
 This checks recognition against approved camera images and exercises the
-passing rules for modified signs. [Camera validation report](SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#verification)
+passing rules for modified signs. On November 22, the check passed 45 approved
+camera frames, 648 rendered cases, 48 assignments, 32 policy checks and
+16 frame sequences. [Camera validation report](SURPRISE_RULE_MEASURED_VALIDATION_20261119.md#verification)
 
 ## Route clearance check
 
@@ -58,7 +60,13 @@ python simulation/check_later_laps.py
 python simulation/check_later_lap_physical_clearance.py
 ```
 
-[Clearance study and model limits](LAP23_CLEARANCE_REVIEW_20261120.md#validation)
+On November 22, the planner passed all 2,811 known-map cases. The second
+check also tests additional corner layouts and uses a 50 mm engineering
+target. Seven of its 2,827 cases fell below this target. The smallest
+sampled gaps were 43.8 mm to a pillar and 51.1 mm to the inner wall.
+Both checks assume a correct sign map and ideal pose tracking. The
+[November 20 clearance study](LAP23_CLEARANCE_REVIEW_20261120.md#validation)
+documents the earlier comparison and model assumptions.
 
 ## Parking-exit model
 
@@ -88,7 +96,22 @@ the evidence and interpretation rules.
 
 ## Parking-entry models
 
-The current scout replay uses the tracked log fixtures by default:
+Test the current four-move entry and its approach from the repository root
+with Python and a C++17-capable `g++` on your `PATH`.
+
+```powershell
+python simulation/check_final_parking_sequence.py
+```
+
+On November 22, all 396 modelled approaches reached the entry position.
+Separate cases executed all four moves in both directions, tested the
+bounded slip allowance and checked registration against the bay markers.
+The model assumes known field geometry. Compare with the [physical tests](evidence/parking_exit_diagnostics/README.md#2026-11-22-log-48),
+or follow the [isolated practice guide](PARKING_ENTRY_PRACTICE_DE.md) to test
+the manoeuvre on a robot. The [November 19 stress test](CW_LOGS_3_6_REVIEW_20261119.md#verification)
+covers the earlier adaptive parking controller.
+
+The earlier scout replay uses the tracked log fixtures by default:
 
 ```powershell
 python simulation/parking_entry_scout_sim.py
@@ -274,7 +297,7 @@ checked neutral scan alternative. Adaptive entry additionally supports
 
 Returned603 and direct entry practice:
 [review](RETURNED_603_AND_PARKING_PRACTICE_20261031.md),
-[Aufstellung und Bedienung](PARKING_ENTRY_PRACTICE_DE.md).
+[Isolated parking setup](PARKING_ENTRY_PRACTICE_DE.md).
 `check_returned_603_and_parking_practice.py` checks clipped-depth association,
 wall/rail shortcut equivalence, actual entry-only startup and603 replanning.
 Use `--without-clipped-depth-gate` for the wrong-end negative control.
