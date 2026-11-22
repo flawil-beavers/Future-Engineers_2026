@@ -3323,6 +3323,18 @@ void obstacle_challenge_update(
     if(OBSTACLE_FINAL_PARKING_ENABLED && !OBSTACLE_FIRST_LAP_TEST_ENABLED &&
        !OBSTACLE_THREE_LAP_TEST_ENABLED && obstacle_path_lap()>=1)
     {
+        const PositionEstimate pose=get_position_struct();
+        bool wallArc=false;
+        if (!obstacle_path_complete() &&
+            (final_parking_active() ||
+             (obstacle_path_parking_corner_window(pose,wallArc) &&
+              final_parking_try_corner_approach(parkingTurnSign,wallArc))))
+        {
+            final_parking_notify_lap_finish(obstacle_path_record_parking_finish(pose));
+            final_parking_update(parkingTurnSign);
+            oc_complete=final_parking_complete();
+            return;
+        }
         PositionEstimate arrival;
         if(obstacle_path_parking_handoff_pose(arrival))
             final_parking_prepare_approach(parkingTurnSign,arrival);

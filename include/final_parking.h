@@ -37,3 +37,5 @@ struct PositionEstimate;
 void final_parking_prepare_approach(int8_t turn_sign,const PositionEstimate &arrival);
 bool final_parking_rolling_ready(const PositionEstimate &pose);
 bool final_parking_start_rolling(int8_t turn_sign);
+bool final_parking_try_corner_approach(int8_t turn_sign,bool wallArc);
+void final_parking_notify_lap_finish(bool complete);

@@ -4641,6 +4641,20 @@ bool finalCornerVehicleClear(const PositionEstimate &pose)
     return true;
 }
 
+bool recordParkingFinish(const PositionEstimate &pose)
+{
+    if (!runtimeTestMode && runtimeLapTarget==3 && completedLaps==2 &&
+        lapCountingArmed && optimizedBuilt && finalCornerVehicleClear(pose))
+    {
+        lapCountingArmed=lapBoundaryPending=lapFinishPending=false;
+        completedLaps=3;finished=true;
+        run_telemetry_lap(3);
+        Serial.println("[PATH] Completed lap 3");
+        Serial.println("[LAPS] stage=FINISH; complete vehicle clear of last corner; direct parking");
+    }
+    return finished && completedLaps==3;
+}
+
 void updateProgress(const PathPoint *path, const PositionEstimate &pose)
 {
     const uint16_t previous = progressIndex;
@@ -4653,18 +4667,8 @@ void updateProgress(const PathPoint *path, const PositionEstimate &pose)
 
     // Laps 1/2 retain their map/seam handover. On the last lap the rules
     // allow parking as soon as the whole vehicle leaves the last corner.
-    if (!runtimeTestMode && runtimeLapTarget==3 && completedLaps==2 &&
-        lapCountingArmed && optimizedBuilt &&
-        baselinePath[progressIndex].distanceMm>=corners[3].pathEndMm &&
-        finalCornerVehicleClear(pose))
-    {
-        lapCountingArmed=lapBoundaryPending=lapFinishPending=false;
-        completedLaps=3; finished=true;
-        run_telemetry_lap(3);
-        Serial.println("[PATH] Completed lap 3");
-        Serial.println("[LAPS] stage=FINISH; complete vehicle clear of last corner; direct parking");
-        return;
-    }
+    if (baselinePath[progressIndex].distanceMm>=corners[3].pathEndMm &&
+        recordParkingFinish(pose)) return;
 
     if (lapFinishPending)
     {
@@ -8183,11 +8187,68 @@ bool obstacle_path_parking_handoff_pose(PositionEstimate &pose,float *distanceMm
 
 void obstacle_path_allow_rolling_finish(bool allowed){rollingFinishAllowed=allowed;}
 
+bool obstacle_path_record_parking_finish(const PositionEstimate &pose)
+{
+    return recordParkingFinish(pose);
+}
+
+bool parkingStartStationHasColour(uint8_t station,bool red)
+{
+    for (uint8_t id=2*station;id<2*station+2;++id)
+        if (seats[id].confirmed && seats[id].red==red) return true;
+    return false;
+}
+
+bool parkingCanUseWallArc()
+{
+    return routeTurnSign<0 ? !parkingStartStationHasColour(0,true) :
+        !parkingStartStationHasColour(0,false) && !parkingStartStationHasColour(1,false);
+}
+
+bool obstacle_path_parking_corner_window(const PositionEstimate &pose,bool &wallArc)
+{
+    if (runtimeTestMode || runtimeLapTarget!=3 || completedLaps!=2 ||
+        !lapCountingArmed || !optimizedBuilt || finished) return false;
+    const float progress=baselinePath[progressIndex].distanceMm;
+    wallArc=parkingCanUseWallArc();
+    if (!wallArc)
+    {
+        // Once the rear has passed the first CCW green, merge toward the
+        // wall in the same direction. The actual sweep still has to fit.
+        return routeTurnSign>0 && parkingStartStationHasColour(0,false) &&
+            !parkingStartStationHasColour(1,false) && pose.x_mm>=-415.0f &&
+            progress>=corners[3].pathEndMm &&
+            fabsf(wrap180(pose.heading_deg))<40.0f;
+    }
+    if (progress<corners[3].pathStartMm-65.0f ||
+        progress>corners[3].pathStartMm+245.0f ||
+        fabsf(wrap180(pose.heading_deg+90.0f))>42.0f) return false;
+    for (uint8_t id=18;id<24;++id)
+    {
+        const CandidateSeat &seat=seats[id];
+        if (!seat.confirmed) continue;
+        const float heading=seat.headingDeg*PI/180.0f;
+        const float passed=(pose.x_mm-seat.x)*cosf(heading)+(pose.y_mm-seat.y)*sinf(heading);
+        if (passed<125.0f) return false;
+    }
+    return true;
+}
+
 float parkingFinishSpeed(float speed,const PositionEstimate &)
 {
     if(runtimeTestMode || !optimizedBuilt)return speed;
     if(lapFinishPending)return fminf(speed,static_cast<float>(OBSTACLE_FINAL_PARKING_APPROACH_SPEED));
-    if(completedLaps!=2 || baselinePath[progressIndex].distanceMm<corners[3].pathStartMm)return speed;
+    if(completedLaps!=2)return speed;
+    const float progress=baselinePath[progressIndex].distanceMm;
+    const float cornerStart=corners[3].pathStartMm;
+    if (OBSTACLE_FINAL_PARKING_ENABLED && runtimeLapTarget==3 && parkingCanUseWallArc() &&
+        progress>=cornerStart-450.0f && progress<=cornerStart+245.0f)
+    {
+        const float remaining=fmaxf(0.0f,cornerStart-65.0f-progress);
+        return fminf(speed,sqrtf(205.0f*205.0f+
+            2*OBSTACLE_LATER_LAP_PLAN_DECEL_MMSS*remaining));
+    }
+    if(progress<cornerStart)return speed;
     PositionEstimate arrival;float arrivalDistance=0;
     if(!obstacle_path_parking_handoff_pose(arrival,&arrivalDistance))return speed;
     float remaining=cyclicDistanceForward(baselinePath[progressIndex].distanceMm,arrivalDistance);

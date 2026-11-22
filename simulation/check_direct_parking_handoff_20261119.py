@@ -7,7 +7,9 @@ from check_returned_603_and_parking_practice import run
 from pathlib import Path
 path=Path('src/obstacle_path.cpp').read_text()
 s=fixture_source()+'\nbool rollingFinishAllowed=false;\nbool obstacle_path_parking_handoff_pose(PositionEstimate &,float *distanceMm=nullptr);\n'
-for fn in ('bool obstacle_path_parking_handoff_pose(', 'void obstacle_path_allow_rolling_finish(', 'float parkingFinishSpeed('):
+for fn in ('bool obstacle_path_parking_handoff_pose(', 'void obstacle_path_allow_rolling_finish(',
+           'bool obstacle_path_record_parking_finish(', 'bool parkingStartStationHasColour(',
+           'bool parkingCanUseWallArc(', 'bool obstacle_path_parking_corner_window(', 'float parkingFinishSpeed('):
     s+=block(path,path.index(fn))+'\n'
 oc=Path('src/obstacle.cpp').read_text()
 finish=block(path,path.index('    if (finished)',path.index('void obstacle_path_update(')))
@@ -22,7 +24,69 @@ void obstacle_path_update(bool){finished=true;
 s+='void dispatchHandoff(){using namespace parking_module;\n'+oc[start:end]+'}\n'
 s+=r'''
 using namespace parking_module;
-int main(){int total=0,prepared=0,rolling=0,bad=0;
+bool checkWallRoute(int dir, int startSeat, unsigned long cadence)
+{
+ ::routeTurnSign=dir;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ if(startSeat>=0){
+  auto &seat=seats[startSeat];seat.confirmed=seat.injected=true;seat.red=dir<0;
+ }
+ learned();joinSameColourStraightEnds(livePath,true);roundKnownCornerPairs(livePath,true);
+ if(!buildOptimizedPath())return false;
+ ::completedLaps=2;lapCountingArmed=true;
+ final_parking_reset();framePeriod=cadence;hostTime=1000;encoder=0;
+ hostGyroHealthy=true;oc_complete=oc_lap_finish_braking=false;
+ oc_parking_exit_steering=dir>0?-50:50;
+ const bool expectLeft=dir<0&&startSeat>=0;
+ if(expectLeft){
+  if(!obstacle_path_parking_handoff_pose(hostPose,nullptr))return false;
+  if(!obstacle_path_record_parking_finish(hostPose))return false;
+  truePose=hostPose;stop(true);
+ }else{
+  bool eligible=false,arc=false;
+  for(::progressIndex=0;::progressIndex<pathLength;++::progressIndex){
+   const auto &p=optimizedPath[::progressIndex];
+   hostPose=truePose={p.x,p.y,connectorRouteHeading(optimizedPath,::progressIndex)};
+   if(!obstacle_path_parking_corner_window(hostPose,arc))continue;
+   stop(false);set_speed(150);
+   if(final_parking_try_corner_approach(dir,arc)){eligible=true;break;}
+   hostTime+=200;
+  }
+  if(!eligible||arc!=(startSeat<0)||::completedLaps!=2)return false;
+ }
+ bool left=false,scanned=false;
+ for(int tick=0;tick<2000;++tick){
+  if(expectLeft)final_parking_update(dir);
+  else dispatchHandoff();
+  left|=state==FP_LEFT_TO_WALL;
+  if(state==FP_SCAN_DRIVE){
+   scanned=true;
+   if(scanFieldSign!=(expectLeft?1:dir))return false;
+  }
+  if(state==FP_FIXED_SETTLE)return left==expectLeft&&scanned&&::completedLaps==3;
+  if(final_parking_aborted())return false;
+  if(dc_state==DC_ENABLED){
+   float remaining=fabsf(command*.02f);
+   while(remaining>0.001f){
+    const float ds=(command<0?-1.f:1.f)*fminf(1.f,remaining);
+    remaining-=fabsf(ds);encoder+=ds;
+    advanceParkingPose(hostPose,steeringCommand,ds);
+    advanceParkingPose(truePose,steeringCommand,ds);
+    if(!parkingEntryPoseSafe(truePose,steeringCommand,0))return false;
+   }
+  }
+  hostTime+=20;
+ }
+ return false;
+}
+
+int main(){int total=0,prepared=0,rolling=0,bad=0,directCw=0,directCcw=0;
+ if(fabsf(parkingScanLineY()-OBSTACLE_FINAL_PARKING_STRAIGHT_WIDTH_MM*.5f-
+          OBSTACLE_SOUTH_OUTER_WALL_Y_MM-230.f)>.01f)return 1;
+ for(int dir:{-1,1}){
+  parking_module::routeTurnSign=dir;
+  if(fabsf(parkingScanStartX()-(dir<0?923.f:835.f))>.01f)return 1;
+ }
  for(int dir:{-1,1})for(int layout:{0,1,2})for(int incoming=0;incoming<4;++incoming){
   ::routeTurnSign=dir;resetState();baseline();for(auto &s:seats)s.confirmed=s.injected=false;
   if(layout==1)for(int i:{int(dir>0),4+int(dir>0)}){seats[i].confirmed=seats[i].injected=true;seats[i].red=false;}
@@ -38,6 +102,7 @@ int main(){int total=0,prepared=0,rolling=0,bad=0;
   ++total;
   if(dc_state!=DC_ENABLED||command!=150||state!=FP_IDLE||steeringCommand!=0){++bad;continue;}
   bool ready=approachPreparation.ready;prepared+=ready;
+  if(ready&&approachDirectScan){if(dir<0)++directCw;else ++directCcw;}
   ::progressIndex=nearestPathIndex(baselinePath,arrival.x_mm,arrival.y_mm,0,pathLength);
   for(int lap:{0,1}){::completedLaps=lap;if(parkingFinishSpeed(520,arrival)!=520)++bad;}
   ::completedLaps=2;if(parkingFinishSpeed(520,arrival)>150.01f){++bad;continue;}
@@ -51,7 +116,8 @@ int main(){int total=0,prepared=0,rolling=0,bad=0;
    dc_state=DC_HOLDING;if(final_parking_rolling_ready(arrival)){++bad;continue;}dc_state=DC_ENABLED;
    measured_speed=-1;if(final_parking_rolling_ready(arrival)){++bad;continue;}measured_speed=150;
    bool started=final_parking_start_rolling(dir);
-   if(started!=(dir>0)|| (started&&(dc_state!=DC_ENABLED||state!=FP_APPROACH_LANE))){++bad;continue;}
+   if(started!=(dir>0)|| (started&&(dc_state!=DC_ENABLED||
+       (state!=FP_APPROACH_LANE&&state!=FP_APPROACH_OUTER)))){++bad;continue;}
    rolling+=started;
    oc_complete=oc_lap_finish_braking=false;oc_parking_exit_steering=dir>0?-50:50;
    ::finished=false;
@@ -70,7 +136,7 @@ int main(){int total=0,prepared=0,rolling=0,bad=0;
       if(!parkingEntryPoseSafe(truePose,steeringCommand,0))collision=true;
      }}hostTime+=20;
     }
-    if(!scan||collision){++bad;continue;}
+    if(!scan||collision||hostPose.x_mm<parkingScanStartX()-.1f){++bad;continue;}
    }else{
     dispatchHandoff();
     if(!oc_lap_finish_braking||dc_state!=DC_HOLDING){++bad;continue;}
@@ -98,7 +164,14 @@ int main(){int total=0,prepared=0,rolling=0,bad=0;
  if(!approachPreparation.ready)return 3;
  std::cout<<"DIRECT HANDOFF isolated CW GREEN reverse guide PASS\n";
  std::cout<<"DIRECT HANDOFF total/prepared/rolling/failed="<<total<<"/"<<prepared<<"/"<<rolling<<"/"<<bad<<"\n";
- return bad || prepared<16 || rolling<8 ? 1:0;
+ std::cout<<"DIRECT SCAN LINE CW/CCW="<<directCw<<"/"<<directCcw<<"\n";
+ int wallRoutes=0;
+ for(int dir:{-1,1})for(int seat:{-1,dir<0?1:0})for(unsigned long cadence:{30UL,100UL}){
+  if(checkWallRoute(dir,seat,cadence))++wallRoutes;
+  else {++bad;std::cout<<"WALL ROUTE FAIL "<<dir<<"/"<<seat<<"/"<<cadence<<"\n"<<robot_logger.lines.str();}
+ }
+ std::cout<<"TWO-SIDED WALL ROUTE "<<wallRoutes<<"/8 reached the fixed entry\n";
+ return bad || prepared<16 || rolling<8 || !directCw || !directCcw ? 1:0;
 }
 '''
 run('direct-parking-handoff',s)

@@ -48,9 +48,9 @@ void set_steering(int angle){steeringCommand=set_degree=angle;}
 struct HostServo {void write(int angle){steeringCommand=angle-SERVO_CENTER;}} servo;
 @@STEER@@
 void resetHostServo(){servo_last_command=1000;servo_last_command_ms=0;}
-struct ObstacleSeatInfo {bool confirmed=false;float xMm=0,yMm=0;};
+struct ObstacleSeatInfo {bool confirmed=false,red=false;float xMm=0,yMm=0;};
 uint8_t obstacle_path_seat_count(){return 24;}
-bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
+bool obstacle_path_get_seat(uint8_t i,ObstacleSeatInfo &s){s.confirmed=seats[i].confirmed;s.red=seats[i].red;s.xMm=seats[i].x;s.yMm=seats[i].y;return true;}
 void update_gyro(){}
 bool obstacle_path_sample_pose_clearance(uint8_t i,float x,float y,float h,ObstacleClearanceSample &s){return calculateClearanceAtPose(seats[i],x,y,h,s);}
 enum TofSensor {TOF_LEFT,TOF_RIGHT,TOF_REAR};
