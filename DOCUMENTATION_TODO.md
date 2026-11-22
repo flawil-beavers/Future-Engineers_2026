@@ -43,6 +43,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Verify the commit history against the General Rules §7 milestones, including the one-fifth-code requirement for the first commit.
 - [ ] Review the latest official Future Engineers rules, Documentation Rubric, Questions & Answers and any announced surprise rule. Apply any newer clarification before submission.
 - [ ] Push the updated documentation to `main`. Confirm the submitted URL shows the revised README, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
+- [ ] After the documentation pull request is merged into `main`, review the [README’s software architecture and challenge logic](README.md#software-architecture-and-challenge-strategy) against the merged firmware. Check the challenge flows, decision conditions and configuration defaults against any changes that landed on `main` while the documentation branch was open.
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
 - [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 22 rendered pages and decode the three QR codes from the PDF (November 20).
 - [ ] Print the required hardcopy for the World Final.
