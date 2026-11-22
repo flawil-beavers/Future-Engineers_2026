@@ -28,6 +28,7 @@ struct NullLog {template<class T>void print(T){} template<class T>void print(T,i
 ''' + block(path, path.index('struct CandidateSeat')) + r''';
 CandidateSeat seats[OBSTACLE_SEAT_COUNT];
 bool parkingSectionInnerSeatsOnly=false,runtimeTestMode=false;
+bool parkingCcwShortStart=false,lapCountingArmed=false;
 bool parkingEntryActive=false,parkingEntryObserving=false,parkingEntryScouting=false,
  parkingEntryConnectorActive=false;
 constexpr int COURSE_SEATS_PER_STATION=2;
@@ -63,7 +64,7 @@ void finalizeConfirmedSeat(ObstacleObservationResult &r){
                       'void prepareConsecutiveVote(', 'void expirePendingVotes(',
                       'float cyclicDistanceForward(', 'bool distantSeatSideAmbiguous(',
                       'int resolveSeatRowByBearing(', 'bool officialMiddleConflictsWithEnd(',
-                      'int resolveCcwReturnRedByBearing(',
+                      'int resolveCcwReturnRedByBearing(', 'bool ccwReturnGreenSeatPlausible(',
                       'ObstacleObservationResult obstacle_path_observe('):
         code += block(path, path.index(signature)) + '\n'
     return code

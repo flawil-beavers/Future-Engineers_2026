@@ -33,6 +33,7 @@ float obstacle_camera_bearing_deg(const Blob *b){return atanf((164.4f-b->centerX
 struct Observation{bool productionValid=false;ColorType color=ColorType::NONE;
  int seatId=-1;float rangeMm=0,bearingDeg=0;}lastDiscoveryObservation;
 int discoveryScanStation=-1,discoveryScanSide=-1,lastConfirmedSeatIndex=-1;
+int surpriseSeatIndex=-1;
 bool extremeAdjacentReleasePending=false;
 bool earlyMiddleViewActive[OBSTACLE_SEAT_COUNT]={};
 float lastDiscoveryTargetNudgeDeg=0;unsigned long clockMs=1000,lastDiscoveryNudgeUpdateMs=0;

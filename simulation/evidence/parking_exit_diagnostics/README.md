@@ -1347,3 +1347,49 @@ Complete originals copied unchanged and verified by SHA-256 before USB release. 
 | [20261121_log_47_cw.txt](20261121_log_47_cw.txt) | 170127 | 2f04cd6316fe810610d070a9e89bbfcf81d5ec74f65403bfd9a81eb907e30c54 | Same layout, S0 middle directly clear, 50 mm surprise confirmed at seat 12. Three laps, first parking arc timed out while yaw and encoder still progressed. |
 
 Log 43 recorded 92–93 mm on the parked outer fan with about 99.7 mm predicted. Logs 44/45 report parallel and stationary but the parked ToF samples are absent because the trace budget ended earlier. Log 47 ended at about 36° local yaw with 81 mm of reverse movement at the five-second first-stroke deadline.
+
+## 2026-11-22 log 48
+
+The complete original was copied and SHA-256 verified before releasing the stick. The stick timestamps do not establish run chronology.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_48_ccw.txt](20261122_log_48_ccw.txt) | 149495 | 162b0f3175a5179fff19d6d7e0b1a4e62526654005e26a307d0342fc8068bdd3 | CCW, rear-ToF start, three laps and four fixed parking strokes. Complete and contained according to the firmware, with `truncated=0`. |
+
+`20261122_two_sided_wall_line` confirms the parking approach revision. The final exit arc aligned at 201.5 mm with 1.8° error, and the first parking arc finished after 109.8 mm in about two seconds. Neither reached the old limits. The reserve patch shares the same approach revision and prints reserve events only on activation, so this log cannot distinguish the two builds.
+
+## 2026-11-22 follow-up logs 49–51
+
+Complete originals copied byte for byte and SHA-256 verified before USB release. The tester confirmed the layout stayed the same and that the two reported wall runs were the CCW runs.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_49_cw.txt](20261122_log_49_cw.txt) | 157374 | 2caa400958a16dfbea4adfe71e31deb53b5b1f7985d2c1e469b5d6a116546b9 | CW. Red seat 8 confirmed as ordinary before it reached the image centre. Three laps. Left-side rail scan and four fixed strokes. Estimated final footprint rejected. |
+| [20261122_log_50_ccw.txt](20261122_log_50_ccw.txt) | 91705 | 67b27b86462019db199b81b30dd4a7cbe565b5ba12d439969071ceeb12ba3cc5 | Short visible RED at seat 21 stored as effective GREEN. Start station 0 cleared, then a stall before lap 1 finished and manual disable. |
+| [20261122_log_51_ccw.txt](20261122_log_51_ccw.txt) | 92426 | cda4b84208cd9eb611f5d4aec7b2b17337eb0bd2bc3ddc4757247a5ed3ab5f47 | Short visible RED at seat 21 stored as effective GREEN. Additional GREEN at seat 1 accepted with 86 mm snap error and activated at the start return, then a stall and manual disable. |
+
+Log 49 and 48 report the two-sided wall approach revision when parking is entered. All three logs advertise the same cached parking diagnostic object build as 48; that stamp does not identify the complete binary after an incremental build. On 50 and 51, confirming the first GREEN in S2 took the 180 mm straight recovery plus a short extra move. The tester reported wall contact on the returns. Last side readings were LEFT 87 mm in 50 and RIGHT 62 mm in 51. The encoder stalls and late side ranges do not independently locate the contact.
+
+## 2026-11-22 log 52
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_52_cw.txt](20261122_log_52_cw.txt) | 69515 | c8fab298c9069ee5c64fd4ba9c76ab29dc010e65858fda9fe2a125a6169f33f8 | CW. Complete original. Normal exit, then first-lap S1 station 0 stop. The 230 mm retreat cleared seat 6. Seat 7 stayed unresolved. No further viewpoint started before manual pause at 53.988 s. |
+
+## 2026-11-22 logs 53 and 54
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_53_cw.txt](20261122_log_53_cw.txt) | 82648 | 0622ace83776ab075e639d4593f7be0a1c6ca45434480d50a6d21782db094c5c | CW. Full export. Same corner module timestamp as log 52. A 230 mm retreat cleared seat 6 and seat 7 remained unresolved before manual pause. |
+| [20261122_log_54_ccw.txt](20261122_log_54_ccw.txt) | 154491 | ef010af79d88f910112de37eb8ba91eae1bc4c737a5f1c9c902774e0a11ee6ad | CCW. Full export. One 230 mm discovery retreat at S2. Three laps. Direct corner handoff hit the 16 ms budget; the fallback entered the bay. The tester reported it parked, firmware recorded `fixed_final_pose`. |
+
+## 2026-11-22 logs 55 to 58
+
+Complete originals verified by SHA-256. The tester confirmed the same physical layout throughout.
+
+| Original | Bytes | SHA-256 | Outcome |
+| --- | ---: | --- | --- |
+| [20261122_log_55_cw.txt](20261122_log_55_cw.txt) | 138742 | 060e28cf3dc91af140fd500929a02886fa7fc2158d704f643bc904cc0511673f | CW. 180 mm observation retreat. Seat 8 was confirmed as ordinary RED from a distant edge view. Three laps. |
+| [20261122_log_56_ccw.txt](20261122_log_56_ccw.txt) | 82584 | 224ba6b92a158136cd4b9d63f8e375291f857b267a14bec43561a32e5b2dc287 | CCW. Seat 16 confirmed ordinary RED. Gyro restarted later in S3; manually paused. |
+| [20261122_log_57_ccw.txt](20261122_log_57_ccw.txt) | 3887 | 5594a2762727a05b34b9ee96a7058abe696bc4924b6d732d3bce6f9df4857a26 | CCW. Complete but stopped during exit after 1.537 seconds. |
+| [20261122_log_58_ccw.txt](20261122_log_58_ccw.txt) | 82676 | 8b9864c0e7d4a215677fc0e02c955c90a898e33edc3e79195e4a02ff0c0ca553 | CCW. Seat 16 correctly stored as 50 mm visible RED, effective GREEN. The S3 observation retreat repeatedly paused for gyro recovery and locked at 179.1 of 180 mm. |

@@ -7,6 +7,8 @@ from check_returned_603_and_parking_practice import run
 from pathlib import Path
 path=Path('src/obstacle_path.cpp').read_text()
 s=fixture_source()+'\nbool rollingFinishAllowed=false;\nbool obstacle_path_parking_handoff_pose(PositionEstimate &,float *distanceMm=nullptr);\n'
+s=s.replace('uint32_t micros(){return 0;}',
+            'uint32_t clockUs=1,checkCostUs=0; uint32_t micros(){clockUs+=checkCostUs;return clockUs;}')
 for fn in ('bool obstacle_path_parking_handoff_pose(', 'void obstacle_path_allow_rolling_finish(',
            'bool obstacle_path_record_parking_finish(', 'bool parkingStartStationHasColour(',
            'bool parkingCanUseWallArc(', 'bool obstacle_path_parking_corner_window(', 'float parkingFinishSpeed('):
@@ -24,7 +26,7 @@ void obstacle_path_update(bool){finished=true;
 s+='void dispatchHandoff(){using namespace parking_module;\n'+oc[start:end]+'}\n'
 s+=r'''
 using namespace parking_module;
-bool checkWallRoute(int dir, int startSeat, unsigned long cadence)
+bool checkWallRoute(int dir, int startSeat, unsigned long cadence,bool rollingLeft=false)
 {
  ::routeTurnSign=dir;resetState();baseline();
  for(auto &seat:seats)seat.confirmed=seat.injected=false;
@@ -38,7 +40,7 @@ bool checkWallRoute(int dir, int startSeat, unsigned long cadence)
  hostGyroHealthy=true;oc_complete=oc_lap_finish_braking=false;
  oc_parking_exit_steering=dir>0?-50:50;
  const bool expectLeft=dir<0&&startSeat>=0;
- if(expectLeft){
+ if(expectLeft&&!rollingLeft){
   if(!obstacle_path_parking_handoff_pose(hostPose,nullptr))return false;
   if(!obstacle_path_record_parking_finish(hostPose))return false;
   truePose=hostPose;stop(true);
@@ -56,7 +58,7 @@ bool checkWallRoute(int dir, int startSeat, unsigned long cadence)
  }
  bool left=false,scanned=false;
  for(int tick=0;tick<2000;++tick){
-  if(expectLeft)final_parking_update(dir);
+  if(expectLeft&&!rollingLeft)final_parking_update(dir);
   else dispatchHandoff();
   left|=state==FP_LEFT_TO_WALL;
   if(state==FP_SCAN_DRIVE){
@@ -136,7 +138,9 @@ int main(){int total=0,prepared=0,rolling=0,bad=0,directCw=0,directCcw=0;
       if(!parkingEntryPoseSafe(truePose,steeringCommand,0))collision=true;
      }}hostTime+=20;
     }
-    if(!scan||collision||hostPose.x_mm<parkingScanStartX()-.1f){++bad;continue;}
+    if(!scan||collision||hostPose.x_mm<750.0f-.1f){++bad;continue;}
+    if(hostPose.x_mm<parkingScanStartX()-.1f &&
+       !ccwReverseWallAlignmentSafe(hostPose)){++bad;continue;}
    }else{
     dispatchHandoff();
     if(!oc_lap_finish_braking||dc_state!=DC_HOLDING){++bad;continue;}
@@ -171,6 +175,24 @@ int main(){int total=0,prepared=0,rolling=0,bad=0,directCw=0,directCcw=0;
   else {++bad;std::cout<<"WALL ROUTE FAIL "<<dir<<"/"<<seat<<"/"<<cadence<<"\n"<<robot_logger.lines.str();}
  }
  std::cout<<"TWO-SIDED WALL ROUTE "<<wallRoutes<<"/8 reached the fixed entry\n";
+ for(unsigned long cadence:{30UL,100UL}){
+  if(!checkWallRoute(-1,0,cadence,true)){
+   ++bad;std::cout<<"CW ROLLING LEFT FAIL "<<cadence<<"\n";
+  }
+ }
+ ::routeTurnSign=-1;resetState();baseline();
+ for(auto &seat:seats)seat.confirmed=seat.injected=false;
+ for(int id:{0,8,13,16,22}){seats[id].confirmed=seats[id].injected=true;seats[id].red=id<=13;}
+ learned();if(!buildOptimizedPath())return 5;
+ ::completedLaps=2;lapCountingArmed=true;
+ final_parking_reset();hostTime=1000;hostPose=truePose={172.8f,-883.4f,221.5f};
+ ::progressIndex=nearestPathIndex(optimizedPath,hostPose.x_mm,hostPose.y_mm,0,pathLength);
+ stop(false);set_speed(155);
+ checkCostUs=92;
+ bool wallArc=true;
+ if(!obstacle_path_parking_corner_window(hostPose,wallArc)||wallArc||
+    !final_parking_try_corner_approach(-1,wallArc)||state!=FP_LEFT_TO_WALL)return 6;
+ std::cout<<"CW LOG55 rolling left checked at the recorded arrival\n";
  return bad || prepared<16 || rolling<8 || !directCw || !directCcw ? 1:0;
 }
 '''

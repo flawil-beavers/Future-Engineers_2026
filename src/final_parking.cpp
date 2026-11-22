@@ -66,6 +66,9 @@ float scanWallOffsetMm = 0.0f;
 bool cornerUsesWallArc = false;
 bool cornerFinishPending = false;
 uint32_t cornerCheckMs = 0;
+float ccwProvedScanStartX = 590.0f;
+bool ccwScanProofComplete = false;
+uint32_t ccwReversePlanMs = 0;
 int8_t scanAlignSign = 1;
 uint8_t scanAlignTurns = 0;
 uint8_t scanGeometryRetries = 0;
@@ -102,7 +105,7 @@ constexpr int FREE_SCAN_APPROACH_SPEED = 145;
 constexpr int FREE_NORMAL_SCAN_APPROACH_SPEED = 155;
 constexpr int FRESH_MARKER_SCAN_SPEED = 84;
 constexpr int FREE_CAPTURE_SPEED = 145;
-constexpr char PARKING_APPROACH_REVISION[] = "[FINAL PARK] revision=20261122_two_sided_wall_line";
+constexpr char PARKING_APPROACH_REVISION[] = "[FINAL PARK] revision=20261122_cw_rolling_left";
 uint32_t fixedProgressMs = 0;
 float fixedProgress = 0.0f;
 float fixedStepStartHeading = 0.0f;
@@ -895,15 +898,22 @@ bool cornerScanReady(const PositionEstimate &pose)
 
 bool parkingEntryPoseSafe(const PositionEstimate &pose,int steering,float safetyMargin);
 
+uint32_t cornerPreflightBudgetUs(int scanSign)
+{
+    return routeTurnSign>0 || scanSign>0 ? 24000U : 16000U;
+}
+
 bool checkedWallScan(const PositionEstimate &pose,int sign,uint32_t cornerStartUs=0)
 {
     // Include the entire scan and the short overshoot past the second ToF
     // edge. The normal corridor test includes learned block movement.
+    if (sign>0 && routeTurnSign>0 && ccwScanProofComplete &&
+        scanWallOffsetMm==0.0f && pose.x_mm>=ccwProvedScanStartX+5.0f) return true;
     const float end=sign>0 ? 580.0f : 140.0f;
     for (float x=pose.x_mm;sign*(end-x)>0.0f;x+=sign*10.0f)
     {
         serviceEntryPlanner();
-        if (cornerStartUs && uint32_t(micros()-cornerStartUs)>16000U) return false;
+        if (cornerStartUs && uint32_t(micros()-cornerStartUs)>cornerPreflightBudgetUs(sign)) return false;
         for (float dy:{-4.0f,4.0f})
         {
             const PositionEstimate sample{x,activeScanLineY()+dy,baseHeadingDeg()};
@@ -913,22 +923,55 @@ bool checkedWallScan(const PositionEstimate &pose,int sign,uint32_t cornerStartU
     return true;
 }
 
+void prepareCcwScanCorridor()
+{
+    // The scan corridor is independent of the precise corner handoff.
+    // Check from the far end during laps 2/3, one short field slice per tick,
+    // so the live corner check only has to solve the arc that joins it.
+    if (ccwScanProofComplete) return;
+    for (int work=0;work<3;++work)
+    {
+        const float x=ccwProvedScanStartX-5.0f;
+        bool clear=true;
+        for (float y:{parkingScanLineY()-4.0f,parkingScanLineY()+4.0f})
+            clear &= parkingEntryPoseSafe(PositionEstimate{x,y,0.0f},0,5.0f);
+        if (!clear || x<-1350.0f)
+        {
+            ccwScanProofComplete=true;
+            return;
+        }
+        ccwProvedScanStartX=x;
+    }
+}
+
 bool cornerWallPreflight(PositionEstimate pose, bool wallArc)
 {
     const uint32_t startUs=micros();
     for (int mm=0;mm<=1150;mm+=5)
     {
         serviceEntryPlanner();
-        if (uint32_t(micros()-startUs)>16000U) return false;
+        if (uint32_t(micros()-startUs)>cornerPreflightBudgetUs(scanFieldSign)) return false;
+        const int steering=cornerWallSteering(pose,wallArc);
         PositionEstimate swept=pose;
         for (float dy:{-5.0f,5.0f})
         {
             swept.y_mm=pose.y_mm+dy;
-            if (!parkingApproachPoseSafe(swept)) return false;
+            // CCW checks the wheels at the actual command and a 5 mm
+            // reserve. The live preview still includes both maximum locks.
+            // This avoids evaluating both locks and the shifted nose on
+            // every sample of the long off-rail corner on the M7.
+            // 220 mm encloses the longest inflated corner of the robot and
+            // the front reserve, so a pose this far north cannot reach a rail
+            // or the south wall. Still check field walls and mapped pillars.
+            const bool clear=routeTurnSign>0
+                ? (swept.y_mm>OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM+220.0f
+                    ? connectorClearanceSafe(swept) : parkingEntryPoseSafe(swept,steering,5.0f))
+                : parkingApproachPoseSafe(swept);
+            if (!clear) return false;
         }
         if (cornerScanReady(pose)) return checkedWallScan(pose,scanFieldSign,startUs);
         if (scanLeadRemaining(pose)<115.0f) return false;
-        advanceParkingPose(pose,cornerWallSteering(pose,wallArc),5.0f);
+        advanceParkingPose(pose,steering,5.0f);
     }
     return false;
 }
@@ -942,14 +985,18 @@ bool leftWallReady(const PositionEstimate &pose)
         (scanWallOffsetMm==0.0f || fabsf(wrap180(baseHeadingDeg()-pose.heading_deg))<=2.0f);
 }
 
-bool leftWallPreflight(PositionEstimate pose)
+bool leftWallPreflight(PositionEstimate pose, bool rolling=false)
 {
+    const uint32_t startedUs=micros();
     for (int mm=0;mm<=950;mm+=5)
     {
         serviceEntryPlanner();
+        if (rolling && uint32_t(micros()-startedUs)>cornerPreflightBudgetUs(1)) return false;
         const int steering=wallMergeSteering(pose,-1);
-        if (!parkingEntryPoseSafe(pose,steering,5.0f)) return false;
-        if (leftWallReady(pose)) return checkedWallScan(pose,1);
+        const bool clear=rolling && pose.y_mm>OBSTACLE_PARKING_OPEN_END_FIELD_Y_MM+220.0f
+            ? connectorClearanceSafe(pose) : parkingEntryPoseSafe(pose,steering,5.0f);
+        if (!clear) return false;
+        if (leftWallReady(pose)) return checkedWallScan(pose,1,rolling ? startedUs : 0U);
         advanceParkingPose(pose,steering,
             5.0f*motorDirectionForFieldMotion(-1));
     }
@@ -1062,8 +1109,6 @@ int parkingRollingPreviewMm()
 bool captureSteering(const PositionEstimate &pose, int8_t fieldSign, int &steering,
                      bool preview=true)
 {
-    // Leave the extra clearance alongside the obstacle until the rear has
-    // cleared it. The last 180 mm blend back towards the normal entry line.
     const float keepOffset=clampFloat((pose.x_mm-captureTargetX-25.0f)/180.0f,0.0f,1.0f);
     const float line=captureLineY-scanWallOffsetMm*keepOffset;
     const int requested=fieldLineSteering(pose,fieldSign,line);
@@ -1216,6 +1261,24 @@ bool scanAlignmentPreflight(PositionEstimate pose, int8_t *firstDirection)
     if (firstDirection)
         *firstDirection=first<0 || (other>=0 && other+20<first) ? -preferred : preferred;
     return true;
+}
+
+constexpr float CCW_REVERSE_ALIGN_MIN_X_MM=660.0f;
+
+bool ccwReverseWallAlignmentSafe(PositionEstimate pose)
+{
+    if (practiceMode || routeTurnSign<0 || scanFieldSign>0 ||
+        pose.x_mm<750.0f || fabsf(pose.y_mm-parkingScanLineY())>45.0f ||
+        fabsf(wrap180(pose.heading_deg))>12.0f) return false;
+    for (int step=0;step<230 && pose.x_mm>=CCW_REVERSE_ALIGN_MIN_X_MM;++step)
+    {
+        if (linePoseReady(pose,parkingScanLineY())) return true;
+        const int steering=wallMergeSteering(pose,-1);
+        if (!parkingEntryPoseSafe(pose,steering)) return false;
+        advanceParkingPose(pose,steering,-2.0f);
+        serviceEntryPlanner();
+    }
+    return false;
 }
 
 void resetScanClassFrames()
@@ -1471,6 +1534,7 @@ PositionEstimate entryLocalPose(const PositionEstimate &field)
 void final_parking_prepare_approach(int8_t turn_sign,const PositionEstimate &arrival)
 {
     if(state!=FP_IDLE || initialBrakeStarted)return;
+    if (turn_sign>0) prepareCcwScanCorridor();
     auto &p=approachPreparation;
     if(!p.started)
     {
@@ -1530,16 +1594,29 @@ bool final_parking_start_rolling(int8_t turn_sign)
 bool final_parking_try_corner_approach(int8_t turn_sign, bool wallArc)
 {
     if (state!=FP_IDLE || initialBrakeStarted || dc_state!=DC_ENABLED ||
-        !gyro_is_healthy() || current_speed<=0.0f || measured_speed<0.0f ||
-        current_speed>220.0f || measured_speed>220.0f ||
+        !gyro_is_healthy() ||
         millis()-cornerCheckMs<180U) return false;
     cornerCheckMs=millis();
+    // Brief measured-speed peaks should not consume the whole short
+    // entry window after the racing controller has already braked to 205.
+    if (!isfinite(current_speed) || !isfinite(measured_speed) || current_speed<=0.0f ||
+        measured_speed<0.0f || current_speed>220.0f || measured_speed>(turn_sign>0 ? 235.0f : 220.0f))
+    {
+        Serial.print("[FINAL PARK CORNER] Speed gate profile/measured=");
+        Serial.print(current_speed,1);Serial.print('/');Serial.println(measured_speed,1);
+        return false;
+    }
     routeTurnSign=turn_sign<0 ? -1 : 1;
     outerSensor=routeTurnSign>0 ? TOF_RIGHT : TOF_LEFT;
-    scanFieldSign=routeTurnSign;
+    const bool fromLeft=routeTurnSign<0 && !wallArc;
+    scanFieldSign=fromLeft ? 1 : routeTurnSign;
     const PositionEstimate pose=get_position_struct();
-    if (!cornerWallPreflight(pose,wallArc))
+    const uint32_t startUs=micros();
+    if (!(fromLeft ? cwRedBeforeBay() && leftWallPreflight(pose,true)
+                   : cornerWallPreflight(pose,wallArc)))
     {
+        Serial.print("[FINAL PARK CORNER] Preflight rejected us=");
+        Serial.println(uint32_t(micros()-startUs));
         scanFieldSign=-1;
         return false;
     }
@@ -1547,9 +1624,10 @@ bool final_parking_try_corner_approach(int8_t turn_sign, bool wallArc)
     cornerFinishPending=true;
     initialBrakeStarted=true;
     runStartDistance=stateStartDistance=get_distance();stateStartMs=millis();
-    state=FP_CORNER_TO_WALL;
+    state=fromLeft ? FP_LEFT_TO_WALL : FP_CORNER_TO_WALL;
     Serial.println(PARKING_APPROACH_REVISION);
-    Serial.println(wallArc ? "[FINAL PARK] Rolling from final corner to wall" :
+    Serial.println(fromLeft ? "[FINAL PARK] Rolling from final corner to left wall approach" :
+                   wallArc ? "[FINAL PARK] Rolling from final corner to wall" :
                              "[FINAL PARK] Rolling to wall after first green");
     return true;
 }
@@ -1580,6 +1658,9 @@ void final_parking_reset()
     scanWallOffsetMm = 0.0f;
     cornerUsesWallArc = cornerFinishPending = false;
     cornerCheckMs = 0;
+    ccwProvedScanStartX = 590.0f;
+    ccwScanProofComplete = false;
+    ccwReversePlanMs = 0;
     scanAlignSign = 1;
     scanAlignTurns = 0;
     scanGeometryRetries = 0;
@@ -1879,8 +1960,8 @@ bool final_parking_update(int8_t turn_sign)
         bool fromLeft=cwRedBeforeBay() && leftWallPreflight(pose);
         if (!fromLeft && cwRedBeforeBay())
         {
-            // A close outside block can consume the 23-cm line. Try the
-            // remaining corridor with a straight-wheel 10-mm rail gap.
+            // An outer RED can occupy the nominal line. Only the stopped,
+            // fully swept fallback may use the tighter straight-wheel line.
             scanWallOffsetMm=19.0f;
             fromLeft=leftWallPreflight(pose);
             if (!fromLeft) scanWallOffsetMm=0.0f;
@@ -1938,10 +2019,19 @@ bool final_parking_update(int8_t turn_sign)
         const float travelLimit=rolling && scanLineEstablished ? 1850.0f : 1150.0f;
         if (millis()-stateStartMs>14000U || distanceSince(stateStartDistance)>travelLimit)
         { abortParking("wall_line_acquisition_limit");return true; }
+        if (!rolling && scanWallOffsetMm==0.0f && !scanWallRegistered &&
+            fabsf(pose.y_mm-parkingScanLineY())<=35.0f &&
+            updateOuterWallReference(true))
+        {
+            pose=get_position_struct();
+            scanWallRegistered=true;
+        }
         if (rolling && cornerScanReady(pose)) scanLineEstablished=true;
         if ((rolling ? cornerScanReady(pose) : leftWallReady(pose)))
         {
-            updateOuterWallReference(true);
+            if (rolling) updateOuterWallReference(true);
+            else if (scanWallOffsetMm==0.0f && !scanWallRegistered &&
+                updateOuterWallReference(true)) scanWallRegistered=true;
             pose=get_position_struct();
             if (rolling && cornerScanReady(pose) && scanLeadRemaining(pose)<=450.0f)
             {
@@ -2053,8 +2143,15 @@ bool final_parking_update(int8_t turn_sign)
         { abortParking("outer_motion_clearance"); return true; }
         const bool lineReady=pose.x_mm>=parkingScanStartX() &&
             linePoseReady(pose,parkingScanLineY());
+        bool reverseAlign=false;
+        if (routeTurnSign>0 && scanWallRegistered && pose.x_mm>=750.0f &&
+            millis()-ccwReversePlanMs>=120U)
+        {
+            ccwReversePlanMs=millis();
+            reverseAlign=ccwReverseWallAlignmentSafe(pose);
+        }
         const bool atAlignmentLimit=pose.x_mm>=1030.0f;
-        if ((lineReady && (scanWallRegistered || practiceMode)) || atAlignmentLimit)
+        if ((lineReady && (scanWallRegistered || practiceMode)) || reverseAlign || atAlignmentLimit)
         {
             stop(true);
             stateStartMs = millis();
@@ -2118,7 +2215,8 @@ bool final_parking_update(int8_t turn_sign)
         // Registration can move Y by tens of millimetres (log 510: -25.4).
         // Regain the scan line in the checked outward corridor BEFORE passing
         // either marker. Keep the existing distance/X/time bounds in force.
-        if (!linePoseReady(get_position_struct(),activeScanLineY()))
+        if (!linePoseReady(get_position_struct(),activeScanLineY()) &&
+            !ccwReverseWallAlignmentSafe(get_position_struct()))
         {
             stop(false);
             servo_disabled = false;
@@ -2175,7 +2273,8 @@ bool final_parking_update(int8_t turn_sign)
         {
             if (!parkingEntryBrakeReady()) return true;
             stop(false);
-            if (linePoseReady(pose,activeScanLineY()))
+            const bool farEnough=scanFieldSign<0 ? pose.x_mm>=800.0f : pose.x_mm<=-260.0f;
+            if (farEnough && linePoseReady(pose,activeScanLineY()))
             {
                 servo_disabled=false;set_steering(0);steer(0);
                 stateStartMs=millis();state=FP_SCAN_SETTLE;return true;
@@ -2226,7 +2325,10 @@ bool final_parking_update(int8_t turn_sign)
             scanSampleMs=snapshot.sampled_ms;
             tofSequence=snapshot.sequence;
         }
-        int steering=fieldLineSteering(pose,scanFieldSign,scanY);
+        const bool reverseAlignment=!scanLineEstablished && !practiceMode &&
+            routeTurnSign>0 && scanFieldSign<0 && !linePoseReady(pose,scanY);
+        int steering=reverseAlignment ? wallMergeSteering(pose,-1)
+                                      : fieldLineSteering(pose,scanFieldSign,scanY);
         if (scanLineEstablished && (scanPhase>=2 || (scanPhase==1 && classFrames>0)))
         {
             // The first rail can produce a mixed ToF return for many frames.
@@ -2238,7 +2340,7 @@ bool final_parking_update(int8_t turn_sign)
             : 65.0f-pose.x_mm;
         const bool beforeMarkers=scanPhase<2 && classFrames==0 && freeLead>0.0f;
         int scanSpeed=FIXED_ENTRY_SCAN_SPEED;
-        if (beforeMarkers)
+        if (beforeMarkers && scanLineEstablished)
         {
             PositionEstimate afterBrake=pose;
             advanceParkingPose(afterBrake,steering,60.0f*direction);
@@ -2290,6 +2392,18 @@ bool final_parking_update(int8_t turn_sign)
         if (!scanLineEstablished &&
             linePoseReady(pose,scanY))
             scanLineEstablished = true;
+        const float raw=hasSnapshot ? parkingOuterRange(snapshot) : -1.0f;
+        if (reverseAlignment && (pose.x_mm<CCW_REVERSE_ALIGN_MIN_X_MM ||
+            (freshFrame && raw>0.0f && raw<=OBSTACLE_FINAL_PARKING_MARKER_MAX_MM)))
+        {
+            // An unexpected slip during reverse alignment can remove the
+            // wall baseline before the first rail. Re-acquire it only via
+            // the existing checked alignment after measured standstill.
+            stop(true);
+            scanAlignStartMs=millis();scanAlignTurns=0;scanAlignSign=-1;
+            stateStartMs=millis();state=FP_SCAN_ALIGN_BRAKE;
+            return true;
+        }
         if (scanArmed && scanLineEstablished && freshFrame)
             processScanFrame(snapshot);
         if (scanPhase == 5 && !cornerFinishPending)

@@ -103,7 +103,7 @@ bool obstacle_path_get_planned_clearance(uint8_t,ObstacleClearanceSample&){retur
            'void refineLaterLapStartStraight(', 'void refineLaterLapOpenStart(',
            *(['void refineLaterLapEarlyStartExit(', 'void refineLaterLapInnerMiddleCorners(']
              if 'void refineLaterLapEarlyStartExit(' in source else []),
-           'void refineLaterLapStartExit(']
+           'void refineLaterLapStartExit(', 'void refineCcwFirstSeatCorner(', 'void refineCcwGreenRedStraight(']
           if 'void refineLaterLapStartStraight(' in source else []),
         'bool buildOptimizedPath()', 'bool completePendingLap()', 'bool finalCornerVehicleClear(',
         'bool recordParkingFinish(', 'void updateProgress(',

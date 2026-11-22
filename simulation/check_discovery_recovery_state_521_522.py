@@ -35,7 +35,7 @@ bool shortStart=false,startStationResolved=true,lapCountingArmed=false;
 int parkingEntryTargetStation=2,parkingEntryConnectorLength=0;
 bool parkingShortStart(){return shortStart;}
 bool stationResolved(int){return startStationResolved;}
-int completedLaps=0;float curvature=0,steering=0,commandedSpeed=100;
+int completedLaps=0;float curvature=0,steering=0,commandedSpeed=100,startReturnSpeed=INFINITY;
 bool discoveryHolding=false,discoveryBlocked=false,cornerViewAttempted[12]={};
 struct Seat{bool confirmed=false,red=false,injected=false;float pathDistanceMm=0;}seats[24];
 struct PositionEstimate{float x_mm=0,y_mm=0,heading_deg=0;}pose;
@@ -53,6 +53,7 @@ int routeTurnSign=1;float runtimeSpeedCapMmS=0;
 int discoveryHoldStation=-1,discoveryBlockedStation=-1,cornerViewStation=-1,cornerViewPhase=0,cornerViewObservationTraceCount=0;
 uint32_t nowMs=1000,discoveryHoldStartMs=0,cornerViewPhaseMs=0;
 uint8_t cornerViewExtraTriedMask=0;uint16_t cornerViewSearchCycle=0;
+bool cornerViewForwardTried=false;
 uint32_t cornerViewLastNoSafeTraceMs=0,cornerViewLastSearchMs=0;
 float cornerViewRequestedMinRange=0;
 int selectedStation=-1;float selectedForward=335;int motorSpeed=-9;

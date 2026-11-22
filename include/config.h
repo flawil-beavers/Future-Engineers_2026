@@ -1293,6 +1293,7 @@ constexpr uint32_t OBSTACLE_SEAT_VOTE_WINDOW_MS = 400;
 // decision point, slow down and finally hold rather than risk a wrong pass.
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MIN_MM = 230.0f;
 constexpr auto OBSTACLE_DISCOVERY_VIEW_MAX_MM = 600.0f;
+constexpr auto OBSTACLE_DISCOVERY_CLEAR_MAX_MM = 450.0f;
 // Clear evidence is evaluated for each seat independently. Include the
 // calibrated bearing uncertainty around the detected blob, and accept an
 // overlapping blob as evidence of a clear nearer seat only when it is well
