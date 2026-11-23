@@ -181,9 +181,9 @@ A steady request of 60 PWM units therefore powers about half the slots at 120 PW
 
 Two 14500 Li-ion cells in series give **7.4 V nominal, 8.4 V fully charged and 750 mAh nominal pack capacity**. The main power rocker (SW2) switches the battery supply to the motor driver, the GIGA's VIN and the step-down module that supplies the servo's 5 V rail.
 
-We estimate an average while driving and a peak case with the listed loads occurring together. The motor row estimates the motor's contribution to the driver's pack-input current while the bridge applies PWM. The GIGA's own electronics are modelled as an equivalent 3.3 V load, with the camera and external sensors listed separately.
+The power budget uses design loads for normal driving and assumes all loads draw their peak currents together in the peak case. The motor row shows what the drive draws from the pack through the PWM bridge. The GIGA's electronics are represented as an equivalent 3.3 V load, with the camera and sensors listed separately.
 
-| Load | Supply voltage | Estimated average current | Estimated peak current |
+| Load | Supply rail | Average current | Peak current |
 | --- | --- | ---: | ---: |
 | Drive motor through PWM bridge | 7.4 V pack input | 300 mA | 800 mA |
 | MC33926 driver overhead on the pack rail | 7.4 V | 20 mA | 40 mA |
@@ -203,22 +203,22 @@ $$
 I_{\mathrm{in}} = \frac{V_{\mathrm{out}} I_{\mathrm{out}}}{V_{\mathrm{in}} \eta}
 $$
 
-| Regulator | Input supply | Output rail | Current drawn from input (average / peak) | Current supplied to output (average / peak) |
+| Regulator | Input rail | Output rail | Input current (average / peak) | Output current (average / peak) |
 | --- | --- | --- | ---: | ---: |
 | GIGA 3.3 V regulator | GIGA internal 5 V rail | GIGA 3.3 V | 295 / 443 mA | 402 / 604 mA |
 | GIGA internal 5 V regulator | 7.4 V pack via VIN | GIGA internal 5 V | 221 / 333 mA | 295 / 443 mA |
 | Mini-360 servo regulator | 7.4 V pack | Servo 5 V | 188 / 527 mA | 251 / 702 mA |
 
-For example, supplying an average of 251 mA to the Mini-360's 5 V loads takes about 188 mA from the 7.4 V pack. The GIGA's 3.3 V regulator draws from the internal 5 V rail, so its current is already accounted for in the GIGA VIN estimate. The battery total adds the direct pack loads and the input currents of the two regulators fed from the pack.
+For example, supplying an average of 251 mA to the Mini-360's 5 V loads takes about 188 mA from the 7.4 V pack. The GIGA's 3.3 V regulator draws from the internal 5 V rail, so its current is already included in the GIGA VIN budget. The battery total adds the direct pack loads and the input currents of the two regulators fed from the pack.
 
-| Pack load at 7.4 V nominal | Estimated average | Estimated peak |
+| Pack load at 7.4 V nominal | Average current | Peak current |
 | --- | ---: | ---: |
 | Motor, driver pack overhead and display | 324 mA | 844 mA |
 | GIGA branch, including camera and sensors | 221 mA | 333 mA |
 | Mini-360 branch, including servo and level shifter | 188 mA | 527 mA |
 | **Total pack current** | **≈0.73 A** | **≈1.70 A** |
 
-The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom depends on the module's behaviour under loaded steering. At the same time, acceleration can lower the shared pack voltage at the GIGA. Arduino specifies **6 V minimum at VIN**, so the loaded voltage matters when assessing the pack.
+The peak budget calls for about **0.70 A** from the Mini-360. Regulator headroom depends on how it behaves under steering load. Acceleration can lower the shared pack voltage at the GIGA. Arduino specifies **6 V minimum at VIN**, so the voltage under load matters when assessing the pack.
 
 ### Wiring and signal interfaces
 
