@@ -17,6 +17,8 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 - [Robot Photos](#robot-photos)
 - [AI Use Declaration](#ai-use-declaration)
 
+See the [repository guide](docs/README.md) for build files, setup guides, test evidence and competition references.
+
 # Bill of Materials (BOM)
 
 | Component | Quantity | Function | Estimated CHF |
@@ -352,7 +354,7 @@ flowchart TD
     park -->|"Stationary, parallel and fully inside"| done(["Parked"])
 ```
 
-**Leaving the bay.** We use the rear ToF to measure the gap to the marker behind the car and adjust the starting position if needed. After leaving the bay, the car scans the starting straight. If it needs a better view of a possible sign location, it can make a short move after checking that the path is clear. It then joins the lap route through a checked connecting path. [Rear ToF parking setup](REAR_TOF_M4_SETUP.md#parking-position-configuration) · [Handoff from exit to lap route](src/obstacle.cpp#L3345-L3375)
+**Leaving the bay.** We use the rear ToF to measure the gap to the marker behind the car and adjust the starting position if needed. After leaving the bay, the car scans the starting straight. If it needs a better view of a possible sign location, it can make a short move after checking that the path is clear. It then joins the lap route through a checked connecting path. [Rear ToF parking setup](docs/guides/REAR_TOF_M4_SETUP.md#parking-position-configuration) · [Handoff from exit to lap route](src/obstacle.cpp#L3345-L3375)
 
 **Mapping signs.** On lap 1, we match what the camera sees to one of the allowed sign positions on the field.
 

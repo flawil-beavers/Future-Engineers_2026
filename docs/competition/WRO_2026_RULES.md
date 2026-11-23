@@ -25,7 +25,7 @@ rules and recheck official Q&A before competition.
 | 2026-10-18 and 2026-10-27 | General Rules and Q&A checked for parking-row restrictions and passing-side preservation. |
 
 Earlier checks, page inspections and engineering context remain in the
-[preserved reference history](docs/history/WRO_2026_RULES.md).
+[preserved reference history](../history/WRO_2026_RULES.md).
 
 ## Modified Traffic Sign Surprise Rule
 

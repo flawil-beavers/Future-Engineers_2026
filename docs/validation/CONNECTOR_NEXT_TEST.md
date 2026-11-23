@@ -3,7 +3,7 @@
 Current focus consolidated on 2026-11-17. The active physical sequence is the
 [Obstacle Challenge checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md). Earlier
 batch-specific procedures are preserved in the
-[historical connector guide](docs/history/CONNECTOR_NEXT_TEST.md).
+[historical connector guide](../history/CONNECTOR_NEXT_TEST.md).
 
 ## Current behavior
 
@@ -17,10 +17,10 @@ The latest path revision is `20261111_checked_ccw_view`. Its limited extra
 CCW first-lap aiming applies after the existing protected bypass and requires
 the checked quantized steering/body envelope. It changes neither CW aiming
 nor the protected bypass release. The
-[view report](simulation/LAP1_CHECKED_CCW_VIEW_20261111.md) records its model
+[view report](../../simulation/LAP1_CHECKED_CCW_VIEW_20261111.md) records its model
 coverage and limitations.
 
-The [retry recheck](simulation/LAP1_PARKING_RECHECK_20261111.md) describes
+The [retry recheck](../../simulation/LAP1_PARKING_RECHECK_20261111.md) describes
 braking and renewed observation after bounded drift or rejected view paths.
 New connections require current-pose preflight. An unknown object or a
 rejected projection is not evidence that a seat is empty.
@@ -44,5 +44,5 @@ rejected projection is not evidence that a seat is empty.
 Use normal CW/CCW driving and saving. Preserve the passive exit/ToF diagnostics;
 no dedicated sensor sweep or extra maneuver is requested. Follow AGENTS.md for
 immediate original-log copying, hash verification and evidence indexing.
-The [current handoff](AGENT_DOCUMENTATION.md) lists active limitations and
+The [current handoff](../../AGENT_DOCUMENTATION.md) lists active limitations and
 the latest recorded build identity.

@@ -2,21 +2,21 @@
 
 Current handoff consolidated on 2026-11-17. Read this first, then the linked
 report and relevant evidence before continuing an investigation. Mandatory
-workspace instructions are in [AGENTS.md](AGENTS.md).
+workspace instructions are in [AGENTS.md](../../AGENTS.md).
 
 ## History and evidence
 
-The [history index](docs/history/README.md) leads to the preserved engineering
+The [history index](README.md) leads to the preserved engineering
 history and superseded test procedures. Historical instructions describe their
 own builds; they are not the active test sequence. The archive retains exact
 original text, firmware hashes, physical reports and rejected approaches.
 
-- [Original logs and metadata](simulation/evidence/parking_exit_diagnostics/README.md).
-- [Camera evidence](simulation/evidence/camera_diagnostics/README.md) and
-  [image approval registry](simulation/evidence/camera_diagnostics/validation_status.json).
-- [Current test checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md).
-- [Parking diagnostics plan](PARKING_POSE_IMPLEMENTATION_PLAN.md).
-- [Official rules reference](WRO_2026_RULES.md).
+- [Original logs and metadata](../../simulation/evidence/parking_exit_diagnostics/README.md).
+- [Camera evidence](../../simulation/evidence/camera_diagnostics/README.md) and
+  [image approval registry](../../simulation/evidence/camera_diagnostics/validation_status.json).
+- [Current test checklist](../validation/OBSTACLE_CHALLENGE_TEST_PLAN.md).
+- [Parking diagnostics plan](../validation/PARKING_POSE_IMPLEMENTATION_PLAN.md).
+- [Official rules reference](../competition/WRO_2026_RULES.md).
 
 ## Current firmware and validation status
 
@@ -41,19 +41,19 @@ changes, so they do not establish physical acceptance of current firmware.
 
 ### First-lap perception
 
-The [checked CCW view report](simulation/LAP1_CHECKED_CCW_VIEW_20261111.md)
+The [checked CCW view report](../../simulation/LAP1_CHECKED_CCW_VIEW_20261111.md)
 records the bounded extra target rotation after the existing protected bypass.
 CW behavior and the protected bypass remain unchanged. Model checks show an
 earlier visibility window in the targeted CCW case, not a real detection rate.
 
-The [retry and parking recheck](simulation/LAP1_PARKING_RECHECK_20261111.md)
+The [retry and parking recheck](../../simulation/LAP1_PARKING_RECHECK_20261111.md)
 documents braking and re-observation after bounded view drift or rejected
 view paths. New motion still needs full preflight. Invalid pose, substantial
 deviation and genuine sensor or motion faults remain stop conditions.
 
 ### Surprise Rule and camera approval
 
-The [implementation report](simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
+The [implementation report](../../simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
 describes height recognition and the stored original passing colour. Approved November19 stationary50/100/150mm references now pass current-source replay; normal dynamic runs remain unvalidated.
 The approved `20261027_green_400mm_01.png` is a normal-height reference only.
 The rejected or invalid October 26 references cannot support new acceptance.
@@ -62,13 +62,13 @@ using additional reference images. Synthetic tests do not replace this check.
 
 ### Final parking and exit analysis
 
-The latest [parking recheck](simulation/LAP1_PARKING_RECHECK_20261111.md)
+The latest [parking recheck](../../simulation/LAP1_PARKING_RECHECK_20261111.md)
 documents a remaining planner failure at a 232.5 mm gap within the accepted
 measurement range. The current approach matrix passes 96 of 120 model cases;
 all 24 aborts occur at that gap. Reported 248.9 mm and 249.6 mm gaps pass their
 separate modeled cases. Universal parking reliability is not established.
 
-The [measured-envelope report](simulation/RETURNED_651_656_PARKING_20261105.md)
+The [measured-envelope report](../../simulation/RETURNED_651_656_PARKING_20261105.md)
 records physical dimensions and outcomes. Runs 652 and 653 have user-reported
 interruption and slippery-floor exclusions respectively. Preserve those reports.
 The handoff planning latency remains a separate physical validation concern.
@@ -96,7 +96,7 @@ accuracy. Follow the diagnostics plan before continuing that investigation.
 
 ## Video documentation
 
-Use [the reproduction guide](simulation/VIDEO_VISUALIZATION.md). The latest
+Use [the reproduction guide](../../simulation/VIDEO_VISUALIZATION.md). The latest
 run 633 map export is
 `local_workspace/video-documentation/sensor-usage/run-633-drone/map-only/run_633_map_video_synced_large_text_1x.mp4`.
 It is 1080 square at 30 fps, lasts 196.9 seconds and uses 42-pixel labels.

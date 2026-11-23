@@ -21,7 +21,7 @@ are documented in [VIDEO_VISUALIZATION.md](VIDEO_VISUALIZATION.md).
 | `PARKING_EXIT_PATH_SIMULATION.md` | Parking-exit coordinate system, footprint, search, selected path, limitations, and physical-validation history. |
 | `analyze_parking_exit_pose.py` | Validates and analyzes automatic parking-exit pose, braking, reversal and servo-neutral diagnostics. |
 | `analyze_parking_exit_batch.py` | Regenerates pose plots and reports from all archived complete parking-exit logs, with a source-hash manifest. |
-| `analyze_connector_tracking.py` | Replays recorded connector tail targets and compares an offline route-continuation candidate; physical run procedure is in `../CONNECTOR_NEXT_TEST.md`. |
+| `analyze_connector_tracking.py` | Replays recorded connector tail targets and compares an offline route-continuation candidate. See the [physical run procedure](../docs/validation/CONNECTOR_NEXT_TEST.md). |
 | `replay_green_middle_connector.py` | Replays logs 430/432 from connector start and recorded stop pose with continued route lookahead, fixed-field capsule and modeled pink-rail checks, plus an assumed pose/yaw grid. Run with `python simulation/replay_green_middle_connector.py`; it cannot prove physical clearance. |
 | `connector_transition_sim.py` | Ideal closed-loop connector rollout using actual outgoing route tangents, capsule clearances and assumed sensitivity cases; mirrored cases are synthetic. |
 | `analyze_discovery_trace.py` | Per-seat visibility and clear-block reasons from bounded cached first-lap discovery records. |
@@ -107,7 +107,7 @@ On November 22, all 396 modelled approaches reached the entry position.
 Separate cases executed all four moves in both directions, tested the
 bounded slip allowance and checked registration against the bay markers.
 The model assumes known field geometry. Compare with the [physical tests](evidence/parking_exit_diagnostics/README.md#2026-11-22-log-48),
-or follow the [isolated practice guide](PARKING_ENTRY_PRACTICE_DE.md) to test
+or follow the [isolated practice guide](../docs/guides/PARKING_ENTRY_PRACTICE.md) to test
 the manoeuvre on a robot. The [November 19 stress test](CW_LOGS_3_6_REVIEW_20261119.md#verification)
 covers the earlier adaptive parking controller.
 
@@ -297,7 +297,7 @@ checked neutral scan alternative. Adaptive entry additionally supports
 
 Returned603 and direct entry practice:
 [review](RETURNED_603_AND_PARKING_PRACTICE_20261031.md),
-[Isolated parking setup](PARKING_ENTRY_PRACTICE_DE.md).
+[Isolated parking setup](../docs/guides/PARKING_ENTRY_PRACTICE.md).
 `check_returned_603_and_parking_practice.py` checks clipped-depth association,
 wall/rail shortcut equivalence, actual entry-only startup and603 replanning.
 Use `--without-clipped-depth-gate` for the wrong-end negative control.

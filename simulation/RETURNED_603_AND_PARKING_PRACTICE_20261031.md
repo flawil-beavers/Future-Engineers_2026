@@ -65,7 +65,7 @@ or resolution of every parking stall is claimed yet.
 
 ## Standalone practice
 
-[German setup sheet](PARKING_ENTRY_PRACTICE_DE.md) defines the surveyed capture
+[Parking practice guide](../docs/guides/PARKING_ENTRY_PRACTICE.md) defines the surveyed capture
 pose:247.5mm free rail gap, rear axle294.6mm from outer wall and22.76mm beyond
 the near inner face in vehicle-front direction, parallel heading. The separate
 MODE_FINAL_PARKING_PRACTICE starts directly in the existing capture-brake/entry

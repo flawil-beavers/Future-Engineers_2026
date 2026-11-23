@@ -20,9 +20,9 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [x] Confirm version 74 is the current CAD model, including the rear-ToF mount (team confirmation, November 20).
 - [x] Confirm that all 17 version 74 parts print without supports in their saved orientations and document the setting in the CAD guide (team confirmation, November 20).
 - [ ] Check the CAD and print assets against any subsequent physical changes before submitting the final documentation.
-- [x] Replace the June schematic with the supplied [revision 1 wiring diagram](img/diagrams/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
+- [x] Replace the June schematic with the supplied [revision 1 wiring diagram](../../img/diagrams/Wiring_Diagram_FE2026_v1.png), which shows the 2S pack and all three ToF sensors.
 - [x] Verify that the drawing's rear-ToF pin labels match the M4 firmware (A3 SDA, A4 SCL).
-- [x] Document the internal M4-to-M7 OpenAMP/RPC link in the [README data-flow diagram](README.md#control-ownership-and-data-flow).
+- [x] Document the internal M4-to-M7 OpenAMP/RPC link in the [README data-flow diagram](../../README.md#control-ownership-and-data-flow).
 - [x] Identify the Arducam GC2145, Mini-360 adjustable step-down module, generic 3.3 V to 5 V logic-level shifter and BerryBase SVM330-Y display. Retain the team's BOM quantities and project cost estimates.
 - [x] Check the updated wiring drawing for consistent M2 motor connections, voltmeter polarity, and labels for the switches, camera, ToFs, Mini-360 and generic level shifter (November 20).
 - [x] Verify the power wiring against the robot, including the Mini-360 output and loads, ground return, module terminals, voltmeter tap and motor supply (team confirmation, November 20).
@@ -43,7 +43,7 @@ The canonical official links used for this checklist are recorded in the [WRO 20
 - [ ] Review the General Rules §7 code-volume requirement with the organizers if needed. Git history begins March 15 (`25eeb32`) with camera and main-loop code. The second and third commits are dated May 18 and 21. The first commit's one-fifth share of the final code remains unverified.
 - [x] Review the General Rules, Documentation Rubric and Future Engineers Q&A for the November 22 documentation audit. Recheck the official sources before the evaluation cutoff.
 - [ ] Push the updated documentation to `main`. Confirm the submitted URL shows the revised README, all links work, all important code, CAD and wiring files are visible, and the repository will remain public for at least 12 months after the event.
-- [x] Review the [README’s software architecture and challenge logic](README.md#software-architecture-and-challenge-strategy) against November 22 firmware (`4033ef0`), including the fixed parking entry, modified-sign voting, recovery viewpoints and USB save verification. Check later firmware changes again before publication.
+- [x] Review the [README’s software architecture and challenge logic](../../README.md#software-architecture-and-challenge-strategy) against November 22 firmware (`4033ef0`), including the fixed parking entry, modified-sign voting, recovery viewpoints and USB save verification. Check later firmware changes again before publication.
 - [ ] Review the judge-facing `README.md` against the final robot and recorded test evidence. Use stable links to public reports or run IDs for earlier observations and keep unresolved documentation tasks in this checklist.
 - [x] Regenerate `README.pdf` from the updated `README.md`, inspect all 23 rendered pages and decode the three QR codes. Each challenge preview and its QR code share a page (November 22).
 - [ ] Print the required hardcopy for the World Final.

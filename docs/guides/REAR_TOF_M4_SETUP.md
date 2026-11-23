@@ -9,7 +9,7 @@ result through `get_tof_distance(TOF_REAR)`.
 
 Use one half of a cut four-pin STEMMA QT/Qwiic cable. Plug the connector into
 the rear ToF sensor and use jumper wires from the cut end directly to the GIGA.
-Connect the signal wires by pin name. [Sensor wiring rationale](README.md#wiring-and-signal-interfaces)
+Connect the signal wires by pin name. [Sensor wiring rationale](../../README.md#wiring-and-signal-interfaces)
 
 | VL53L4CX | GIGA R1 |
 | --- | --- |
@@ -24,7 +24,7 @@ than relying only on cable colours.
 ## Build and upload
 
 Use the IDE-managed PlatformIO Core. For a complete installation, upload **M4
-first, then M7**. [Build and upload instructions](README.md#build-and-run-the-firmware)
+first, then M7**. [Build and upload instructions](../../README.md#build-and-run-the-firmware)
 
 ```powershell
 $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
@@ -59,7 +59,7 @@ rear range as a lateral wall measurement.
 
 Before the five-segment parking exit, we use the rear range to check and
 correct the car's position along the bay. The settings are in
-[`include/config.h`](include/config.h#L451-L501).
+[`include/config.h`](../../include/config.h#L451-L501).
 
 | Setting | Meaning |
 | --- | --- |
@@ -73,7 +73,7 @@ the sensor origin. A 50 mm clearance in that model therefore corresponds to
 a **65 mm sensor reading**. The log records the measured range and the
 derived clearance. If the sensor moves, update its position in the
 configuration so the firmware recalculates the target range.
-[Measured contour used for final parking](simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
+[Measured contour used for final parking](../../simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
 
 Start with the car fully inside the bay, approximately parallel to its limits
 and within about ±20 mm of its longitudinal midpoint. The swept model includes
@@ -93,7 +93,7 @@ gap only.
    the controller can make one small correction in the direction of the target
    and verify again. If the retry fails, the car holds in place.
 
-[Positioning settings](include/config.h#L451-L501) · [Verification and retry](src/obstacle.cpp#L1515-L1581)
+[Positioning settings](../../include/config.h#L451-L501) · [Verification and retry](../../src/obstacle.cpp#L1515-L1581)
 
 ## Stationary setup check
 
@@ -108,4 +108,4 @@ switch off and check the serial output.
    the M7 loop, gyro, camera, or side sensors.
 
 For normal driving validation, follow the
-[current Obstacle Challenge checklist](OBSTACLE_CHALLENGE_TEST_PLAN.md#active-validation-sequence).
+[current Obstacle Challenge checklist](../validation/OBSTACLE_CHALLENGE_TEST_PLAN.md#active-validation-sequence).

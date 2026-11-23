@@ -1,6 +1,6 @@
 # Isolated reverse-parking practice
 
-We use this test to check the four-move entry separately from the rest of the Obstacle Challenge. The normal run and the practice modes use the same moves, with mirrored steering in clockwise (CW) and counter-clockwise (CCW) runs. [Parking sequence and diagram](../README.md#obstacle-challenge-strategy)
+We use this test to check the four-move entry separately from the rest of the Obstacle Challenge. The normal run and the practice modes use the same moves, with mirrored steering in clockwise (CW) and counter-clockwise (CCW) runs. [Parking sequence and diagram](../../README.md#obstacle-challenge-strategy)
 
 <a id="cw-eckentest-mit-fester-zugfolge"></a>
 
@@ -36,4 +36,4 @@ Mark the centres of the rear wheels on the mat to set the axle reference. The **
 
 ## Return to a full run
 
-Reset with the default Obstacle configuration or send uppercase `O` while SW1 is LOW. Keep `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED` off for normal runs. The flag selects a separate practice path. Use a full course run to check the automatic approach and bay measurement. [Park commands](../src/serial_handler.cpp#L488-L509) · [Four-move sequence](../src/final_parking.cpp#L1796-L1805) · [Engineering history](../docs/history/README.md)
+Reset with the default Obstacle configuration or send uppercase `O` while SW1 is LOW. Keep `OBSTACLE_FINAL_PARKING_PRACTICE_ENABLED` off for normal runs. The flag selects a separate practice path. Use a full course run to check the automatic approach and bay measurement. [Park commands](../../src/serial_handler.cpp#L488-L509) · [Four-move sequence](../../src/final_parking.cpp#L1796-L1805) · [Engineering history](../history/README.md)

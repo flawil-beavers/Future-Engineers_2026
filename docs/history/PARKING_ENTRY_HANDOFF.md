@@ -1,5 +1,9 @@
 # Future Engineers parking-entry handoff
 
+This handoff records September and October 2026. For current work, see the
+[engineering handoff](../../AGENT_DOCUMENTATION.md) and the
+[parking practice guide](../guides/PARKING_ENTRY_PRACTICE.md).
+
 Continue development from the repository root.
 
 Current2026-10-06: read the newest `AGENT_DOCUMENTATION.md` entry and

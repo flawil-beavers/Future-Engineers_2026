@@ -35,7 +35,7 @@ Restore STARTUP_ROBOT_MODE=MODE_OBSTACLE_CHALLENGE. Normal parking-lot start,
 unparking, three laps and final parking now run after reset. The separate
 park cw/park ccw commands remain available while drive disabled, with their
 unchanged surveyed capture marks; reset returns to full challenge.
-[Practice instructions](PARKING_ENTRY_PRACTICE_DE.md) updated accordingly.
+[Practice instructions](../docs/guides/PARKING_ENTRY_PRACTICE.md) updated accordingly.
 
 Checks:full parking396/396 +5registration,tight36/36,entry-only4CW/CCW completions,
 wall/rail shortcut1440/12168,603replans2,604retreat27+3negative,rearreference

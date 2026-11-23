@@ -12,7 +12,7 @@ The adaptive planner checks each new trajectory against the actual barriers;
 the executed path may differ from a rigid translation when space is tight.
 For the nominal247.5mm gap, capture is fieldX492.76mm CCW /219.74mm CW.
 Practice setup: axle1.276cm beyond the nearby marker's inside face, rather
-than2.276cm. See [setup](PARKING_ENTRY_PRACTICE_DE.md).
+than2.276cm. See [setup](../docs/guides/PARKING_ENTRY_PRACTICE.md).
 
 The reference-X is not a mandatory final position. During an entry movement,
 a fully contained pose within the existing2deg alignment tolerance initiates

@@ -1,6 +1,6 @@
 # PID and drive motor tuning
 
-We tune the drive motor from the serial monitor. Use `pid help` to list the commands, `pid show` to see the active values, and `pid export` to print settings for [`include/config.h`](include/config.h).
+We tune the drive motor from the serial monitor. Use `pid help` to list the commands, `pid show` to see the active values, and `pid export` to print settings for [`include/config.h`](../../include/config.h).
 
 ## How the controller works
 
@@ -15,7 +15,7 @@ We use proportional–integral (PI) feedback to control speed. Each of the three
 | Ka | Adds PWM as the controller requests acceleration. |
 | Acceleration Kp and Ki | Correct the difference between requested and measured acceleration. The same gains apply across all speed bands. |
 
-[Drive and low-speed control](README.md#drive-selection-and-low-speed-control)
+[Drive and low-speed control](../../README.md#drive-selection-and-low-speed-control)
 
 ## Test and adjust the gains
 
@@ -35,7 +35,7 @@ pid set ff static 86
 pid show
 ```
 
-Keep the speed boundaries in ascending order, `LOW < MID < HIGH`. Changes take effect immediately in RAM and reset at restart. When the car drives as intended, send `pid export`, copy the printed values into `include/config.h`, and rebuild and upload M7 to make them permanent. [PID commands](src/serial_handler.cpp#L97-L113)
+Keep the speed boundaries in ascending order, `LOW < MID < HIGH`. Changes take effect immediately in RAM and reset at restart. When the car drives as intended, send `pid export`, copy the printed values into `include/config.h`, and rebuild and upload M7 to make them permanent. [PID commands](../../src/serial_handler.cpp#L97-L113)
 
 ## Use the relay autotuner
 
