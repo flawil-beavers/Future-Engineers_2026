@@ -16,8 +16,12 @@ We publish the competition firmware on `main`. Build both cores from the same ch
 
 ## Reproduce the tests
 
+- **`scripts/`** contains tools for building the project and collecting data on a computer. Use it to capture a frame from the robot over USB or generate the print journal. [Camera capture tool](../scripts/capture-camera-image.py) · [PDF build guide](pdf/README.md)
+- **`simulation/`** contains models, replays, and evidence for checking how the robot behaves. Use it to check sign recognition against synthetic and recorded images or to test the parking sequence in a model. [Sign recognition check](../simulation/README.md#sign-recognition-check) · [Parking checks](../simulation/README.md#parking-entry-models)
+
 | What you want to check | Where to start |
 | --- | --- |
+| Camera range and sign height on a rebuilt car | [Camera calibration](guides/CAMERA_CALIBRATION.md) |
 | How the car recognises signs, plans routes and parks | [Simulation commands and model assumptions](../simulation/README.md) · [Parking practice](guides/PARKING_ENTRY_PRACTICE.md) |
 | What happened on the field | [Original run logs and SHA-256 hashes](../simulation/evidence/parking_exit_diagnostics/README.md) · [Run inspector](../tools/robot-run-inspector/README.md) |
 | What we learned from earlier runs and checks | [Engineering reports by date](../simulation/reports/README.md) |
@@ -29,4 +33,3 @@ We publish the competition firmware on `main`. Build both cores from the same ch
 - [WRO 2026 rules and rubric](competition/WRO_2026_RULES.md)
 - [Submission checklist](competition/DOCUMENTATION_TODO.md) and [proofreading checklist](competition/PROOFREADING_CHECKLIST.md)
 - [Engineering history](history/README.md) and [current engineering handoff](../AGENT_DOCUMENTATION.md)
-- [How we generate the print edition](pdf/README.md)
