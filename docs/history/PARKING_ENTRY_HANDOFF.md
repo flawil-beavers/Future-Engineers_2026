@@ -1,0 +1,99 @@
+# Future Engineers parking-entry handoff
+
+This handoff records September and October 2026. For current work, see the
+[engineering handoff](../../AGENT_DOCUMENTATION.md) and the
+[parking practice guide](../guides/PARKING_ENTRY_PRACTICE.md).
+
+Continue development from the repository root.
+
+Current2026-10-06: read the newest `AGENT_DOCUMENTATION.md` entry and
+`simulation/LAYOUT_B_C_502_505_REVIEW.md` before the historical notes below.
+The requested complete-sequence candidate now enables automatic final parking
+after three laps. Entry is armed, with swept approach/entry checks and measured
+gap localization; physical parking acceptance is still pending. The exact next
+test is unchanged B twice CCW first, then B CW and C CW,
+after user M7 upload. Read `simulation/LAYOUT_B_C_502_505_REVIEW.md`: older
+CCW holds required deeper acquisition views and regulated return; then read `simulation/LAYOUT_B_FINAL_PARKING_500_501_REVIEW.md`: latest two CW drives passed all three laps but final parking failed. Historical locked-entry settings below no longer describe this candidate.
+
+Read first, in order:
+
+1. `AGENTS.md`
+2. the newest relevant sections of `AGENT_DOCUMENTATION.md`
+3. the top ordered connector section in `OBSTACLE_CHALLENGE_TEST_PLAN.md`
+4. `OBSTACLE_SEAT_NUMBERING.md`
+5. `OBSTACLE_CLEARANCE_LOGGING.md`
+6. `PARKING_POSE_IMPLEMENTATION_PLAN.md` for normal-run motion-error collection;
+   record each returned batch in `AGENT_DOCUMENTATION.md`
+
+Preserve all staged/unstaged changes. Do not reset, checkout, clean, or upload
+firmware without explicit user permission. Document every durable finding in
+`AGENT_DOCUMENTATION.md` and keep the test plan ordered. Build only M7 with the
+IDE-managed PlatformIO executable.
+
+Current branch is `pure-pursuit`. The current documentation and repository
+organization changes are:
+
+2026-09-26 update: read the newest entry in `AGENT_DOCUMENTATION.md` before
+using the historical verification figures below. Isolated final-parking practice
+is now disabled, so normal O follows the parked-start pipeline. Final bay entry
+remains locked. Diagnostic limits/record validation were corrected and the M7
+build passes with diagnostics enabled at 432448 bytes RAM / 448976 flash and
+disabled at 366816 / 443968. No upload occurred. The sensitivity grid retains
+all CW cases but exposes CCW bearing-window failures under assumed errors;
+the first CW test must also establish diagnostic coverage, timing and headroom.
+
+- `AGENT_DOCUMENTATION.md`
+- `OBSTACLE_CHALLENGE_TEST_PLAN.md`
+- `PARKING_ENTRY_HANDOFF.md`
+- `CAD/README.md` plus removal of the old drive-simulation copies from `CAD/`
+- `simulation/`, containing the relocated tools, generated SVG, tracked log
+  fixtures, parking-exit photographs, and documentation
+- `WRO_2026_RULES.md`
+
+Newest reviewed logs are tracked in
+`simulation/fixtures/parking_entry_scout/log_362.txt` through `log_369.txt`.
+Logs 364/365/369 repeatedly stopped because the 55 mm CCW scout
+could not resolve preceding station 1. Log 362 timed out the initial CW primary
+station with no retry. Log 363 exposed a premature scout CLEAR followed by a
+green confirmation during return; its old connector incorrectly logged no
+hidden guard. Logs 367/368 completed three CW laps in telemetry, but the user
+did not supply physical-contact reports, so they are not physical acceptance.
+
+Implemented fixes:
+
+- scout arc is 85 mm at 60 mm/s;
+- the robot remains stopped at the scout pose for at least 400 ms;
+- an initial primary UNKNOWN performs the scout/retrace, then one stationary
+  primary retry if still unresolved;
+- a second primary timeout or unresolved scout locks the drive off;
+- connector arming requires both the primary and preceding stations resolved;
+- confirmed hidden-seat guard priority over an earlier CLEAR is retained;
+- retry state resets between runs.
+
+Offline replay is in `simulation/parking_entry_scout_sim.py`. It passes
+all eight log-362--369 scan poses at 85 mm: intended preceding-seat bearing
+6.5--20.9 degrees, range 244--309 mm, minimum modeled wall clearance 139.5 mm,
+and minimum modeled legal-pillar clearance 166.1 mm. This is ideal fixed-field
+geometry only and cannot prove physical safety or camera reliability.
+
+Verification already completed:
+
+- IDE-managed `giga_r1_m7` build: SUCCESS
+- RAM: 366688 bytes
+- Flash: 437568 bytes
+- `git diff --check`: clean except LF-to-CRLF warnings
+- M4 was not built
+- no firmware was uploaded
+
+Do not change geometry without new evidence. The next action requires explicit
+upload permission. Then validate CW/red first with the opposite green station-0
+pillar present. Require 85 mm scout outbound/return, >=400 ms stopped scout
+observation, green confirmation/injection, small return error, both connector
+prerequisites resolved, confirmed guard, connector PASS/completion, normal
+green then red avoidance, and the user's physical no-contact/no-stall report.
+Only after that passes, run CCW/green with the opposite red pillar and require
+station 1 to resolve at the 85 mm scout pose. Never accept simulation or
+telemetry as proof of no contact.
+
+Tool usage, inputs, and limitations are documented in
+`simulation/PARKING_ENTRY_GEOMETRY_TOOLS.md`.

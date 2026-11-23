@@ -18,7 +18,7 @@ relationship. [Chassis and steering](../README.md#chassis-and-steering)
 
 The measured axle spacing is **98 mm**. The firmware uses that measurement for
 the parking footprint and **127 mm** as the effective wheelbase in its
-steering-radius model. [Measured parking geometry](../simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation) · [Firmware model](../include/ackermann_kinematics.h)
+steering-radius model. [Measured parking geometry](../simulation/reports/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation) · [Firmware model](../include/ackermann_kinematics.h)
 
 ## From Fusion 360 to the wheel-angle table
 

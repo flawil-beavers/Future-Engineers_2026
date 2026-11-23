@@ -16,6 +16,11 @@ function CodeBlock(block)
 end
 
 function Header(header)
+  -- The README nests sections under its title. Retain the print section sizes
+  -- and keep third-level subsections from becoming run-in LaTeX headings.
+  if FORMAT:match("latex") and header.level > 1 and header.identifier ~= "contents" then
+    header.level = header.level - 1
+  end
   if header.identifier == "bill-of-materials-bom" or header.identifier == "robot-photos" then
     return {pandoc.RawBlock("latex", "\\clearpage"), header}
   end

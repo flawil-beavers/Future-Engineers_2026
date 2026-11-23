@@ -1334,7 +1334,7 @@ handling, and representative routes work reliably at 175 mm/s.
 
 Start after unparking/localization and the three-lap obstacle route are reliable.
 
-- [ ] Follow [the parking pose implementation plan](../../PARKING_POSE_IMPLEMENTATION_PLAN.md)
+- [ ] Follow [the parking pose implementation plan](../validation/PARKING_POSE_IMPLEMENTATION_PLAN.md)
       for automatic diagnostics during the friend's normal O unparking runs;
       record every batch concisely in `AGENT_DOCUMENTATION.md` and synchronize
       curated evidence. Use returned logs to develop pose checkpoints and bounded

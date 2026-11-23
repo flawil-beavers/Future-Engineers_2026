@@ -18,11 +18,11 @@
   history through `docs/history/README.md` without discarding evidence or
   limitations. Keep mandatory agent instructions in this file.
 - For parking/unparking motion-error tests, also read
-  `PARKING_POSE_IMPLEMENTATION_PLAN.md`. After each received test batch, append a
-  concise entry to `AGENT_DOCUMENTATION.md` with firmware identity, committed
-  evidence paths and hashes, physical reports, measured findings, limitations
-  and exact next steps. Keep this history concise; do not paste full telemetry
-  into `AGENT_DOCUMENTATION.md`.
+  `docs/validation/PARKING_POSE_IMPLEMENTATION_PLAN.md`. After each received
+  test batch, append a concise entry to `AGENT_DOCUMENTATION.md` with firmware
+  identity, committed evidence paths and hashes, physical reports, measured
+  findings, limitations and exact next steps. Keep this history concise; do
+  not paste full telemetry into `AGENT_DOCUMENTATION.md`.
 - For every parking/unparking test batch, copy each complete original log,
   unchanged, from the USB/source archive into
   `simulation/evidence/parking_exit_diagnostics/`. Use the portable filename
@@ -41,11 +41,21 @@
   normally; do not request a dedicated ToF test/sweep, extra movements or pauses.
   Preserve the existing route, braking, reversal and pose-correction diagnostics.
 
-## Documentation links
+## Development branches and release documentation
 
-- When firmware edits move or replace code linked from `README.md`, update the
-  repository-relative GitHub line anchors in the same change. Verify that each
-  affected anchor still lands on the definition or implementation it describes.
+- Keep `main` as the published competition version. Do ongoing work on a
+  separate branch based on `main` and bring tested changes into `main` through
+  a pull request. Group related changes and include focused competition fixes
+  when they are ready.
+- During intermediate work on the branch, defer judge-facing documentation
+  updates and PDF regeneration until preparing the pull request for review.
+- In the same pull request as the firmware change, update the affected README
+  sections and guides. Check repository-relative GitHub line anchors against
+  the final source in the pull request. Verify that each affected anchor lands
+  on the definition or implementation it describes.
+- After the final documentation edits, regenerate `README.pdf` if the pull
+  request changes `README.md`, images under `img/`, or PDF build inputs. Include
+  the regenerated PDF in that pull request. See the [PDF build guide](docs/pdf/README.md).
 
 ## Temporary files
 
@@ -58,15 +68,16 @@
 
 ## Competition rules
 
-- Use the official links recorded in `WRO_2026_RULES.md` as the canonical rules
-  reference.
+- Use the official links recorded in `docs/competition/WRO_2026_RULES.md` as
+  the canonical rules reference.
 - Agents are authorized to download the official rules PDF without additional
   permission when a task materially involves competition rules. If it is not
   already present, save it under `local_workspace/` so repeated searching and
   page inspection can use the faster local copy.
 - Before relying on a local PDF, verify its source and version against
-  `WRO_2026_RULES.md` and check the official Questions & Answers for newer
-  clarifications. Keep the download gitignored and never commit it.
+  `docs/competition/WRO_2026_RULES.md` and check the official Questions &
+  Answers for newer clarifications. Keep the download gitignored and never
+  commit it.
 
 ## PlatformIO builds
 
