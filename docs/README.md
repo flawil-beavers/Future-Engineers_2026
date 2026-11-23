@@ -6,6 +6,14 @@ The [engineering journal](../README.md) explains how we designed, built and test
 
 Follow the [quick build and run guide](guides/QUICK_BUILD_AND_FIRST_RUN.md) for the steps from the parts list to the first autonomous run.
 
+## Current firmware
+
+We publish the competition firmware on `main`. Build both cores from the same checkout and record `git rev-parse HEAD` and any changes to `include/config.h`. [Competition firmware on `main`](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main) · [Build and upload](../README.md#build-and-run-the-firmware)
+
+- `giga_r1_m7` runs the challenges, processes the camera and controls the drive and steering. [M7 entry point](../src/main.cpp)
+- `giga_r1_m4` reads the rear ToF sensor. [M4 entry point](../src/m4/rear_tof_m4.cpp)
+- PlatformIO defines both environments and their dependencies. [Build configuration](../platformio.ini)
+
 ## Reproduce the tests
 
 | What you want to check | Where to start |

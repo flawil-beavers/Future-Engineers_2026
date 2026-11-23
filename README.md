@@ -4,6 +4,8 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 
 > **[Quick build and run guide](docs/guides/QUICK_BUILD_AND_FIRST_RUN.md).** Rebuild our robot in nine steps, from the parts list and print files to wiring, firmware upload and your first autonomous run.
 
+**Current firmware** · [Browse the source on `main`](https://github.com/flawil-beavers/Future-Engineers_2026/tree/main)
+
 ![Flawil Beavers team photo, 2026](img/team/Teamphoto_26.png)
 
 ## Contents
@@ -407,7 +409,7 @@ We used prototype observations, bench measurements and simulations to guide chan
 
 ### Build and run the firmware
 
-Clone the public repository, open the root in VS Code with the PlatformIO extension, and use the IDE-managed PlatformIO Core. [PlatformIO configuration](platformio.ini#L14-L50) defines the Arduino GIGA M4 and M7 environments and their dependencies. From the repository root in PowerShell:
+Check out and update `main`, then run `git rev-parse HEAD` to record the exact version you are building. Open the repository root in VS Code with the PlatformIO extension and use the IDE-managed PlatformIO Core. [PlatformIO configuration](platformio.ini#L14-L50) defines the Arduino GIGA M4 and M7 environments and their dependencies. From the repository root in PowerShell:
 
 ```powershell
 $pio = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\platformio.exe'
@@ -431,7 +433,7 @@ After changing either setting, rebuild and upload the `giga_r1_m7` environment u
 
 ### Reproduce the evidence
 
-We maintain our firmware on `main`. During bench work, read diagnostics and telemetry at **115200 baud**.
+During bench work, read diagnostics and telemetry at **115200 baud**.
 
 **Automatic USB logging.** Before a test, plug a FAT32-formatted USB flash drive into the GIGA’s USB host port. We buffer telemetry in RAM while driving and save it to a numbered `log_*.txt` file when the challenge ends or we set the start toggle (SW1) LOW. The GIGA shows red while writing and green after reading the file back and verifying it. Red and green together indicate a save error. Wait for the green light to go out before removing the drive. [Save and verification status](src/logger.cpp#L338-L378)
 
