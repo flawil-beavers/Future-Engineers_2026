@@ -1,128 +1,74 @@
-# Korrekturen nach der Codeprüfung, 27.10.2026
+# Runtime and route fixes, 27 October 2026
 
-Ausgangsbefund: [FULL_CODE_REVIEW_20261027.md](FULL_CODE_REVIEW_20261027.md).
-Die nachfolgend belegten Fehler wurden gezielt korrigiert. Keine neuen
-physischen Läufe oder Original-Logs liegen vor; die vier zuletzt beschriebenen
-CW-Läufe bleiben für die spätere Ursachenprüfung offen. Kein Upload durch den
-Agenten.
+We addressed the specific faults reproduced in the [full code review](FULL_CODE_REVIEW_20261027.md). The results below apply to the reviewed October firmware. We received no new physical runs or original logs during this review. The four previously reported CW runs still needed to be matched to their evidence.
 
-## Verhalten der korrigierten Version
+## What we changed
 
-| Bereich | Korrektur |
+| Area | Change |
 | --- | --- |
-| Lenkung nach Gyro-Pause | Akzeptierte gerade und zusätzliche gebogene Beobachtungsrückfahrten stellen die Lenkungsfreigabe wieder her. Gleiches gilt für die vier bewegten Open-Navigationszustände. Verwerfende Geometrie-/Gesundheitsprüfungen bleiben wirksam. |
-| Zeitgrenzen der Beobachtungsrückfahrt | Eine tatsächliche Gyro-Pause wird einmalig aus dem Phasenzeitkonto herausgerechnet; auch beim Transportneustart beginnt diese Pause vor der blockierenden Sensorinitialisierung. |
-| Motorprofil nach Wiederanlauf | Vorher vergangene Zeit erzeugt keinen rückwirkenden neuen Sollweg. Ein Neustart beginnt bei null; nach einer aktiven Schleifenlücke über 100 ms wird auf gemessene Bewegung und aktuelle Encoderposition zurückgesetzt. Keine zusätzliche dauerhafte Stoppsperre. |
-| USB und neuer Start | Ein angeforderter Start wartet auf den alten Speichervorgang. LOW oder explizites Stoppen widerruft diesen Start. Während geschwindigkeitsgeregelter Fahrt führt der Logger keine Dateioperationen aus. |
-| USB-Dateisuche und Datenerhalt | Höchstens vier Dateinamenproben je Update; keine unbegrenzte Suche in einem Tick. Ein fehlgeschlagener Speicherversuch schützt seinen RAM-Inhalt auch vor `clear()` beim nächsten Lauf. |
-| M4-Software-I2C | Daten- und ACK-Taktfehler werden als fehlerhafte Transaktion gemeldet; kein teilweise gelesenes Byte und kein alter Teilpuffer wird als vollständiger Registerinhalt geliefert. |
-| ToF-Herstellertreiber beider Kerne | Endlosschleifen bei Registeradressierung und leeren grossen Leseabschnitten entfernt. Höchstens zwei Adressierungsversuche; ein einzelner vorübergehender NACK kann sich weiter erholen. Leere/kurze Transfers und auch Fehler mittlerer Schreibabschnitte gehen an die vorhandene Sensorfehlerbehandlung. |
-| Open-Eckbestätigung | Jede Seite zählt nur eigene neue und gültige ToF-Sequenzen. Die Richtungswahl benutzt die tatsächlich bestätigte Seite. Wiederholtes Lesen desselben Frames ist keine Mehrfachbestätigung. |
-| Optionale Innenlinie Runde 2/3 | Kandidaten werden über zwei Umläufe mit derselben endlichen Motorrampe wie im Fahrcontroller geprüft, statt nur mit konstanter räumlicher Schrittweite. Unsichere oder nicht innerhalb des Zeitbudgets fertig geprüfte Kandidaten fallen auf die vorherige Form zurück. |
+| Steering after a gyro hold | Restore steering writes when the controller accepts a straight or curved reverse viewpoint manoeuvre, including extra viewpoints. The four moving Open states also restore steering. Geometry and sensor-health checks still reject unsuitable commands. |
+| Viewpoint timing | Exclude a real gyro hold once from the phase clock. On a transport restart, the hold starts before blocking sensor initialisation. |
+| Motor profile after a pause | Restart from zero without turning time already elapsed into a jump in target distance. After an active loop gap above **100 ms**, reset to measured motion and the latest encoder position. This adds no lasting drive lockout. |
+| USB saving and a new start | Queue a start until the old save finishes. A LOW switch or explicit stop cancels the request. During speed-controlled motion the logger performs no file operations. |
+| USB filename search and RAM | Check at most **four** names per update. After a failed save, keep the snapshot in RAM even if the next run calls `clear()`. |
+| M4 software I²C | Report data-bit and ACK clock failures as transaction errors. Return only a complete, valid register read. |
+| VL53L4CX transport on both cores | Limit register addressing to **two attempts** so one transient NACK can recover. Report empty or short reads and failed write chunks through the existing sensor error path. |
+| Open corner confirmation | Count only new, valid ToF sequences from each side. Use the side that met the confirmation threshold to choose the turn. |
+| Optional inner routes on laps 2 and 3 | Evaluate candidates over two laps with the drive controller's acceleration ramp. Keep the existing route if a candidate fails a check or exceeds the planning budget. |
 
-Die maximale Geschwindigkeitsanforderung bleibt **520 mm/s**. Normale
-Beschleunigungs-/Jerkparameter bleiben gleich. Für spätere Runden wächst die
-vorweggenommene Reaktionszeit vor Kurven von 0.35 auf **0.40 s**; das entspricht
-bei 520 mm/s und der bestehenden 10-%-Geschwindigkeitszugabe höchstens
-28.6 mm zusätzlicher Bremsvorausschau. Damit wird auch der vorbestehende
-Dynamikfall 154 abgefangen. Es gibt keine pauschale neue Geradendrosselung.
+The maximum requested speed stayed at **520 mm/s**, with the same acceleration and jerk settings. We increased the later-lap braking preview from **0.35 s** to **0.40 s**. With the existing **10%** speed allowance at that speed, the change adds up to **28.6 mm** of preview and covers the previously failing dynamics case 154. Straight-line speed limits stayed the same.
 
-Die optionale Kandidatenprüfung behält nominalen und gekoppelt gestörte Starts
-(±10 mm/±1°, dort zusätzlich 10 % Geschwindigkeitszugabe), 40 mm modellierte
-Wandreserve und die bestehenden Karosserieprüfungen. Für neue Kandidaten
-werden 32 statt 30 mm Hindernisreserve verlangt, um kleine Änderungen durch die
-Zeitschrittauflösung abzufangen. Die allgemeine dynamische Akzeptanzgrenze
-bleibt 30 mm und 0.8 m/s². Der kooperative 30-ms-Suchzeitrahmen bleibt bestehen;
-ein Rückfall setzt keine neue Fahrstörung.
+The optional route check keeps nominal and perturbed starts (**±10 mm**, **±1°** and **10%** extra speed in the perturbed cases), a **40 mm** modelled wall reserve and the existing body clearance checks. New candidates require **32 mm** of obstacle clearance, compared with the general **30 mm** acceptance limit, to account for the time-step resolution. The general lateral acceleration limit stays at **0.8 m/s²**. The search keeps the cooperative **30 ms** budget and the controller can continue on the existing route.
 
-Kamera-Farbschwellen, Sitzzuordnung, Erstlauf-Geometrie, Parksegmente,
-Ausparksegmente und deren Geschwindigkeitswerte wurden nicht umgestimmt.
-Unbenutzte Alt-Funktionen wurden nicht zusammen mit diesen Funktionskorrekturen
-entfernt. Die im Review beschriebenen möglichen Live-DMA-/Gyro-Zeitstempelrisiken
-bleiben als nicht physisch nachgewiesene Themen dokumentiert.
+We kept the existing colour thresholds, sign-slot association, first-lap geometry, parking and exit paths and their speeds. We kept unused legacy code outside this functional change. The review left potential DMA and gyro timestamp issues open for physical validation.
 
-## Reproduzierbare Prüfungen
+## Reproducible checks
 
-Die Skripte werden mit dem IDE-verwalteten Python aus dem Repository ausgeführt.
-Alle generierten C++-Dateien, Binärdateien und Rohberichte bleiben in
-`local_workspace/`.
+Run the scripts with the IDE-managed Python from the repository root. Generated C++, executables and unprocessed reports stay under `local_workspace/`.
 
-| Prüfung | Ergebnis |
+| Check | Result |
 | --- | --- |
-| `review_runtime_edges_20261027.py` | PASS: kein Sollwegsprung bei 215/819/1200 ms; gemessene aktive Bewegung und nächste normale Rampe; alle vier akzeptierten Rückfahrtbefehle nach Halt; verworfener Befehl bleibt aus; Startwarteschlange/LOW-Abbruch/einmaliger Start; 16 Datenbit- und zwei ACK-Timeouts plus Erholung; 534 Dateien in 134 Updates mit 535 Proben; fehlgeschlagener RAM-Snapshot bleibt erhalten; frische Sequenzen und Zeitüberlauf. |
-| `check_drive_profile_timing.py` | **40 000** Vergleiche mit originalem `drive_loop()` aus `861ed8e`: bei 1/10/20/50 ms, wechselnden positiven/negativen Anforderungen und Beschleunigungsgrenzen 0/60/120/500/1000 **0 mm/s Geschwindigkeitsabweichung**. Auch die bisherige Arduino-`constrain`-Semantik der Kalibriergrenzen bleibt erhalten. |
-| `check_bounded_tof_transport.py` | PASS: tatsächlich erzeugte I/O-Wrapper beider installierter Herstellertreiber; 96-Byte-Lesen/-Schreiben; dauerhafte und vorübergehende Adressfehler, leere Abschnitte, fehlende Bytes, Teil-Schreibvorgänge, mittlere Schreibfehler und Erholung beim nächsten Zugriff. |
-| `check_runtime_safety.py` | Alle bisherigen Host-Prüfungen PASS, einschliesslich Gyro/ToF-Fehler und Erholung, Freigabeschalter, Parser, Pose, Vision, Dispatcher und Parkpausenzeiten. |
-| `check_later_laps.py` | **2807/2807** Geometriefälle PASS. |
-| `review_later_lap_matrix_20261027.py` | **2191/2191** bei 20 ms PASS, ebenso die Kontrollvariante ohne neue Innensuche. Vorher 7 gegen 1 Grenzverletzung; jetzt jeweils 0. |
-| `check_later_lap_dynamics.py --full-matrix` | **6573/6573** dynamische Fälle PASS: dieselben 2191 ungekappten Karten jeweils bei 10, 20 und 50 ms. Siehe Minima unten. |
-| `check_later_lap_inner_routes.py` | PASS: 336 Vergleiche der schnellen mit der ursprünglichen vollständigen Geometrieprüfung, vier Budget-/Zeitüberlauffälle und acht gezielte Übergänge je Vergleichsvariante. Die gezielte innere Weiterfahrt spart weiterhin 118.92 mm und 0.562 s berechnete Zielzeit je Runde, CW und gespiegelt. |
-| `check_first_lap_geometry.py` | **1736/1736** PASS; modellierte Hindernisminima CW 47.657 mm, CCW 47.6197 mm. Dies ersetzt keinen Kameratest. |
-| `check_final_parking_robustness.py` | **1540** Szenarien ohne unsicheres Modellresultat; alle **990** bekannten regulären Anfahrten parken. Nicht geeignete fremde/fehlerhafte Ausgangslagen werden teilweise oder vollständig abgelehnt. Zusätzlich 46 Grenz- und fünf Messqualitätsprüfungen PASS. |
-| `check_parking_segment_sensor_resume.py` | **42** Prüfungen aller sieben Parksegmente in beiden Richtungen PASS; negative Kontrolle reproduziert den alten Fehler. |
-| `check_gyro_path_servo_resume.py`, `check_connector_servo_resume.py` | PASS, einschliesslich negativer Kontrollen mit entfernter Lenkungsfreigabe. |
+| `review_runtime_edges_20261027.py` | Passed pauses of **215, 819 and 1,200 ms** without a target-distance jump, the measured-motion reset and next normal ramp, all four accepted recovery moves and rejection of an invalid move. Also passed the queued start, cancellation on LOW and single start, **16** data-bit and **2** ACK timeouts and recovery, **534** files in **134** updates with **535** name probes, RAM retention after a failed save, fresh sequences and timer rollover. |
+| `check_drive_profile_timing.py` | **40,000** comparisons against `drive_loop()` in `861ed8e` at **1, 10, 20 and 50 ms**. Alternating positive and negative requests with acceleration limits of **0, 60, 120, 500 and 1,000** gave **0 mm/s** speed difference. Arduino `constrain` behaviour for calibration limits matched. |
+| `check_bounded_tof_transport.py` | The generated wrappers for both installed drivers passed **96-byte** reads and writes, persistent and transient address faults, empty chunks, missing bytes, partial writes, failures in intermediate chunks and recovery. |
+| `check_runtime_safety.py` | Gyro and ToF faults and recovery, start switch, parser, pose, vision, dispatch and parking pause checks passed. |
+| `check_later_laps.py` | **2,807/2,807** geometry cases passed. |
+| `review_later_lap_matrix_20261027.py` | **2,191/2,191** at **20 ms** passed, with and without the optional inner search. The earlier variants had seven and one violations. Both revised variants had zero. |
+| `check_later_lap_dynamics.py --full-matrix` | **6,573/6,573** dynamic cases passed. The same **2,191** uncapped maps ran at **10, 20 and 50 ms**. |
+| `check_later_lap_inner_routes.py` | Passed **336** comparisons of the fast and full geometry checks, **4** budget and rollover cases and **8** transitions per comparison variant. The targeted inner route saved **118.92 mm** and **0.562 s** of calculated target time per lap in CW and the mirrored case. |
+| `check_first_lap_geometry.py` | **1,736/1,736** passed. Minimum modelled obstacle clearance was **47.657 mm** CW and **47.6197 mm** CCW. Camera behaviour requires its own validation. |
+| `check_final_parking_robustness.py` | **1,540** scenarios produced no unsafe result in the model. All **990** known regular approaches parked. The controller rejected some or all phases of unsuitable starts. Another **46** boundary and **5** measurement-quality checks passed. |
+| `check_parking_segment_sensor_resume.py` | **42** checks across seven segments in both directions passed. The negative control reproduced the old failure. |
+| `check_gyro_path_servo_resume.py` and `check_connector_servo_resume.py` | Passed, including negative controls with the steering restoration removed. |
 
-| Regelschritt im dynamischen Gesamtmodell | Fälle | Höchste Querbeschleunigung, m/s² | Kleinster Hindernisabstand, mm |
-| --- | --- | --- | --- |
-| 10 ms | 2191 | 0.760805 | 32.1480 |
-| 20 ms | 2191 | 0.768285 | 32.2451 |
-| 50 ms | 2191 | 0.796430 | 33.4597 |
+| Control step | Cases | Maximum lateral acceleration (m/s²) | Minimum obstacle clearance (mm) |
+| --- | ---: | ---: | ---: |
+| 10 ms | 2,191 | 0.760805 | 32.1480 |
+| 20 ms | 2,191 | 0.768285 | 32.2451 |
+| 50 ms | 2,191 | 0.796430 | 33.4597 |
 
-Alle sieben vorher im Review festgehaltenen Karten bleiben dort als genaue
-Sitzarrays erhalten und sind Teil dieser Gesamtmatrix. Die Lösung enthält
-keine Sonderbehandlung ihrer Fallnummern.
+The matrix includes all seven exact sign layouts recorded in the original code review. The route logic treats them like any other layout.
 
-## ToF-Anpassung im Build
+## How the build applies the ToF change
 
-`platformio.ini` lädt `scripts/bounded_tof_transport.py` als Pre-Build-Skript
-für beide Kerne. Das installierte PlatformIO-Middleware-API ersetzt ausschliesslich
-die zwei I/O-Funktionskörper der lokal installierten VL53L4CX-Bibliothek durch
-Aufrufe aus `include/bounded_tof_transport.h`. Der übrige Herstellercode und
-sein Lizenztext bleiben erhalten. Die Bibliotheksdateien und Paket-Caches
-werden nicht verändert. Erzeugte Quellen liegen in
-`local_workspace/generated_tof/<environment>/`; Objekte bleiben im normalen
-`.pio/build/<environment>/`.
+[PlatformIO](../platformio.ini) runs [`bounded_tof_transport.py`](../scripts/bounded_tof_transport.py) for both cores. The middleware replaces two VL53L4CX I/O function bodies with calls to [`bounded_tof_transport.h`](../include/bounded_tof_transport.h). The remaining vendor implementation and licence stay in place. Generated sources go to `local_workspace/generated_tof/<environment>/` and objects go to `.pio/build/<environment>/`. The installed library files, package cache and dependency versions stay in place. An unexpected vendor source change produces a build error.
 
-Die korrigierte Profil-Hilfsdatei bleibt auch mit getrennten Referenzkonstanten
-im bestehenden Messwerkzeug vergleichbar. Der zusätzliche Sieben-Karten-Vergleich
-mit gleicher neuer Bremsplanung auf beiden Seiten besteht: das CW-Beispiel A
-bleibt 405.27 mm pro Runde kürzer (berechnete Zielzeit 16.9407 → 15.4049 s),
-das gespiegelte CCW-Beispiel C 193.27 mm (16.5581 → 14.9777 s). Das sind
-Zielzeiten im Modell, keine Prognose einer gemessenen Gesamtlaufzeit.
+We bounded the number of bus calls made by our wrappers. The test does not measure the time taken by an individual hardware `Wire` call. The revised drive profile remains comparable with the separate reference constants in the existing tool. With the same braking preview applied to both sides of the seven-layout comparison, CW example A saved **405.27 mm** per lap (**16.9407 to 15.4049 s** of calculated target time). Mirrored CCW example C saved **193.27 mm** (**16.5581 to 14.9777 s**). These are model results.
 
-Ein unerwartet geänderter Herstellertreiber führt zu einer verständlichen
-Buildfehlermeldung statt einer stillschweigend fehlenden Anpassung. Die
-Bibliotheksauflösung/Frameworkversion wurde nicht aktualisiert. Bounded bedeutet
-hier eine begrenzte Anzahl unserer Busaufrufe; die interne Laufzeit eines
-einzelnen hardwareabhängigen `Wire`-Aufrufs wird dadurch nicht bewiesen.
+## Build and physical validation
 
-## Firmware und verbleibende praktische Abnahme
+Both IDE-managed PlatformIO builds compiled and linked with the existing cache. Existing macro and library warnings remained.
 
-Beide finalen IDE-PlatformIO-Builds **SUCCESS**, ohne Clean oder separaten Cache:
+| Environment | RAM (bytes) | Flash (bytes) |
+| --- | ---: | ---: |
+| `giga_r1_m7` | 442,408 / 523,624 | 524,296 / 786,432 |
+| `giga_r1_m4` | 59,768 / 294,248 | 155,328 / 1,048,576 |
 
-| Kern | RAM | Flash |
-| --- | --- | --- |
-| `giga_r1_m7` | 442408 / 523624 Bytes | 524296 / 786432 Bytes |
-| `giga_r1_m4` | 59768 / 294248 Bytes | 155328 / 1048576 Bytes |
-
-SHA-256 der Dateien `.pio/build/<environment>/firmware.bin`:
+SHA-256 of `.pio/build/<environment>/firmware.bin`:
 
 ```text
 giga_r1_m7 5542896c58ca0c36b2c389c0be2d63471b2a0dbeeb27a1cbedee4b44ab7b22d8
 giga_r1_m4 fbc3da65845172d9be1405ec56b626da1b716999ce2fd31e591a4c3a14057215
 ```
 
-Der Compiler meldet weiterhin vorhandene Makro- und Bibliothekswarnungen;
-beide Builds haben erfolgreich kompiliert und gelinkt.
-
-Beide Kerne sind diesmal betroffen: M7 durch Steuerung/Planung,
-M4 durch Software-I2C und beide durch den begrenzten ToF-Transport. Protokoll und
-RPC-Layout bleiben kompatibel. Der Benutzer spielt die Firmware selbst auf.
-
-Die bestandenen Prüfungen sind Modell- und Hostnachweise. Servoverzug,
-Reifenhaftung, Lichtverhältnisse, Montage und die tatsächliche Kamerapuffer-
-Zeitlage sind keine daraus gemessenen Eigenschaften. Normale CW-/CCW-Läufe mit
-dem eindeutig identifizierten Firmwarestand bleiben die praktische Abnahme;
-keine spezielle ToF-Abtastfahrt, zusätzlichen Bewegungen oder Pausen verlangt.
-Wenn die fehlenden Logs eintreffen: vollständige Originale zuerst unverändert
-archivieren und hashen, danach konkrete GREEN-/Einparkursache zuordnen.
+M7 changed for control and planning, M4 for software I²C, and both for ToF transport. The RPC protocol and layout remained compatible. We did not upload during this review. Normal CW and CCW runs on the identified firmware were the planned validation for steering response, traction, lighting, mounting and camera timing. The plan was to preserve and hash complete originals before investigating the green-sign and parking problems. Normal runs were sufficient for this check.

@@ -1,101 +1,52 @@
-# Parkdauer und Platzbedarf erneut geprüft
+# Parking duration and clearance, 2 November 2026
 
-Geprüfte Firmware: Pfad `20261102_lap_handoff`, Parken
-`20261101_efficient_entry`. Keine neue Hardwarefahrt/USB-Evidenz erhalten.
-Die Firmware wurde in dieser Prüfung nicht verändert oder hochgeladen.
+We compared the adaptive parking controller's planned and executed movements in the host model. The reviewed revisions were `20261102_lap_handoff` for the route and `20261101_efficient_entry` for parking. We made no firmware changes or uploads and received no new physical runs or USB logs. The [current parking sequence](../README.md#obstacle-challenge-strategy) uses a later design.
 
-## Ergebnis
+## Modelled parking duration
 
-Der aktuelle Ablauf kann in den geprüften CW-/CCW-Modellen vollständig und
-kollisionsfrei einparken. Eine stets sehr schnelle Ausführung ist damit nicht
-belegt. Insbesondere sind Anzahl der ursprünglich geplanten Bögen, tatsächlich
-ausgeführte Korrekturen und die gesamte Parkzeit unterschiedliche Grössen.
+The tested CW and CCW cases completed without a collision in the model. The table shows elapsed time from the registered stop at the bay (`FP_CAPTURE_BRAKE`) to confirmed parking. It includes acceleration, braking and steering waits. It excludes MCU computation, USB saving and the approach and marker scan.
 
-Die folgenden Zeiten beginnen beim Stillstand an der bereits registrierten
-Position vor dem Parkfeld (`FP_CAPTURE_BRAKE`) und enden beim bestätigten
-Parkabschluss. Sie enthalten die aktuelle Beschleunigungsrampe, Brems- und
-Lenkwartezeiten, aber **keine MCU-Rechenzeit, USB-Speicherung oder vorherige
-Anfahrt/Vermessung**. Es sind Modellzeiten, keine gemessenen Roboterzeiten.
+| Bay gap | Nominal time | Executed segments / arcs | Range across variants |
+| --- | ---: | ---: | ---: |
+| 232.5 mm | 15.08 s | 6 / 3 | 14.04–21.44 s |
+| 245.2 mm, recorded starting pose | 15.34 s | 7 / 3 | 12.48–16.54 s |
+| 247.5 mm | 12.24 s | 6 / 4 | 12.12–16.40 s |
+| 251.7 mm | 12.20 s | 6 / 4 | 12.06–15.98 s |
+| 256.6 mm, recorded starting pose | 12.20 s | 6 / 4 | 12.00–16.28 s |
+| 262.5 mm | 12.20 s | 6 / 4 | 10.94–15.98 s |
 
-| Gemessene Lücke | Nominelle Modellzeit | Gefahrene Teilstücke / Bögen | Zeitspanne der Varianten |
-|---|---:|---:|---:|
-| 232,5 mm | 15,08 s | 6 / 3 | 14,04–21,44 s |
-| 245,2 mm, aufgezeichnete Startpose | 15,34 s | 7 / 3 | 12,48–16,54 s |
-| 247,5 mm | 12,24 s | 6 / 4 | 12,12–16,40 s |
-| 251,7 mm | 12,20 s | 6 / 4 | 12,06–15,98 s |
-| 256,6 mm, aufgezeichnete Startpose | 12,20 s | 6 / 4 | 12,00–16,28 s |
-| 262,5 mm | 12,20 s | 6 / 4 | 10,94–15,98 s |
+The 216 cases combined six bay gaps, two driving directions, actual radius factors of **1, 1.136 and 1.235**, initial heading offsets of **−1.5°, 0° and +1.5°**, and added braking travel of **0 or 1.5 mm**. Mirrored CW and CCW inputs gave the same results. The planner starts with radius factor 1 and estimates the radius from movement. The initial heading offset is visible to the pose estimator. Unknown gyro errors and tyre slip fall outside this model, and 21.44 s is the largest result in this matrix.
 
-CW und CCW sind bei gespiegelten Eingaben gleich. Varianten: tatsächlicher
-Radiusfaktor 1 / 1,136 / 1,235, anfänglicher Winkelversatz -1,5 / 0 / +1,5 Grad,
-zusätzlicher Bremsnachlauf 0 / 1,5 mm, in beiden Richtungen: 216 Fälle.
-Der Planer beginnt mit Radiusfaktor 1 und lernt den Radius aus der Bewegung.
-Der Versatz ist in der geschätzten Pose sichtbar; unbekannte Gyrofehler oder
-Reifenschlupf sind damit nicht abgedeckt. 21,44 s ist kein garantierter Höchstwert.
+## Where the time goes
 
-## Zeitaufteilung
+In the 251.7 mm example, the car travels about **333.8 mm**. At a steady 60 mm/s that distance would take 5.56 s. The model includes acceleration and stops between short movements.
 
-Beim nominellen Beispiel mit 251,7 mm Lücke:
+| Phase | Modelled time |
+| --- | ---: |
+| Driving, including acceleration and the control interval | 7.26 s |
+| Six steering waits | 2.40 s |
+| Braking, including the initial stop | 2.12 s |
+| Final pose check and centring the steering | 0.42 s |
+| **Total, excluding computation** | **12.20 s** |
 
-- etwa 333,8 mm Fahrt, reine Strecke/60 mm/s: 5,56 s;
-- mit Anfahren, kurzen Teilstücken und Regeltakt: 7,26 s in Fahrzuständen;
-- sechs Lenk-Einstellphasen: 2,40 s;
-- Bremsphasen einschliesslich Start: 2,12 s;
-- Abschlussprüfung/Lenkung neutral: 0,42 s;
-- zusammen 12,20 s, zuzüglich echter Berechnungsdauer.
+The normal entry runs at **60 mm/s** and the tight-clearance fallback at **40 mm/s**. Each new steering angle receives **400 ms** to settle. At the end of each segment the controller waits at least **300 ms** and checks measured speed. We kept those waits pending actuator measurements.
 
-Normale Einfahrgeschwindigkeit ist 60 mm/s. Die enge Ausweichplanung fährt
-40 mm/s. Jede echte neue Lenkeinstellung wartet 400 ms; jeder Segmentabschluss
-prüft mindestens 300 ms Bremsruhe und zusätzlich die gemessene Geschwindigkeit.
-Diese physikalischen Zeiten wurden mangels neuer Aktuatormessung nicht gekürzt.
+At **245.2 mm**, the standalone planner produced five segments with two arcs and one direction change. In the full model, the controller selected the faster search routine with a **1 mm** modelled margin and drove at **40 mm/s**. Its clearance check requested an `entry_motion_clearance` correction before the second arc. The car then executed seven segments with three arc starts. The full model took **15.34 s**. The standalone plan gives the planned sequence only.
 
-Am Beispiel 245,2 mm liefert der reine Planungstest fünf Teilstücke mit zwei
-Bögen und einem Richtungswechsel. Das allein belegt **nicht**, dass der neue
-Zweibogen-Sonderplan mit gewöhnlicher Reserve gewählt wurde: Der vollständige
-Ablauf wählt hier die schnelle Rezeptsuche mit 1-mm-Modellreserve und 40 mm/s.
-Seine laufende Vorausschau fordert eine `entry_motion_clearance`-Korrektur vor
-dem zweiten Bogen. Daraus werden sieben ausgeführte Teilstücke, drei Bogenstarts
-und 15,34 s statt einer aus fünf geplanten Segmenten abgeleiteten Idealzeit.
-Die frühere Beschreibung der 5/2/1-Zahlen darf nicht als gemessener schneller
-Parkabschluss oder als Nachweis gewöhnlicher Reserve gelesen werden.
+## How the footprint limits movement
 
-## Geometrie
+The model uses **123 mm** overall width, **30 mm** behind the rear axle and **125 mm** ahead of it. It also checks the individual steered wheels, both parking markers and the outer wall. In the normal margin mode it prefers **16 mm** of space at the front while steering. The earlier additional **10 mm** rear allowance remains disabled. The local endpoint remains **60 / 127 mm**.
 
-Konfiguriert sind 123 mm Gesamtbreite, 30 mm Heck ab Hinterachse und 125 mm
-Frontausdehnung. Der Kollisionsprüfer berücksichtigt zusätzlich die einzelnen
-eingeschlagenen Räder, beide rosa Begrenzungen, Aussenwand und den bevorzugten
-16-mm-Frontfreiraum beim Lenken im normalen Reservemodus. Der zusätzliche frühere
-10-mm-Heckwunsch bleibt aufgehoben. Das bekannte Endziel bleibt lokal 60/127 mm.
+At heading angle $a$, the rectangular body alone occupies $155\cos(a) + 123|\sin(a)|$ mm along the bay. At **45°** it spans about **196.6 mm**, leaving about **50.9 mm** in a **247.5 mm** bay before accounting for wheel sweep, reserve and stopping distance. We check clearance along the whole move at millimetre intervals and calculate the allowable forward or reverse travel from the current pose.
 
-Zur Grössenordnung: Bereits die rechteckige Grundkontur benötigt bei Winkel a
-längs der Lücke `155*cos(a) + 123*abs(sin(a))` mm. Bei 45 Grad sind das rund
-196,6 mm. In einer 247,5-mm-Lücke bleiben somit nur rund 50,9 mm insgesamt,
-**vor** Räderschwenk, Reserve und Bremsweg. Deshalb kann man nicht bei jedem
-Rangierzug pauschal 60 mm freigeben. Die Firmware prüft die gesamte Bewegung
-millimeterweise und berechnet freie Vor-/Rückfahrt aus der jeweiligen Pose.
+## Verification and limits
 
-## Verifikation und verbleibende Optimierung
+| Host check | Result |
+| --- | --- |
+| `audit_parking_duration.py` | **216/216** completed with no overlap in the checked vehicle outlines. Used the production `DriveProfile` ramp at a 20 ms step. |
+| `check_final_parking_sequence.py` | **396/396** entries completed on this revision and five marker registration checks passed. |
+| `check_parking_efficient_entry.py` | **14** clearance and progress checks passed. **36/36** full sequences completed with radius, heading and braking variations. |
 
-- `audit_parking_duration.py`: 216/216 vollständig eingeparkt, keine geprüfte
-  physische Konturüberschneidung; echte `DriveProfile`-Rampe bei 20 ms.
-- `check_final_parking_sequence.py`: 396/396 eingeparkt, fünf Registrierungschecks.
-- `check_parking_efficient_entry.py`: 14 Platz-/Fortschrittsprüfungen und
-  36/36 vollständige Abläufe mit Radius-/Winkel-/Bremsabweichungen.
-- Testadapter liest jetzt den aktuellen Produktionsstand direkt und verwendet
-  nur einen Encoderadapter; vermeidet veraltete extrahierte Routenfixtures.
+The test adapter reads production source and uses one encoder adapter, which keeps the route fixture in sync with the controller. Run `python simulation/audit_parking_duration.py --nominal` from the repository root for the nominal timing breakdown. The full run writes `report.json` and `output.txt` under `local_workspace/parking-duration/`.
 
-Die Kostenfunktion gewichtet gegenwärtig Weg, Segmentanzahl und Richtungswechsel;
-sie berechnet keine tatsächliche Ausführungsdauer. Die zusätzlichen 10 mm pro
-Segment entsprechen bei 60 mm/s nur 0,167 s gegenüber ungefähr 0,7 s Bremsen
-plus Lenken. Das ist ein Ansatz für eine gezielte spätere Zeitoptimierung,
-kein Beweis, dass eine andere gefundene Route sicher schneller wäre.
-
-Auch die allgemeine Ausweichsuche hat ein Geometrieschrittbudget, aber keine
-garantierte MCU-Zeitgrenze. Alte Logs 633/634 stammen vor der aktuellen
-Parkversion; dortige Suchpausen bis etwa zehn Sekunden dürfen nicht als aktuelle
-Messwerte ausgegeben werden. Der nächste normale Lauf muss `search_ms`, wirklich
-ausgeführte Segmente, Reserven und Parkdauer bestätigen. Keine neuen Fahrbefehle,
-pauschalen Abstandsverkleinerungen oder Fahrgeschwindigkeitserhöhungen vorgenommen.
-
-Reproduzierbare Ausgaben: `local_workspace/parking-duration/report.json` und
-`output.txt`; die nominale Detailausgabe kann mit `--nominal` erzeugt werden.
+The cost function weights travel, segment count and direction changes. Its **10 mm** penalty per segment corresponds to **0.167 s** at 60 mm/s, compared with about **0.7 s** for braking and steering. These figures identify a parameter to investigate using complete trajectories. The fallback search limits the number of geometry checks and has no guaranteed MCU-time bound. The pauses of up to about **10 s** in logs 633 and 634 came from an earlier controller. The planned physical follow-up for this revision was to compare `search_ms`, executed segments, clearance and total parking time during normal runs.

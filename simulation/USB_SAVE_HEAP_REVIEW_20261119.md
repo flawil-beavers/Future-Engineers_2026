@@ -1,38 +1,41 @@
-# USB-Speicherabsturz: Heap-Pruefung und Diagnose, 2026-11-19
+# USB save failure and heap usage, 19 November 2026
 
-## Gesicherter Befund
+## What we observed
 
-Der Nutzer meldet vier kurze/vier lange rote Blinkzeichen erst beim Speichern. Das entspricht dem dokumentierten MbedOS-Absturz; ein abgeschlossener Speichervorgang ist nicht nachgewiesen. Die656 vorherigen Stickdateien waren unveraendert, keine neue Sonderregel-Revision vorhanden. Der Nutzer hat den Stick anschliessend selbst geleert. Der gleiche16GB-FAT32-Stick besteht Windows-Dateisystempruefung und32 Schreib-/Lesetests mit Flush/Close/SHA256 (8MiB), ohne Fehler. [Portable PC-Pruefung](evidence/log_intake/20261119_save_check/README.md). Das prueft nicht die USB-Stromversorgung oder Kompatibilitaet am Roboter.
+The GIGA flashed four short and four long red pulses when we tried to save. This matches the documented Mbed OS crash pattern. We could not confirm a completed save. The 656 existing files were unchanged, and the USB drive contained no run from the new modified-sign firmware. We then cleared the drive.
 
-Im abgestuerzten Zustand erschien weder USB-CDC noch DFU; kein RAM-Dump moeglich. Keine Reset-/Upload-/Fahraktion durch den Agenten. Die genaue installierte Firmware, der Mbed-Fehlercode und der ausloesende Stackframe sind unbekannt. Ein Speichermangel ist ein konkreter Risikofaktor, aber noch KEINE bewiesene Absturzursache.
+The same **16 GB FAT32** drive passed the Windows filesystem check and **32** write, flush, close and SHA-256 readback tests totalling **8 MiB**. Those checks covered the drive on a PC. Power and USB compatibility on the robot were still open. [PC test evidence](evidence/log_intake/20261119_save_check/README.md)
 
-## Konkretes RAM-Risiko
+Neither USB CDC nor DFU was visible after the crash, so we could not capture a RAM dump. The installed build, Mbed error code and failing stack frame were unknown. We did not reset, upload or move the robot during this review.
 
-Vorheriges ELF: __end__=0x24076630, __HeapLimit=0x2407fc00, damit38352B gesamte Heap-Spanne vor Laufzeitbelegung/Fragmentierung. Statisches RAM484896/523624B. Erst bei msd.connect() erzeugt USBHost::getHostInst() dynamisch einen3644B Host (aus dem ARM-Code nachgewiesen), plus3072B USB-Threadstack und weitere Verwaltungs-/Dateisystemobjekte. Ein erfolgreicher Link beweist daher nicht, dass zur spaeteren Speicherzeit alle Allokationen gelingen. Der32KiB-Hauptthreadstack ist bereits in .bss und wird hierbei nicht nochmals als Heapverbrauch gerechnet.
+## What made the heap a concern
 
-## Gezielt vorbereitete Aenderung
+In the earlier ELF, `__end__=0x24076630` and `__HeapLimit=0x2407fc00` left **38,352 bytes** for the heap before runtime allocations and fragmentation. Static RAM usage was **484,896 / 523,624 bytes**. The ARM code shows that the USB host allocates **3,644 bytes** in `USBHost::getHostInst()` when `msd.connect()` runs. It also needs a **3,072-byte** USB thread stack and allocations for the filesystem and other bookkeeping. The main thread's **32 KiB** stack was already counted in `.bss`.
 
-- RGB565-Farbtabelle auf vier Bits pro Eintrag gepackt:32768 statt65536B. Alle sechs Farbwerte passen hinein. Initialisierung und Nachschlagen ergeben genau dieselbe Klassifikation, ohne neue HSV-Grenzen oder groessere/kleinere Detektionsfenster. Logpuffer bleibt192KiB; keine verlorene Kapazitaet, keine geaenderte Fahrgeschwindigkeit oder Route.
-- USBLogger::log_save_stage() meldet ausschliesslich bei verbundenem USB-Terminal und ausserhalb DC_ENABLED einmal pro Phase: power_settle, connect, mount, directory_open, directory_scan, file_open, write_flush, finalize_verify. Ausgabe: `[LOGGER USB] stage=... heap_used/peak/reserved/fails=...`. Die Mbed-Zahlen werden roh und ohne unbewiesene Freispeicherberechnung ausgegeben. Keine dynamische Diagnoseallokation, kein zusaetzliches Loggen waehrend Fahrt.
-- Die Phase ist der zuletzt erreichte Aufrufbereich, kein vollstaendiger Crashstack. Der parallele USB-Worker kann ebenfalls abstuerzen. Es wurde kein fatal-error-hook hinzugefuegt, der im Fehlerkontext riskante USB-Ausgaben ausfuehren koennte.
-- Schreib-/Flush-/Abschlusskontrolle und vollstaendiger Wiederholversuch in eine neue Datei bleiben erhalten; RAM-Prefix wird erst bei Erfolg entfernt.
+## What we changed
 
-Neues ELF: __end__=0x2406e638, gleiches __HeapLimit, somit71112B Heap-Spanne. Netto32760B mehr;8B Zusatzdaten fuer Diagnose/Linklayout. Statisches RAM452136/523624B, Flash598048/786432B.
+- **Free memory without changing vision.** We packed the six RGB565 colour classes into four-bit entries, reducing the lookup table from **65,536 to 32,768 bytes**. Initialisation and lookup still give identical classifications. We kept the HSV thresholds, detection windows and **192 KiB** log buffer, along with the existing speeds and route.
+- **Record save progress.** With a USB serial terminal connected and the drive outside `DC_ENABLED`, `USBLogger::log_save_stage()` prints one line per stage. It reports raw Mbed heap counters as `[LOGGER USB] stage=... heap_used/peak/reserved/fails=...`. The stages are `power_settle`, `connect`, `mount`, `directory_open`, `directory_scan`, `file_open`, `write_flush` and `finalize_verify`. The diagnostics allocate no extra heap and produce no extra output while driving. They run in the save path to avoid USB writes after a fatal error. The USB worker runs in parallel, so the last stage gives context about the crash but cannot identify the failing stack frame.
+- **Keep the existing recovery.** We kept write, flush and final verification, along with the full retry into a new file. We remove saved bytes from RAM only once the save succeeds.
 
-## Pruefungen
+The revised ELF had `__end__=0x2406e638` and the same heap limit, leaving **71,112 bytes**. The net gain was **32,760 bytes**, with **8 bytes** used by diagnostics or linker layout. Static RAM was **452,136 / 523,624 bytes** and flash **598,048 / 786,432 bytes**.
 
-- check_packed_vision_lookup.py: alle65536 RGB565-Werte gegen die bestehende RGB->HSV->Farbentscheidung, zweimal nach begin():131072 bitgenaue Vergleiche bestanden. Anfangs fehlte dem separaten Host-Fixture die vollstaendige Arduino-Typoberflaeche; Fixture ergaenzt, Firmwarecode dafuer nicht geaendert.
-- check_surprise_rule.py:45/45 freigegebene aktuelle Blockbilder,16 reale Bildfolgen,648 gerenderte/48 Zuordnungs-/24 Regel-/Fehlerfaelle bestanden; Sonderfarbe bleibt bis Runde3 gespeichert.
-- check_green_seat_visibility.py: echte freigegebene Archiv-Abfragen und synthetische Hintergrund-/Belegungs-/Fussgate-Negativkontrollen bestanden.
-- check_far_obstacle_acquisition.py:52 Faelle bestanden.
-- check_logger_directory_save.py:546 alte Dateien, begrenzte16er-Verzeichnisbearbeitung, erfolgreicher kompletter Snapshot, korrekte Phasenfolge, kein Fortschritt waehrend Fahrt, Short-write-Wiederholung in neue Datei und RAM-Erhalt bei Verzeichnisfehler bestehen. USB-/Mbed-Host ist dabei gemockt; dies reproduziert den physischen Absturz nicht.
+## Verification and build
 
-IDE-PlatformIO M7 SUCCESS; bestehende Serial/USB-Makro-/Legacy-Warnungen, keine Fehler. M4 unveraendert und nicht gebaut. Binary601600B SHA256: 69afd090f0d0347d930125a1b52f9c2734b339a9f7997ef720822f9ffd9d8882. Keine Uebertragung, kein weiterer Commit.
+| Check | Result |
+| --- | --- |
+| `check_packed_vision_lookup.py` | **131,072** exact comparisons passed. It checks all **65,536** RGB565 values twice after `begin()` against the existing RGB-to-HSV classification. We completed the Arduino types in the host fixture without changing firmware for the fixture. |
+| `check_surprise_rule.py` | **45/45** approved images, **16** real image sequences, **648** rendered cases, **48** association cases and **24** rule and error cases passed. The effective sign colour stayed in the map through lap 3. |
+| `check_green_seat_visibility.py` | Approved archival inputs and negative controls for background, occupancy and base checks passed. |
+| `check_far_obstacle_acquisition.py` | All **52** cases passed. |
+| `check_logger_directory_save.py` | Passed with **546** existing files, directory processing in batches of **16**, a complete snapshot, the expected stage order, no progress while driving, a retry into a new file after a short write and preservation of RAM after a directory error. The host mocks USB and Mbed. |
 
-## Exakter naechster Nachweis
+The IDE-managed M7 build passed with existing serial, USB macro and legacy warnings. M4 was unchanged and was not rebuilt. The M7 binary was **601,600 bytes**, SHA-256 `69afd090f0d0347d930125a1b52f9c2734b339a9f7997ef720822f9ffd9d8882`. We did not upload or make another commit during the review.
 
-Nutzer spielt selbst nur giga_r1_m7 auf. Fuer den ersten Speicherversuch Fahrfreigabe aus und USB-Terminal115200 bereits vor dem normalen Speichern geoeffnet lassen; kein Fahr-/ToF-Sondertest erforderlich. Letzte LOGGER-USB-Phase, Heapzahlen, eventuelle Mbed-Ausgabe und LED-Verhalten sichern. Ein erfolgreicher Versuch entlastet den Speicherverdacht, beweist aber keine universelle Zuverlaessigkeit; bei erneutem Absturz benennt die letzte Phase den weiter zu pruefenden Bereich. Stickdatei sofort vollstaendig sichern und Quelle/Kopie hashen. Keine Formatierung/ungepruefte Treiberwechsel/Fahrparameteraenderung.
+## Physical follow-up
 
-## Physischer Folgetest bestaetigt
+For the stationary follow-up we used the revised M7 firmware, kept the drive disabled and opened the USB serial monitor at **115200 baud** before saving. The planned evidence was the last logger stage, heap counters, any Mbed output and the LED response, plus a copy and hash of the saved file.
 
-Im stehenden Versuch erreicht die neue Version alle USB-Phasen, meldet71112B Heapkapazitaet und0 Allokationsfehler. Mount benoetigt42432B belegten Heap, Schreiben44484B Spitze; beides uebersteigt den alten gesamten38352B-Bereich. Nach dem Speichern antwortet die Anwendung auf die reine Positionsabfrage. Auf dem Stick liegt eine neue, vollstaendige930B-Datei log_1.txt mit dem erwarteten Initialisierungs-/SYSTEM-DISABLED-Snapshot. Original, SHA256 und Kontext: [stationaerer Speichernachweis](evidence/log_intake/20261119_stationary_usb_save/README.md). Dies ist ein belastbarer neuer Speichernachweis und starke Evidenz fuer den frueheren Speicherengpass; kein alter Crashstack und kein kompletter Challenge-/Langlogtest.
+The revised build reached every stage with **zero allocation failures**. We observed **42,432 bytes** of heap in use at mount and a **44,484-byte** peak during the write. Both exceed the earlier build's entire **38,352-byte** heap span. The application answered a read-only position query after saving, and the drive contained a complete **930-byte** `log_1.txt` with the expected initialisation and `SYSTEM-DISABLED` snapshot.
+
+This is strong evidence of a heap constraint on the earlier build. The old crash stack is still missing, and the stationary save covered a short snapshot. [Original stationary save and SHA-256](evidence/log_intake/20261119_stationary_usb_save/README.md)

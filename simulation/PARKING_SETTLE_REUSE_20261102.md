@@ -1,82 +1,54 @@
-# Kürzere Parkpausen mit Stillstandsnachweis
+# Shorter waits between parking moves, 2 November 2026
 
-Parkversion `20261102_reuse_steer_settle`, Pfad `20261102_lap_handoff`.
-Der Nutzer hat nach der Zeitauswertung ausdrücklich die Verkürzung der Pausen
-beauftragt. Keine neue Hardwarefahrt oder Loglieferung in dieser Sitzung.
+After [auditing the parking duration](PARKING_DURATION_AUDIT_20261102.md), we reduced the wait between moves when the steering had already settled or the car had come to a measured stop. The reviewed revisions were `20261102_reuse_steer_settle` for parking and `20261102_lap_handoff` for the route. The results below come from the host model.
 
-## Änderung
+## When the next move can start
 
-1. Die Motorsteuerung merkt Zeitpunkt und Winkel des tatsächlich ausgeführten
-   Servo-Schreibbefehls. Eine bloss vorgemerkte oder wegen gesperrter Lenkung
-   unterdrückte Anforderung zählt nicht. Die Parksteuerung kann bereits
-   vergangene Einstellzeit bei **identischem** Winkel wiederverwenden. Neue
-   Winkel erhalten weiterhin volle 400 ms. Der Servo hat keine Positionsrückmeldung;
-   dies ist eine Zeitfreigabe, kein gemessener Radwinkel. `stop()` sperrt nur neue
-   Schreibbefehle, die Servo-PWM bleibt aktiv.
-2. Der nächste geprüfte Lenkwinkel wird direkt beim Eintritt in die Einstellphase
-   geschrieben. Seine Wartezeit beginnt damit beim wirklichen Schreibbefehl und
-   nicht eine Regelschleife davor oder danach. Die stationäre Kollisionsprüfung
-   bleibt davor und während der Einstellphase aktiv.
-3. Nur beim Einparken, an den Haltepunkten nach Anfahrt/Segment/Neuplanung, darf
-   die Bremsphase früher enden. Dafür müssen mindestens 150 ms seit Bremsbeginn
-   und 120 ms beobachtete Ruhe vergangen sein: Encoderänderung höchstens 0,5 mm,
-   Winkeländerung höchstens 0,25 Grad, mindestens zwei neue Geschwindigkeits-
-   messungen und aktuell höchstens 5 mm/s. Bewegung setzt das Ruhefenster zurück.
-   Sensorpausen und Reset löschen diesen Nachweis. Ohne frühen Nachweis gilt
-   unverändert der bisherige 300-ms-Pfad mit Geschwindigkeitsprüfung und Timeout.
+1. **Reuse steering settle time.** We record the angle and time of the servo command when the write actually goes out. A queued or blocked write leaves the record unchanged. If the next move uses exactly the same angle, it can reuse the time already spent settling. Every new angle still gets **400 ms**. The servo keeps receiving PWM when `stop()` blocks new writes. The controller observes elapsed time because the servo has no position feedback.
+2. **Start the timer at the servo write.** When the controller enters the settle phase, it sends the checked angle immediately and starts timing from that write. Clearance checks stay active before and during steering adjustment.
+3. **Verify an early stop.** At stops after approach, a segment or replanning, the parking controller can move on after at least **150 ms** of braking and **120 ms** of observed stillness. The encoder may change by at most **0.5 mm** and the heading by at most **0.25°**. The controller also needs two fresh speed readings and a current speed at or below **5 mm/s**. Movement restarts the observation window. A sensor hold or a reset clears it. Without that evidence the existing **300 ms** path still checks speed and enforces its timeout.
 
-Routen, Parkgeometrie, Geschwindigkeiten 60/40 mm/s, Suchalgorithmus, Reserven,
-Zielposition und Ausparkdiagnostik wurden nicht verändert. Die übrigen Brems-
-phasen der Parkanfahrt/Vermessung bleiben beim bisherigen Verhalten.
+The route, geometry, target pose, clearance allowances, search and exit diagnostics stayed the same in this revision. Entry speeds remained **60 or 40 mm/s**. Braking during the other approach and scan phases retained its existing timing.
 
-## Prüfung
+## Timing results
 
-`check_parking_steering_wait.py` extrahiert die realen Servo-Funktionen und
-Parksteuerung. Geprüft: unbekannter Winkel, unterdrückter Schreibbefehl,
-vorgemerkter versus ausgeführter Winkel, 399/400-ms-Grenze, wiederholter Befehl,
-Timerüberlauf, CW/CCW-Segmentbeginn und Abschluss, Bremsmindestzeit, fehlende
-neue Messungen, Encoderbewegung, Winkelbewegung, zu hohe/ungültige Geschwindigkeit
-und Sensorpause. Alle bestanden.
+We compared identical starting poses, geometry and sensor inputs with the same acceleration profile and speed filter. The `--legacy-waits` option restores the earlier waits in the model. CW and CCW times match for mirrored inputs.
 
-Weitere bestanden: 396 vollständige Parkabläufe + fünf Registrierungsfälle,
-84 Bremsnachlaufvarianten bis 3 mm + acht Gesundheitssperren, 14 Platz-/Fortschritts-
-prüfungen und 36 Abläufe mit Radius-/Winkelabweichungen. Zeitmatrix: 216/216 ohne
-Modellkollision, nochmals 216/216 mit realer Encoder-Geschwindigkeitsfilterung
-(50-ms-Mindestfenster, Alpha 0,60). Keine Hardwaremessung der neuen Version.
+| Bay gap and starting pose | Earlier waits | Revised waits | Time saved |
+| --- | ---: | ---: | ---: |
+| 232.5 mm | 15.08 s | 13.84 s | 1.24 s |
+| 245.2 mm, recorded starting pose | 15.34 s | 13.90 s | 1.44 s |
+| 247.5 mm | 12.24 s | 11.42 s | 0.82 s |
+| 251.7 mm | 12.20 s | 11.42 s | 0.78 s |
+| 256.6 mm, recorded starting pose | 12.20 s | 11.48 s | 0.72 s |
+| 262.5 mm | 12.20 s | 11.42 s | 0.78 s |
 
-Vergleich ab registrierter Halteposition, mit Beschleunigungsrampe und
-Geschwindigkeitsfilter. `--legacy-waits` stellt nur die alten Wartebedingungen
-im Hostmodell wieder her; gleiche Geometrie, gleiche Startlagen, gleiche
-Sensoradapter. Beide Richtungen ergeben bei gespiegelten Eingaben dieselben Zeiten:
+The filtered matrix ranged from **10.40 to 19.28 s**. The timings exclude MCU search time, approach and marker measurements, USB saves, unknown pose errors, tyre slip and actuator variation. The change shortens the waits between moves. Geometric replanning can still add computation time.
 
-| Lücke / Beispiel | Vorher | Jetzt | Ersparnis |
-|---|---:|---:|---:|
-| 232,5 mm | 15,08 s | 13,84 s | 1,24 s |
-| 245,2 mm / aufgezeichnete Startpose | 15,34 s | 13,90 s | 1,44 s |
-| 247,5 mm | 12,24 s | 11,42 s | 0,82 s |
-| 251,7 mm | 12,20 s | 11,42 s | 0,78 s |
-| 256,6 mm / aufgezeichnete Startpose | 12,20 s | 11,48 s | 0,72 s |
-| 262,5 mm | 12,20 s | 11,42 s | 0,78 s |
+## Reproduction and build
 
-Die neue gefilterte 216er-Matrix reicht von 10,40 bis 19,28 s. Das ist kein
-garantierter Höchstwert. MCU-Suchzeit, vorherige Anfahrt/Vermessung, USB-Speicherung,
-unbekannte Posefehler, Schlupf und echte Aktuatorabweichungen sind nicht enthalten.
-Die allgemeine geometrische Neuplanung kann weiterhin längere Rechenpausen
-verursachen; diese Änderung beschleunigt die Freigaben zwischen den Bewegungen.
+`check_parking_steering_wait.py` checks the production servo and parking logic. It covers unknown angles, blocked and queued writes, the **399/400 ms** boundary, repeated commands and timer rollover. It also checks CW and CCW starts and finishes, minimum braking time, missing samples, encoder and heading movement, excessive or invalid speeds and sensor holds. All checks passed.
 
-Reproduktion: `audit_parking_duration.py --filtered-speed`; Vergleich
-`audit_parking_duration.py --nominal --filtered-speed --legacy-waits`.
-Ausgaben unter `local_workspace/parking-duration-filtered/` beziehungsweise
-`local_workspace/parking-duration-nominal-filtered-legacy/`.
+| Additional check | Result |
+| --- | --- |
+| Full parking and registration | **396** complete entries and **5** registration cases passed. |
+| Braking and sensor health | **84** braking overshoot variants up to **3 mm** and **8** health checks passed. |
+| Clearance and progress | **14** checks and **36** full sequences with radius and heading changes passed. |
+| Timing matrix | **216/216** completed without modelled overlap, repeated successfully with the production encoder speed filter (**50 ms** minimum window and **0.60** alpha). |
 
-## Build und nächste Prüfung
+From the repository root, run:
 
-M7 IDE-PlatformIO SUCCESS, RAM 459256/523624, Flash 572912/786432.
-Binary 576464 Bytes; SHA-256:
-`03fadef7953736ca4b8fb3e220300dfadc5e6c60457c31344f3713cb78870d2b`.
-M4 unverändert, kein Upload oder Fahrbefehl.
+```powershell
+python simulation/audit_parking_duration.py --filtered-speed
+python simulation/audit_parking_duration.py --nominal --filtered-speed --legacy-waits
+```
 
-Nächste normale CW-/CCW-Läufe mit dieser M7-Version speichern. Originale zuerst
-sichern/hashen und Abziehen bestätigen. Tatsächliche Segment-/Bremszeiten,
-`search_ms`, Bremsnachlauf und Kontakte/Reserven vergleichen. Keine zusätzlichen
-ToF-Testbewegungen erforderlich.
+The output directories are `local_workspace/parking-duration-filtered/` and `local_workspace/parking-duration-nominal-filtered-legacy/`.
+
+The IDE-managed `giga_r1_m7` build passed. RAM usage was **459,256 / 523,624 bytes**, flash usage **572,912 / 786,432 bytes** and binary size **576,464 bytes**. SHA-256:
+
+```text
+03fadef7953736ca4b8fb3e220300dfadc5e6c60457c31344f3713cb78870d2b
+```
+
+M4 was unchanged. This review produced no upload or physical run. Normal runs with this revision were the planned check for actual segment and braking times, `search_ms`, braking overshoot, contact and clearance. The team's [current parking approach](../README.md#obstacle-challenge-strategy) reflects subsequent revisions.

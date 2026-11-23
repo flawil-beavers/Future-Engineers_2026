@@ -1,36 +1,29 @@
-# PID- und Motorabstimmung
+# PID and drive motor tuning
 
-Die Firmware bietet eine geführte serielle Einstellung. `pid help` zeigt alle
-Befehle direkt im seriellen Monitor, `pid show` zeigt die momentan aktiven
-Werte und `pid export` erzeugt passende Zeilen für `include/config.h`.
+We tune the drive motor from the serial monitor. Use `pid help` to list the commands, `pid show` to see the active values, and `pid export` to print settings for [`include/config.h`](include/config.h).
 
-## Regleraufbau
+## How the controller works
 
-- **LOW Kp/Ki** regelt bis zur LOW-Grenze.
-- Zwischen **LOW** und **MID** werden die Werte weich interpoliert.
-- Zwischen **MID** und **HIGH** werden sie erneut weich interpoliert.
-- Oberhalb der HIGH-Grenze gelten die HIGH-Werte.
-- **Kp** reagiert sofort auf einen Geschwindigkeitsfehler. Zu wenig Kp wirkt
-  kraftlos; zu viel Kp erzeugt schnelle Schwingungen.
-- **Ki** beseitigt einen dauerhaft verbleibenden Fehler unter Last. Zu viel Ki
-  erzeugt langsames Pulsieren und Überschwingen.
-- **Static feedforward** ist die PWM-Grundkraft gegen Reibung.
-- **Kv** ist die zusätzliche PWM pro mm/s Sollgeschwindigkeit.
-- **Ka** ist die zusätzliche PWM während der Beschleunigung.
-- **Acceleration Kp/Ki** korrigiert den Unterschied zwischen gewünschter und
-  gemessener Beschleunigung. Diese Werte gelten für alle Geschwindigkeiten.
+We use proportional–integral (PI) feedback to control speed. Each of the three speed bands has its own gains. The controller uses the LOW gains up to the LOW boundary, interpolates from LOW to MID and MID to HIGH between the boundaries, and uses the HIGH gains above the HIGH boundary.
 
-## Manuell testen
+| Setting | What it controls |
+| --- | --- |
+| Cruise Kp | Responds immediately to the speed error. A low value gives a weak response. A high value can cause rapid oscillation. |
+| Cruise Ki | Corrects persistent speed error under load. A high value can cause slow surging and overshoot. |
+| Static feed-forward | Adds a base PWM command to overcome friction. |
+| Kv | Adds PWM in proportion to the target speed in mm/s. |
+| Ka | Adds PWM as the controller requests acceleration. |
+| Acceleration Kp and Ki | Correct the difference between requested and measured acceleration. The same gains apply across all speed bands. |
 
-```text
-pid test 150
-z
-```
+[Drive and low-speed control](README.md#drive-selection-and-low-speed-control)
 
-Der erste Befehl fährt mit 150 mm/s. `z` beendet den Test. Währenddessen zeigt
-`P` einen Statusdatensatz mit Solltempo, Isttempo, PWM und aktiven Gains.
+## Test and adjust the gains
 
-Beispiele zum Ändern:
+1. Clear a straight stretch and start with the drive-enable switch (SW1) LOW.
+2. Send `pid test 150` to select a **150 mm/s** test. Use SW1 to enable the drive when ready. Send uppercase `P` during the test to inspect target speed, measured speed, PWM and active gains.
+3. Send `z` or set SW1 LOW to stop. Change a setting, then repeat the test.
+
+For example, these commands change selected gains, a speed boundary and the static feed-forward setting.
 
 ```text
 pid set low kp 0.035
@@ -42,41 +35,19 @@ pid set ff static 86
 pid show
 ```
 
-Die Grenzen müssen immer `LOW < MID < HIGH` erfüllen. Änderungen gelten sofort
-im RAM und sind nach einem Neustart weg. Nach erfolgreichem Test `pid export`
-senden und die ausgegebenen Zeilen in `include/config.h` übernehmen.
+Keep the speed boundaries in ascending order, `LOW < MID < HIGH`. Changes take effect immediately in RAM and reset at restart. When the car drives as intended, send `pid export`, copy the printed values into `include/config.h`, and rebuild and upload M7 to make them permanent. [PID commands](src/serial_handler.cpp#L97-L113)
 
-## Autotuner
+## Use the relay autotuner
 
 ```text
-pid tune <Geschwindigkeit> <Basis-PWM> <Relay-Schritt>
-```
-
-Beispiel:
-
-```text
+pid tune <speed_mm_s> <baseline_pwm> <relay_step>
 pid tune 150 103 15
 ```
 
-- **Geschwindigkeit** bestimmt, welchem LOW/MID/HIGH-Bereich das Ergebnis
-  zugeordnet wird.
-- **Basis-PWM** muss den Motor ungefähr mit dieser Geschwindigkeit bewegen.
-- **Relay-Schritt** schaltet symmetrisch ober- und unterhalb der Basis-PWM.
+- **Target speed** selects the LOW, MID or HIGH band to tune.
+- **Baseline PWM** should drive the motor at approximately that speed. Use a manual test to choose a starting value.
+- **Relay step** sets how far the PWM moves above and below the baseline.
 
-Der Tuner misst mehrere stabile Schwingungen, verwirft asymmetrische oder stark
-streuende Messungen und berechnet daraus Kp/Ki. Ein gültiges Resultat wird nur
-im RAM auf den gewählten Bereich angewendet. Danach immer mit `pid test` prüfen
-und erst bei gutem Fahrverhalten mit `pid export` dauerhaft übernehmen.
+The tuner measures several oscillation cycles, discards asymmetric or inconsistent samples, and calculates Kp and Ki. It applies a valid result to the selected band in RAM. Tune each band separately and run `pid test` after each result. Adjust feed-forward or acceleration gains when the same issue appears across the bands. Use `pid export` to save the final values.
 
-Empfohlene Reihenfolge:
-
-1. Genügend gerade Strecke schaffen und Enable zunächst ausschalten.
-2. Mit `pid test` eine passende Basis-PWM beziehungsweise das Fahrverhalten
-   abschätzen.
-3. LOW, MID und HIGH einzeln tunen und nach jedem Lauf praktisch testen.
-4. Feedforward und Beschleunigungswerte nur ändern, wenn das Problem in allen
-   Geschwindigkeitsbereichen auftritt.
-5. Die finalen Werte mit `pid export` sichern.
-
-Der Enable-Schalter und `z` stoppen den Test jederzeit. Ein Autotune-Lauf endet
-außerdem automatisch bei Zeit- oder Distanzüberschreitung.
+The drive-enable switch and `z` stop a test. The autotuner also stops when it reaches its time or travel limit.
