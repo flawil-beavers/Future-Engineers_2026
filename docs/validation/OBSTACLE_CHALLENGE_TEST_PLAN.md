@@ -12,7 +12,7 @@ Read the relevant linked review before investigating a failure.
   The first-lap-only, three-lap-only and final-parking-only flags are false.
 - Confirm Surprise Rule participation before the attempt. Its build flag
   currently defaults to enabled. Follow [the rules reference](../competition/WRO_2026_RULES.md)
-  and [height implementation report](../../simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md).
+  and [height implementation report](../../simulation/reports/SURPRISE_RULE_IMPLEMENTATION_20261111.md).
 - Use the actual field layout and measured parking geometry. Record changes
   to hardware, lighting, placement or surface that affect comparisons.
 - Use the established disable procedure, keep the stop control reachable and
@@ -36,14 +36,14 @@ step is required. A software/model pass does not establish physical acceptance.
 
 ## Open limitations and supporting reports
 
-- [First-lap retry and parking recheck](../../simulation/LAP1_PARKING_RECHECK_20261111.md).
+- [First-lap retry and parking recheck](../../simulation/reports/LAP1_PARKING_RECHECK_20261111.md).
   The bounded planner still fails at the 232.5 mm gap in the current approach
   matrix. Model results at larger gaps do not remove this limitation.
-- [Checked CCW aiming](../../simulation/LAP1_CHECKED_CCW_VIEW_20261111.md).
+- [Checked CCW aiming](../../simulation/reports/LAP1_CHECKED_CCW_VIEW_20261111.md).
   Modeled visibility improvements require real camera and driving evidence.
-- [Measured parking envelope](../../simulation/RETURNED_651_656_PARKING_20261105.md).
+- [Measured parking envelope](../../simulation/reports/RETURNED_651_656_PARKING_20261105.md).
   Keep physical reports and known user/surface exclusions attached to each run.
-- [Surprise Rule implementation](../../simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md).
+- [Surprise Rule implementation](../../simulation/reports/SURPRISE_RULE_IMPLEMENTATION_20261111.md).
   Real 50 mm and 150 mm height acceptance remains open. New reference images
   need approval under the camera registry workflow.
 - [Parking diagnostics plan](PARKING_POSE_IMPLEMENTATION_PLAN.md).

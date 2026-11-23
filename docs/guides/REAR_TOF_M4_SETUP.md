@@ -73,7 +73,7 @@ the sensor origin. A 50 mm clearance in that model therefore corresponds to
 a **65 mm sensor reading**. The log records the measured range and the
 derived clearance. If the sensor moves, update its position in the
 configuration so the firmware recalculates the target range.
-[Measured contour used for final parking](../../simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
+[Measured contour used for final parking](../../simulation/reports/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
 
 Start with the car fully inside the bay, approximately parallel to its limits
 and within about ±20 mm of its longitudinal midpoint. The swept model includes

@@ -677,7 +677,7 @@ then low-progress watchdog stop, consistent with reported contact. All seven
 files have RUN_START/RUN_END and truncated=0; six exits complete,557 interrupted.
 All identify revision20261027_cw_ccw_scan_parking, parking build19:43:55;
 flashed binary hash unknown. Full assessment and verification:
-[GREEN_556_562_REVIEW_20261027.md](../../GREEN_556_562_REVIEW_20261027.md).
+[GREEN_556_562_REVIEW_20261027.md](../../reports/GREEN_556_562_REVIEW_20261027.md).
 Normal physical validation of the new revision remains pending.
 
 
@@ -717,12 +717,12 @@ confirmation, recovery join unsafe and locks.568:96ms interrupted rear-positioni
 start, not a complete CCW lap. No mapping of three full CCW reports to these
 three files is asserted. All have saved boundaries/truncated0; six exits complete.
 Path revision20261027_green_row_bearing_layout, park header19:43:55, flashedSHA
-unknown. Report: [CW_CCW_563_569_REVIEW_20261027.md](../../CW_CCW_563_569_REVIEW_20261027.md).
+unknown. Report: [CW_CCW_563_569_REVIEW_20261027.md](../../reports/CW_CCW_563_569_REVIEW_20261027.md).
 Physical validation of the next revision and CW565 unknown-seat hold pending.
 
 CW565 follow-up (same original/hash; no new run): scoped the lower-image fragment
 veto to individual seat bearings while preserving upper-silhouette and local
-occupancy guards. [Assessment](../../CORNER_HOLD_565_FIX_20261027.md).
+occupancy guards. [Assessment](../../reports/CORNER_HOLD_565_FIX_20261027.md).
 Software reproducer and27 safe joins pass; actual scene acceptance still pending.
 
 ## 2026-10-29: CW570--571 and CCW572--575
@@ -748,7 +748,7 @@ CCW572 leaves well and reaches the single outer GREEN opposite the start,
 reverses twice then stops. CCW573--575 stop after leaving because GREEN is not
 confirmed. Complete saved file does not imply a completed challenge. Images of
 these attempts were not recorded; segmentation causes cannot be fully replayed.
-Review and next steps: [CW_CCW_570_575_REVIEW_20261029.md](../../CW_CCW_570_575_REVIEW_20261029.md).
+Review and next steps: [CW_CCW_570_575_REVIEW_20261029.md](../../reports/CW_CCW_570_575_REVIEW_20261029.md).
 
 ## 2026-10-29: CW576 false middle confirmation / skipped scout
 
@@ -769,7 +769,7 @@ RED4 gets one accepted vote at252211ms but no confirmation; the inferred layout
 also removes the normal unresolved-place hold. No explicit RED4 conflict
 rejection is logged. The new CW extension
 never runs in this file. Original source of those green pixels is unrecorded.
-Review: [CW_576_START_REGRESSION_20261029.md](../../CW_576_START_REGRESSION_20261029.md).
+Review: [CW_576_START_REGRESSION_20261029.md](../../reports/CW_576_START_REGRESSION_20261029.md).
 
 ## 2026-10-29: CCW577--581, two good routes and two pre-scan holds
 
@@ -791,7 +791,7 @@ Physical report: two excellent runs through course except parking; other runs
 leave then stop. Parking investigation explicitly deferred by user. Log578 is
 a complete saved original of an interrupted attempt, not a complete exit or
 an excerpt.580/581 stop before camera scan, not because a scan failed to see
-GREEN. Detailed comparison: [CCW_577_581_REVIEW_20261029.md](../../CCW_577_581_REVIEW_20261029.md).
+GREEN. Detailed comparison: [CCW_577_581_REVIEW_20261029.md](../../reports/CCW_577_581_REVIEW_20261029.md).
 
 ## 2026-10-29/30: CW582--586 and CCW/CW587--593
 
@@ -821,7 +821,7 @@ User reports mixed CW/CCW failures in the first arrangement and a successful
 course in a later different arrangement; exact report-to-file mapping was not
 provided. Phone photos are geometry context, not robot RGB565 evidence. Detailed
 analysis and scoped correction:
-[RETURNED_RUNS_582_593_REVIEW_20261030.md](../../RETURNED_RUNS_582_593_REVIEW_20261030.md).
+[RETURNED_RUNS_582_593_REVIEW_20261030.md](../../reports/RETURNED_RUNS_582_593_REVIEW_20261030.md).
 
 ## 2026-10-31: CW594--597 and CCW598--601
 
@@ -834,7 +834,7 @@ PARK_DIAG_CONFIG reports the translation-unit build Oct_30_2026_20_04_33;
 CORNER_VIEW reports Oct30_20:09:49 where present. Installed binary not read back.
 Revisions: path20261030_active_lap1_search, exit20261030_corrected_pose,
 parking20261030_tight_completion. Physical report and scoped corrections:
-[RETURNED_594_601_REVIEW_20261031.md](../../RETURNED_594_601_REVIEW_20261031.md).
+[RETURNED_594_601_REVIEW_20261031.md](../../reports/RETURNED_594_601_REVIEW_20261031.md).
 
 | Evidence file | Bytes | SHA-256 | Observed ending |
 | --- | ---: | --- | --- |
@@ -882,7 +882,7 @@ their missing parking trace complete or prove contact-free success.
 | `20261031_log_606_ccw.txt` | 196181 | `88dd03ed5ab885812d702933a1400a898c2ad656df062c376c1eb2e9441cbffe` | Three laps; retained RUN_END completed final_parking_stop; detailed parking tail lost to overflow. User reports brushing rail, then parked; photo of final pose. |
 
 Findings, scoped corrections and limitations:
-[CCW604--606 review](../../RETURNED_604_606_REVIEW_20261031.md).
+[CCW604--606 review](../../reports/RETURNED_604_606_REVIEW_20261031.md).
 
 ## 2026-10-31: successful isolated CW607--609
 
@@ -901,7 +901,7 @@ approach localization or CCW validation.
 | `20261031_log_609_cw.txt` | 18556 | `de8b7f8ccdb4b97397e8598e612f3e410e37dbaa1aba1c0569f8875a40a49a68` | Completed CW practice,20.481s,3replans, rear X corrections-3.42/+4.85mm; escape search5604ms observed. |
 
 Review and return-to-course changes:
-[CW607--609 handoff](../../RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md).
+[CW607--609 handoff](../../reports/RETURNED_607_609_FULL_RUN_HANDOFF_20261031.md).
 
 ## Returned log610: normal-course halt (2026-10-31)
 
@@ -912,7 +912,7 @@ turn=-1; archive also contains later restart(s), including turn=1.
 Build reports Oct 31 2026 13:37:20. User reports halt in middle after one lap;
 segment attribution and cause under review. No independent installed-binary readback.
 Source-before/source-after/copy hashes matched; unplug notice delivered immediately.
-Analysis: [log610 boundary review](../../RETURNED_610_LAP_BOUNDARY_20261031.md).
+Analysis: [log610 boundary review](../../reports/RETURNED_610_LAP_BOUNDARY_20261031.md).
 First CW run: cached middle GREEN plus freshly confirmed end pair caused
 explicit lap-boundary map hold; manual pause120.505s. Later turn=1 restart
 failed rear-positioning verification; placement not known. No evidence overflow.
@@ -929,7 +929,7 @@ Complete unchanged originals; source-before/source-after/copy hashes verified; u
 | 20261031_log_614_ccw.txt | 171041 | 8a15b5c9b738eab76236b945c59b43112a032a8526a35d91be9d5eb0083c3485 | ccw |
 | 20261031_log_615_ccw.txt | 167872 | d33f0d5353e8002adb32d5b5e2159100500f9fd8567a1d4952513d39328ab52f | ccw |
 
-[611--615 review and validation](../../RETURNED_611_615_REVIEW_20261031.md).
+[611--615 review and validation](../../reports/RETURNED_611_615_REVIEW_20261031.md).
 611: CW manual pause after search-arc tracking lock.612: CW manual pause during
 parking recovery.613: CW completed,6parking replans,max8825ms search.
 614: CCW completed,4parking replans,max8769ms search.615: CCW capture_distance
@@ -945,7 +945,7 @@ Straight outside wheel width corrected to123mm. During steering allow about8mm
 more front room, use available rear room; do not confuse this with parked-X target.
 Abrupt GREEN stop reported; exact event under review.
 
-[616 clearance/latency review](../../RETURNED_616_CLEARANCE_REVIEW_20261031.md).
+[616 clearance/latency review](../../reports/RETURNED_616_CLEARANCE_REVIEW_20261031.md).
 Recorded CW completion149.001s, no overflow; quick recipe100ms, later radius
 replan8806ms. Abrupt approach pause coincides with gyro report timeout and
 SPI/SH2 restart (1601ms post-restart poll gap); no corner-view lock recorded.
@@ -962,7 +962,7 @@ User: first run too far in section2 between GREEN and RED on laps2/3; second CW 
 
 Header metadata (no route analysis): both logsCW turn=-1, buildOct31 15:03:51,
 path view_reobserve;618 reports parking front8_123mm. Installed binary not readback.
-Capture instructions: [single-run pose capture](../../POSITION_CAPTURE_ONCE_20261031.md).
+Capture instructions: [single-run pose capture](../../reports/POSITION_CAPTURE_ONCE_20261031.md).
 
 ## Returned619 (2026-10-31), pending-change followup
 
@@ -976,7 +976,7 @@ parking20261031_front8_123mm; installed binary not read back.
 Footer completed/final_parking_stop,182798ms,truncated=1.1041 poses but none
 for laps2/3; maximum gap171364ms caused by phase-triggered duplicate capture.
 Original complete; trajectory incomplete. No independent physical completion
-report. Findings and current correction: [617-619 review](../../RETURNED_617_619_REVIEW_20261031.md).
+report. Findings and current correction: [617-619 review](../../reports/RETURNED_617_619_REVIEW_20261031.md).
 
 ## Returned620-621 (2026-10-31)
 
@@ -996,7 +996,7 @@ not independently read back.
 diagnosticmodule buildOct31 15:49:10,connectormodule15:57:18;
 621parking20261031_front16_123mm.620 stopped/mode_pause52501ms,
 621aborted/entry_replan_limit218739ms;bothtruncated=0.
-[Findings and correction](../../RETURNED_620_621_REVIEW_20261031.md).
+[Findings and correction](../../reports/RETURNED_620_621_REVIEW_20261031.md).
 
 ## Returned622/623 (2026-10-31), normal-mode restoration
 
@@ -1013,7 +1013,7 @@ and measured findings follow; installed binary not read back.
 Both CW, diagmoduleOct31 15:49:10,path20261031_settled_view,
 corner module16:25:32; no finalparking reached.622 stopped/mode_pause97286ms,
 623 stopped/mode_pause104033ms,bothtruncated=0. Original pixels unavailable.
-[Normal logging handoff and measured limits](../../NORMAL_DRIVING_HANDOFF_20261031.md).
+[Normal logging handoff and measured limits](../../reports/NORMAL_DRIVING_HANDOFF_20261031.md).
 
 ## Returned624-627 (2026-10-31), measured30mm rear overhang
 
@@ -1034,7 +1034,7 @@ Earlier physical frontpinkcontact/~40mm rearroom not assigned to an exact file.
 User correction: NONE of624-627 was physically good despite624 firmwarecompleted.
 Same layout throughout; secondGREEN afterRED in thirdsection passedwrongside.
 625 explicitly confirms seat22 RED at617mm/foot112; actual GREEN per physical
-report. See [corrected analysis](../../RETURNED_624_627_REVIEW_20261031.md).
+report. See [corrected analysis](../../reports/RETURNED_624_627_REVIEW_20261031.md).
 
 ## Returned628 CW (2026-10-31), remove superseded extra10mm preference
 
@@ -1046,7 +1046,7 @@ not readback. Firmware footercompleted189835ms/truncated0,normal logging.
 User: too much front room and repeated rearward movement while parking; shorter
 30mm rear means the earlier extra10mm request no longer applies. Use available
 room on both ends. Physical correctness/contact not established by footer.
-[Analysis and cancellation of extra10mm preference](../../RETURNED_628_BALANCED_PARKING_20261031.md).
+[Analysis and cancellation of extra10mm preference](../../reports/RETURNED_628_BALANCED_PARKING_20261031.md).
 
 ## Returned629-631 (2026-10-31), parking stalls
 
@@ -1076,7 +1076,7 @@ All three report parking revision20261031_rear30_balanced, pathfar_green_rear30.
 632 CW aborted entry_replan_limit;633 CCW and634 CW report completed.
 All footers truncated=0; completion is an estimator result, not physical contact proof.
 
-[Combined629?634 analysis and validation](../../RETURNED_629_634_PARKING_MOTION_20261101.md).
+[Combined629?634 analysis and validation](../../reports/RETURNED_629_634_PARKING_MOTION_20261101.md).
 
 ## Returned635-636 (2026-11-05): CW exit alignment rejected
 
@@ -1155,7 +1155,7 @@ allowed. Both contain final_parking_stop/completed with no truncation.
 | [656](20261105_log_656_ccw.txt) | 167316 | 9f0815eb7417c59657a738b926b1197befbe70124586718258e3d575614366e1 |
 
 Cross-batch lap1 view audit of the latest20 archived files (629–636,645–656):
-[2026-11-11 review](../../LAP1_APPROACH_LAST20_REVIEW_20261111.md).
+[2026-11-11 review](../../reports/LAP1_APPROACH_LAST20_REVIEW_20261111.md).
 Original bytes unchanged;650 remains an excerpt. No new physical test batch.
 
 ## Intake20261119: unassigned older parking/exit originals
@@ -1211,7 +1211,7 @@ All four report camera revision `20261119_measured_height`. Both runs that
 reached parking report `20261111_recovery_handoff`. The first two were
 paused by the tester and the last two stopped during final parking. The
 latest run recognised the 50 mm red sign. The exact binary was unavailable
-for readback. [Batch observations and checks](../../CW_LOGS_3_6_REVIEW_20261119.md)
+for readback. [Batch observations and checks](../../reports/CW_LOGS_3_6_REVIEW_20261119.md)
 
 | Original | Bytes | SHA256 |
 | --- | ---: | --- |
@@ -1230,7 +1230,7 @@ Original secured before analysis and verified against the source by SHA-256. The
 
 ## 2026-11-20 logs 8–10
 
-Complete originals copied before analysis, checked against the source before and after copying, and released to the user. All three logs report `20261120_lap1_visibility`. The completed lap pairs report later-lap policy `20261120_lap23_passing_reserve` and parking revision `20261120_approach_flow`. Log 8 ends in lap 1, log 9 during CW capture alignment, and log 10 on the CCW capture alignment preflight. [Batch review](../../RUNS_8_10_REVIEW_20261120.md)
+Complete originals copied before analysis, checked against the source before and after copying, and released to the user. All three logs report `20261120_lap1_visibility`. The completed lap pairs report later-lap policy `20261120_lap23_passing_reserve` and parking revision `20261120_approach_flow`. Log 8 ends in lap 1, log 9 during CW capture alignment, and log 10 on the CCW capture alignment preflight. [Batch review](../../reports/RUNS_8_10_REVIEW_20261120.md)
 
 | Original | Bytes | SHA-256 |
 | --- | ---: | --- |
@@ -1240,7 +1240,7 @@ Complete originals copied before analysis, checked against the source before and
 
 ## 2026-11-20 logs 11–18
 
-Complete originals copied and verified against the source by SHA-256 before analysis. The user released the stick. The logs report lap 1 revision `20261120_lap1_pair_view` where the lap starts. Logs 12, 14 and 16 report `20261120_lap23_smooth_pursuit` and parking `20261120_capture_clearance`. Log 13 stopped in rear positioning, with CW selected in the diagnostic configuration. The user reports one field layout for all tests. [Intake manifest](../log_intake/20261120_discovery_parking_batch/manifest.json) · [Batch review](../../RUNS_11_18_REVIEW_20261120.md)
+Complete originals copied and verified against the source by SHA-256 before analysis. The user released the stick. The logs report lap 1 revision `20261120_lap1_pair_view` where the lap starts. Logs 12, 14 and 16 report `20261120_lap23_smooth_pursuit` and parking `20261120_capture_clearance`. Log 13 stopped in rear positioning, with CW selected in the diagnostic configuration. The user reports one field layout for all tests. [Intake manifest](../log_intake/20261120_discovery_parking_batch/manifest.json) · [Batch review](../../reports/RUNS_11_18_REVIEW_20261120.md)
 
 | Original | Bytes | SHA-256 | Recorded outcome |
 | --- | ---: | --- | --- |

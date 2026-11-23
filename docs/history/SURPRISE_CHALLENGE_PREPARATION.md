@@ -2,7 +2,7 @@
 
 This October proposal is separate from the official November 9 modified-sign
 Surprise Rule. See [WRO_2026_RULES.md](../competition/WRO_2026_RULES.md) for that rule and
-[its implementation report](../../simulation/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
+[its implementation report](../../simulation/reports/SURPRISE_RULE_IMPLEMENTATION_20261111.md)
 for current height-recognition work. The alternate bay remains deferred.
 
 ## Open task: starting parking bay on the other side

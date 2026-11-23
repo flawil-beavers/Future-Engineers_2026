@@ -17,10 +17,10 @@ The latest path revision is `20261111_checked_ccw_view`. Its limited extra
 CCW first-lap aiming applies after the existing protected bypass and requires
 the checked quantized steering/body envelope. It changes neither CW aiming
 nor the protected bypass release. The
-[view report](../../simulation/LAP1_CHECKED_CCW_VIEW_20261111.md) records its model
+[view report](../../simulation/reports/LAP1_CHECKED_CCW_VIEW_20261111.md) records its model
 coverage and limitations.
 
-The [retry recheck](../../simulation/LAP1_PARKING_RECHECK_20261111.md) describes
+The [retry recheck](../../simulation/reports/LAP1_PARKING_RECHECK_20261111.md) describes
 braking and renewed observation after bounded drift or rejected view paths.
 New connections require current-pose preflight. An unknown object or a
 rejected projection is not evidence that a seat is empty.

@@ -20,6 +20,7 @@ We publish the competition firmware on `main`. Build both cores from the same ch
 | --- | --- |
 | How the car recognises signs, plans routes and parks | [Simulation commands and model assumptions](../simulation/README.md) · [Parking practice](guides/PARKING_ENTRY_PRACTICE.md) |
 | What happened on the field | [Original run logs and SHA-256 hashes](../simulation/evidence/parking_exit_diagnostics/README.md) · [Run inspector](../tools/robot-run-inspector/README.md) |
+| What we learned from earlier runs and checks | [Engineering reports by date](../simulation/reports/README.md) |
 | How we interpret obstacle data | [Sign positions](guides/OBSTACLE_SEAT_NUMBERING.md) · [Clearance logging](guides/OBSTACLE_CLEARANCE_LOGGING.md) |
 | How we plan a practical test | [Obstacle Challenge checklist](validation/OBSTACLE_CHALLENGE_TEST_PLAN.md) · [Connector and first-lap checks](validation/CONNECTOR_NEXT_TEST.md) · [Parking-exit measurements](validation/PARKING_POSE_IMPLEMENTATION_PLAN.md) |
 
