@@ -2,6 +2,8 @@
 
 We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, coached by **Stefan Gemperli**. We designed and built a four-wheel autonomous car for the WRO 2026 Future Engineers World Final.
 
+> **[Quick build and run guide](docs/guides/QUICK_BUILD_AND_FIRST_RUN.md).** Rebuild our robot in nine steps, from the parts list and print files to wiring, firmware upload and your first autonomous run.
+
 ![Flawil Beavers team photo, 2026](img/team/Teamphoto_26.png)
 
 ## Contents
@@ -17,9 +19,9 @@ We are **Damian Hardegger** and **Philipp Kündig** from Flawil, Switzerland, co
 - [Robot Photos](#robot-photos)
 - [AI Use Declaration](#ai-use-declaration)
 
-See the [repository guide](docs/README.md) for build files, setup guides, test evidence and competition references.
+Find simulation tools, test evidence and competition references in the [repository guide](docs/README.md).
 
-# Bill of Materials (BOM)
+## Bill of Materials (BOM)
 
 | Component | Quantity | Function | Estimated CHF |
 | --- | ---: | --- | ---: |
@@ -46,9 +48,9 @@ See the [repository guide](docs/README.md) for build files, setup guides, test e
 
 The CHF 10 fastener estimate covers the hardware used. We bought only a small quantity for this build.
 
-# Assembly
+## Assembly
 
-## CAD and 3D printing
+### CAD and 3D printing
 
 **Version 74 is the current CAD model, including the rear ToF mount.** The editable design, printable project and prepared job serve different stages of reproduction. The [CAD guide](CAD/README.md) also documents how to extract and check the steering geometry.
 
@@ -66,24 +68,24 @@ All 17 parts fit on one build plate. We print in PLA with 0.2 mm layers and 15% 
 
 We initially chose PETG for its strength. When the filament absorbed moisture, we saw heavy stringing in our prints. We switched to PLA after our trials showed that it worked well for the robot parts and produced less stringing.
 
-## Mechanical assembly
+### Mechanical assembly
 
 Use M3 screws and M3nS/M3n nuts for the structural parts. Use M2 or M2.5 screws with matching nuts for electronic modules. Build the lower stage first to retain access to the drive, steering and battery holders. Then fit the sensor mounts and controller, route the harness through the upper stage and join the stages. The [v74 assembly](CAD/Car_v74.f3z) shows the rear sensor mount.
 
 The photographs illustrate the original two-stage assembly sequence.
 
-| Building Instruction | | |
-|---|---|---|
-| ![General Pieces](img/assembly/PXL_20260531_062612987.MP.jpg) Prepare all the printed parts | ![Servo linkage](img/assembly/PXL_20260531_062619468.MP.jpg) Screw the servo linkage onto the servo | ![Steering Rod](img/assembly/PXL_20260531_062629739.MP.jpg) Connect the tie rod to both of the steering arms using M3n nylon lock nuts |
-| ![DC Motor](img/assembly/PXL_20260531_062952891.MP.jpg) Fit the drive coupling to the motor shaft| ![Base Plate](img/assembly/PXL_20260531_063232503.MP.jpg) Fix the DC motor onto the first stage using the DC Motor Cover and screw the servo in place| ![Battery Holder assembly](img/assembly/PXL_20260531_063344414.MP.jpg) Prepare the battery holders (2x) |
-| ![Battery Holder Connection](img/assembly/PXL_20260531_065603142.MP.jpg) Screw the battery holders onto the first stage | ![Battery Connector Wiring](img/assembly/PXL_20260531_065845130.MP.jpg) Connect protruding screws to the wires and screw nut on | ![Wiring](img/assembly/PXL_20260531_071506514.MP.jpg) Use M2 screws to fix the motor driver in place and wire everything up (use Wagos for GND and VCC) |
-| ![LEGO drivetrain assembly](img/assembly/PXL_20260531_072809927.MP.jpg) Fit the LEGO gears, axles and wheels. | ![Upper-stage sensors with earlier wiring](img/assembly/PXL_20260531_074835064.MP.jpg) Fasten the sensors to the upper stage using M2.5 screws and nuts. This photo shows the earlier ToF-to-BNO085 wiring. See the [current wiring](#wiring-and-signal-interfaces). | ![M2.5 Nuts location](img/assembly/PXL_20260531_074841767.MP.jpg) The ToF sensors are mounted via the ToF Mounts that are fastened with M3 screws |
-| ![Arduino Connection](img/assembly/PXL_20260531_075033876.MP.jpg) Place the Arduino Giga on top of the Arduino Spacer and fasten with M3 Screws | ![Cable Management](img/assembly/PXL_20260601_121901176.MP.jpg) Route the power and signal wiring through the upper stage | ![Cables moving up](img/assembly/PXL_20260601_121915804.MP.jpg) Thread the wires to the arduino through the Second stage |
-| ![Connecting both stages](img/assembly/PXL_20260601_123524626.MP.jpg) Fit the WAGO holder and main power rocker (SW2), then screw the two stages together. | | |
+| Assembly steps | | |
+| --- | --- | --- |
+| ![Printed parts laid out](img/assembly/PXL_20260531_062612987.MP.jpg) <br> Prepare all the printed parts. | ![Servo linkage](img/assembly/PXL_20260531_062619468.MP.jpg) <br> Screw the linkage onto the servo. | ![Steering tie rod](img/assembly/PXL_20260531_062629739.MP.jpg) <br> Connect the tie rod to both steering arms with M3n nylon lock nuts. |
+| ![Drive motor and coupling](img/assembly/PXL_20260531_062952891.MP.jpg) <br> Fit the drive coupling to the motor shaft. | ![Motor and servo on the lower stage](img/assembly/PXL_20260531_063232503.MP.jpg) <br> Fasten the DC motor to the lower stage with its cover and screw the servo in place. | ![Printed battery holder](img/assembly/PXL_20260531_063344414.MP.jpg) <br> Prepare both battery holders. |
+| ![Battery holders on the lower stage](img/assembly/PXL_20260531_065603142.MP.jpg) <br> Screw the battery holders onto the lower stage. | ![Battery holder terminals](img/assembly/PXL_20260531_065845130.MP.jpg) <br> Attach the wires to the protruding screws and secure them with nuts. | ![Motor driver and wiring](img/assembly/PXL_20260531_071506514.MP.jpg) <br> Fit the motor driver with M2 screws and wire it up. Use WAGO connectors for GND and VCC. |
+| ![LEGO drivetrain assembly](img/assembly/PXL_20260531_072809927.MP.jpg) <br> Fit the LEGO gears, axles and wheels. | ![Upper-stage sensors with earlier wiring](img/assembly/PXL_20260531_074835064.MP.jpg) <br> Fasten the sensors to the upper stage with M2.5 screws and nuts. This photo shows the earlier ToF-to-BNO085 wiring. See the [current wiring](#wiring-and-signal-interfaces). | ![ToF mounting points](img/assembly/PXL_20260531_074841767.MP.jpg) <br> Fasten the ToF mounts with M3 screws. |
+| ![Arduino GIGA on its spacer](img/assembly/PXL_20260531_075033876.MP.jpg) <br> Place the Arduino GIGA on its spacer and fasten it with M3 screws. | ![Upper-stage cable routing](img/assembly/PXL_20260601_121901176.MP.jpg) <br> Route the power and signal wiring through the upper stage. | ![Wiring at the GIGA](img/assembly/PXL_20260601_121915804.MP.jpg) <br> Thread the wires through the upper stage to the GIGA. |
+| ![Joined chassis stages](img/assembly/PXL_20260601_123524626.MP.jpg) <br> Fit the WAGO holder and main power rocker (SW2), then screw the two stages together. | | |
 
-# Mobility and Mechanical Design
+## Mobility and Mechanical Design
 
-## Robot specifications
+### Robot specifications
 
 | Specification | Recorded value |
 | --- | ---: |
@@ -96,7 +98,7 @@ The photographs illustrate the original two-stage assembly sequence.
 
 See [parking bay sizing](#obstacle-challenge-strategy) for the nominal length.
 
-## Chassis and steering
+### Chassis and steering
 
 Our screw-fastened two-stage chassis gives us access to the drivetrain below and the sensors and controller above. The commercial dual-cell holder we first used limited where we could place the batteries and held them tightly, which slowed swaps. We replaced it with two self designed 3D-printed holders mounted low on opposite sides of the chassis. Each cell is accessible from below, and the layout distributes the battery mass across the chassis.
 
@@ -108,7 +110,7 @@ The steering arms are angled toward the centre of the rear axle so the inner fro
 
 We simulated the steering linkage in Fusion 360 and used the inner and outer wheel angles to predict the turning radius. We compared those predictions with radii calculated from encoder travel and BNO085 heading during full-circle tests. The comparison revealed a small offset in the servo's neutral position, which we accounted for in the calibration. The front wheels reach farther forward at full lock, so the parking planner uses the measured footprint with the wheels straight and fully turned to check clearance along the path. [Ackermann calibration and turning-radius comparison](CAD/ACKERMANN_KINEMATICS_DOCUMENTATION.md#turning-radius-comparison) · [Measured parking contour](simulation/RETURNED_651_656_PARKING_20261105.md#measured-geometry-and-implementation)
 
-## Drive selection and low-speed control
+### Drive selection and low-speed control
 
 We connect the DC motor to the LEGO drivetrain with a custom manufactured metal coupling shaft. Its precise fit kept the connection stable through repeated driving tests. We mounted the motor on the lower chassis stage so we could reach it for maintenance and swap gearmotors easily while comparing gearbox ratios.
 
@@ -171,9 +173,9 @@ $$
 
 A steady request of 60 PWM units therefore powers about half the slots at 120 PWM units, for an average duty of about 24%.
 
-# Power and Sensor Architecture
+## Power and Sensor Architecture
 
-## Power budget
+### Power budget
 
 Two 14500 Li-ion cells in series give **7.4 V nominal, 8.4 V fully charged and 750 mAh nominal pack capacity**. The main power rocker (SW2) switches the battery supply to the motor driver, the GIGA's VIN and the step-down module that supplies the servo's 5 V rail.
 
@@ -216,7 +218,7 @@ For example, supplying an average of 251 mA to the Mini-360's 5 V loads takes ab
 
 The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom depends on the module's behaviour under loaded steering. At the same time, acceleration can lower the shared pack voltage at the GIGA. Arduino specifies **6 V minimum at VIN**, so the loaded voltage matters when assessing the pack.
 
-## Wiring and signal interfaces
+### Wiring and signal interfaces
 
 [![WRO Future Engineers 2026 wiring diagram, revision 1](img/diagrams/Wiring_Diagram_FE2026_v1.png)](img/diagrams/Wiring_Diagram_FE2026_v1.png)
 
@@ -235,7 +237,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 
 [Main pin assignments](include/config.h#L99-L128) · [Rear ToF pins](src/m4/rear_tof_m4.cpp#L10-L17)
 
-### Sensor wiring choices
+#### Sensor wiring choices
 
 **Choice of ToF module.** We replaced the VL53L3CX with the VL53L4CX for its longer rated range and the plug-in connectors on the Adafruit breakout. ST lists up to 6 m for the VL53L4CX and 3 m for the VL53L3CX under reference conditions. We wanted more range for initial wall discovery and set shorter limits in firmware for normal driving. We also damaged a VL53L3CX module by accidentally soldering individual wires together. The STEMMA QT/Qwiic connectors make it easier to replace a sensor without soldering at the board. [VL53L3CX specifications](https://www.st.com/en/imaging-and-photonics-solutions/vl53l3cx.html) · [VL53L4CX specifications](https://www.st.com/en/imaging-and-photonics-solutions/VL53L4CX)
 
@@ -245,7 +247,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 
 **IMU on SPI.** We tested the BNO085 on the shared I²C bus and observed unreliable IMU readings during frequent ToF transactions. We moved the BNO085 to SPI, with its own jumper wires to the GIGA.
 
-## Sensor placement
+### Sensor placement
 
 | Sensor | Why we mounted it there |
 | --- | --- |
@@ -254,7 +256,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 | Camera | We tried a forward-facing position so the camera could see upcoming pillars. It gave us a clear view in our tests, so we kept that position. |
 | BNO085 IMU | We mounted it level with the floor and aligned it with the chassis so its axes match the robot's directions. This makes the heading measurements easier to interpret. |
 
-## Heading and distance sensing
+### Heading and distance sensing
 
 **Heading.** The BNO085 supplies a **100 Hz game rotation vector**. Its yaw uses fused gyro and accelerometer data. A magnetometer reference gave unstable heading in the vehicle, where the driving motors and wiring were possible sources of interference. The filter uses no magnetic reference. In the Open Challenge, we use the car's heading at the start as the reference for the course. The encoder supplies travel for the position estimate.
 
@@ -262,7 +264,7 @@ The peak case puts about **0.70 A** on the Mini-360 output. Regulator headroom d
 
 **Wall-edge timing.** ST measured a full diagonal opening angle of **22° at 100 mm** and **18° at 1 m**. The cone can still see a wall after the sensor passes its edge, so we also use encoder travel and heading to detect corners. [VL53L4CX datasheet](https://www.st.com/resource/en/datasheet/vl53l4cx.pdf#page=26)
 
-## Camera and calibration
+### Camera and calibration
 
 We use a wide **1616 × 1208** window on the Arducam GC2145 and reduce it to **320 × 240** for processing. The camera sees about **65° from left to right**, so it can pick up signs near the sides of the track that our earlier centre crop could miss. The software looks for red and green signs. [Colour-region detection](src/vision.cpp#L746-L780)
 
@@ -278,9 +280,9 @@ In a stationary test, the software detected both coloured targets in all **2,025
 
 The current source selects a **24 MHz external clock with input divide-by-two**. The clock divider preserves the intended internal timing. A faster internal PLL profile produced lighting bands and incomplete detections, so we retained the proven clocking. Separately, removing 50 idle vertical blanking lines reduced the recorded interval to about **76.5 ms**. [Clock and blanking settings](include/config.h#L1520-L1530)
 
-# Software Architecture and Challenge Strategy
+## Software Architecture and Challenge Strategy
 
-## Control ownership and data flow
+### Control ownership and data flow
 
 ```mermaid
 flowchart TB
@@ -317,7 +319,7 @@ The side ToFs and the camera's configuration connection already use the GIGA's t
 | Rear sensor and RPC | [M4 sensor loop](src/m4/rear_tof_m4.cpp#L169-L184) · [M7 frame and freshness check](src/rear_tof_rpc.cpp#L40-L52) |
 | Run records | [Telemetry phases and samples](src/run_telemetry.cpp#L71-L96) · [USB logger update](src/logger.cpp#L382-L418) |
 
-## Open Challenge strategy
+### Open Challenge strategy
 
 On the sign-free course, we use proportional–derivative (PD) steering to hold the course heading and maintain about **300 mm** from the followed wall. The proportional term corrects the current error, and the derivative term responds to how quickly it changes. PD was stable enough in our tests. We expected little gyro drift and no persistent wall-distance error that would require an integral correction.
 
@@ -335,7 +337,7 @@ flowchart TD
     follow -->|"12 corners and finish travel"| stop(["Controlled stop"])
 ```
 
-## Obstacle Challenge strategy
+### Obstacle Challenge strategy
 
 We estimate the car's position on the field from how far the wheels have travelled and which way the car is facing. Readings from walls and parking markers help correct that estimate. The route is a series of points. Our steering method, Pure Pursuit, chooses a point ahead and calculates how sharply to steer towards it. When joining a new path, we blend the steering target into it to avoid a sudden change. [Lookahead and steering calculation](src/obstacle_path.cpp#L8786-L8819)
 
@@ -378,13 +380,13 @@ We mirror the steering for the opposite driving direction. We track distance wit
 
 Our target parking gap is **237.5 mm** between the inner faces of the two markers. The firmware starts at **247.5 mm**, or 1.5 times its configured robot length of **165 mm**, and accepts a measured gap within **±15 mm** of that estimate if it also passes the scan and pose checks. We use the accepted measurement to locate the movable marker. [Initial estimate](include/config.h#L405-L406) · [Bay wall calculation](src/final_parking.cpp#L216-L221)
 
-### Modified traffic sign
+#### Modified traffic sign
 
 We use the camera calibration to estimate a sign's height from its top and base in the image. We check that the base has a plausible width and compare the height estimate with the detected red region when a short red sign could be mistaken for a normal one. We wait for a better view when those checks disagree. We confirm a modified sign only after **three fresh frames** agree on its colour and height class at the same mapped position and the map shows another sign comes first. [Height estimate and classification](include/obstacle_sign_height.h#L12-L50) · [Frame checks and votes](src/obstacle_path.cpp#L721-L795)
 
 Once confirmed, we lock that position in the map. We keep the colour seen by the camera for diagnostics and store the opposite colour as the sign's original colour. The route planner uses that stored colour to choose the passing side on all three laps. [Confirmation and map update](src/obstacle_path.cpp#L707-L719)
 
-# Systems Integration and Validation
+## Systems Integration and Validation
 
 **How the parking exit brings the subsystems together.** We use the rear ToF to measure the gap behind the car and the wheel encoder to limit how far the motor moves during a correction. Once the car stops, we compare the change in rear distance with the encoder travel and check that the gap is within tolerance. If either check fails, we allow one small retry when the remaining gap error is within the correction limit. If verification still fails, we hold the car in place. During the exit itself, we use the IMU heading to decide when the final steering arc has brought the car back parallel to its starting direction. The encoder caps how far that arc can continue. [Rear distance verification](src/obstacle.cpp#L1515-L1581) · [Final arc and braking](src/obstacle.cpp#L2023-L2090)
 
@@ -401,9 +403,9 @@ We used prototype observations, bench measurements and simulations to guide chan
 | Sign map, route planning and vehicle footprint | Some routes around close signs left little room for real driving errors. | We adjust the route around nearby signs as a group and check the new path before using it. The current planner passed **2,811** known-map cases. In a separate footprint check, **7 of 2,827** cases fell below our **50 mm** modelling target, with a minimum sign clearance of **43.8 mm**. [Clearance checks and model limits](simulation/README.md#route-clearance-check) |
 | Parking pose, steering and clearance | Some early entries finished poorly even when the controller reported completion. Tight entries depended on the turning radius and the space taken up by the steered wheels. | We use both markers to refine the entry position, run the same four moves from that position and check final containment. All **396** modelled approaches reached the entry position. Physical logs show both a firmware-confirmed park and a separate entry that looked successful to the tester but failed the firmware's final pose check. [Model](simulation/README.md#parking-entry-models) · [Confirmed containment](simulation/evidence/parking_exit_diagnostics/README.md#2026-11-22-log-48) · [Final pose discrepancy](simulation/evidence/parking_exit_diagnostics/README.md#2026-11-22-logs-53-and-54) |
 
-# Build, Upload and Reproduction
+## Build, Upload and Reproduction
 
-## Build and run the firmware
+### Build and run the firmware
 
 Clone the public repository, open the root in VS Code with the PlatformIO extension, and use the IDE-managed PlatformIO Core. [PlatformIO configuration](platformio.ini#L14-L50) defines the Arduino GIGA M4 and M7 environments and their dependencies. From the repository root in PowerShell:
 
@@ -427,7 +429,7 @@ Configure the firmware before the attempt in `include/config.h`.
 
 After changing either setting, rebuild and upload the `giga_r1_m7` environment using the commands above. These settings are compiled into the uploaded firmware. With the start toggle (SW1) LOW, turn on the main power rocker (SW2) and wait for the controller to reach its waiting state. On the judge's signal, set SW1 HIGH. The robot then drives autonomously using its onboard sensors and controller.
 
-## Reproduce the evidence
+### Reproduce the evidence
 
 We maintain our firmware on `main`. During bench work, read diagnostics and telemetry at **115200 baud**.
 
@@ -439,19 +441,19 @@ We maintain our firmware on `main`. During bench work, read diagnostics and tele
 - **Can the car line up for parking?** We simulate the approach to the measured entry position and check the four moves in both driving directions. [How to rerun the parking check](simulation/README.md#parking-entry-models)
 - **Physical test logs.** Find the original files and their firmware details, where available, in the [run evidence index](simulation/evidence/parking_exit_diagnostics/README.md). Use the [run inspector](tools/robot-run-inspector/README.md) to view a recorded run, or follow the [parking analysis instructions](simulation/README.md#parking-exit-model) to regenerate plots from the archived logs.
 
-# Video
+## Video
 
-## Open Challenge
+### Open Challenge
 
 [![Watch the Open Challenge video](https://img.youtube.com/vi/koMCLdpg0-I/maxresdefault.jpg)](https://www.youtube.com/watch?v=koMCLdpg0-I)
 
-## Obstacle Challenge
+### Obstacle Challenge
 
 [![Watch the Obstacle Challenge video](https://img.youtube.com/vi/5dCMkFn-6TI/maxresdefault.jpg)](https://www.youtube.com/watch?v=5dCMkFn-6TI)
 
 We filmed this run with an earlier version of our parking software. See the [current four-move parking sequence](#obstacle-challenge-strategy).
 
-# Robot Photos
+## Robot Photos
 
 These six views show the current robot. The rear view shows the rear ToF sensor below the main power switch, and the bottom view shows both battery holders.
 
@@ -463,6 +465,6 @@ These six views show the current robot. The rear view shows the rear ToF sensor 
 | :---: | :---: | :---: |
 | ![Front of the robot with the camera](img/robot/robot-front.jpg) | ![Top of the robot with the controller and wiring](img/robot/robot-top.jpg) | ![Underside of the robot with both battery holders](img/robot/robot-bottom.jpg) |
 
-# AI Use Declaration
+## AI Use Declaration
 
 We used several AI systems to support our work, primarily OpenAI Codex (GPT Sol), with occasional use of Antigravity, GitHub Copilot and Cline. They helped us extend our Open Challenge firmware, develop the Obstacle Challenge solution and tune the camera frame rate with the robot connected. They also helped us build simulations, write tests, analyse logs, edit this README, estimate current draw, stabilise drone footage and create simulation visuals. We used these tools from our laptops. The robot drove autonomously using its onboard firmware.
