@@ -181,7 +181,7 @@ A steady request of 60 PWM units therefore powers about half the slots at 120 PW
 
 Two 14500 Li-ion cells in series give **7.4 V nominal, 8.4 V fully charged and 750 mAh nominal pack capacity**. The main power rocker (SW2) switches the battery supply to the motor driver, the GIGA's VIN and the step-down module that supplies the servo's 5 V rail.
 
-The power budget uses design loads for normal driving and assumes all loads draw their peak currents together in the peak case. The motor row shows what the drive draws from the pack through the PWM bridge. The GIGA's electronics are represented as an equivalent 3.3 V load, with the camera and sensors listed separately.
+We budgeted for normal driving and simultaneous peak loads. The motor row shows pack current through the PWM bridge. We model the GIGA as an equivalent 3.3 V load, separate from the camera and sensors.
 
 | Load | Supply rail | Average current | Peak current |
 | --- | --- | ---: | ---: |
@@ -217,6 +217,8 @@ For example, supplying an average of 251 mA to the Mini-360's 5 V loads takes ab
 | GIGA branch, including camera and sensors | 221 mA | 333 mA |
 | Mini-360 branch, including servo and level shifter | 188 mA | 527 mA |
 | **Total pack current** | **≈0.73 A** | **≈1.70 A** |
+
+We measured pack current over **5 s per test**. It averaged about **0.75 A at idle** and **1.35 A with the drive wheels spinning off the ground**. Idle draw was already close to the **0.73 A** normal-driving budget, and running the drivetrain on the bench added about **0.60 A**. Tyre load on the track can raise the draw, and the five-second averages smooth out brief current spikes.
 
 The peak budget calls for about **0.70 A** from the Mini-360. Regulator headroom depends on how it behaves under steering load. Acceleration can lower the shared pack voltage at the GIGA. Arduino specifies **6 V minimum at VIN**, so the voltage under load matters when assessing the pack.
 
